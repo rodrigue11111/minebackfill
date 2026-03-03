@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"/c/Users/YOUGBARE W.RODRIGUE/minebackfill/backend/.venv/Scripts/python.exe\" -c \"import sys; print\\(f''Python version: {sys.version}''\\); import openpyxl; print\\(''openpyxl available''\\); import xlrd; print\\(''xlrd available''\\)\")",
+      "Bash(\"/c/Users/YOUGBARE W.RODRIGUE/minebackfill/backend/.venv/Scripts/python.exe\" -c \"try::*)",
+      "Bash(\"/c/Users/YOUGBARE W.RODRIGUE/minebackfill/backend/.venv/Scripts/pip.exe\" list)",
+      "Bash(python -c \"import pandas; print\\(''pandas available''\\)\")",
+      "Bash(python3 -c \"import pandas; print\\(''pandas available''\\)\")",
+      "Bash(python -c \"import openpyxl; print\\(''openpyxl available''\\)\")",
+      "Bash(python -c \"import xlrd; print\\(''xlrd available''\\)\")",
+      "Bash(python:*)",
+      "Bash(\"c:/Users/YOUGBARE W.RODRIGUE/minebackfill/backend/.venv/Scripts/pip.exe\" install xlrd --quiet)",
+      "Bash(\"c:/Users/YOUGBARE W.RODRIGUE/minebackfill/backend/.venv/Scripts/python.exe\" -c \":*)",
+      "Bash(\"c:/Users/YOUGBARE W.RODRIGUE/minebackfill/backend/.venv/Scripts/python.exe\":*)",
+      "Bash(.venv/Scripts/python.exe -c \":*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(.venv/Scripts/python -c \":*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(python3 -c \":*)",
+      "Bash(py --version)",
+      "Bash(python3.exe --version)"
+    ]
+  }
+}

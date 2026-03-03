@@ -1,0 +1,323 @@
+﻿address	value	formula
+A1	Modèle C1b	
+B1	               Feuille de calcul des mélanges de remblai en pâte au laboratoire en fixant	
+A2	Juillet 2005	
+B2	              le pourcentage solide massique (Cwm%) et la saturation (Sr) du mélange final	
+A3	Laboratoire URSTM	
+D4	  Paramètres d'entrée pour le résidu	
+H4	   Paramètres d'entrée du mélange de remblai	
+A5	Nom du résidu:	
+B5	BMS	
+E5	masse vol des grains de résidu rs 	
+F5	4.5	
+I5	%Solide RMPC Cwm%	
+J5	78	
+A6	Date du mélange:	
+B6	38545	
+E6	Teneur en eau résidu w%	
+F6	25	
+I6	w% initiale RMPC	
+J6	0.282051282051282	=(100/J5)-1
+A7	Opérateur :	
+E7	%Solide Cw-r%	
+F7	80	=(100/(100+F6))*100
+I7	Degré de saturation Sr (%)	
+J7	100	
+K7	%	
+I8	Porosité initiale n0 (moy)	
+J8	0.557406887111042	=J9/(1+J9)
+A9	Section moule	
+B9	80.5155835945415	=PI()*10.125^2/4
+C9	cm^2 (pd^2/4)	
+I9	Indice des vides ei (moy)	
+J9	1.25941156985624	=AVERAGE(J20:J22)
+A10	Hauteur moule	
+B10	20.5	
+C10	cm	
+A11	Volume moule	
+B11	1650.5694636881	=B9*B10
+C11	cm^3	
+H11	   Paramètres d'entrée pour le liant (ou ciment)	
+A12	Nombre moules	
+B12	49.33045	
+H12	Gs ciment CP10	
+I12	Gs ciment CP50	
+J12	Gs Fly ash (cendres)	
+K12	Gs slag(scories)	
+D13	Estimation des masses sèches	
+H13	3.1543	
+I13	3.1887	
+J13	2.6114	
+K13	2.8426	
+D14	M_rejet sec (g)	
+E14	ciment CP10	=H16
+F14	slag(scories)	=H17
+C15	Recette n°1	=A45
+D15	163590.228477843	=$B$12*(($F$5*$B$11)/(1+J20))
+E15	1472.31205630059	=(0.01*C22*D15)*(0.01*$I$16)
+F15	5889.24822520236	=(0.01*C22*D15)*(0.01*$I$17)
+I15	Proportion(%)	
+J15	Gs liants	
+C16	Recette n°2	=A46
+D16	161466.612284731	=$B$12*(($F$5*$B$11)/(1+J21))
+E16	0	=(0.01*D22*D16)*(0.01*$I$16)
+F16	0	=(0.01*D22*D16)*(0.01*$I$17)
+H16	ciment CP10	
+I16	20	
+J16	3.1543	=H13
+C17	Recette n°3	=A47
+D17	161466.612284731	=$B$12*(($F$5*$B$11)/(1+J22))
+E17	0	=(0.01*E22*D17)*(0.01*$I$16)
+F17	0	=(0.01*E22*D17)*(0.01*$I$17)
+H17	slag(scories)	
+I17	80	=100-I16
+J17	2.8426	=K13
+D19	Calcul des recettes de mélange avec le résidu :	
+E19	BMS	=B5
+F19	Modèle C1	
+I19	%liant mélange	
+J19	e_init calculé	
+K19	w% final 	
+A20	0	=B7
+B20	Opérateur	
+D20	Nombre de moule(s) :	
+E20	49.33045	=B12
+F20	38545	=B6
+H20	Recette n°1	
+I20	4.5	
+J20	1.23977317110718	=(D45/(0.01*$J$7))*(1/(0.01*$J$5)-1)
+K20	0.284619663438425	=D53/C53
+C21	Recette n°1	=A45
+D21	Recette n°2	=A46
+E21	Recette n°3	=A47
+H21	Recette n°2	
+I21	0	
+J21	1.26923076923077	=(D46/(0.01*$J$7))*(1/(0.01*$J$5)-1)
+K21	0.282051282051282	=D54/C54
+B22	%liant massique, Bw%	
+C22	4.5	=I20
+D22	0	=I21
+E22	0	=I22
+F22	wt%	
+H22	Recette n°3	
+I22	0	
+J22	1.26923076923077	=(D47/(0.01*$J$7))*(1/(0.01*$J$5)-1)
+K22	0.282051282051282	=D55/C55
+B23	%liant volumique, Bv%	
+C23	6.98296952672886	=C22*($F$5/$D$48)
+D23	0	=D22*($F$5/$D$48)
+E23	0	=E22*($F$5/$D$48)
+F23	v%	
+I23	0	
+B24	Masse de résidu humide =	
+C24	204487.785597304	=D15/(0.01*$F$7)
+D24	201833.265355914	=D16/(0.01*$F$7)
+E24	201833.265355914	=D17/(0.01*$F$7)
+F24	g	
+B25	Masse eau totale nécessaire	
+C25	48217.1711885336	=SUM(D15:F15)*((100/$J$5)-1)
+D25	45541.8650033858	=SUM(D16:F16)*((100/$J$5)-1)
+E25	45541.8650033858	=SUM(D17:F17)*((100/$J$5)-1)
+F25	g	
+K25	Paramètres géotechniques du remblai en pâte fabriqué       	
+B26	Masse d'eau à rajouter =	
+C26	7319.61406907276	=C25-(C24-D15)
+D26	5175.21193220295	=D25-(D24-D16)
+E26	5175.21193220295	=E25-(E24-D17)
+F26	g	
+G26	Liant Bw% final	
+H26	%solide Cw-m	
+I26	%solide Cv-m	
+J26	E/C	
+K26	Sr final calculé	
+B27	Masse de liant =	
+C27	7361.56028150295	=SUM(E15:F15)
+D27	0	=SUM(E16:F16)
+E27	0	=SUM(E17:F17)
+F27	g	
+G27	0.0445210166884613	=C27/B53
+H27	0.778440520926941	=C33
+I27	0.444176240658799	=1/(1+I37)
+J27	6.67754787148161	=D53/(E15+F15)
+K27	1	=J53/IF(J53>I53,I53+ABS(K53),I53)
+B28	ciment CP10	=H16
+C28	1472.31205630059	=E15
+D28	0	=E16
+E28	0	=E17
+F28	g	
+G28	0	=D27/B54
+H28	0.78	=D33
+I28	0.440677966101695	=1/(1+I38)
+J28	-2146826281	=D54/(E16+F16)
+K28	1	=J54/IF(J54>I54,I54+ABS(K54),I54)
+B29	slag(scories)	=H17
+C29	5889.24822520236	=F15
+D29	0	=F16
+E29	0	=F17
+F29	g	
+G29	0	=E27/B55
+H29	0.78	=E33
+I29	0.440677966101695	=1/(1+I39)
+J29	-2146826281	=D55/(E17+F17)
+K29	1	=J55/IF(J55>I55,I55+ABS(K55),I55)
+B30	Ajout d'eau pour  slump =	
+C30	500	
+D30	0	
+E30	0	
+F30	g	
+G30	Liant Bw% final	
+H30	r_humide	
+I30	r_d	
+J30	g_humide	
+K30	g_d	
+B31	Ajout de résidu humide pour slump =	
+C31	2200	
+D31	0	
+E31	0	
+F31	g	
+G31	 (%)	
+H31	(g/cm^3)	
+I31	(g/cm^3)	
+J31	(kN/m^3)	
+K31	(kN/m^3)	
+B32	Ajout de résidu sec pour slump =	
+C32	0	
+D32	0	
+E32	0	
+F32	g	
+G32	0.0445210166884613	=G27
+H32	2.50868869012785	=I32*(1+K20)
+I32	1.95286493078665	=K37*(1/(1+I37))
+J32	24.6102360501542	=H32*9.81
+K32	19.1576049710171	=I32*9.81
+B33	% solide instantanné =	
+C33	0.778440520926941	=C53/E53
+D33	0.78	=C54/E54
+E33	0.78	=C55/E55
+G33	0	=G28
+H33	2.54237288135593	=I33*(1+K21)
+I33	1.98305084745763	=K38*(1/(1+I38))
+J33	24.9406779661017	=H33*9.81
+K33	19.4537288135593	=I33*9.81
+A34	            Ajustement de la quantité de liant final dans le mélange	
+G34	0	=G29
+H34	2.54237288135593	=I34*(1+K22)
+I34	1.98305084745763	=K39*(1/(1+I39))
+J34	24.9406779661017	=H34*9.81
+K34	19.4537288135593	=I34*9.81
+B35	%liant massique, Bw% final	
+C35	0.0445210166884613	=G27
+D35	0	=G28
+E35	0	=G29
+B36	différence (Bw_init - Bw_final) =	
+C36	0.000478983311538707	=0.01*C22-C35
+D36	0	=0.01*D22-D35
+E36	0	=0.01*E22-E35
+G36	Liant Bw% final	
+H36	e initial	
+I36	e final	
+J36	 Porosité n	
+K36	Gs remblai	
+B37	Masse du surplus de liant à rajouter	
+C37	79.1999999999992	=C36*B53
+D37	0	=D36*B54
+E37	0	=E36*B55
+F37	g	
+G37	0.0445210166884613	=G32
+H37	1.23977317110718	=J20
+I37	1.25135860152449	=IF(J53>I53,I53+ABS(K53),I53)/(G53+H53)
+J37	0.555823759341201	=I37/(1+I37)
+K37	4.39659925954206	=E45/(($B$43/$F$5)+((E45-$B$43)*(0.01*$I$16)/$J$16)+((E45-$B$43)*(0.01*$I$17)/$J$17))
+A38	masse	
+B38	ciment CP10	=B28
+C38	15.8399999999998	=0.01*$I$16*C37
+D38	0	=0.01*$I$16*D37
+E38	0	=0.01*$I$16*E37
+F38	g	
+G38	0	=G33
+H38	1.26923076923077	=J21
+I38	1.26923076923077	=IF(J54>I54,I54+ABS(K54),I54)/(G54+H54)
+J38	0.559322033898305	=I38/(1+I38)
+K38	4.5	=E46/(($B$43/$F$5)+((E46-$B$43)*(0.01*$I$16)/$J$16)+((E46-$B$43)*(0.01*$I$17)/$J$17))
+A39	masse	
+B39	slag(scories)	=B29
+C39	63.3599999999994	=0.01*$I$17*C37
+D39	0	=0.01*$I$17*D37
+E39	0	=0.01*$I$17*E37
+F39	g	
+G39	0	=G34
+H39	1.26923076923077	=J22
+I39	1.26923076923077	=IF(J55>I55,I55+ABS(K55),I55)/(G55+H55)
+J39	0.559322033898305	=I39/(1+I39)
+K39	4.5	=E47/(($B$43/$F$5)+((E47-$B$43)*(0.01*$I$16)/$J$16)+((E47-$B$43)*(0.01*$I$17)/$J$17))
+A42	     Estimation du Gs du remblai (rejet + liant)	
+A43	M_rejet (fictif)	
+B43	2780.855	
+C43	g	
+B44	M_solide RP(g)	
+C44	V_solide(cm^3)	
+D44	rs RMCP calculé	
+E44	M_solid corrigée	
+A45	Recette n°1	=H20
+B45	2905.993475	=$B$43*(1+I20/100)
+C45	661.120279385003	=($B$43/$F$5)+((B45-$B$43)*(0.01*$I$16)/$J$16)+((B45-$B$43)*(0.01*$I$17)/$J$17)
+D45	4.39555942483455	=B45/C45
+E45	2904.66149186319	=$B$43*(1+G37)
+A46	Recette n°2	=H21
+B46	2780.855	=$B$43*(1+I21/100)
+C46	617.967777777778	=($B$43/$F$5)+((B46-$B$43)*(0.01*$I$16)/$J$16)+((B46-$B$43)*(0.01*$I$17)/$J$17)
+D46	4.5	=B46/C46
+E46	2780.855	=$B$43*(1+G38)
+A47	Recette n°3	=H22
+B47	2780.855	=$B$43*(1+I22/100)
+C47	617.967777777778	=($B$43/$F$5)+((B47-$B$43)*(0.01*$I$16)/$J$16)+((B47-$B$43)*(0.01*$I$17)/$J$17)
+D47	4.5	=B47/C47
+E47	2780.855	=$B$43*(1+G39)
+A48	Liant	
+B48	7361.56028150295	=(E15+F15)
+C48	2538.54573406976	=(E15/J16)+(F15/J17)
+D48	2.89991241154478	=(E15+F15)/(E15/J16+F15/J17)
+B51	Calcul des masses et volumes du remblai en pâte	
+G51	Calcul des masses et volumes du remblai en pâte	
+B52	M_tot rejet sec (g)	
+C52	M_solide (g)	
+D52	M_eau (g)	
+E52	M_remblai (g)	
+G52	V_rejet(cm^3)	
+H52	V_liant (cm^3)	
+I52	V_vides(cm^3)	
+J52	V_eau (cm^3)	
+K52	V_air (cm^3)	
+A53	Recette n°1	=C15
+B53	165350.228477843	=D15+(C31*0.01*$F$7)+C32
+C53	172711.788759346	=B53+C27
+D53	49157.1711885336	=C25+C30+C31*($F$6/(100+$F$6))
+E53	221868.95994788	=C53+D53
+F53	Recette n°1	=A53
+G53	36744.4952172985	=B53/$F$5
+H53	2538.54573406976	=(E15+F15)/$D$48
+I53	48702.060251011	=J20*(G53+H53)
+J53	49157.1711885336	=D53
+K53	-455.11093752255	=I53-J53
+A54	Recette n°2	=C16
+B54	161466.612284731	=D16+(D31*0.01*$F$7)+D32
+C54	161466.612284731	=B54+D27
+D54	45541.8650033858	=D25+D30+D31*($F$6/(100+$F$6))
+E54	207008.477288117	=C54+D54
+F54	Recette n°2	=A54
+G54	35881.469396607	=B54/$F$5
+H54	0	=(E16+F16)/$D$48
+I54	45541.8650033857	=J21*(G54+H54)
+J54	45541.8650033858	=D54
+K54	0	=I54-J54
+A55	Recette n°3	=C17
+B55	161466.612284731	=D17+(E31*0.01*$F$7)+E32
+C55	161466.612284731	=B55+E27
+D55	45541.8650033858	=E25+E30+E31*($F$6/(100+$F$6))
+E55	207008.477288117	=C55+D55
+F55	Recette n°3	=A55
+G55	35881.469396607	=B55/$F$5
+H55	0	=(E17+F17)/$D$48
+I55	45541.8650033857	=J22*(G55+H55)
+J55	45541.8650033858	=D55
+K55	0	=I55-J55

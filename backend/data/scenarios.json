@@ -1,0 +1,35 @@
+[
+  {
+    "id": "59e4b66b-317c-4cd4-8a70-9bd72b2b18ed",
+    "name": "university",
+    "created_at": 1763608289,
+    "inputs": {
+      "solids_mass_frac": 0.72,
+      "tailings_sg": 2.7,
+      "target_ucs_28d_mpa": 1.2,
+      "binder_split": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    "outputs": {
+      "binder_pct_wt": 1.6,
+      "water_to_binder": 3.0,
+      "predicted_ucs_curve": [
+        {
+          "age_days": 7,
+          "ucs_mpa": 0.42
+        },
+        {
+          "age_days": 28,
+          "ucs_mpa": 1.2
+        },
+        {
+          "age_days": 56,
+          "ucs_mpa": 1.5
+        }
+      ]
+    }
+  }
+]

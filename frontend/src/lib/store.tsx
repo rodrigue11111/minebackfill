@@ -1,0 +1,518 @@
+﻿"use client";
+
+import { create } from "zustand";
+
+export type Category = "RPC" | "RPG" | "RRC";
+export type RpcMethod = "dosage_cw" | "wb" | "slump" | "essai";
+
+export interface GeneralInfo {
+  operator_name?: string | null;
+  project_name?: string | null;
+  residue_id?: string | null;
+  mix_date?: string | null;
+
+  container_type?:
+    | "section_hauteur"
+    | "rayon_hauteur"
+    | "longueur_largeur_hauteur"
+    | null;
+  container_section?: number | null;
+  container_height?: number | null;
+  container_radius?: number | null;
+  container_length?: number | null;
+  container_width?: number | null;
+
+  binder_count?: 1 | 2 | 3 | null;
+  binder1_type?: string | null;
+  binder2_type?: string | null;
+  binder3_type?: string | null;
+
+  binder1_fraction_pct?: number;
+  binder2_fraction_pct?: number;
+  binder3_fraction_pct?: number;
+}
+
+export interface ConstantesCalcul {
+  masse_volumique_eau_kg_m3: number;
+  gravite_m_s2: number;
+  facteur_petit_cone_vers_grand_cone: number;
+  coefficient_modele_slump: number;
+  constante_modele_slump: number;
+}
+
+export interface LiantCatalogueItem {
+  id: string;
+  code: string;
+  nom: string;
+  gs: number;
+}
+
+export interface CwState {
+  solid_mass_pct: number;
+  saturation_pct: number;
+  residue_sg: number;
+  residue_w_pct: number;
+  num_recipes: 1 | 2 | 3 | 4;
+  desired_qty: number;
+  safety_factor: number;
+  binder_pct: number[];
+}
+
+export interface WbState {
+  saturation_pct: number;
+  residue_sg: number;
+  residue_w_pct: number;
+  num_recipes: 1 | 2 | 3 | 4;
+  desired_qty: number;
+  safety_factor: number;
+  binder_pct: number[];
+  wc_ratio: number[];
+}
+
+export interface SlumpState {
+  cone_type: "mini" | "grand";
+  slump_mm: number;
+  saturation_pct: number;
+  residue_sg: number;
+  residue_w_pct: number;
+  num_recipes: 1 | 2 | 3 | 4;
+  desired_qty: number;
+  safety_factor: number;
+  binder_pct: number[];
+}
+
+export interface RpgCwState {
+  solid_mass_pct: number;
+  saturation_pct: number;
+  residue_sg: number;
+  residue_w_pct: number;
+  aggregate_fraction_pct: number;  // A_m%
+  aggregate_sg: number;            // Gs agrégat
+  num_recipes: 1 | 2 | 3 | 4;
+  desired_qty: number;
+  safety_factor: number;
+  binder_pct: number[];
+}
+
+export interface RpgWbState {
+  saturation_pct: number;
+  residue_sg: number;
+  residue_w_pct: number;
+  aggregate_fraction_pct: number;
+  aggregate_sg: number;
+  num_recipes: 1 | 2 | 3 | 4;
+  desired_qty: number;
+  safety_factor: number;
+  binder_pct: number[];
+  wc_ratio: number[];
+}
+
+export interface EssaiInputsState {
+  base_method: "dosage_cw" | "wb";
+  base_cw?: CwState;
+  base_wb?: WbState;
+  ajustements: {
+    ajout_residu_sec?: number;
+    ajout_residu_humide?: number;
+    ajout_eau?: number;
+  }[];
+}
+
+export interface RpgEssaiAdjustment {
+  ajout_residu_sec?: number;
+  ajout_residu_humide?: number;
+  ajout_agregat?: number;
+  w0_agregat?: number;
+  ajout_eau?: number;
+}
+
+export interface RpgEssaiState {
+  base_method: "dosage_cw" | "wb";
+  base_cw?: RpgCwState;
+  base_wb?: RpgWbState;
+  ajustements: RpgEssaiAdjustment[];
+}
+
+export type RpcCwResponse = any;
+
+interface AppState {
+  API: string;
+
+  category: Category;
+  method: RpcMethod;
+  setCategory: (c: Category) => void;
+  setMethod: (m: RpcMethod) => void;
+
+  general: GeneralInfo;
+  setGeneral: (patch: Partial<GeneralInfo>) => void;
+  loadGeneral: () => Promise<void>;
+
+  constantes: ConstantesCalcul;
+  setConstantes: (patch: Partial<ConstantesCalcul>) => void;
+
+  catalogue_liants: LiantCatalogueItem[];
+  ajouterLiant: () => void;
+  modifierLiant: (index: number, patch: Partial<LiantCatalogueItem>) => void;
+  supprimerLiant: (index: number) => void;
+
+  cw: CwState;
+  setCw: (patch: Partial<CwState>) => void;
+  setCwRecipe: (index: number, patch: { binder_pct?: number }) => void;
+  cwResult: RpcCwResponse | null;
+  setCwResult: (res: RpcCwResponse | null) => void;
+
+  wb: WbState;
+  setWb: (patch: Partial<WbState>) => void;
+  setWbRecipe: (
+    index: number,
+    patch: { binder_pct?: number; wc_ratio?: number }
+  ) => void;
+  wbResult: any | null;
+  setWbResult: (res: any | null) => void;
+
+  slump: SlumpState;
+  setSlump: (patch: Partial<SlumpState>) => void;
+  setSlumpRecipe: (index: number, patch: { binder_pct?: number }) => void;
+  slumpResult: any | null;
+  setSlumpResult: (res: any | null) => void;
+
+  essai: EssaiInputsState;
+  setEssai: (patch: Partial<EssaiInputsState>) => void;
+  setEssaiAjustement: (
+    index: number,
+    patch: {
+      ajout_residu_sec?: number;
+      ajout_residu_humide?: number;
+      ajout_eau?: number;
+    }
+  ) => void;
+  essaiResult: any | null;
+  setEssaiResult: (res: any | null) => void;
+
+  rpgCw: RpgCwState;
+  setRpgCw: (patch: Partial<RpgCwState>) => void;
+  setRpgCwRecipe: (index: number, patch: { binder_pct?: number }) => void;
+  rpgCwResult: any | null;
+  setRpgCwResult: (res: any | null) => void;
+
+  rpgWb: RpgWbState;
+  setRpgWb: (patch: Partial<RpgWbState>) => void;
+  setRpgWbRecipe: (index: number, patch: { binder_pct?: number; wc_ratio?: number }) => void;
+  rpgWbResult: any | null;
+  setRpgWbResult: (res: any | null) => void;
+
+  rpgEssai: RpgEssaiState;
+  setRpgEssai: (patch: Partial<RpgEssaiState>) => void;
+  setRpgEssaiAjustement: (index: number, patch: RpgEssaiAdjustment) => void;
+  rpgEssaiResult: any | null;
+  setRpgEssaiResult: (res: any | null) => void;
+}
+
+const zeros4 = () => [0, 0, 0, 0];
+const makeLiantId = () =>
+  `liant_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+const catalogueLiantsDefaut: LiantCatalogueItem[] = [
+  { id: "liant_cp10", code: "CP10", nom: "Ciment CP10", gs: 3.1543 },
+  { id: "liant_cp50", code: "CP50", nom: "Ciment CP50", gs: 3.1887 },
+  { id: "liant_slag", code: "SLAG", nom: "Laitier", gs: 2.8426 },
+  { id: "liant_fly_ash", code: "FLY_ASH", nom: "Fly Ash", gs: 2.6114 },
+  { id: "liant_chaux", code: "CHAUX", nom: "Chaux", gs: 2.6 },
+];
+
+export const useStore = create<AppState>((set) => ({
+  API: process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000",
+
+  category: "RPC",
+  method: "dosage_cw",
+  setCategory: (c) => set({ category: c }),
+  setMethod: (m) => set({ method: m }),
+
+  general: {
+    binder_count: 2,
+    binder1_type: "CP10",
+    binder2_type: "SLAG",
+    binder3_type: null,
+  },
+  setGeneral: (patch) =>
+    set((state) => ({
+      general: {
+        ...state.general,
+        ...patch,
+      },
+    })),
+  loadGeneral: async () => {
+    return;
+  },
+
+  constantes: {
+    masse_volumique_eau_kg_m3: 1000.0,
+    gravite_m_s2: 9.81,
+    facteur_petit_cone_vers_grand_cone: 2.335,
+    coefficient_modele_slump: 4.95e6,
+    constante_modele_slump: 235.5122,
+  },
+  setConstantes: (patch) =>
+    set((state) => ({
+      constantes: {
+        ...state.constantes,
+        ...patch,
+      },
+    })),
+
+  catalogue_liants: catalogueLiantsDefaut,
+  ajouterLiant: () =>
+    set((state) => {
+      const index = state.catalogue_liants.length + 1;
+      const nouveau: LiantCatalogueItem = {
+        id: makeLiantId(),
+        code: `LIANT_${index}`,
+        nom: `Liant ${index}`,
+        gs: 3.0,
+      };
+      return { catalogue_liants: [...state.catalogue_liants, nouveau] };
+    }),
+  modifierLiant: (index, patch) =>
+    set((state) => {
+      if (index < 0 || index >= state.catalogue_liants.length) return {};
+      const catalogue = [...state.catalogue_liants];
+      const ancienCode = catalogue[index].code;
+      catalogue[index] = { ...catalogue[index], ...patch };
+      const nouveauCode = catalogue[index].code;
+      const doitRenommer = ancienCode !== nouveauCode && !!nouveauCode;
+
+      if (!doitRenommer) {
+        return { catalogue_liants: catalogue };
+      }
+
+      const renommer = (code?: string | null) =>
+        code === ancienCode ? nouveauCode : code;
+
+      return {
+        catalogue_liants: catalogue,
+        general: {
+          ...state.general,
+          binder1_type: renommer(state.general.binder1_type),
+          binder2_type: renommer(state.general.binder2_type),
+          binder3_type: renommer(state.general.binder3_type),
+        },
+      };
+    }),
+  supprimerLiant: (index) =>
+    set((state) => {
+      if (state.catalogue_liants.length <= 1) return {};
+      if (index < 0 || index >= state.catalogue_liants.length) return {};
+
+      const codeSupprime = state.catalogue_liants[index].code;
+      const catalogue = state.catalogue_liants.filter((_, i) => i !== index);
+      const codeFallback = catalogue[0]?.code ?? null;
+
+      const nettoyerCode = (code?: string | null) =>
+        code === codeSupprime ? codeFallback : code;
+
+      return {
+        catalogue_liants: catalogue,
+        general: {
+          ...state.general,
+          binder1_type: nettoyerCode(state.general.binder1_type),
+          binder2_type: nettoyerCode(state.general.binder2_type),
+          binder3_type: nettoyerCode(state.general.binder3_type),
+        },
+      };
+    }),
+
+  cw: {
+    solid_mass_pct: 0,
+    saturation_pct: 0,
+    residue_sg: 0,
+    residue_w_pct: 0,
+    num_recipes: 1,
+    desired_qty: 1,
+    safety_factor: 1,
+    binder_pct: zeros4(),
+  },
+  setCw: (patch) =>
+    set((state) => ({
+      cw: {
+        ...state.cw,
+        ...patch,
+      },
+    })),
+  setCwRecipe: (index, patch) =>
+    set((state) => {
+      const binder_pct = [...state.cw.binder_pct];
+      if (patch.binder_pct !== undefined) {
+        binder_pct[index] = patch.binder_pct;
+      }
+      return {
+        cw: {
+          ...state.cw,
+          binder_pct,
+        },
+      };
+    }),
+  cwResult: null,
+  setCwResult: (res) => set({ cwResult: res }),
+
+  wb: {
+    saturation_pct: 0,
+    residue_sg: 0,
+    residue_w_pct: 0,
+    num_recipes: 1,
+    desired_qty: 1,
+    safety_factor: 1,
+    binder_pct: zeros4(),
+    wc_ratio: zeros4(),
+  },
+  setWb: (patch) =>
+    set((state) => ({
+      wb: {
+        ...state.wb,
+        ...patch,
+      },
+    })),
+  setWbRecipe: (index, patch) =>
+    set((state) => {
+      const binder_pct = [...state.wb.binder_pct];
+      const wc_ratio = [...state.wb.wc_ratio];
+      if (patch.binder_pct !== undefined) binder_pct[index] = patch.binder_pct;
+      if (patch.wc_ratio !== undefined) wc_ratio[index] = patch.wc_ratio;
+      return {
+        wb: {
+          ...state.wb,
+          binder_pct,
+          wc_ratio,
+        },
+      };
+    }),
+  wbResult: null,
+  setWbResult: (res) => set({ wbResult: res }),
+
+  slump: {
+    cone_type: "mini",
+    slump_mm: 0,
+    saturation_pct: 0,
+    residue_sg: 0,
+    residue_w_pct: 0,
+    num_recipes: 1,
+    desired_qty: 1,
+    safety_factor: 1,
+    binder_pct: zeros4(),
+  },
+  setSlump: (patch) =>
+    set((state) => ({
+      slump: {
+        ...state.slump,
+        ...patch,
+      },
+    })),
+  setSlumpRecipe: (index, patch) =>
+    set((state) => {
+      const binder_pct = [...state.slump.binder_pct];
+      if (patch.binder_pct !== undefined) binder_pct[index] = patch.binder_pct;
+      return {
+        slump: {
+          ...state.slump,
+          binder_pct,
+        },
+      };
+    }),
+  slumpResult: null,
+  setSlumpResult: (res) => set({ slumpResult: res }),
+
+  essai: {
+    base_method: "dosage_cw",
+    base_cw: undefined,
+    base_wb: undefined,
+    ajustements: [],
+  },
+  setEssai: (patch) =>
+    set((state) => ({
+      essai: {
+        ...state.essai,
+        ...patch,
+      },
+    })),
+  setEssaiAjustement: (index, patch) =>
+    set((state) => {
+      const ajustements = [...(state.essai.ajustements || [])];
+      while (ajustements.length <= index) ajustements.push({});
+      ajustements[index] = { ...ajustements[index], ...patch };
+      return {
+        essai: {
+          ...state.essai,
+          ajustements,
+        },
+      };
+    }),
+  essaiResult: null,
+  setEssaiResult: (res) => set({ essaiResult: res }),
+
+  rpgCw: {
+    solid_mass_pct: 0,
+    saturation_pct: 0,
+    residue_sg: 0,
+    residue_w_pct: 0,
+    aggregate_fraction_pct: 0,
+    aggregate_sg: 0,
+    num_recipes: 1,
+    desired_qty: 1,
+    safety_factor: 1,
+    binder_pct: zeros4(),
+  },
+  setRpgCw: (patch) =>
+    set((state) => ({ rpgCw: { ...state.rpgCw, ...patch } })),
+  setRpgCwRecipe: (index, patch) =>
+    set((state) => {
+      const binder_pct = [...state.rpgCw.binder_pct];
+      if (patch.binder_pct !== undefined) binder_pct[index] = patch.binder_pct;
+      return { rpgCw: { ...state.rpgCw, binder_pct } };
+    }),
+  rpgCwResult: null,
+  setRpgCwResult: (res) => set({ rpgCwResult: res }),
+
+  rpgWb: {
+    saturation_pct: 0,
+    residue_sg: 0,
+    residue_w_pct: 0,
+    aggregate_fraction_pct: 0,
+    aggregate_sg: 0,
+    num_recipes: 1,
+    desired_qty: 1,
+    safety_factor: 1,
+    binder_pct: zeros4(),
+    wc_ratio: zeros4(),
+  },
+  setRpgWb: (patch) =>
+    set((state) => ({ rpgWb: { ...state.rpgWb, ...patch } })),
+  setRpgWbRecipe: (index, patch) =>
+    set((state) => {
+      const binder_pct = [...state.rpgWb.binder_pct];
+      const wc_ratio = [...state.rpgWb.wc_ratio];
+      if (patch.binder_pct !== undefined) binder_pct[index] = patch.binder_pct;
+      if (patch.wc_ratio !== undefined) wc_ratio[index] = patch.wc_ratio;
+      return { rpgWb: { ...state.rpgWb, binder_pct, wc_ratio } };
+    }),
+  rpgWbResult: null,
+  setRpgWbResult: (res) => set({ rpgWbResult: res }),
+
+  rpgEssai: {
+    base_method: "dosage_cw",
+    base_cw: undefined,
+    base_wb: undefined,
+    ajustements: [],
+  },
+  setRpgEssai: (patch) =>
+    set((state) => ({ rpgEssai: { ...state.rpgEssai, ...patch } })),
+  setRpgEssaiAjustement: (index, patch) =>
+    set((state) => {
+      const ajustements = [...(state.rpgEssai.ajustements || [])];
+      while (ajustements.length <= index) ajustements.push({});
+      ajustements[index] = { ...ajustements[index], ...patch };
+      return { rpgEssai: { ...state.rpgEssai, ajustements } };
+    }),
+  rpgEssaiResult: null,
+  setRpgEssaiResult: (res) => set({ rpgEssaiResult: res }),
+}));
+
+export default useStore;
