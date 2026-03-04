@@ -32,7 +32,9 @@
   --error-light:       #fef2f2;
 
   /* ── Layout ── */
-  --nav-height:        56px;
+  --nav-height:        48px;
+  --status-height:     26px;
+  --content-max:       1140px;
 }
 
 @theme inline {
@@ -237,6 +239,33 @@ body {
 }
 .guide-param-table tr:last-child td { border-bottom: none; }
 .guide-param-table tr:hover td { background: #f8fbff; }
+
+/* ── Status bar (desktop) ── */
+.status-bar {
+  height: var(--status-height);
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  flex-shrink: 0;
+  user-select: none;
+}
+.status-bar-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+.status-bar-sep {
+  width: 1px;
+  height: 12px;
+  background: rgba(255,255,255,0.1);
+}
 
 /* ── Loading spinner ── */
 @keyframes spin {

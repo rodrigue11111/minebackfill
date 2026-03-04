@@ -153,7 +153,7 @@ export default function MixPage() {
         {!isMaximized && (
           <aside
             style={{
-              width: 230,
+              width: 240,
               flexShrink: 0,
               borderRight: "1px solid var(--border)",
               background: "#fff",

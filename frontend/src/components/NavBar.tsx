@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { href: "/", label: "Informations", step: "01" },
   { href: "/mix", label: "Calculs", step: "02" },
   { href: "/formulas", label: "Formules", step: null },
+  { href: "/historique", label: "Historique", step: null },
   { href: "/guide", label: "Guide", step: null },
   { href: "/reglages", label: "Réglages", step: null },
 ];
@@ -21,7 +22,7 @@ export default function NavBar() {
         height: "var(--nav-height)",
         display: "flex",
         alignItems: "center",
-        padding: "0 24px",
+        padding: "0 18px",
         position: "sticky",
         top: 0,
         zIndex: 50,
@@ -46,9 +47,9 @@ export default function NavBar() {
         {/* Icon mark */}
         <div
           style={{
-            width: 30,
-            height: 30,
-            borderRadius: 7,
+            width: 28,
+            height: 28,
+            borderRadius: 6,
             background: "var(--primary)",
             display: "flex",
             alignItems: "center",

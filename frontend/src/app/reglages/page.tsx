@@ -27,8 +27,8 @@ export default function ReglagesPage() {
   }, [catalogue_liants]);
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--background)" }}>
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "32px 24px 64px" }}>
+    <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
+      <div style={{ maxWidth: 1140, margin: "0 auto", padding: "32px 24px 64px" }}>
         <div className="form-card">
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, marginBottom: 8 }}>
             Réglage des constantes

@@ -135,6 +135,36 @@ export interface RpgEssaiState {
 
 export type RpcCwResponse = any;
 
+export interface SavedResult {
+  id: string;
+  savedAt: string;
+  label: string;
+  category: Category;
+  method: RpcMethod;
+  general: GeneralInfo;
+  recipes: any[];
+}
+
+/* ── localStorage helpers (SSR-safe) ── */
+const SAVED_KEY = "minebackfill_saved_results";
+
+function loadSavedFromStorage(): SavedResult[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(SAVED_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistSaved(items: SavedResult[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify(items));
+  } catch { /* storage full — silently ignore */ }
+}
+
 interface AppState {
   API: string;
 
@@ -206,6 +236,11 @@ interface AppState {
   setRpgEssaiAjustement: (index: number, patch: RpgEssaiAdjustment) => void;
   rpgEssaiResult: any | null;
   setRpgEssaiResult: (res: any | null) => void;
+
+  savedResults: SavedResult[];
+  saveCurrentResult: (label: string) => void;
+  deleteSavedResult: (id: string) => void;
+  loadSavedResults: () => void;
 }
 
 const zeros4 = () => [0, 0, 0, 0];
@@ -514,6 +549,36 @@ export const useStore = create<AppState>((set) => ({
     }),
   rpgEssaiResult: null,
   setRpgEssaiResult: (res) => set({ rpgEssaiResult: res }),
+
+  savedResults: [],
+  loadSavedResults: () => set({ savedResults: loadSavedFromStorage() }),
+  saveCurrentResult: (label) =>
+    set((state) => {
+      const isRpg = state.category === "RPG";
+      const m = state.method;
+      const result = isRpg
+        ? m === "wb" ? state.rpgWbResult : m === "essai" ? state.rpgEssaiResult : state.rpgCwResult
+        : m === "wb" ? state.wbResult : m === "slump" ? state.slumpResult : m === "essai" ? state.essaiResult : state.cwResult;
+      if (!result?.recipes?.length) return {};
+      const entry: SavedResult = {
+        id: `sr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        savedAt: new Date().toISOString(),
+        label,
+        category: state.category,
+        method: state.method,
+        general: { ...state.general },
+        recipes: result.recipes,
+      };
+      const updated = [entry, ...state.savedResults];
+      persistSaved(updated);
+      return { savedResults: updated };
+    }),
+  deleteSavedResult: (id) =>
+    set((state) => {
+      const updated = state.savedResults.filter((s) => s.id !== id);
+      persistSaved(updated);
+      return { savedResults: updated };
+    }),
 }));
 
 export default useStore;

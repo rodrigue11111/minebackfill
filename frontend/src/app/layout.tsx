@@ -33,7 +33,17 @@ export default function RootLayout({
       >
         <GlobalInputEnhancer />
         <NavBar />
-        {children}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+          {children}
+        </div>
+        {/* ── Desktop status bar ── */}
+        <footer className="status-bar">
+          <span className="status-bar-dot" />
+          <span>MineBackfill v1.0</span>
+          <span className="status-bar-sep" />
+          <span>Module 1 — Dimensionnement des melanges</span>
+          <span style={{ marginLeft: "auto" }}>Desktop</span>
+        </footer>
       </body>
     </html>
   );

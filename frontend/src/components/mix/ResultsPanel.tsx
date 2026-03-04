@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useStore } from "@/lib/store";
 
 /* ── helpers ── */
@@ -333,6 +334,9 @@ async function exportToExcel(
 }
 
 export default function ResultsPanel({ isMaximized = false }: { isMaximized?: boolean }) {
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveLabel, setSaveLabel] = useState("");
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const store = useStore() as any;
   const { category, method, general = {}, cw = {}, wb = {}, slump = {}, essai = {}, rpgCw = {}, rpgWb = {}, rpgEssai = {} as any } = store;
   const catalogue_liants: any[] = store.catalogue_liants ?? [];
@@ -503,8 +507,31 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           </div>
         ))}
 
-        {/* ── Export button ── */}
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
+        {/* ── Save & Export buttons ── */}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, position: "relative" }}>
+          <button
+            onClick={() => { setShowSaveDialog(true); setSaveLabel(""); setSaveSuccess(false); }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 14px",
+              border: "1px solid var(--primary)",
+              borderRadius: 7,
+              background: "var(--primary-light)",
+              color: "var(--primary)",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+              <path d="M10.5 12H2.5a1 1 0 01-1-1V2a1 1 0 011-1h6l3 3v7a1 1 0 01-1 1z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M4 12V7h5v5M4 1v3h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Sauvegarder
+          </button>
           <button
             onClick={() => exportToExcel(recipes, general, binderName, category, method)}
             style={{
@@ -525,8 +552,89 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
               <path d="M6.5 1v8M3 6l3.5 3.5L10 6M2 11h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Exporter Excel
+            Excel
           </button>
+
+          {/* ── Save dialog ── */}
+          {showSaveDialog && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                right: 0,
+                width: 280,
+                background: "#fff",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                padding: 14,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                zIndex: 20,
+              }}
+            >
+              {saveSuccess ? (
+                <div style={{ textAlign: "center", padding: "8px 0" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--success)", marginBottom: 4 }}>
+                    Sauvegarde effectuee
+                  </div>
+                  <button
+                    onClick={() => setShowSaveDialog(false)}
+                    style={{
+                      fontSize: 12,
+                      color: "var(--muted-foreground)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    Fermer
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                    Nom de la sauvegarde
+                  </label>
+                  <input
+                    type="text"
+                    className="field-input"
+                    value={saveLabel}
+                    onChange={(e) => setSaveLabel(e.target.value)}
+                    placeholder={`${category} ${method} — ${new Date().toLocaleDateString("fr-CA")}`}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const lbl = saveLabel.trim() || `${category} ${method} — ${new Date().toLocaleDateString("fr-CA")}`;
+                        store.saveCurrentResult(lbl);
+                        setSaveSuccess(true);
+                      }
+                      if (e.key === "Escape") setShowSaveDialog(false);
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                    <button
+                      onClick={() => {
+                        const lbl = saveLabel.trim() || `${category} ${method} — ${new Date().toLocaleDateString("fr-CA")}`;
+                        store.saveCurrentResult(lbl);
+                        setSaveSuccess(true);
+                      }}
+                      className="btn-primary"
+                      style={{ flex: 1, justifyContent: "center", padding: "7px 12px", fontSize: 12 }}
+                    >
+                      Enregistrer
+                    </button>
+                    <button
+                      onClick={() => setShowSaveDialog(false)}
+                      className="btn-secondary"
+                      style={{ padding: "7px 12px", fontSize: 12 }}
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

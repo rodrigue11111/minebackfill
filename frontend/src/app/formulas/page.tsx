@@ -1483,7 +1483,7 @@ export default function FormulaLibraryPage() {
   );
 
   return (
-    <div style={{ minHeight: "calc(100vh - var(--nav-height))", background: "var(--background)" }}>
+    <div style={{ flex: 1, overflowY: "auto", background: "var(--background)" }}>
       <div style={{ maxWidth: 1320, margin: "0 auto", padding: "28px 24px 80px" }}>
 
         {/* Page header + stats */}

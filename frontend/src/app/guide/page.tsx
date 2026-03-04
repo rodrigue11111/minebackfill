@@ -175,7 +175,7 @@ function Method({
 /* ── Main page ── */
 export default function GuidePage() {
   return (
-    <div style={{ background: "var(--background)", minHeight: "100%" }}>
+    <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
 
       {/* ── Hero ── */}
       <div

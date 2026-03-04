@@ -52,7 +52,7 @@ export default function GeneralInfoPage() {
   const liantsValides = catalogue_liants.filter((l: any) => String(l.code ?? "").trim() !== "");
 
   return (
-    <div style={{ background: "var(--background)", minHeight: "100%" }}>
+    <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
 
       {/* ── Hero banner ── */}
       <div
@@ -62,7 +62,7 @@ export default function GeneralInfoPage() {
           borderBottom: "3px solid var(--primary)",
         }}
       >
-        <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 24px" }}>
+        <div style={{ maxWidth: 1140, margin: "0 auto", padding: "0 24px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
             <div>
               <div
@@ -139,7 +139,7 @@ export default function GeneralInfoPage() {
       </div>
 
       {/* ── Form ── */}
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "28px 24px 64px" }}>
+      <div style={{ maxWidth: 1140, margin: "0 auto", padding: "28px 24px 64px" }}>
         <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* ── 1. Identification ── */}
