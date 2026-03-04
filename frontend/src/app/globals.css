@@ -1,26 +1,38 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-border: #e2e8f0;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-light: #eff6ff;
-  --primary-foreground: #ffffff;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --border: #e2e8f0;
-  --input-border: #cbd5e1;
-  --ring: rgba(37, 99, 235, 0.25);
-  --success: #059669;
-  --success-light: #ecfdf5;
-  --warning: #d97706;
-  --warning-light: #fffbeb;
-  --error: #dc2626;
-  --error-light: #fef2f2;
-  --nav-height: 56px;
+  /* ── Brand blues ── */
+  --navy:              #0c1e42;
+  --navy-hover:        #162a5a;
+  --primary:           #1d4ed8;
+  --primary-hover:     #1e40af;
+  --primary-light:     #eff6ff;
+  --primary-mid:       #dbeafe;
+  --primary-foreground:#ffffff;
+
+  /* ── Page surfaces ── */
+  --background:        #f5f8ff;
+  --foreground:        #0f172a;
+  --card:              #ffffff;
+  --card-border:       #dde5f0;
+
+  /* ── Utility ── */
+  --muted:             #f1f5f9;
+  --muted-foreground:  #64748b;
+  --border:            #e2e8f0;
+  --input-border:      #c7d4e8;
+  --ring:              rgba(29, 78, 216, 0.25);
+
+  /* ── Status ── */
+  --success:           #047857;
+  --success-light:     #ecfdf5;
+  --warning:           #b45309;
+  --warning-light:     #fffbeb;
+  --error:             #b91c1c;
+  --error-light:       #fef2f2;
+
+  /* ── Layout ── */
+  --nav-height:        56px;
 }
 
 @theme inline {
@@ -52,20 +64,10 @@ body {
 }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #eef0f8; }
+::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
 /* ── Focus ring ── */
 :focus-visible {
@@ -73,7 +75,7 @@ body {
   box-shadow: 0 0 0 3px var(--ring);
 }
 
-/* ── Shared input style ── */
+/* ── Form field ── */
 .field-input {
   display: block;
   width: 100%;
@@ -90,17 +92,25 @@ body {
   box-shadow: 0 0 0 3px var(--ring);
   outline: none;
 }
-.field-input::placeholder {
-  color: #94a3b8;
-}
+.field-input::placeholder { color: #94a3b8; }
 
-/* ── Section card ── */
+/* ── Form card (with left blue accent) ── */
 .form-card {
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: 10px;
   padding: 20px 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 4px rgba(12, 30, 66, 0.07);
+  border-left: 4px solid var(--primary);
+}
+
+/* ── Info card (no left accent) ── */
+.info-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 4px rgba(12, 30, 66, 0.06);
 }
 
 /* ── Primary button ── */
@@ -116,15 +126,14 @@ body {
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
+  letter-spacing: 0.01em;
   transition: background 0.15s, box-shadow 0.15s;
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
+  box-shadow: 0 2px 10px rgba(29, 78, 216, 0.28);
 }
-.btn-primary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* ── Secondary button ── */
 .btn-secondary {
@@ -139,11 +148,12 @@ body {
   font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .btn-secondary:hover:not(:disabled) {
-  background: var(--muted);
-  border-color: #94a3b8;
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 /* ── Result table ── */
@@ -159,9 +169,7 @@ body {
   font-size: 11.5px;
   white-space: nowrap;
 }
-.result-table th:first-child {
-  text-align: left;
-}
+.result-table th:first-child { text-align: left; }
 .result-table td {
   padding: 6px 10px;
   text-align: right;
@@ -173,11 +181,64 @@ body {
   color: #475569;
   font-size: 12px;
 }
-.result-table tr:hover td {
-  background: #f8fafc;
-}
+.result-table tr:hover td { background: #f8fbff; }
 
-/* ── Loading spinner (shared across all form components) ── */
+/* ── Guide page ── */
+.guide-step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.guide-step-number {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+.guide-method-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary-mid);
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+.guide-param-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.guide-param-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--primary-mid);
+  color: var(--navy);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.guide-param-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #eef2fb;
+  vertical-align: top;
+}
+.guide-param-table tr:last-child td { border-bottom: none; }
+.guide-param-table tr:hover td { background: #f8fbff; }
+
+/* ── Loading spinner ── */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

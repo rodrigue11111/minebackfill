@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,16 +8,20 @@ import { useStore } from "@/lib/store";
 const CONTAINER_TYPES = [
   { value: "section_hauteur", label: "Section + hauteur" },
   { value: "rayon_hauteur", label: "Rayon + hauteur" },
-  { value: "longueur_largeur_hauteur", label: "Longueur × largeur × hauteur" },
+  { value: "longueur_largeur_hauteur", label: "Longueur x largeur x hauteur" },
 ] as const;
+
+const LABEL: React.CSSProperties = {
+  display: "block",
+  fontSize: 12.5,
+  fontWeight: 600,
+  color: "#374151",
+  marginBottom: 5,
+};
 
 export default function GeneralInfoPage() {
   const router = useRouter();
-  const {
-    general,
-    setGeneral,
-    catalogue_liants,
-  } = useStore() as any;
+  const { general, setGeneral, catalogue_liants } = useStore() as any;
 
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
@@ -45,70 +49,156 @@ export default function GeneralInfoPage() {
     (general.binder3_fraction_pct ?? 0);
 
   const fractionOk = Math.abs(fractionTotal - 100) < 0.01;
-
   const liantsValides = catalogue_liants.filter((l: any) => String(l.code ?? "").trim() !== "");
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--background)" }}>
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "32px 24px 64px" }}>
-        <div style={{ marginBottom: 28 }}>
-          <h1
-            style={{
-              fontSize: 22,
-              fontWeight: 700,
-              color: "var(--foreground)",
-              margin: 0,
-            }}
-          >
-            Informations générales
-          </h1>
-          <p style={{ color: "var(--muted-foreground)", marginTop: 4, fontSize: 13.5 }}>
-            Renseignez les paramètres du projet et du liant. Les constantes sont sur la page{" "}
-            <Link href="/reglages" style={{ color: "var(--primary)", textDecoration: "none", fontWeight: 500 }}>Réglages</Link>.
-          </p>
-        </div>
+    <div style={{ background: "var(--background)", minHeight: "100%" }}>
 
+      {/* ── Hero banner ── */}
+      <div
+        style={{
+          background: "linear-gradient(135deg, var(--navy) 0%, #1a3a8a 100%)",
+          padding: "28px 0 24px",
+          borderBottom: "3px solid var(--primary)",
+        }}
+      >
+        <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "rgba(255,255,255,0.5)",
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  marginBottom: 6,
+                }}
+              >
+                Etape 01 — Configuration du projet
+              </div>
+              <h1
+                style={{
+                  fontSize: 24,
+                  fontWeight: 800,
+                  color: "#fff",
+                  margin: 0,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Informations generales
+              </h1>
+              <p
+                style={{
+                  color: "rgba(255,255,255,0.6)",
+                  marginTop: 6,
+                  fontSize: 13.5,
+                  maxWidth: 520,
+                }}
+              >
+                Renseignez l&apos;identification du projet, la geometrie du contenant de moulage
+                et le systeme liant. Ces informations apparaitront dans l&apos;export Excel.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+              <Link
+                href="/guide"
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 7,
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.8)",
+                  textDecoration: "none",
+                  background: "rgba(255,255,255,0.08)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Guide d&apos;utilisation
+              </Link>
+              <Link
+                href="/mix"
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 7,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.55)",
+                  textDecoration: "none",
+                  background: "transparent",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Ignorer
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Form ── */}
+      <div style={{ maxWidth: 980, margin: "0 auto", padding: "28px 24px 64px" }}>
         <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* ── 1. Identification ── */}
           <div className="form-card">
-            <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>1 — Identification du projet</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "var(--primary)",
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                1
+              </div>
+              <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
+                Identification du projet
+              </h2>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
               <div>
-                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                  Nom de l'opérateur
-                </label>
+                <label style={LABEL}>Nom de l&apos;operateur</label>
                 <input
                   type="text"
                   className="field-input"
                   value={general.operator_name ?? ""}
                   onChange={(e) => setGeneral({ operator_name: e.target.value })}
+                  placeholder="Ex. : J. Dupont"
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                  Nom du projet
-                </label>
+                <label style={LABEL}>Nom du projet</label>
                 <input
                   type="text"
                   className="field-input"
                   value={general.project_name ?? ""}
                   onChange={(e) => setGeneral({ project_name: e.target.value })}
+                  placeholder="Ex. : Mine LaRonde"
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                  Identification du résidu
-                </label>
+                <label style={LABEL}>Identification du residu</label>
                 <input
                   type="text"
                   className="field-input"
                   value={general.residue_id ?? ""}
                   onChange={(e) => setGeneral({ residue_id: e.target.value })}
+                  placeholder="Ex. : R-2024-A"
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                  Date de mélange
-                </label>
+                <label style={LABEL}>Date de melange</label>
                 <input
                   type="date"
                   className="field-input"
@@ -120,10 +210,32 @@ export default function GeneralInfoPage() {
             </div>
           </div>
 
+          {/* ── 2. Container ── */}
           <div className="form-card">
-            <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>2 — Contenant pour le moulage</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "var(--primary)",
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                2
+              </div>
+              <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
+                Contenant pour le moulage
+              </h2>
+            </div>
 
-            <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
               {CONTAINER_TYPES.map((ct) => {
                 const active = general.container_type === ct.value;
                 return (
@@ -133,7 +245,7 @@ export default function GeneralInfoPage() {
                       display: "flex",
                       alignItems: "center",
                       gap: 8,
-                      padding: "8px 14px",
+                      padding: "8px 16px",
                       borderRadius: 7,
                       border: `1.5px solid ${active ? "var(--primary)" : "var(--border)"}`,
                       background: active ? "var(--primary-light)" : "#fff",
@@ -152,6 +264,32 @@ export default function GeneralInfoPage() {
                       onChange={() => setGeneral({ container_type: ct.value })}
                       style={{ display: "none" }}
                     />
+                    {/* Custom radio dot */}
+                    <span
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: "50%",
+                        border: `2px solid ${active ? "var(--primary)" : "#cbd5e1"}`,
+                        background: active ? "var(--primary)" : "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {active && (
+                        <span
+                          style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: "50%",
+                            background: "#fff",
+                            display: "block",
+                          }}
+                        />
+                      )}
+                    </span>
                     {ct.label}
                   </label>
                 );
@@ -162,109 +300,88 @@ export default function GeneralInfoPage() {
               {general.container_type === "section_hauteur" && (
                 <>
                   <div>
-                    <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                      Section (cm2)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="field-input"
-                      value={general.container_section ?? ""}
-                      onChange={(e) => numChange("container_section", e.target.value)}
-                    />
+                    <label style={LABEL}>Section (cm&sup2;)</label>
+                    <input type="number" step="any" className="field-input" value={general.container_section ?? ""} onChange={(e) => numChange("container_section", e.target.value)} placeholder="Ex. : 80.45" />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                      Hauteur (cm)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="field-input"
-                      value={general.container_height ?? ""}
-                      onChange={(e) => numChange("container_height", e.target.value)}
-                    />
+                    <label style={LABEL}>Hauteur (cm)</label>
+                    <input type="number" step="any" className="field-input" value={general.container_height ?? ""} onChange={(e) => numChange("container_height", e.target.value)} placeholder="Ex. : 20.5" />
                   </div>
                 </>
               )}
-
               {general.container_type === "rayon_hauteur" && (
                 <>
                   <div>
-                    <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                      Rayon (cm)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="field-input"
-                      value={general.container_radius ?? ""}
-                      onChange={(e) => numChange("container_radius", e.target.value)}
-                    />
+                    <label style={LABEL}>Rayon (cm)</label>
+                    <input type="number" step="any" className="field-input" value={general.container_radius ?? ""} onChange={(e) => numChange("container_radius", e.target.value)} placeholder="Ex. : 5.0625" />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                      Hauteur (cm)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="field-input"
-                      value={general.container_height ?? ""}
-                      onChange={(e) => numChange("container_height", e.target.value)}
-                    />
+                    <label style={LABEL}>Hauteur (cm)</label>
+                    <input type="number" step="any" className="field-input" value={general.container_height ?? ""} onChange={(e) => numChange("container_height", e.target.value)} placeholder="Ex. : 20.5" />
                   </div>
                 </>
               )}
-
               {general.container_type === "longueur_largeur_hauteur" && (
                 <>
                   <div>
-                    <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                      Longueur (cm)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="field-input"
-                      value={general.container_length ?? ""}
-                      onChange={(e) => numChange("container_length", e.target.value)}
-                    />
+                    <label style={LABEL}>Longueur (cm)</label>
+                    <input type="number" step="any" className="field-input" value={general.container_length ?? ""} onChange={(e) => numChange("container_length", e.target.value)} />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                      Largeur (cm)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="field-input"
-                      value={general.container_width ?? ""}
-                      onChange={(e) => numChange("container_width", e.target.value)}
-                    />
+                    <label style={LABEL}>Largeur (cm)</label>
+                    <input type="number" step="any" className="field-input" value={general.container_width ?? ""} onChange={(e) => numChange("container_width", e.target.value)} />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-                      Hauteur (cm)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="field-input"
-                      value={general.container_height ?? ""}
-                      onChange={(e) => numChange("container_height", e.target.value)}
-                    />
+                    <label style={LABEL}>Hauteur (cm)</label>
+                    <input type="number" step="any" className="field-input" value={general.container_height ?? ""} onChange={(e) => numChange("container_height", e.target.value)} />
                   </div>
                 </>
+              )}
+              {!general.container_type && (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    padding: "12px 16px",
+                    borderRadius: 7,
+                    background: "var(--primary-light)",
+                    border: "1px solid var(--primary-mid)",
+                    fontSize: 13,
+                    color: "var(--primary)",
+                  }}
+                >
+                  Selectionnez un type de contenant ci-dessus pour saisir les dimensions.
+                </div>
               )}
             </div>
           </div>
 
+          {/* ── 3. Binder system ── */}
           <div className="form-card">
-            <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>3 — Système liant hydraulique</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "var(--primary)",
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                3
+              </div>
+              <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
+                Systeme liant hydraulique
+              </h2>
+            </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
+            <div style={{ marginBottom: 18 }}>
+              <p style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 10 }}>
                 Nombre de composants du liant
               </p>
               <div style={{ display: "flex", gap: 8 }}>
@@ -278,13 +395,13 @@ export default function GeneralInfoPage() {
                         alignItems: "center",
                         justifyContent: "center",
                         width: 44,
-                        height: 36,
+                        height: 38,
                         borderRadius: 7,
-                        border: `1.5px solid ${active ? "var(--primary)" : "var(--border)"}`,
+                        border: `2px solid ${active ? "var(--primary)" : "var(--border)"}`,
                         background: active ? "var(--primary)" : "#fff",
                         cursor: "pointer",
                         fontWeight: 700,
-                        fontSize: 14,
+                        fontSize: 15,
                         color: active ? "#fff" : "#374151",
                         transition: "all 0.15s",
                       }}
@@ -304,36 +421,51 @@ export default function GeneralInfoPage() {
               </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[1, 2, 3].map((idx) => {
                 if (idx > (general.binder_count ?? 1)) return null;
                 const typeKey = `binder${idx}_type` as any;
                 const fracKey = `binder${idx}_fraction_pct` as any;
                 return (
-                  <div key={idx} style={{ background: "#f8fafc", border: "1px solid var(--border)", borderRadius: 8, padding: "14px 16px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 10 }}>Ciment {idx}</div>
+                  <div
+                    key={idx}
+                    style={{
+                      background: "var(--primary-light)",
+                      border: "1px solid var(--primary-mid)",
+                      borderRadius: 8,
+                      padding: "14px 16px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "var(--primary)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        marginBottom: 10,
+                      }}
+                    >
+                      Composant {idx}
+                    </div>
                     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
                       <div>
-                        <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                          Type de liant
-                        </label>
+                        <label style={{ ...LABEL, color: "#374151" }}>Type de liant</label>
                         <select
                           className="field-input"
                           value={general[typeKey] ?? ""}
                           onChange={(e) => setGeneral({ [typeKey]: e.target.value || null })}
                         >
-                          <option value="">Sélectionner...</option>
+                          <option value="">Selectionner...</option>
                           {liantsValides.map((liant: any) => (
                             <option key={liant.id} value={liant.code}>
-                              {liant.nom} ({liant.code}) - Gs {Number(liant.gs).toFixed(4)}
+                              {liant.nom} ({liant.code}) — Gs {Number(liant.gs).toFixed(4)}
                             </option>
                           ))}
                         </select>
                       </div>
                       <div>
-                        <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                          Fraction (%)
-                        </label>
+                        <label style={LABEL}>Fraction (%)</label>
                         <input
                           type="number"
                           step="any"
@@ -342,6 +474,7 @@ export default function GeneralInfoPage() {
                           className="field-input"
                           value={general[fracKey] ?? ""}
                           onChange={(e) => numChange(fracKey, e.target.value)}
+                          placeholder={`Ex. : ${idx === 1 ? 60 : 40}`}
                         />
                       </div>
                     </div>
@@ -353,25 +486,25 @@ export default function GeneralInfoPage() {
             {(general.binder_count ?? 1) >= 2 && (
               <div
                 style={{
-                  marginTop: 14,
+                  marginTop: 12,
                   padding: "9px 14px",
                   borderRadius: 7,
-                  background: fractionOk ? "#ecfdf5" : "#fffbeb",
+                  background: fractionOk ? "var(--success-light)" : "var(--warning-light)",
                   border: `1px solid ${fractionOk ? "#6ee7b7" : "#fcd34d"}`,
                   fontSize: 12.5,
-                  color: fractionOk ? "#047857" : "#b45309",
+                  color: fractionOk ? "var(--success)" : "var(--warning)",
                   fontWeight: 500,
                 }}
               >
                 Total des fractions : <strong>{fractionTotal.toFixed(1)} %</strong>
-                {!fractionOk && " — doit être égal à 100 %"}
+                {!fractionOk && " — la somme doit etre egale a 100 %"}
               </div>
             )}
 
             <div
               style={{
-                marginTop: 14,
-                paddingTop: 14,
+                marginTop: 16,
+                paddingTop: 16,
                 borderTop: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -380,43 +513,25 @@ export default function GeneralInfoPage() {
               }}
             >
               <p style={{ margin: 0, color: "var(--muted-foreground)", fontSize: 12.5 }}>
-                Pour modifier les constantes et le catalogue des liants, ouvrez la page dédiée.
+                Catalogue des liants et constantes physiques : page Reglages.
               </p>
-              <Link
-                href="/reglages"
-                className="btn-secondary"
-                style={{ textDecoration: "none", whiteSpace: "nowrap" }}
-              >
-                Réglages des constantes
+              <Link href="/reglages" className="btn-secondary" style={{ textDecoration: "none", whiteSpace: "nowrap" }}>
+                Reglages des constantes
               </Link>
             </div>
           </div>
 
+          {/* ── Actions ── */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-end",
               gap: 12,
-              paddingTop: 8,
+              paddingTop: 4,
             }}
           >
-            <Link
-              href="/mix"
-              style={{
-                padding: "9px 18px",
-                borderRadius: 7,
-                border: "1px solid var(--border)",
-                fontSize: 13.5,
-                fontWeight: 500,
-                color: "#374151",
-                textDecoration: "none",
-                background: "#fff",
-              }}
-            >
-              Ignorer et aller aux calculs
-            </Link>
-            <button type="submit" className="btn-primary" style={{ padding: "9px 24px" }}>
+            <button type="submit" className="btn-primary" style={{ padding: "10px 28px", fontSize: 14 }}>
               Enregistrer et continuer
             </button>
           </div>

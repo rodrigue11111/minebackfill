@@ -221,7 +221,8 @@ const catalogueLiantsDefaut: LiantCatalogueItem[] = [
 ];
 
 export const useStore = create<AppState>((set) => ({
-  API: process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000",
+  // Par défaut on appelle l'API en relatif (/rpc, /rpg) via le proxy Next.js
+  API: process.env.NEXT_PUBLIC_API_URL?.trim() || "",
 
   category: "RPC",
   method: "dosage_cw",
