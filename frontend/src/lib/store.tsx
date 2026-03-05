@@ -136,6 +136,52 @@ export interface RpgEssaiState {
 
 export type RpcCwResponse = any;
 
+/* ── Industrie types ── */
+export interface BinderPrice {
+  code: string;
+  price_per_kg: number;
+}
+
+export interface IndustrieState {
+  category: Category;
+  residue_sg: number;
+  residue_w_pct: number;
+  saturation_pct: number;
+  aggregate_sg: number;
+  aggregate_w_pct: number;
+  aggregate_fraction_pct: number;
+  slump_measured_mm: number;
+  bw_levels: number[];
+  desired_qty: number;
+  safety_factor: number;
+}
+
+export interface IndustrieCostResult {
+  bw_pct: number;
+  recipe: any;
+  binder_cost: number;
+  cost_per_m3: number;
+  cost_per_tonne: number;
+}
+
+export interface ProductionLogEntry {
+  id: string;
+  date: string;
+  savedAt: string;
+  notes: string;
+  category: Category;
+  residue_sg: number;
+  residue_w_pct: number;
+  aggregate_sg?: number;
+  aggregate_fraction_pct?: number;
+  bw_pct: number;
+  recipe: any;
+  binder_prices: BinderPrice[];
+  binder_cost: number;
+  cost_per_m3: number;
+  cost_per_tonne: number;
+}
+
 export interface SavedResult {
   id: string;
   savedAt: string;
@@ -182,6 +228,44 @@ function persistUnits(prefs: UnitPreferences) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(UNITS_KEY, JSON.stringify(prefs));
+  } catch { /* silently ignore */ }
+}
+
+const BINDER_PRICES_KEY = "minebackfill_binder_prices";
+
+function loadBinderPricesFromStorage(): BinderPrice[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(BINDER_PRICES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistBinderPrices(items: BinderPrice[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(BINDER_PRICES_KEY, JSON.stringify(items));
+  } catch { /* silently ignore */ }
+}
+
+const PRODUCTION_LOG_KEY = "minebackfill_production_log";
+
+function loadProductionLogFromStorage(): ProductionLogEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(PRODUCTION_LOG_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistProductionLog(items: ProductionLogEntry[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(PRODUCTION_LOG_KEY, JSON.stringify(items));
   } catch { /* silently ignore */ }
 }
 
@@ -267,6 +351,21 @@ interface AppState {
   saveCurrentResult: (label: string) => void;
   deleteSavedResult: (id: string) => void;
   loadSavedResults: () => void;
+
+  industrie: IndustrieState;
+  setIndustrie: (patch: Partial<IndustrieState>) => void;
+
+  binderPrices: BinderPrice[];
+  setBinderPrice: (code: string, price_per_kg: number) => void;
+  loadBinderPrices: () => void;
+
+  industrieResults: IndustrieCostResult[];
+  setIndustrieResults: (results: IndustrieCostResult[]) => void;
+
+  productionLog: ProductionLogEntry[];
+  addProductionLogEntry: (entry: Omit<ProductionLogEntry, "id" | "savedAt">) => void;
+  deleteProductionLogEntry: (id: string) => void;
+  loadProductionLog: () => void;
 }
 
 const zeros4 = () => [0, 0, 0, 0];
@@ -653,6 +752,56 @@ export const useStore = create<AppState>((set) => ({
       persistSaved(updated);
       return { savedResults: updated };
     }),
+
+  /* ── Industrie ── */
+  industrie: {
+    category: "RPC",
+    residue_sg: 0,
+    residue_w_pct: 0,
+    saturation_pct: 100,
+    aggregate_sg: 0,
+    aggregate_w_pct: 0,
+    aggregate_fraction_pct: 0,
+    slump_measured_mm: 0,
+    bw_levels: [3, 4, 5, 6, 7, 8],
+    desired_qty: 1,
+    safety_factor: 1,
+  },
+  setIndustrie: (patch) =>
+    set((state) => ({ industrie: { ...state.industrie, ...patch } })),
+
+  binderPrices: [],
+  setBinderPrice: (code, price_per_kg) =>
+    set((state) => {
+      const existing = state.binderPrices.filter((p) => p.code !== code);
+      const updated = [...existing, { code, price_per_kg }];
+      persistBinderPrices(updated);
+      return { binderPrices: updated };
+    }),
+  loadBinderPrices: () => set({ binderPrices: loadBinderPricesFromStorage() }),
+
+  industrieResults: [],
+  setIndustrieResults: (results) => set({ industrieResults: results }),
+
+  productionLog: [],
+  addProductionLogEntry: (entry) =>
+    set((state) => {
+      const full: ProductionLogEntry = {
+        ...entry,
+        id: `pl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        savedAt: new Date().toISOString(),
+      };
+      const updated = [full, ...state.productionLog];
+      persistProductionLog(updated);
+      return { productionLog: updated };
+    }),
+  deleteProductionLogEntry: (id) =>
+    set((state) => {
+      const updated = state.productionLog.filter((e) => e.id !== id);
+      persistProductionLog(updated);
+      return { productionLog: updated };
+    }),
+  loadProductionLog: () => set({ productionLog: loadProductionLogFromStorage() }),
 }));
 
 export default useStore;

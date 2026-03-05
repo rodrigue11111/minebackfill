@@ -31,3 +31,5 @@ tmp_pdf_pages/
 
 # Legacy backup assets (too deep / long Windows paths)
 Progiciel de Mr Belem/
+
+.vercel
