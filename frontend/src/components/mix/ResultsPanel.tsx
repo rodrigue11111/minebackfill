@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useStore } from "@/lib/store";
 import {
   fromStoreMass, fromStoreVolume, fromStoreDensity,
   MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS,
   type UnitPreferences,
 } from "@/lib/units";
+import FormulaPopover from "@/components/mix/FormulaPopover";
 
 /* ── helpers ── */
 const fmt = (v: number | undefined | null, digits = 3) => {
@@ -131,6 +132,8 @@ function DataRow({
   recipes,
   digits = 3,
   bold = false,
+  formulaIds,
+  onFormulaClick,
 }: {
   label: string;
   unit?: string;
@@ -138,7 +141,10 @@ function DataRow({
   recipes: any[];
   digits?: number;
   bold?: boolean;
+  formulaIds?: string[];
+  onFormulaClick?: (formulaIds: string[], recipe: any, rect: DOMRect) => void;
 }) {
+  const hasFormula = formulaIds && formulaIds.length > 0 && onFormulaClick;
   return (
     <tr>
       <td
@@ -157,10 +163,19 @@ function DataRow({
             ({unit})
           </span>
         )}
+        {hasFormula && (
+          <span style={{ color: "#c4b5fd", fontSize: 10, marginLeft: 5, fontWeight: 600 }} title="Cliquez sur une valeur pour voir la formule">
+            fx
+          </span>
+        )}
       </td>
       {recipes.map((r, i) => (
         <td
           key={i}
+          onClick={hasFormula ? (e) => {
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            onFormulaClick!(formulaIds!, r, rect);
+          } : undefined}
           style={{
             padding: "8px 12px",
             textAlign: "right",
@@ -170,6 +185,13 @@ function DataRow({
             color: "#0f172a",
             letterSpacing: "0.01em",
             borderBottom: "1px solid #f1f5f9",
+            ...(hasFormula ? {
+              cursor: "pointer",
+              textDecoration: "underline",
+              textDecorationStyle: "dashed" as const,
+              textDecorationColor: "#cbd5e1",
+              textUnderlineOffset: "3px",
+            } : {}),
           }}
         >
           {fmt(getter(r), digits)}
@@ -452,6 +474,17 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveLabel, setSaveLabel] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  /* ── Formula popover state ── */
+  const [formulaPopover, setFormulaPopover] = useState<{
+    formulaIds: string[];
+    recipe: any;
+    anchorRect: DOMRect;
+  } | null>(null);
+
+  const handleFormulaClick = useCallback((formulaIds: string[], recipe: any, rect: DOMRect) => {
+    setFormulaPopover({ formulaIds, recipe, anchorRect: rect });
+  }, []);
   const store = useStore() as any;
   const { category, method, general = {}, cw = {}, wb = {}, slump = {}, essai = {}, rpgCw = {}, rpgWb = {}, rpgEssai = {} as any } = store;
   const catalogue_liants: any[] = store.catalogue_liants ?? [];
@@ -673,6 +706,32 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             </svg>
             Excel
           </button>
+          <button
+            onClick={async () => {
+              const { exportToPdf } = await import("@/lib/pdf-report");
+              exportToPdf(recipes, general, binderName, category, method, units);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "7px 14px",
+              border: `1px solid ${SECTION_BORDER}`,
+              borderRadius: 7,
+              background: "#fff",
+              color: HEADER_TEXT,
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M3.5 1h5l3 3v8a1 1 0 01-1 1h-7a1 1 0 01-1-1V2a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 7.5h4M5 10h2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            PDF
+          </button>
 
           {/* ── Save dialog ── */}
           {showSaveDialog && (
@@ -771,8 +830,8 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
-              <DataRow label={isEssai ? "Bw% cible" : "Liant Bw%"} unit="%" getter={(r) => r.bw_mass_pct} recipes={recipes} digits={2} bold />
-              <DataRow label="Liant Bv%" unit="% vol." getter={(r) => r.bv_vol_pct} recipes={recipes} digits={2} />
+              <DataRow label={isEssai ? "Bw% cible" : "Liant Bw%"} unit="%" getter={(r) => r.bw_mass_pct} recipes={recipes} digits={2} bold formulaIds={["F016"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Liant Bv%" unit="% vol." getter={(r) => r.bv_vol_pct} recipes={recipes} digits={2} formulaIds={["F022"]} onFormulaClick={handleFormulaClick} />
               <DataRow label={isEssai ? "Residu sec (tot.)" : "Residu sec Mr"} unit={massLabel} getter={(r) => fromStoreMass(r.components?.residue_dry_mass_kg, units.mass)} recipes={recipes} bold />
               {isRpg && <DataRow label="Agregat sec Ma" unit={massLabel} getter={(r) => fromStoreMass(r.components?.aggregate_dry_mass_kg, units.mass)} recipes={recipes} bold />}
               <DataRow label={isEssai ? "Liant (tot.)" : "Liant Mb"} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_total_mass_kg, units.mass)} recipes={recipes} bold />
@@ -800,12 +859,12 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
-              <DataRow label="Liant Bw%" unit="%" getter={(r) => r.bw_mass_pct} recipes={recipes} digits={2} bold />
-              <DataRow label="Solides Cw%" unit="% mass." getter={(r) => r.solids_mass_pct} recipes={recipes} digits={2} />
-              <DataRow label="Solides Cv%" unit="% vol." getter={(r) => r.cv_vol_pct} recipes={recipes} digits={2} />
-              <DataRow label="Teneur en eau w" unit="%" getter={(r) => r.w_mass_pct} recipes={recipes} digits={2} />
-              <DataRow label="Rapport E/C" getter={(r) => r.wc_ratio} recipes={recipes} digits={3} />
-              <DataRow label="Saturation Sr" unit="%" getter={(r) => r.saturation_pct} recipes={recipes} digits={1} />
+              <DataRow label="Liant Bw%" unit="%" getter={(r) => r.bw_mass_pct} recipes={recipes} digits={2} bold formulaIds={["F016"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Solides Cw%" unit="% mass." getter={(r) => r.solids_mass_pct} recipes={recipes} digits={2} formulaIds={["F009"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Solides Cv%" unit="% vol." getter={(r) => r.cv_vol_pct} recipes={recipes} digits={2} formulaIds={["F010"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Teneur en eau w" unit="%" getter={(r) => r.w_mass_pct} recipes={recipes} digits={2} formulaIds={["F001"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Rapport E/C" getter={(r) => r.wc_ratio} recipes={recipes} digits={3} formulaIds={["F028"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Saturation Sr" unit="%" getter={(r) => r.saturation_pct} recipes={recipes} digits={1} formulaIds={["F003"]} onFormulaClick={handleFormulaClick} />
             </tbody>
           </table>
         </div>
@@ -816,9 +875,9 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
-              <DataRow label="rho humide rho_h" unit={densLabel} getter={(r) => fromStoreDensity(r.bulk_density_kg_m3, units.density)} recipes={recipes} bold />
-              <DataRow label="rho seche rho_d" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3, units.density)} recipes={recipes} bold />
-              <DataRow label="gamma humide gamma_h" unit="kN/m3" getter={(r) => r.bulk_unit_weight_kN_m3} recipes={recipes} digits={2} />
+              <DataRow label="rho humide rho_h" unit={densLabel} getter={(r) => fromStoreDensity(r.bulk_density_kg_m3, units.density)} recipes={recipes} bold formulaIds={["F023", "F024"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="rho seche rho_d" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3, units.density)} recipes={recipes} bold formulaIds={["F007"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="gamma humide gamma_h" unit="kN/m3" getter={(r) => r.bulk_unit_weight_kN_m3} recipes={recipes} digits={2} formulaIds={["F027"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="gamma seche gamma_d" unit="kN/m3" getter={(r) => r.dry_unit_weight_kN_m3} recipes={recipes} digits={2} />
             </tbody>
           </table>
@@ -830,11 +889,11 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
-              <DataRow label="Indice des vides e" getter={(r) => r.void_ratio} recipes={recipes} bold />
-              <DataRow label="Porosite n" getter={(r) => r.porosity} recipes={recipes} />
-              <DataRow label="Teneur eau vol. theta" unit="%" getter={(r) => r.theta_pct} recipes={recipes} digits={2} />
-              <DataRow label="Gs remblai" getter={(r) => r.gs_backfill} recipes={recipes} />
-              <DataRow label="Gs liant" getter={(r) => r.gs_binder} recipes={recipes} />
+              <DataRow label="Indice des vides e" getter={(r) => r.void_ratio} recipes={recipes} bold formulaIds={["F004"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Porosite n" getter={(r) => r.porosity} recipes={recipes} formulaIds={["F005"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Teneur eau vol. theta" unit="%" getter={(r) => r.theta_pct} recipes={recipes} digits={2} formulaIds={["F002"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Gs remblai" getter={(r) => r.gs_backfill} recipes={recipes} formulaIds={["F026"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Gs liant" getter={(r) => r.gs_binder} recipes={recipes} formulaIds={["F008"]} onFormulaClick={handleFormulaClick} />
             </tbody>
           </table>
         </div>
@@ -869,8 +928,8 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               <DataRow label="Eau dans residu M_w-res" unit={massLabel} getter={(r) => fromStoreMass(masseEauDansResidusKg(r), units.mass)} recipes={recipes} digits={4} />
               <DataRow label="Eau a ajouter/retirer M_w-aj" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass)} recipes={recipes} digits={4} />
               <DataRow label="Volume air V_air" unit={volLabel} getter={(r) => fromStoreVolume(volumeAirM3(r), units.volume)} recipes={recipes} digits={4} />
-              <DataRow label="Cw calcule (depuis masses)" unit="%" getter={(r) => cwCalculePct(r)} recipes={recipes} digits={4} />
-              <DataRow label="Cv calcule (depuis volumes)" unit="%" getter={(r) => cvCalculePct(r)} recipes={recipes} digits={4} />
+              <DataRow label="Cw calcule (depuis masses)" unit="%" getter={(r) => cwCalculePct(r)} recipes={recipes} digits={4} formulaIds={["F009"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Cv calcule (depuis volumes)" unit="%" getter={(r) => cvCalculePct(r)} recipes={recipes} digits={4} formulaIds={["F010"]} onFormulaClick={handleFormulaClick} />
             </tbody>
           </table>
         </div>
@@ -879,6 +938,16 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
 
       {/* bottom padding */}
       <div style={{ height: 16 }} />
+
+      {/* ── Formula popover ── */}
+      {formulaPopover && (
+        <FormulaPopover
+          formulaIds={formulaPopover.formulaIds}
+          recipe={formulaPopover.recipe}
+          anchorRect={formulaPopover.anchorRect}
+          onClose={() => setFormulaPopover(null)}
+        />
+      )}
     </div>
   );
 }
