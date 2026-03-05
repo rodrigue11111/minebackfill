@@ -555,40 +555,40 @@ export const useStore = create<AppState>((set) => ({
   fillTestData: () => {
     const rf = (min: number, max: number, dec: number) =>
       parseFloat((min + Math.random() * (max - min)).toFixed(dec));
-    const numRecipes = ([2, 3, 4] as const)[Math.floor(Math.random() * 3)];
+    const numR = [2, 3, 4][Math.floor(Math.random() * 3)] as 2 | 3 | 4;
     const gs = rf(3.2, 3.6, 2);
     const w0 = rf(18, 30, 1);
     const cwPct = rf(74, 82, 1);
     const qty = Math.floor(rf(20, 100, 0));
-    const bw = Array.from({ length: 4 }, (_, i) => rf(3 + i * 1.5, 5 + i * 1.5, 1));
-    const wc = Array.from({ length: 4 }, () => rf(4, 10, 1));
+    const makeBw = () => Array.from({ length: 4 }, (_, i) => rf(3 + i * 1.5, 5 + i * 1.5, 1));
+    const makeWc = () => Array.from({ length: 4 }, () => rf(4, 10, 1));
     const aggSg = rf(2.5, 2.9, 2);
     const aggPct = rf(15, 35, 1);
     const radius = rf(4.5, 6, 4);
     const height = rf(18, 23, 1);
-    set({
-      general: {
-        operator_name: "Test Operateur",
-        project_name: "Projet Test",
-        residue_id: `R-${new Date().getFullYear()}-T`,
-        mix_date: new Date().toISOString().slice(0, 10),
-        container_type: "rayon_hauteur" as const,
-        container_radius: radius,
-        container_height: height,
-        binder_count: 2 as const,
-        binder1_type: "CP10",
-        binder2_type: "SLAG",
-        binder3_type: null,
-        binder1_fraction_pct: 60,
-        binder2_fraction_pct: 40,
-        binder3_fraction_pct: 0,
-      },
-      cw: { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: numRecipes, desired_qty: qty, safety_factor: 1, binder_pct: bw },
-      wb: { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: numRecipes, desired_qty: qty, safety_factor: 1, binder_pct: bw, wc_ratio: wc },
-      slump: { cone_type: "mini" as const, slump_mm: Math.floor(rf(100, 250, 0)), saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: numRecipes, desired_qty: qty, safety_factor: 1, binder_pct: bw },
-      rpgCw: { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: numRecipes, desired_qty: qty, safety_factor: 1, binder_pct: bw },
-      rpgWb: { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: numRecipes, desired_qty: qty, safety_factor: 1, binder_pct: bw, wc_ratio: wc },
-    });
+    const newGeneral: GeneralInfo = {
+      operator_name: "Test Operateur",
+      project_name: "Projet Test",
+      residue_id: `R-${new Date().getFullYear()}-T`,
+      mix_date: new Date().toISOString().slice(0, 10),
+      container_type: "rayon_hauteur",
+      container_radius: radius,
+      container_height: height,
+      binder_count: 2,
+      binder1_type: "CP10",
+      binder2_type: "SLAG",
+      binder3_type: null,
+      binder1_fraction_pct: 60,
+      binder2_fraction_pct: 40,
+      binder3_fraction_pct: 0,
+    };
+    const newCw: CwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw() };
+    const newWb: WbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw(), wc_ratio: makeWc() };
+    const newSlump: SlumpState = { cone_type: "mini", slump_mm: Math.floor(rf(100, 250, 0)), saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw() };
+    const newRpgCw: RpgCwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw() };
+    const newRpgWb: RpgWbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw(), wc_ratio: makeWc() };
+    console.log("[fillTestData] Setting test values — Cw:", cwPct, "Gs:", gs, "w0:", w0, "recipes:", numR);
+    set({ general: newGeneral, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb });
   },
 
   savedResults: [],

@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useStore, type Category, type RpcMethod } from "@/lib/store";
 
 const CATEGORIES: { id: Category; label: string; desc: string; disabled?: boolean }[] = [
@@ -30,6 +30,7 @@ const SECTION_LABEL: React.CSSProperties = {
 
 export default function LeftPane() {
   const { category, setCategory, method, setMethod, loadGeneral, general, fillTestData } = useStore() as any;
+  const [testLoaded, setTestLoaded] = useState(false);
 
   useEffect(() => {
     loadGeneral();
@@ -230,22 +231,31 @@ export default function LeftPane() {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <button
             type="button"
-            onClick={fillTestData}
+            onClick={() => {
+              try {
+                fillTestData();
+                setTestLoaded(true);
+                setTimeout(() => setTestLoaded(false), 2000);
+              } catch (err) {
+                console.error("[fillTestData] error:", err);
+              }
+            }}
             style={{
               display: "block",
               width: "100%",
               padding: "6px 12px",
               borderRadius: 6,
-              border: "1px dashed var(--border)",
+              border: testLoaded ? "1px solid #22c55e" : "1px dashed var(--border)",
               fontSize: 12,
-              color: "var(--muted-foreground)",
-              background: "#f8fafc",
+              color: testLoaded ? "#16a34a" : "var(--muted-foreground)",
+              background: testLoaded ? "#f0fdf4" : "#f8fafc",
               fontWeight: 500,
               cursor: "pointer",
               textAlign: "center",
+              transition: "all 0.2s",
             }}
           >
-            Valeurs de test
+            {testLoaded ? "Valeurs chargees !" : "Valeurs de test"}
           </button>
           <Link
             href="/"
