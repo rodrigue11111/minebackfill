@@ -7,6 +7,7 @@ import {
   construireGeneralPayload,
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
+import { fromStoreSlump, toStoreSlump, SLUMP_LABELS } from "@/lib/units";
 
 const num = (v: any) => {
   const x = parseFloat(String(v));
@@ -52,7 +53,9 @@ export default function SlumpForm() {
     setSlump,
     setSlumpRecipe,
     setSlumpResult,
-  } = useStore();
+    units,
+  } = useStore() as any;
+  const slumpLabel = SLUMP_LABELS[units.slump as keyof typeof SLUMP_LABELS] ?? "mm";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,8 +126,8 @@ export default function SlumpForm() {
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <Field label="Affaissement slump (mm)" hint="Valeur mesurée au cône d'Abrams">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 180" value={slump.slump_mm ?? ""} onChange={(e) => setSlump({ slump_mm: num(e.target.value) })} />
+          <Field label={`Affaissement slump (${slumpLabel})`} hint="Valeur mesurée au cône d'Abrams">
+            <input type="number" step="any" style={inputStyle} placeholder="ex : 180" value={fromStoreSlump(slump.slump_mm, units.slump) ?? ""} onChange={(e) => setSlump({ slump_mm: toStoreSlump(num(e.target.value), units.slump) })} />
           </Field>
           <Field label="Saturation Sr (%)" hint="100% = entièrement saturé">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 100" value={slump.saturation_pct ?? ""} onChange={(e) => setSlump({ saturation_pct: num(e.target.value) })} />

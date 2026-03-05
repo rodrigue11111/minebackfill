@@ -2,21 +2,17 @@
 
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import {
+  fromStoreMass, fromStoreVolume, fromStoreDensity,
+  MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS,
+  type UnitPreferences,
+} from "@/lib/units";
 
 /* ── helpers ── */
 const fmt = (v: number | undefined | null, digits = 3) => {
   if (v === undefined || v === null || Number.isNaN(v)) return "\u2014";
   return v.toFixed(digits);
 };
-
-const toGcm3 = (rho?: number | null) =>
-  rho === undefined || rho === null || Number.isNaN(rho) ? null : rho / 1000;
-
-const toLiters = (v?: number | null) =>
-  v === undefined || v === null || Number.isNaN(v) ? null : v * 1000;
-
-const toGrams = (kg?: number | null) =>
-  kg === undefined || kg === null || Number.isNaN(kg) ? null : kg * 1000;
 
 type RecetteAffichage = {
   components?: {
@@ -189,7 +185,8 @@ async function exportToExcel(
   general: any,
   binderName: (n: 1 | 2 | 3) => string,
   category: string,
-  method: string
+  method: string,
+  units: UnitPreferences,
 ) {
   const ExcelJS = await import("exceljs");
   const { saveAs } = await import("file-saver");
@@ -277,6 +274,9 @@ async function exportToExcel(
   const bcount = general.binder_count ?? 1;
   const isEssai = method === "essai";
   const isRpg = category === "RPG";
+  const massLabel = MASS_LABELS[units.mass] ?? "kg";
+  const volLabel = VOLUME_LABELS[units.volume] ?? "L";
+  const densLabel = DENSITY_LABELS[units.density] ?? "g/cm3";
 
   const addSectionHeader = (title: string, bgColor: string, textColor: string) => {
     const r = ws.addRow([title]);
@@ -343,20 +343,20 @@ async function exportToExcel(
   rowIndex = 0;
   addDataRow(isEssai ? "Bw% cible" : "Liant Bw%", "%", (r) => r.bw_mass_pct, 2, true);
   addDataRow("Liant Bv%", "% vol.", (r) => r.bv_vol_pct, 2);
-  addDataRow(isEssai ? "Residu sec (tot.)" : "Residu sec Mr", "kg", (r) => r.components?.residue_dry_mass_kg, 3, true);
-  if (isRpg) addDataRow("Agregat sec Ma", "kg", (r) => r.components?.aggregate_dry_mass_kg, 3, true);
-  addDataRow(isEssai ? "Liant (tot.)" : "Liant Mb", "kg", (r) => r.components?.binder_total_mass_kg, 3, true);
-  addDataRow("Residu humide Mr-hum", "kg", (r) => r.components?.residue_wet_mass_kg);
-  addDataRow("Eau totale Mw", "kg", (r) => r.components?.water_total_mass_kg);
-  addDataRow("Eau a ajouter Mw-aj", "kg", (r) => r.components?.water_to_add_mass_kg);
-  if (bcount >= 1) addDataRow(`${binderName(1)} Mc1`, "kg", (r) => r.components?.binder_c1_mass_kg);
-  if (bcount >= 2) addDataRow(`${binderName(2)} Mc2`, "kg", (r) => r.components?.binder_c2_mass_kg);
-  if (bcount >= 3) addDataRow(`${binderName(3)} Mc3`, "kg", (r) => r.components?.binder_c3_mass_kg);
+  addDataRow(isEssai ? "Residu sec (tot.)" : "Residu sec Mr", massLabel, (r) => fromStoreMass(r.components?.residue_dry_mass_kg, units.mass), 3, true);
+  if (isRpg) addDataRow("Agregat sec Ma", massLabel, (r) => fromStoreMass(r.components?.aggregate_dry_mass_kg, units.mass), 3, true);
+  addDataRow(isEssai ? "Liant (tot.)" : "Liant Mb", massLabel, (r) => fromStoreMass(r.components?.binder_total_mass_kg, units.mass), 3, true);
+  addDataRow("Residu humide Mr-hum", massLabel, (r) => fromStoreMass(r.components?.residue_wet_mass_kg, units.mass));
+  addDataRow("Eau totale Mw", massLabel, (r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass));
+  addDataRow("Eau a ajouter Mw-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass));
+  if (bcount >= 1) addDataRow(`${binderName(1)} Mc1`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_mass_kg, units.mass));
+  if (bcount >= 2) addDataRow(`${binderName(2)} Mc2`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_mass_kg, units.mass));
+  if (bcount >= 3) addDataRow(`${binderName(3)} Mc3`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_mass_kg, units.mass));
   if (isEssai) {
-    addDataRow("Liant a rajouter Mb-ad", "kg", (r) => r.components?.binder_to_add_mass_kg);
-    addDataRow(`${binderName(1)} a rajouter Mc1-ad`, "kg", (r) => r.components?.binder_c1_to_add_mass_kg);
-    if (bcount >= 2) addDataRow(`${binderName(2)} a rajouter Mc2-ad`, "kg", (r) => r.components?.binder_c2_to_add_mass_kg);
-    if (bcount >= 3) addDataRow(`${binderName(3)} a rajouter Mc3-ad`, "kg", (r) => r.components?.binder_c3_to_add_mass_kg);
+    addDataRow("Liant a rajouter Mb-ad", massLabel, (r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass));
+    addDataRow(`${binderName(1)} a rajouter Mc1-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass));
+    if (bcount >= 2) addDataRow(`${binderName(2)} a rajouter Mc2-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass));
+    if (bcount >= 3) addDataRow(`${binderName(3)} a rajouter Mc3-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass));
   }
 
   ws.addRow([]);
@@ -378,8 +378,8 @@ async function exportToExcel(
   addSectionHeader("MASSES VOLUMIQUES", PURPLE_HDR.replace("#", ""), PURPLE_TXT);
   addColumnHeaders();
   rowIndex = 0;
-  addDataRow("Masse vol. humide rho_h", "g/cm3", (r) => toGcm3(r.bulk_density_kg_m3), 4, true);
-  addDataRow("Masse vol. seche rho_d", "g/cm3", (r) => toGcm3(r.dry_density_kg_m3), 4, true);
+  addDataRow("Masse vol. humide rho_h", densLabel, (r) => fromStoreDensity(r.bulk_density_kg_m3, units.density), 4, true);
+  addDataRow("Masse vol. seche rho_d", densLabel, (r) => fromStoreDensity(r.dry_density_kg_m3, units.density), 4, true);
   addDataRow("Poids vol. humide gamma_h", "kN/m3", (r) => r.bulk_unit_weight_kN_m3, 2);
   addDataRow("Poids vol. sec gamma_d", "kN/m3", (r) => r.dry_unit_weight_kN_m3, 2);
 
@@ -401,13 +401,13 @@ async function exportToExcel(
   addSectionHeader("VOLUMES", CYAN_HDR.replace("#", ""), CYAN_TXT);
   addColumnHeaders();
   rowIndex = 0;
-  addDataRow("Volume moule V_moule", "L", (r) => toLiters(r.container_volume_m3), 4);
-  addDataRow("Volume total V_T", "L", (r) => toLiters(r.total_backfill_volume_m3), 4, true);
-  addDataRow("Volume solide V_s", "L", (r) => toLiters(r.solid_volume_m3), 4);
-  addDataRow("Volume vides V_v", "L", (r) => toLiters(r.void_volume_m3), 4);
-  addDataRow("Volume residu V_r", "L", (r) => toLiters(r.residue_volume_m3), 4);
-  addDataRow("Volume liant V_b", "L", (r) => toLiters(r.binder_volume_m3), 4);
-  addDataRow("Volume eau V_w", "L", (r) => toLiters(r.water_volume_m3), 4);
+  addDataRow("Volume moule V_moule", volLabel, (r) => fromStoreVolume(r.container_volume_m3, units.volume), 4);
+  addDataRow("Volume total V_T", volLabel, (r) => fromStoreVolume(r.total_backfill_volume_m3, units.volume), 4, true);
+  addDataRow("Volume solide V_s", volLabel, (r) => fromStoreVolume(r.solid_volume_m3, units.volume), 4);
+  addDataRow("Volume vides V_v", volLabel, (r) => fromStoreVolume(r.void_volume_m3, units.volume), 4);
+  addDataRow("Volume residu V_r", volLabel, (r) => fromStoreVolume(r.residue_volume_m3, units.volume), 4);
+  addDataRow("Volume liant V_b", volLabel, (r) => fromStoreVolume(r.binder_volume_m3, units.volume), 4);
+  addDataRow("Volume eau V_w", volLabel, (r) => fromStoreVolume(r.water_volume_m3, units.volume), 4);
 
   ws.addRow([]);
 
@@ -415,14 +415,13 @@ async function exportToExcel(
   addSectionHeader("RESULTATS COMPLETS", PRIMARY_LIGHT.replace("#", ""), PRIMARY);
   addColumnHeaders();
   rowIndex = 0;
-  addDataRow("Masse rejet sec totale M_r_sec_tot", "kg", (r) => masseRejetSecTotaleKg(r), 4, true);
-  addDataRow("Masse solides totale M_s", "kg", (r) => masseSolidesTotaleKg(r), 4, true);
-  addDataRow("Masse eau totale M_w", "kg", (r) => r.components?.water_total_mass_kg, 4);
-  addDataRow("Masse remblai totale M_t", "kg", (r) => masseRemblaiTotaleKg(r), 4);
-  addDataRow("Eau dans residu M_w-res", "kg", (r) => masseEauDansResidusKg(r), 4);
-  addDataRow("Eau a ajouter/retirer M_w-aj", "kg", (r) => r.components?.water_to_add_mass_kg, 4);
-  addDataRow("Masse remblai totale M_t", "g", (r) => toGrams(masseRemblaiTotaleKg(r)), 2);
-  addDataRow("Volume air V_air", "L", (r) => toLiters(volumeAirM3(r)), 4);
+  addDataRow("Masse rejet sec totale M_r_sec_tot", massLabel, (r) => fromStoreMass(masseRejetSecTotaleKg(r), units.mass), 4, true);
+  addDataRow("Masse solides totale M_s", massLabel, (r) => fromStoreMass(masseSolidesTotaleKg(r), units.mass), 4, true);
+  addDataRow("Masse eau totale M_w", massLabel, (r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass), 4);
+  addDataRow("Masse remblai totale M_t", massLabel, (r) => fromStoreMass(masseRemblaiTotaleKg(r), units.mass), 4);
+  addDataRow("Eau dans residu M_w-res", massLabel, (r) => fromStoreMass(masseEauDansResidusKg(r), units.mass), 4);
+  addDataRow("Eau a ajouter/retirer M_w-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass), 4);
+  addDataRow("Volume air V_air", volLabel, (r) => fromStoreVolume(volumeAirM3(r), units.volume), 4);
   addDataRow("Cw calcule (depuis masses)", "%", (r) => cwCalculePct(r), 4);
   addDataRow("Cv calcule (depuis volumes)", "%", (r) => cvCalculePct(r), 4);
 
@@ -456,6 +455,10 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
   const store = useStore() as any;
   const { category, method, general = {}, cw = {}, wb = {}, slump = {}, essai = {}, rpgCw = {}, rpgWb = {}, rpgEssai = {} as any } = store;
   const catalogue_liants: any[] = store.catalogue_liants ?? [];
+  const units: UnitPreferences = store.units ?? { length: "cm", area: "cm2", mass: "kg", volume: "L", density: "g/cm3", slump: "mm" };
+  const massLabel = MASS_LABELS[units.mass] ?? "kg";
+  const volLabel = VOLUME_LABELS[units.volume] ?? "L";
+  const densLabel = DENSITY_LABELS[units.density] ?? "g/cm3";
 
   const binderName = (n: 1 | 2 | 3): string => {
     const code = general[`binder${n}_type`];
@@ -649,7 +652,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             Sauvegarder
           </button>
           <button
-            onClick={() => exportToExcel(recipes, general, binderName, category, method)}
+            onClick={() => exportToExcel(recipes, general, binderName, category, method, units)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -764,27 +767,27 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
       >
         {/* ── 1. Donnees du melange ── */}
         <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-          <SectionHeader title={isEssai ? "Donnees du melange ajuste" : "Donnees du melange"} sub="masses en kg" />
+          <SectionHeader title={isEssai ? "Donnees du melange ajuste" : "Donnees du melange"} sub={`masses en ${massLabel}`} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
               <DataRow label={isEssai ? "Bw% cible" : "Liant Bw%"} unit="%" getter={(r) => r.bw_mass_pct} recipes={recipes} digits={2} bold />
               <DataRow label="Liant Bv%" unit="% vol." getter={(r) => r.bv_vol_pct} recipes={recipes} digits={2} />
-              <DataRow label={isEssai ? "Residu sec (tot.)" : "Residu sec Mr"} unit="kg" getter={(r) => r.components?.residue_dry_mass_kg} recipes={recipes} bold />
-              {isRpg && <DataRow label="Agregat sec Ma" unit="kg" getter={(r) => r.components?.aggregate_dry_mass_kg} recipes={recipes} bold />}
-              <DataRow label={isEssai ? "Liant (tot.)" : "Liant Mb"} unit="kg" getter={(r) => r.components?.binder_total_mass_kg} recipes={recipes} bold />
-              <DataRow label="Residu humide Mr-hum" unit="kg" getter={(r) => r.components?.residue_wet_mass_kg} recipes={recipes} />
-              <DataRow label="Eau totale Mw" unit="kg" getter={(r) => r.components?.water_total_mass_kg} recipes={recipes} />
-              <DataRow label="Eau a ajouter Mw-aj" unit="kg" getter={(r) => r.components?.water_to_add_mass_kg} recipes={recipes} />
-              {(general.binder_count ?? 1) >= 1 && <DataRow label={`${binderName(1)} Mc1`} unit="kg" getter={(r) => r.components?.binder_c1_mass_kg} recipes={recipes} />}
-              {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} Mc2`} unit="kg" getter={(r) => r.components?.binder_c2_mass_kg} recipes={recipes} />}
-              {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} Mc3`} unit="kg" getter={(r) => r.components?.binder_c3_mass_kg} recipes={recipes} />}
+              <DataRow label={isEssai ? "Residu sec (tot.)" : "Residu sec Mr"} unit={massLabel} getter={(r) => fromStoreMass(r.components?.residue_dry_mass_kg, units.mass)} recipes={recipes} bold />
+              {isRpg && <DataRow label="Agregat sec Ma" unit={massLabel} getter={(r) => fromStoreMass(r.components?.aggregate_dry_mass_kg, units.mass)} recipes={recipes} bold />}
+              <DataRow label={isEssai ? "Liant (tot.)" : "Liant Mb"} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_total_mass_kg, units.mass)} recipes={recipes} bold />
+              <DataRow label="Residu humide Mr-hum" unit={massLabel} getter={(r) => fromStoreMass(r.components?.residue_wet_mass_kg, units.mass)} recipes={recipes} />
+              <DataRow label="Eau totale Mw" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass)} recipes={recipes} />
+              <DataRow label="Eau a ajouter Mw-aj" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass)} recipes={recipes} />
+              {(general.binder_count ?? 1) >= 1 && <DataRow label={`${binderName(1)} Mc1`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c1_mass_kg, units.mass)} recipes={recipes} />}
+              {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} Mc2`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c2_mass_kg, units.mass)} recipes={recipes} />}
+              {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} Mc3`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c3_mass_kg, units.mass)} recipes={recipes} />}
               {isEssai && (
                 <>
-                  <DataRow label="Liant a rajouter Mb-ad" unit="kg" getter={(r) => r.components?.binder_to_add_mass_kg} recipes={recipes} />
-                  <DataRow label={`${binderName(1)} — a rajouter`} unit="kg" getter={(r) => r.components?.binder_c1_to_add_mass_kg} recipes={recipes} />
-                  {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} — a rajouter`} unit="kg" getter={(r) => r.components?.binder_c2_to_add_mass_kg} recipes={recipes} />}
-                  {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} — a rajouter`} unit="kg" getter={(r) => r.components?.binder_c3_to_add_mass_kg} recipes={recipes} />}
+                  <DataRow label="Liant a rajouter Mb-ad" unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass)} recipes={recipes} />
+                  <DataRow label={`${binderName(1)} — a rajouter`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass)} recipes={recipes} />
+                  {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} — a rajouter`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass)} recipes={recipes} />}
+                  {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} — a rajouter`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass)} recipes={recipes} />}
                 </>
               )}
             </tbody>
@@ -809,12 +812,12 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
 
         {/* ── 3. Masses volumiques ── */}
         <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-          <SectionHeader title="Masses volumiques" sub="densites et poids volumiques" />
+          <SectionHeader title="Masses volumiques" sub={`densites en ${densLabel}`} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
-              <DataRow label="rho humide rho_h" unit="g/cm3" getter={(r) => toGcm3(r.bulk_density_kg_m3)} recipes={recipes} bold />
-              <DataRow label="rho seche rho_d" unit="g/cm3" getter={(r) => toGcm3(r.dry_density_kg_m3)} recipes={recipes} bold />
+              <DataRow label="rho humide rho_h" unit={densLabel} getter={(r) => fromStoreDensity(r.bulk_density_kg_m3, units.density)} recipes={recipes} bold />
+              <DataRow label="rho seche rho_d" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3, units.density)} recipes={recipes} bold />
               <DataRow label="gamma humide gamma_h" unit="kN/m3" getter={(r) => r.bulk_unit_weight_kN_m3} recipes={recipes} digits={2} />
               <DataRow label="gamma seche gamma_d" unit="kN/m3" getter={(r) => r.dry_unit_weight_kN_m3} recipes={recipes} digits={2} />
             </tbody>
@@ -838,35 +841,34 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
 
         {/* ── 5. Volumes ── */}
         <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff", ...(isMaximized ? { gridColumn: "1 / -1" } : {}) }}>
-          <SectionHeader title="Volumes" sub="en litres (L)" />
+          <SectionHeader title="Volumes" sub={`en ${volLabel}`} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
-              <DataRow label="Volume moule V_moule" unit="L" getter={(r) => toLiters(r.container_volume_m3)} recipes={recipes} digits={4} />
-              <DataRow label="Volume total V_T" unit="L" getter={(r) => toLiters(r.total_backfill_volume_m3)} recipes={recipes} digits={4} bold />
-              <DataRow label="Volume solide V_s" unit="L" getter={(r) => toLiters(r.solid_volume_m3)} recipes={recipes} digits={4} />
-              <DataRow label="Volume vides V_v" unit="L" getter={(r) => toLiters(r.void_volume_m3)} recipes={recipes} digits={4} />
-              <DataRow label="Volume residu V_r" unit="L" getter={(r) => toLiters(r.residue_volume_m3)} recipes={recipes} digits={4} />
-              <DataRow label="Volume liant V_b" unit="L" getter={(r) => toLiters(r.binder_volume_m3)} recipes={recipes} digits={4} />
-              <DataRow label="Volume eau V_w" unit="L" getter={(r) => toLiters(r.water_volume_m3)} recipes={recipes} digits={4} />
+              <DataRow label="Volume moule V_moule" unit={volLabel} getter={(r) => fromStoreVolume(r.container_volume_m3, units.volume)} recipes={recipes} digits={4} />
+              <DataRow label="Volume total V_T" unit={volLabel} getter={(r) => fromStoreVolume(r.total_backfill_volume_m3, units.volume)} recipes={recipes} digits={4} bold />
+              <DataRow label="Volume solide V_s" unit={volLabel} getter={(r) => fromStoreVolume(r.solid_volume_m3, units.volume)} recipes={recipes} digits={4} />
+              <DataRow label="Volume vides V_v" unit={volLabel} getter={(r) => fromStoreVolume(r.void_volume_m3, units.volume)} recipes={recipes} digits={4} />
+              <DataRow label="Volume residu V_r" unit={volLabel} getter={(r) => fromStoreVolume(r.residue_volume_m3, units.volume)} recipes={recipes} digits={4} />
+              <DataRow label="Volume liant V_b" unit={volLabel} getter={(r) => fromStoreVolume(r.binder_volume_m3, units.volume)} recipes={recipes} digits={4} />
+              <DataRow label="Volume eau V_w" unit={volLabel} getter={(r) => fromStoreVolume(r.water_volume_m3, units.volume)} recipes={recipes} digits={4} />
             </tbody>
           </table>
         </div>
 
         {/* ── 6. Resultats complets ── */}
         <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff", ...(isMaximized ? { gridColumn: "1 / -1" } : {}) }}>
-          <SectionHeader title="Resultats complets" sub="masses et volumes detailles" />
+          <SectionHeader title="Resultats complets" sub={`masses en ${massLabel}, volumes en ${volLabel}`} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
-              <DataRow label="Masse rejet sec totale M_r_sec_tot" unit="kg" getter={(r) => masseRejetSecTotaleKg(r)} recipes={recipes} digits={4} bold />
-              <DataRow label="Masse solides totale M_s" unit="kg" getter={(r) => masseSolidesTotaleKg(r)} recipes={recipes} digits={4} bold />
-              <DataRow label="Masse eau totale M_w" unit="kg" getter={(r) => r.components?.water_total_mass_kg} recipes={recipes} digits={4} />
-              <DataRow label="Masse remblai totale M_t" unit="kg" getter={(r) => masseRemblaiTotaleKg(r)} recipes={recipes} digits={4} />
-              <DataRow label="Eau dans residu M_w-res" unit="kg" getter={(r) => masseEauDansResidusKg(r)} recipes={recipes} digits={4} />
-              <DataRow label="Eau a ajouter/retirer M_w-aj" unit="kg" getter={(r) => r.components?.water_to_add_mass_kg} recipes={recipes} digits={4} />
-              <DataRow label="Masse remblai totale M_t" unit="g" getter={(r) => toGrams(masseRemblaiTotaleKg(r))} recipes={recipes} digits={2} />
-              <DataRow label="Volume air V_air" unit="L" getter={(r) => toLiters(volumeAirM3(r))} recipes={recipes} digits={4} />
+              <DataRow label="Masse rejet sec totale M_r_sec_tot" unit={massLabel} getter={(r) => fromStoreMass(masseRejetSecTotaleKg(r), units.mass)} recipes={recipes} digits={4} bold />
+              <DataRow label="Masse solides totale M_s" unit={massLabel} getter={(r) => fromStoreMass(masseSolidesTotaleKg(r), units.mass)} recipes={recipes} digits={4} bold />
+              <DataRow label="Masse eau totale M_w" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass)} recipes={recipes} digits={4} />
+              <DataRow label="Masse remblai totale M_t" unit={massLabel} getter={(r) => fromStoreMass(masseRemblaiTotaleKg(r), units.mass)} recipes={recipes} digits={4} />
+              <DataRow label="Eau dans residu M_w-res" unit={massLabel} getter={(r) => fromStoreMass(masseEauDansResidusKg(r), units.mass)} recipes={recipes} digits={4} />
+              <DataRow label="Eau a ajouter/retirer M_w-aj" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass)} recipes={recipes} digits={4} />
+              <DataRow label="Volume air V_air" unit={volLabel} getter={(r) => fromStoreVolume(volumeAirM3(r), units.volume)} recipes={recipes} digits={4} />
               <DataRow label="Cw calcule (depuis masses)" unit="%" getter={(r) => cwCalculePct(r)} recipes={recipes} digits={4} />
               <DataRow label="Cv calcule (depuis volumes)" unit="%" getter={(r) => cvCalculePct(r)} recipes={recipes} digits={4} />
             </tbody>

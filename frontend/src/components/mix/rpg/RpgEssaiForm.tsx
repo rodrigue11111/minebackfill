@@ -7,6 +7,7 @@ import {
   construireGeneralPayload,
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
+import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
 
 const num = (v: any) => {
   const x = parseFloat(String(v));
@@ -56,7 +57,9 @@ export default function RpgEssaiForm() {
     setRpgEssai,
     setRpgEssaiAjustement,
     setRpgEssaiResult,
-  } = useStore();
+    units,
+  } = useStore() as any;
+  const massLabel = MASS_LABELS[units.mass as keyof typeof MASS_LABELS] ?? "kg";
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -124,7 +127,7 @@ export default function RpgEssaiForm() {
         base_method,
         base_inputs_cw,
         base_inputs_wb,
-        adjustments: (rpgEssai.ajustements || []).map((a) => ({
+        adjustments: (rpgEssai.ajustements || []).map((a: any) => ({
           added_dry_residue_mass: a.ajout_residu_sec || 0,
           added_wet_residue_mass: a.ajout_residu_humide || 0,
           added_aggregate_mass: a.ajout_agregat || 0,
@@ -188,7 +191,7 @@ export default function RpgEssaiForm() {
       {/* ── Adjustments per recipe ── */}
       <CardSection
         title={`Ajustements par recette — ${numRecipes} recette${numRecipes > 1 ? "s" : ""}`}
-        subtitle="Quantités à ajouter après le premier malaxage (kg)"
+        subtitle={`Quantités à ajouter après le premier malaxage (${massLabel})`}
       >
         <div style={{ display: "flex", flexDirection: "column" as const, gap: 10 }}>
           {Array.from({ length: numRecipes }).map((_, i) => {
@@ -206,30 +209,30 @@ export default function RpgEssaiForm() {
                   Recette {i + 1}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px 12px" }}>
-                  <Field label="Résidu sec (kg)">
+                  <Field label={`Résidu sec (${massLabel})`}>
                     <input type="number" step="any" style={inputStyle} placeholder="0"
-                      value={aj.ajout_residu_sec ?? ""}
-                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_sec: num(e.target.value) })} />
+                      value={fromStoreMass(aj.ajout_residu_sec, units.mass) ?? ""}
+                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_sec: toStoreMass(num(e.target.value), units.mass) })} />
                   </Field>
-                  <Field label="Résidu humide (kg)">
+                  <Field label={`Résidu humide (${massLabel})`}>
                     <input type="number" step="any" style={inputStyle} placeholder="0"
-                      value={aj.ajout_residu_humide ?? ""}
-                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_humide: num(e.target.value) })} />
+                      value={fromStoreMass(aj.ajout_residu_humide, units.mass) ?? ""}
+                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) })} />
                   </Field>
-                  <Field label="Agrégat sec (kg)" hint="Modifie A_m et recalcule Gs_PAF">
+                  <Field label={`Agrégat sec (${massLabel})`} hint="Modifie A_m et recalcule Gs_PAF">
                     <input type="number" step="any" style={inputStyle} placeholder="0"
-                      value={aj.ajout_agregat ?? ""}
-                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_agregat: num(e.target.value) })} />
+                      value={fromStoreMass(aj.ajout_agregat, units.mass) ?? ""}
+                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_agregat: toStoreMass(num(e.target.value), units.mass) })} />
                   </Field>
                   <Field label="w0-ag agrégat (%)" hint="Teneur en eau de l'agrégat ajouté">
                     <input type="number" step="any" style={inputStyle} placeholder="0"
                       value={aj.w0_agregat ?? ""}
                       onChange={(e) => setRpgEssaiAjustement(i, { ...aj, w0_agregat: num(e.target.value) })} />
                   </Field>
-                  <Field label="Eau (kg)">
+                  <Field label={`Eau (${massLabel})`}>
                     <input type="number" step="any" style={inputStyle} placeholder="0"
-                      value={aj.ajout_eau ?? ""}
-                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_eau: num(e.target.value) })} />
+                      value={fromStoreMass(aj.ajout_eau, units.mass) ?? ""}
+                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_eau: toStoreMass(num(e.target.value), units.mass) })} />
                   </Field>
                 </div>
               </div>

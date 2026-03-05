@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useStore, type SavedResult } from "@/lib/store";
+import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 
 const METHOD_LABELS: Record<string, string> = {
   dosage_cw: "Cw%",
@@ -17,13 +18,15 @@ const fmt = (v: number | undefined | null, digits = 3) => {
 };
 
 export default function HistoriquePage() {
-  const { savedResults, loadSavedResults, deleteSavedResult } = useStore();
+  const { savedResults, loadSavedResults, deleteSavedResult, units, loadUnits } = useStore() as any;
+  const massLabel = MASS_LABELS[units?.mass as keyof typeof MASS_LABELS] ?? "kg";
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     loadSavedResults();
-  }, [loadSavedResults]);
+    loadUnits();
+  }, [loadSavedResults, loadUnits]);
 
   const handleDelete = (id: string) => {
     deleteSavedResult(id);
@@ -314,9 +317,9 @@ export default function HistoriquePage() {
                             { label: "w (%)", getter: (r: any) => r.w_mass_pct, digits: 2, unit: "%" },
                             { label: "E/C", getter: (r: any) => r.wc_ratio, digits: 3, unit: "" },
                             { label: "Sr (%)", getter: (r: any) => r.saturation_pct, digits: 1, unit: "%" },
-                            { label: "Residu sec (kg)", getter: (r: any) => r.components?.residue_dry_mass_kg, digits: 3, unit: "kg" },
-                            { label: "Liant (kg)", getter: (r: any) => r.components?.binder_total_mass_kg, digits: 3, unit: "kg" },
-                            { label: "Eau totale (kg)", getter: (r: any) => r.components?.water_total_mass_kg, digits: 3, unit: "kg" },
+                            { label: `Residu sec (${massLabel})`, getter: (r: any) => fromStoreMass(r.components?.residue_dry_mass_kg, units?.mass), digits: 3, unit: massLabel },
+                            { label: `Liant (${massLabel})`, getter: (r: any) => fromStoreMass(r.components?.binder_total_mass_kg, units?.mass), digits: 3, unit: massLabel },
+                            { label: `Eau totale (${massLabel})`, getter: (r: any) => fromStoreMass(r.components?.water_total_mass_kg, units?.mass), digits: 3, unit: massLabel },
                           ].map((row, ri) => (
                             <tr key={ri} style={{ borderTop: "1px solid #f1f5f9" }}>
                               <td style={{ padding: "5px 10px", fontSize: 12, color: "#475569" }}>

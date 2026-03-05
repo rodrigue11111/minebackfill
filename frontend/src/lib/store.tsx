@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { create } from "zustand";
+import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 
 export type Category = "RPC" | "RPG" | "RRC";
 export type RpcMethod = "dosage_cw" | "wb" | "slump" | "essai";
@@ -165,6 +166,25 @@ function persistSaved(items: SavedResult[]) {
   } catch { /* storage full — silently ignore */ }
 }
 
+const UNITS_KEY = "minebackfill_unit_prefs";
+
+function loadUnitsFromStorage(): UnitPreferences {
+  if (typeof window === "undefined") return DEFAULT_UNITS;
+  try {
+    const raw = localStorage.getItem(UNITS_KEY);
+    return raw ? { ...DEFAULT_UNITS, ...JSON.parse(raw) } : DEFAULT_UNITS;
+  } catch {
+    return DEFAULT_UNITS;
+  }
+}
+
+function persistUnits(prefs: UnitPreferences) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(UNITS_KEY, JSON.stringify(prefs));
+  } catch { /* silently ignore */ }
+}
+
 interface AppState {
   API: string;
 
@@ -238,6 +258,10 @@ interface AppState {
   setRpgEssaiResult: (res: any | null) => void;
 
   fillTestData: () => void;
+
+  units: UnitPreferences;
+  setUnits: (patch: Partial<UnitPreferences>) => void;
+  loadUnits: () => void;
 
   savedResults: SavedResult[];
   saveCurrentResult: (label: string) => void;
@@ -590,6 +614,15 @@ export const useStore = create<AppState>((set) => ({
     console.log("[fillTestData] Setting test values — Cw:", cwPct, "Gs:", gs, "w0:", w0, "recipes:", numR);
     set({ general: newGeneral, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb });
   },
+
+  units: DEFAULT_UNITS,
+  setUnits: (patch) =>
+    set((state) => {
+      const updated = { ...state.units, ...patch };
+      persistUnits(updated);
+      return { units: updated };
+    }),
+  loadUnits: () => set({ units: loadUnitsFromStorage() }),
 
   savedResults: [],
   loadSavedResults: () => set({ savedResults: loadSavedFromStorage() }),

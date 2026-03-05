@@ -7,6 +7,7 @@ import {
   construireGeneralPayload,
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
+import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
 
 const num = (v: any) => {
   const x = parseFloat(String(v));
@@ -56,7 +57,9 @@ export default function EssaiForm() {
     setEssai,
     setEssaiAjustement,
     setEssaiResult,
-  } = useStore();
+    units,
+  } = useStore() as any;
+  const massLabel = MASS_LABELS[units.mass as keyof typeof MASS_LABELS] ?? "kg";
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -109,7 +112,7 @@ export default function EssaiForm() {
         base_method,
         base_inputs_cw: base_method === "dosage_cw" ? base_inputs : null,
         base_inputs_wb: base_method === "wb" ? base_inputs : null,
-        adjustments: (essai.ajustements || []).map((a) => ({
+        adjustments: (essai.ajustements || []).map((a: any) => ({
           added_dry_residue_mass: a.ajout_residu_sec || 0,
           added_wet_residue_mass: a.ajout_residu_humide || 0,
           added_water_mass: a.ajout_eau || 0,
@@ -164,7 +167,7 @@ export default function EssaiForm() {
       </CardSection>
 
       {/* ── Adjustments ── */}
-      <CardSection title={`Ajustements par recette — ${numRecipes} recette${numRecipes > 1 ? "s" : ""}`} subtitle="Quantités à ajouter après le premier malaxage (kg)">
+      <CardSection title={`Ajustements par recette — ${numRecipes} recette${numRecipes > 1 ? "s" : ""}`} subtitle={`Quantités à ajouter après le premier malaxage (${massLabel})`}>
         <div style={{ display: "flex", flexDirection: "column" as const, gap: 10 }}>
           {Array.from({ length: numRecipes }).map((_, i) => {
             const aj = essai.ajustements?.[i] || {};
@@ -181,14 +184,14 @@ export default function EssaiForm() {
                   Recette {i + 1}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px 12px" }}>
-                  <Field label="Résidu sec (kg)">
-                    <input type="number" step="any" style={inputStyle} placeholder="0" value={aj.ajout_residu_sec ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_sec: num(e.target.value) })} />
+                  <Field label={`Résidu sec (${massLabel})`}>
+                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_residu_sec, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_sec: toStoreMass(num(e.target.value), units.mass) })} />
                   </Field>
-                  <Field label="Résidu humide (kg)">
-                    <input type="number" step="any" style={inputStyle} placeholder="0" value={aj.ajout_residu_humide ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_humide: num(e.target.value) })} />
+                  <Field label={`Résidu humide (${massLabel})`}>
+                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) })} />
                   </Field>
-                  <Field label="Eau (kg)">
-                    <input type="number" step="any" style={inputStyle} placeholder="0" value={aj.ajout_eau ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_eau: num(e.target.value) })} />
+                  <Field label={`Eau (${massLabel})`}>
+                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_eau, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_eau: toStoreMass(num(e.target.value), units.mass) })} />
                   </Field>
                 </div>
               </div>

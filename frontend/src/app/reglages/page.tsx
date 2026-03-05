@@ -1,8 +1,9 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useStore } from "@/lib/store";
+import { UNIT_CATEGORIES } from "@/lib/units";
 
 export default function ReglagesPage() {
   const {
@@ -12,7 +13,14 @@ export default function ReglagesPage() {
     ajouterLiant,
     modifierLiant,
     supprimerLiant,
+    units,
+    setUnits,
+    loadUnits,
   } = useStore() as any;
+
+  useEffect(() => {
+    loadUnits();
+  }, [loadUnits]);
 
   const codesDupliques = useMemo(() => {
     const map = new Map<string, number>();
@@ -206,6 +214,57 @@ export default function ReglagesPage() {
             <Link href="/mix" className="btn-primary" style={{ textDecoration: "none" }}>
               Aller aux calculs
             </Link>
+          </div>
+        </div>
+
+        {/* ── Unit preferences ── */}
+        <div className="form-card" style={{ marginTop: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 6px" }}>
+            Unites de mesure
+          </h2>
+          <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 16 }}>
+            Choisissez les unites d&apos;affichage pour les entrees et les resultats.
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0,1fr))",
+              gap: "14px 20px",
+            }}
+          >
+            {UNIT_CATEGORIES.map((cat) => (
+              <div key={cat.key}>
+                <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5, fontWeight: 600 }}>
+                  {cat.label}
+                </label>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {cat.options.map((opt) => {
+                    const active = units[cat.key] === opt;
+                    const displayLabel = cat.labels[opt] ?? opt;
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setUnits({ [cat.key]: opt })}
+                        style={{
+                          padding: "5px 12px",
+                          fontSize: 12.5,
+                          fontWeight: active ? 700 : 500,
+                          border: active ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
+                          borderRadius: 6,
+                          background: active ? "var(--primary-light)" : "#fff",
+                          color: active ? "var(--primary)" : "#374151",
+                          cursor: "pointer",
+                          transition: "all 0.12s",
+                        }}
+                      >
+                        {displayLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

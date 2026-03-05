@@ -2,8 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent } from "react";
+import { FormEvent, useEffect } from "react";
 import { useStore } from "@/lib/store";
+import {
+  fromStoreLength, toStoreLength,
+  fromStoreArea, toStoreArea,
+  LENGTH_LABELS, AREA_LABELS,
+} from "@/lib/units";
 
 const CONTAINER_TYPES = [
   { value: "section_hauteur", label: "Section + hauteur" },
@@ -21,12 +26,19 @@ const LABEL: React.CSSProperties = {
 
 export default function GeneralInfoPage() {
   const router = useRouter();
-  const { general, setGeneral, catalogue_liants, fillTestData } = useStore() as any;
+  const { general, setGeneral, catalogue_liants, fillTestData, units, loadUnits } = useStore() as any;
+
+  useEffect(() => { loadUnits(); }, [loadUnits]);
 
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
     router.push("/mix");
   };
+
+  const lengthLabel = LENGTH_LABELS[units.length as keyof typeof LENGTH_LABELS] ?? "cm";
+  const areaLabel = AREA_LABELS[units.area as keyof typeof AREA_LABELS] ?? "cm\u00B2";
+
+  const dimFields = new Set(["container_height", "container_radius", "container_length", "container_width"]);
 
   const numChange = (
     field:
@@ -40,7 +52,15 @@ export default function GeneralInfoPage() {
       | "binder3_fraction_pct",
     value: string
   ) => {
-    setGeneral({ [field]: value === "" ? undefined : Number(value) });
+    if (value === "") {
+      setGeneral({ [field]: undefined });
+    } else if (field === "container_section") {
+      setGeneral({ [field]: toStoreArea(Number(value), units.area) });
+    } else if (dimFields.has(field)) {
+      setGeneral({ [field]: toStoreLength(Number(value), units.length) });
+    } else {
+      setGeneral({ [field]: Number(value) });
+    }
   };
 
   const fractionTotal =
@@ -300,40 +320,40 @@ export default function GeneralInfoPage() {
               {general.container_type === "section_hauteur" && (
                 <>
                   <div>
-                    <label style={LABEL}>Section (cm&sup2;)</label>
-                    <input type="number" step="any" className="field-input" value={general.container_section ?? ""} onChange={(e) => numChange("container_section", e.target.value)} placeholder="Ex. : 80.45" />
+                    <label style={LABEL}>Section ({areaLabel})</label>
+                    <input type="number" step="any" className="field-input" value={fromStoreArea(general.container_section, units.area) ?? ""} onChange={(e) => numChange("container_section", e.target.value)} placeholder="Ex. : 80.45" />
                   </div>
                   <div>
-                    <label style={LABEL}>Hauteur (cm)</label>
-                    <input type="number" step="any" className="field-input" value={general.container_height ?? ""} onChange={(e) => numChange("container_height", e.target.value)} placeholder="Ex. : 20.5" />
+                    <label style={LABEL}>Hauteur ({lengthLabel})</label>
+                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_height, units.length) ?? ""} onChange={(e) => numChange("container_height", e.target.value)} placeholder="Ex. : 20.5" />
                   </div>
                 </>
               )}
               {general.container_type === "rayon_hauteur" && (
                 <>
                   <div>
-                    <label style={LABEL}>Rayon (cm)</label>
-                    <input type="number" step="any" className="field-input" value={general.container_radius ?? ""} onChange={(e) => numChange("container_radius", e.target.value)} placeholder="Ex. : 5.0625" />
+                    <label style={LABEL}>Rayon ({lengthLabel})</label>
+                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_radius, units.length) ?? ""} onChange={(e) => numChange("container_radius", e.target.value)} placeholder="Ex. : 5.0625" />
                   </div>
                   <div>
-                    <label style={LABEL}>Hauteur (cm)</label>
-                    <input type="number" step="any" className="field-input" value={general.container_height ?? ""} onChange={(e) => numChange("container_height", e.target.value)} placeholder="Ex. : 20.5" />
+                    <label style={LABEL}>Hauteur ({lengthLabel})</label>
+                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_height, units.length) ?? ""} onChange={(e) => numChange("container_height", e.target.value)} placeholder="Ex. : 20.5" />
                   </div>
                 </>
               )}
               {general.container_type === "longueur_largeur_hauteur" && (
                 <>
                   <div>
-                    <label style={LABEL}>Longueur (cm)</label>
-                    <input type="number" step="any" className="field-input" value={general.container_length ?? ""} onChange={(e) => numChange("container_length", e.target.value)} />
+                    <label style={LABEL}>Longueur ({lengthLabel})</label>
+                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_length, units.length) ?? ""} onChange={(e) => numChange("container_length", e.target.value)} />
                   </div>
                   <div>
-                    <label style={LABEL}>Largeur (cm)</label>
-                    <input type="number" step="any" className="field-input" value={general.container_width ?? ""} onChange={(e) => numChange("container_width", e.target.value)} />
+                    <label style={LABEL}>Largeur ({lengthLabel})</label>
+                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_width, units.length) ?? ""} onChange={(e) => numChange("container_width", e.target.value)} />
                   </div>
                   <div>
-                    <label style={LABEL}>Hauteur (cm)</label>
-                    <input type="number" step="any" className="field-input" value={general.container_height ?? ""} onChange={(e) => numChange("container_height", e.target.value)} />
+                    <label style={LABEL}>Hauteur ({lengthLabel})</label>
+                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_height, units.length) ?? ""} onChange={(e) => numChange("container_height", e.target.value)} />
                   </div>
                 </>
               )}
