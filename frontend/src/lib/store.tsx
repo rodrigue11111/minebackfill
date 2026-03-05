@@ -147,6 +147,7 @@ export interface IndustrieState {
   residue_sg: number;
   residue_w_pct: number;
   saturation_pct: number;
+  solids_mass_pct: number;
   aggregate_sg: number;
   aggregate_w_pct: number;
   aggregate_fraction_pct: number;
@@ -710,8 +711,34 @@ export const useStore = create<AppState>((set) => ({
     const newSlump: SlumpState = { cone_type: "mini", slump_mm: Math.floor(rf(100, 250, 0)), saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw() };
     const newRpgCw: RpgCwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw() };
     const newRpgWb: RpgWbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw(), wc_ratio: makeWc() };
+    // Industrie test data
+    const indCat = Math.random() > 0.5 ? "RPG" : "RPC";
+    const newIndustrie: IndustrieState = {
+      category: indCat as Category,
+      residue_sg: gs,
+      residue_w_pct: w0,
+      saturation_pct: 100,
+      solids_mass_pct: cwPct,
+      aggregate_sg: indCat === "RPG" ? aggSg : 0,
+      aggregate_w_pct: indCat === "RPG" ? rf(1, 5, 1) : 0,
+      aggregate_fraction_pct: indCat === "RPG" ? aggPct : 0,
+      slump_measured_mm: Math.floor(rf(150, 260, 0)),
+      bw_levels: [3, 4.5, 5, 6, 7, 8],
+      desired_qty: qty,
+      safety_factor: 1,
+    };
+    // Random binder prices
+    const testBinderPrices: BinderPrice[] = [
+      { code: "CP10", price_per_kg: rf(0.10, 0.20, 3) },
+      { code: "CP50", price_per_kg: rf(0.12, 0.25, 3) },
+      { code: "SLAG", price_per_kg: rf(0.05, 0.12, 3) },
+      { code: "FLY_ASH", price_per_kg: rf(0.03, 0.08, 3) },
+      { code: "CHAUX", price_per_kg: rf(0.06, 0.10, 3) },
+    ];
+    persistBinderPrices(testBinderPrices);
+
     console.log("[fillTestData] Setting test values — Cw:", cwPct, "Gs:", gs, "w0:", w0, "recipes:", numR);
-    set({ general: newGeneral, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb });
+    set({ general: newGeneral, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb, industrie: newIndustrie, binderPrices: testBinderPrices });
   },
 
   units: DEFAULT_UNITS,
@@ -759,6 +786,7 @@ export const useStore = create<AppState>((set) => ({
     residue_sg: 0,
     residue_w_pct: 0,
     saturation_pct: 100,
+    solids_mass_pct: 78,
     aggregate_sg: 0,
     aggregate_w_pct: 0,
     aggregate_fraction_pct: 0,
