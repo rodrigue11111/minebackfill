@@ -5,14 +5,13 @@ import { useStore } from "@/lib/store";
 
 /* ── helpers ── */
 const fmt = (v: number | undefined | null, digits = 3) => {
-  if (v === undefined || v === null || Number.isNaN(v)) return "—";
+  if (v === undefined || v === null || Number.isNaN(v)) return "\u2014";
   return v.toFixed(digits);
 };
 
 const toGcm3 = (rho?: number | null) =>
   rho === undefined || rho === null || Number.isNaN(rho) ? null : rho / 1000;
 
-/** Convert m³ → litres for display */
 const toLiters = (v?: number | null) =>
   v === undefined || v === null || Number.isNaN(v) ? null : v * 1000;
 
@@ -120,19 +119,19 @@ function SectionHeader({
     <div
       style={{
         background: color.headerBg,
-        borderBottom: `1px solid ${color.border}`,
-        padding: "9px 14px",
+        borderBottom: `2px solid ${color.border}`,
+        padding: "10px 16px",
         display: "flex",
         alignItems: "baseline",
-        gap: 8,
+        gap: 10,
       }}
     >
-      <span style={{ fontSize: 12, fontWeight: 700, color: color.headerText }}>
+      <span style={{ fontSize: 13.5, fontWeight: 700, color: color.headerText }}>
         {title}
       </span>
       {sub && (
-        <span style={{ fontSize: 11, color: color.headerText, opacity: 0.65 }}>
-          — {sub}
+        <span style={{ fontSize: 12, color: color.headerText, opacity: 0.6 }}>
+          {sub}
         </span>
       )}
     </div>
@@ -143,31 +142,30 @@ function RecipeHeaders({ activeCount }: { activeCount: number }) {
   return (
     <>
       <th
-        className="result-table"
         style={{
-          padding: "6px 10px",
+          padding: "9px 14px",
           textAlign: "left",
-          fontSize: 11,
+          fontSize: 12.5,
           fontWeight: 600,
           color: "#64748b",
-          width: "42%",
+          width: "40%",
         }}
       >
-        Paramètre
+        Parametre
       </th>
       {Array.from({ length: activeCount }).map((_, i) => (
         <th
           key={i}
           style={{
-            padding: "6px 8px",
+            padding: "9px 12px",
             textAlign: "right",
-            fontSize: 11,
-            fontWeight: 700,
+            fontSize: 13,
+            fontWeight: 800,
             color: RECIPE_COLORS[i],
             whiteSpace: "nowrap",
           }}
         >
-          R{i + 1}
+          Recette {i + 1}
         </th>
       ))}
     </>
@@ -190,19 +188,20 @@ function DataRow({
   bold?: boolean;
 }) {
   return (
-    <tr style={{ borderTop: "1px solid #f1f5f9" }}>
+    <tr>
       <td
         style={{
-          padding: "6px 10px",
-          fontSize: 12,
-          color: "#475569",
+          padding: "8px 14px",
+          fontSize: 13.5,
+          color: bold ? "#1e293b" : "#475569",
           fontWeight: bold ? 600 : 400,
           lineHeight: 1.4,
+          borderBottom: "1px solid #f1f5f9",
         }}
       >
         {label}
         {unit && (
-          <span style={{ color: "#94a3b8", fontSize: 11, marginLeft: 3 }}>
+          <span style={{ color: "#94a3b8", fontSize: 12, marginLeft: 4 }}>
             ({unit})
           </span>
         )}
@@ -211,12 +210,14 @@ function DataRow({
         <td
           key={i}
           style={{
-            padding: "6px 8px",
+            padding: "8px 12px",
             textAlign: "right",
-            fontSize: 12.5,
+            fontSize: bold ? 15.5 : 14.5,
             fontVariantNumeric: "tabular-nums",
-            fontWeight: bold ? 700 : 400,
+            fontWeight: bold ? 700 : 500,
             color: bold ? RECIPE_COLORS[i] : "#0f172a",
+            letterSpacing: "0.01em",
+            borderBottom: "1px solid #f1f5f9",
           }}
         >
           {fmt(getter(r), digits)}
@@ -226,7 +227,7 @@ function DataRow({
   );
 }
 
-/* ── Excel export ── */
+/* ── Excel export (professional formatting with ExcelJS) ── */
 async function exportToExcel(
   recipes: any[],
   general: any,
@@ -234,103 +235,262 @@ async function exportToExcel(
   category: string,
   method: string
 ) {
-  const xlsx = await import("xlsx");
+  const ExcelJS = await import("exceljs");
+  const { saveAs } = await import("file-saver");
 
-  const headers = ["Paramètre", "Unité", ...recipes.map((_, i) => `Recette ${i + 1}`)];
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "MineBackfill v1.0";
+  wb.created = new Date();
 
-  const row = (label: string, unit: string, getter: (r: any) => number | null | undefined, digits = 3) =>
-    [label, unit, ...recipes.map((r) => {
-      const v = getter(r);
-      return v === null || v === undefined || Number.isNaN(v) ? "" : parseFloat(v.toFixed(digits));
-    })];
+  const ws = wb.addWorksheet("Resultats", {
+    properties: { defaultColWidth: 18 },
+  });
 
-  const sep = (title: string) => [title, "", ...recipes.map(() => "")];
+  const recipeCount = recipes.length;
+  const totalCols = 2 + recipeCount; // Param + Unit + recipes
 
+  /* ── Colour palette ── */
+  const NAVY = "0C1E42";
+  const PRIMARY = "1D4ED8";
+  const PRIMARY_LIGHT = "EFF6FF";
+  const GREEN_HDR = "DCFCE7";
+  const GREEN_TXT = "15803D";
+  const PURPLE_HDR = "F3E8FF";
+  const PURPLE_TXT = "7C3AED";
+  const AMBER_HDR = "FEF3C7";
+  const AMBER_TXT = "92400E";
+  const CYAN_HDR = "CFFAFE";
+  const CYAN_TXT = "0E7490";
+  const BORDER_CLR = "D1D5DB";
+  const GREY_BG = "F8FAFC";
+  const WHITE = "FFFFFF";
+  const RECIPE_HEX = ["2563EB", "16A34A", "D97706", "DC2626"];
+
+  const thinBorder = (color = BORDER_CLR): any => ({ style: "thin", color: { argb: color } });
+
+  const allBorders = {
+    top: thinBorder(),
+    left: thinBorder(),
+    bottom: thinBorder(),
+    right: thinBorder(),
+  };
+
+  /* ── Helper: set column widths ── */
+  ws.getColumn(1).width = 38;
+  ws.getColumn(2).width = 12;
+  for (let c = 3; c <= totalCols; c++) ws.getColumn(c).width = 18;
+
+  /* ── Title block ── */
+  const titleRow = ws.addRow(["MINEBACKFILL — Resultats de calcul"]);
+  ws.mergeCells(titleRow.number, 1, titleRow.number, totalCols);
+  titleRow.height = 36;
+  const titleCell = titleRow.getCell(1);
+  titleCell.font = { name: "Calibri", size: 16, bold: true, color: { argb: WHITE } };
+  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+  titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+
+  /* ── Subtitle ── */
+  const subRow = ws.addRow([
+    `${category} — ${method === "dosage_cw" ? "Dosage Cw%" : method === "wb" ? "Rapport E/C" : method === "slump" ? "Slump" : "Essai-erreur"}  |  ${recipes.length} recette${recipes.length > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
+  ]);
+  ws.mergeCells(subRow.number, 1, subRow.number, totalCols);
+  subRow.height = 24;
+  const subCell = subRow.getCell(1);
+  subCell.font = { name: "Calibri", size: 11, color: { argb: WHITE }, italic: true };
+  subCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "1A3A8A" } };
+  subCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+
+  ws.addRow([]); // spacer
+
+  /* ── General info block ── */
+  const addInfoRow = (label: string, value: string) => {
+    if (!value) return;
+    const r = ws.addRow([label, value]);
+    r.getCell(1).font = { name: "Calibri", size: 10, bold: true, color: { argb: "64748B" } };
+    r.getCell(2).font = { name: "Calibri", size: 10, color: { argb: "1E293B" } };
+  };
+
+  addInfoRow("Operateur", general.operator_name ?? "");
+  addInfoRow("Projet", general.project_name ?? "");
+  addInfoRow("Residu", general.residue_id ?? "");
+  addInfoRow("Date", general.mix_date ?? "");
+
+  ws.addRow([]); // spacer
+
+  /* ── Data-row helper ── */
   const bcount = general.binder_count ?? 1;
   const isEssai = method === "essai";
   const isRpg = category === "RPG";
 
-  const rows = [
-    headers,
-    sep("=== INFORMATIONS GÉNÉRALES ==="),
-    ["Opérateur", "", general.operator_name ?? ""],
-    ["Projet", "", general.project_name ?? ""],
-    ["Résidu", "", general.residue_id ?? ""],
-    ["Date", "", general.mix_date ?? ""],
-    ["Catégorie", "", category],
-    ["Méthode", "", method],
+  const addSectionHeader = (title: string, bgColor: string, textColor: string) => {
+    const r = ws.addRow([title]);
+    ws.mergeCells(r.number, 1, r.number, totalCols);
+    r.height = 26;
+    const c = r.getCell(1);
+    c.font = { name: "Calibri", size: 11, bold: true, color: { argb: textColor } };
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
+    c.alignment = { vertical: "middle", indent: 1 };
+    c.border = allBorders;
+  };
 
-    sep("=== DONNÉES DU MÉLANGE (masses) ==="),
-    row(isEssai ? "Bw% cible" : "Liant Bw%", "%", (r) => r.bw_mass_pct, 2),
-    row("Liant Bv%", "% vol.", (r) => r.bv_vol_pct, 2),
-    row(isEssai ? "Résidu sec (tot.)" : "Résidu sec Mr", "kg", (r) => r.components?.residue_dry_mass_kg),
-    ...(isRpg ? [row("Agrégat sec Ma", "kg", (r) => r.components?.aggregate_dry_mass_kg)] : []),
-    row(isEssai ? "Liant (tot.)" : "Liant Mb", "kg", (r) => r.components?.binder_total_mass_kg),
-    row("Résidu humide Mr-hum", "kg", (r) => r.components?.residue_wet_mass_kg),
-    row("Eau totale Mw", "kg", (r) => r.components?.water_total_mass_kg),
-    row("Eau à ajouter Mw-aj", "kg", (r) => r.components?.water_to_add_mass_kg),
-    ...(bcount >= 1 ? [row(`${binderName(1)} Mc1`, "kg", (r) => r.components?.binder_c1_mass_kg)] : []),
-    ...(bcount >= 2 ? [row(`${binderName(2)} Mc2`, "kg", (r) => r.components?.binder_c2_mass_kg)] : []),
-    ...(bcount >= 3 ? [row(`${binderName(3)} Mc3`, "kg", (r) => r.components?.binder_c3_mass_kg)] : []),
-    ...(isEssai ? [
-      row("Liant à rajouter Mb-ad", "kg", (r) => r.components?.binder_to_add_mass_kg),
-      row(`${binderName(1)} à rajouter Mc1-ad`, "kg", (r) => r.components?.binder_c1_to_add_mass_kg),
-      ...(bcount >= 2 ? [row(`${binderName(2)} à rajouter Mc2-ad`, "kg", (r) => r.components?.binder_c2_to_add_mass_kg)] : []),
-      ...(bcount >= 3 ? [row(`${binderName(3)} à rajouter Mc3-ad`, "kg", (r) => r.components?.binder_c3_to_add_mass_kg)] : []),
-    ] : []),
+  const addColumnHeaders = () => {
+    const hdrs = ["Parametre", "Unite", ...recipes.map((_, i) => `Recette ${i + 1}`)];
+    const r = ws.addRow(hdrs);
+    r.height = 22;
+    r.eachCell((cell, colNumber) => {
+      cell.font = { name: "Calibri", size: 10, bold: true, color: { argb: colNumber <= 2 ? "374151" : RECIPE_HEX[colNumber - 3] ?? "374151" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GREY_BG.replace("#", "") } };
+      cell.alignment = { vertical: "middle", horizontal: colNumber <= 2 ? "left" : "right" };
+      cell.border = allBorders;
+    });
+  };
 
-    sep("=== PARAMÈTRES GÉOTECHNIQUES ==="),
-    row("Liant Bw%", "%", (r) => r.bw_mass_pct, 2),
-    row("Solides Cw%", "% mass.", (r) => r.solids_mass_pct, 2),
-    row("Solides Cv%", "% vol.", (r) => r.cv_vol_pct, 2),
-    row("Teneur en eau w", "%", (r) => r.w_mass_pct, 2),
-    row("Rapport E/C", "", (r) => r.wc_ratio, 3),
-    row("Saturation Sr", "%", (r) => r.saturation_pct, 1),
+  let rowIndex = 0;
+  const addDataRow = (label: string, unit: string, getter: (r: any) => number | null | undefined, digits = 3, isBold = false) => {
+    const values = recipes.map((r) => {
+      const v = getter(r);
+      return v === null || v === undefined || Number.isNaN(v) ? null : parseFloat(v.toFixed(digits));
+    });
+    const r = ws.addRow([label, unit, ...values]);
+    const isAlt = rowIndex % 2 === 1;
+    rowIndex++;
 
-    sep("=== MASSES VOLUMIQUES ==="),
-    row("ρ humide ρ_h", "g/cm³", (r) => toGcm3(r.bulk_density_kg_m3)),
-    row("ρ sèche ρ_d", "g/cm³", (r) => toGcm3(r.dry_density_kg_m3)),
-    row("γ humide γ_h", "kN/m³", (r) => r.bulk_unit_weight_kN_m3, 2),
-    row("γ sèche γ_d", "kN/m³", (r) => r.dry_unit_weight_kN_m3, 2),
+    r.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      if (colNumber === 1) {
+        cell.font = { name: "Calibri", size: 10, bold: isBold, color: { argb: "374151" } };
+        cell.alignment = { vertical: "middle" };
+      } else if (colNumber === 2) {
+        cell.font = { name: "Calibri", size: 9, color: { argb: "94A3B8" } };
+        cell.alignment = { vertical: "middle" };
+      } else {
+        cell.font = { name: "Calibri", size: 11, bold: isBold, color: { argb: isBold ? (RECIPE_HEX[colNumber - 3] ?? "0F172A") : "0F172A" } };
+        cell.alignment = { vertical: "middle", horizontal: "right" };
+        if (cell.value !== null && cell.value !== undefined) {
+          cell.numFmt = digits <= 2 ? `0.${"0".repeat(digits)}` : `0.${"0".repeat(digits)}`;
+        }
+      }
+      if (isAlt) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "F8FAFC" } };
+      }
+      cell.border = {
+        top: thinBorder("E2E8F0"),
+        bottom: thinBorder("E2E8F0"),
+        left: thinBorder("E2E8F0"),
+        right: thinBorder("E2E8F0"),
+      };
+    });
+  };
 
-    sep("=== INDICES DES VIDES & STRUCTURE ==="),
-    row("Indice des vides e", "", (r) => r.void_ratio),
-    row("Porosité n", "", (r) => r.porosity),
-    row("Teneur eau vol. θ", "%", (r) => r.theta_pct, 2),
-    row("Gs remblai", "", (r) => r.gs_backfill),
-    row("Gs liant", "", (r) => r.gs_binder),
+  /* ── Section 1: Mix data ── */
+  addSectionHeader("DONNEES DU MELANGE", PRIMARY_LIGHT.replace("#", ""), PRIMARY);
+  addColumnHeaders();
+  rowIndex = 0;
+  addDataRow(isEssai ? "Bw% cible" : "Liant Bw%", "%", (r) => r.bw_mass_pct, 2, true);
+  addDataRow("Liant Bv%", "% vol.", (r) => r.bv_vol_pct, 2);
+  addDataRow(isEssai ? "Residu sec (tot.)" : "Residu sec Mr", "kg", (r) => r.components?.residue_dry_mass_kg, 3, true);
+  if (isRpg) addDataRow("Agregat sec Ma", "kg", (r) => r.components?.aggregate_dry_mass_kg, 3, true);
+  addDataRow(isEssai ? "Liant (tot.)" : "Liant Mb", "kg", (r) => r.components?.binder_total_mass_kg, 3, true);
+  addDataRow("Residu humide Mr-hum", "kg", (r) => r.components?.residue_wet_mass_kg);
+  addDataRow("Eau totale Mw", "kg", (r) => r.components?.water_total_mass_kg);
+  addDataRow("Eau a ajouter Mw-aj", "kg", (r) => r.components?.water_to_add_mass_kg);
+  if (bcount >= 1) addDataRow(`${binderName(1)} Mc1`, "kg", (r) => r.components?.binder_c1_mass_kg);
+  if (bcount >= 2) addDataRow(`${binderName(2)} Mc2`, "kg", (r) => r.components?.binder_c2_mass_kg);
+  if (bcount >= 3) addDataRow(`${binderName(3)} Mc3`, "kg", (r) => r.components?.binder_c3_mass_kg);
+  if (isEssai) {
+    addDataRow("Liant a rajouter Mb-ad", "kg", (r) => r.components?.binder_to_add_mass_kg);
+    addDataRow(`${binderName(1)} a rajouter Mc1-ad`, "kg", (r) => r.components?.binder_c1_to_add_mass_kg);
+    if (bcount >= 2) addDataRow(`${binderName(2)} a rajouter Mc2-ad`, "kg", (r) => r.components?.binder_c2_to_add_mass_kg);
+    if (bcount >= 3) addDataRow(`${binderName(3)} a rajouter Mc3-ad`, "kg", (r) => r.components?.binder_c3_to_add_mass_kg);
+  }
 
-    sep("=== VOLUMES ==="),
-    row("Volume moule V_moule", "L", (r) => toLiters(r.container_volume_m3), 4),
-    row("Volume total V_T", "L", (r) => toLiters(r.total_backfill_volume_m3), 4),
-    row("Volume solide V_s", "L", (r) => toLiters(r.solid_volume_m3), 4),
-    row("Volume vides V_v", "L", (r) => toLiters(r.void_volume_m3), 4),
-    row("Volume r?sidu V_r", "L", (r) => toLiters(r.residue_volume_m3), 4),
-    row("Volume liant V_b", "L", (r) => toLiters(r.binder_volume_m3), 4),
-    row("Volume eau V_w", "L", (r) => toLiters(r.water_volume_m3), 4),
+  ws.addRow([]);
 
-    sep("=== FULL RESULTS / RESULTATS COMPLETS ==="),
-    row("Masse rejet sec totale M_r_sec_tot", "kg", (r) => masseRejetSecTotaleKg(r), 6),
-    row("Masse solides totale M_s", "kg", (r) => masseSolidesTotaleKg(r), 6),
-    row("Masse remblai totale M_t", "kg", (r) => masseRemblaiTotaleKg(r), 6),
-    row("Eau contenue dans residu M_w-res", "kg", (r) => masseEauDansResidusKg(r), 6),
-    row("Masse eau a ajouter/retirer M_w-aj", "kg", (r) => r.components?.water_to_add_mass_kg, 6),
-    row("Masse remblai totale M_t", "g", (r) => toGrams(masseRemblaiTotaleKg(r)), 2),
-    row("Volume air V_air", "L", (r) => toLiters(volumeAirM3(r)), 4),
-    row("Cw calcule (depuis masses)", "%", (r) => cwCalculePct(r), 4),
-    row("Cv calcule (depuis volumes)", "%", (r) => cvCalculePct(r), 4),
-  ];
+  /* ── Section 2: Geotechnical ── */
+  addSectionHeader("PARAMETRES GEOTECHNIQUES", GREEN_HDR.replace("#", ""), GREEN_TXT);
+  addColumnHeaders();
+  rowIndex = 0;
+  addDataRow("Liant Bw%", "%", (r) => r.bw_mass_pct, 2, true);
+  addDataRow("Solides Cw%", "% mass.", (r) => r.solids_mass_pct, 2);
+  addDataRow("Solides Cv%", "% vol.", (r) => r.cv_vol_pct, 2);
+  addDataRow("Teneur en eau w", "%", (r) => r.w_mass_pct, 2);
+  addDataRow("Rapport E/C", "", (r) => r.wc_ratio, 3);
+  addDataRow("Saturation Sr", "%", (r) => r.saturation_pct, 1);
 
-  const ws = xlsx.utils.aoa_to_sheet(rows);
+  ws.addRow([]);
 
-  // Column widths
-  ws["!cols"] = [{ wch: 32 }, { wch: 10 }, ...recipes.map(() => ({ wch: 16 }))];
+  /* ── Section 3: Densities ── */
+  addSectionHeader("MASSES VOLUMIQUES", PURPLE_HDR.replace("#", ""), PURPLE_TXT);
+  addColumnHeaders();
+  rowIndex = 0;
+  addDataRow("Masse vol. humide rho_h", "g/cm3", (r) => toGcm3(r.bulk_density_kg_m3), 4, true);
+  addDataRow("Masse vol. seche rho_d", "g/cm3", (r) => toGcm3(r.dry_density_kg_m3), 4, true);
+  addDataRow("Poids vol. humide gamma_h", "kN/m3", (r) => r.bulk_unit_weight_kN_m3, 2);
+  addDataRow("Poids vol. sec gamma_d", "kN/m3", (r) => r.dry_unit_weight_kN_m3, 2);
 
-  const wb = xlsx.utils.book_new();
-  xlsx.utils.book_append_sheet(wb, ws, "Résultats");
+  ws.addRow([]);
 
-  const filename = `minebackfill_${category}_${method}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  xlsx.writeFile(wb, filename);
+  /* ── Section 4: Void indices ── */
+  addSectionHeader("INDICES DES VIDES & STRUCTURE", AMBER_HDR.replace("#", ""), AMBER_TXT);
+  addColumnHeaders();
+  rowIndex = 0;
+  addDataRow("Indice des vides e", "", (r) => r.void_ratio, 5, true);
+  addDataRow("Porosite n", "", (r) => r.porosity, 5);
+  addDataRow("Teneur eau vol. theta", "%", (r) => r.theta_pct, 2);
+  addDataRow("Gs remblai", "", (r) => r.gs_backfill, 5);
+  addDataRow("Gs liant", "", (r) => r.gs_binder, 4);
+
+  ws.addRow([]);
+
+  /* ── Section 5: Volumes ── */
+  addSectionHeader("VOLUMES", CYAN_HDR.replace("#", ""), CYAN_TXT);
+  addColumnHeaders();
+  rowIndex = 0;
+  addDataRow("Volume moule V_moule", "L", (r) => toLiters(r.container_volume_m3), 4);
+  addDataRow("Volume total V_T", "L", (r) => toLiters(r.total_backfill_volume_m3), 4, true);
+  addDataRow("Volume solide V_s", "L", (r) => toLiters(r.solid_volume_m3), 4);
+  addDataRow("Volume vides V_v", "L", (r) => toLiters(r.void_volume_m3), 4);
+  addDataRow("Volume residu V_r", "L", (r) => toLiters(r.residue_volume_m3), 4);
+  addDataRow("Volume liant V_b", "L", (r) => toLiters(r.binder_volume_m3), 4);
+  addDataRow("Volume eau V_w", "L", (r) => toLiters(r.water_volume_m3), 4);
+
+  ws.addRow([]);
+
+  /* ── Section 6: Complete results ── */
+  addSectionHeader("RESULTATS COMPLETS", PRIMARY_LIGHT.replace("#", ""), PRIMARY);
+  addColumnHeaders();
+  rowIndex = 0;
+  addDataRow("Masse rejet sec totale M_r_sec_tot", "kg", (r) => masseRejetSecTotaleKg(r), 4, true);
+  addDataRow("Masse solides totale M_s", "kg", (r) => masseSolidesTotaleKg(r), 4, true);
+  addDataRow("Masse eau totale M_w", "kg", (r) => r.components?.water_total_mass_kg, 4);
+  addDataRow("Masse remblai totale M_t", "kg", (r) => masseRemblaiTotaleKg(r), 4);
+  addDataRow("Eau dans residu M_w-res", "kg", (r) => masseEauDansResidusKg(r), 4);
+  addDataRow("Eau a ajouter/retirer M_w-aj", "kg", (r) => r.components?.water_to_add_mass_kg, 4);
+  addDataRow("Masse remblai totale M_t", "g", (r) => toGrams(masseRemblaiTotaleKg(r)), 2);
+  addDataRow("Volume air V_air", "L", (r) => toLiters(volumeAirM3(r)), 4);
+  addDataRow("Cw calcule (depuis masses)", "%", (r) => cwCalculePct(r), 4);
+  addDataRow("Cv calcule (depuis volumes)", "%", (r) => cvCalculePct(r), 4);
+
+  /* ── Footer ── */
+  ws.addRow([]);
+  const footerRow = ws.addRow(["Genere par MineBackfill v1.0 — Module 1"]);
+  ws.mergeCells(footerRow.number, 1, footerRow.number, totalCols);
+  footerRow.getCell(1).font = { name: "Calibri", size: 9, italic: true, color: { argb: "94A3B8" } };
+
+  /* ── Print settings ── */
+  ws.pageSetup = {
+    orientation: "landscape",
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    paperSize: 9,
+    margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 },
+  };
+
+  /* ── Save ── */
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const filename = `MineBackfill_${category}_${method}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  saveAs(blob, filename);
 }
 
 export default function ResultsPanel({ isMaximized = false }: { isMaximized?: boolean }) {
@@ -409,12 +569,12 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           <rect x="32" y="6" width="8" height="32" rx="2" fill="#64748b" />
         </svg>
         <div>
-          <p style={{ fontWeight: 600, fontSize: 14, color: "#374151", margin: 0 }}>
-            Résultats de calcul
+          <p style={{ fontWeight: 600, fontSize: 15, color: "#374151", margin: 0 }}>
+            Resultats de calcul
           </p>
-          <p style={{ fontSize: 12.5, maxWidth: 220, marginTop: 6, lineHeight: 1.5 }}>
-            Renseignez les paramètres et cliquez sur{" "}
-            <strong>Lancer le calcul</strong> pour afficher les résultats ici.
+          <p style={{ fontSize: 13, maxWidth: 240, marginTop: 6, lineHeight: 1.5 }}>
+            Renseignez les parametres et cliquez sur{" "}
+            <strong>Lancer le calcul</strong> pour afficher les resultats ici.
           </p>
         </div>
       </div>
@@ -423,50 +583,50 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
 
   /* ── Results ── */
   return (
-    <div style={{ padding: "16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ padding: "16px 0", display: "flex", flexDirection: "column", gap: 14 }}>
 
       {/* ── Project Banner ── */}
-      <div style={{ padding: "0 14px 0" }}>
+      <div style={{ padding: "0 16px 0" }}>
         <div
           style={{
             background: "#f8fafc",
             border: "1px solid var(--border)",
             borderRadius: 8,
-            padding: "10px 14px",
+            padding: "12px 16px",
           }}
         >
           <div
             style={{
-              fontSize: 11.5,
+              fontSize: 13,
               fontWeight: 600,
               color: "var(--muted-foreground)",
               marginBottom: 6,
             }}
           >
             {isRpg ? "RPG (PAF)" : "RPC"} — {recipes.length} recette{recipes.length > 1 ? "s" : ""}
-            {isEssai ? " (ajustées)" : ""}
+            {isEssai ? " (ajustees)" : ""}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 24px" }}>
             {general.residue_id && (
-              <span style={{ fontSize: 12, color: "#374151" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>Résidu : </span>
+              <span style={{ fontSize: 13, color: "#374151" }}>
+                <span style={{ color: "var(--muted-foreground)" }}>Residu : </span>
                 {general.residue_id}
               </span>
             )}
             {general.operator_name && (
-              <span style={{ fontSize: 12, color: "#374151" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>Opérateur : </span>
+              <span style={{ fontSize: 13, color: "#374151" }}>
+                <span style={{ color: "var(--muted-foreground)" }}>Operateur : </span>
                 {general.operator_name}
               </span>
             )}
             {desiredQty !== undefined && (
-              <span style={{ fontSize: 12, color: "#374151" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>Qté : </span>
+              <span style={{ fontSize: 13, color: "#374151" }}>
+                <span style={{ color: "var(--muted-foreground)" }}>Qte : </span>
                 {desiredQty} moule{desiredQty > 1 ? "s" : ""}
               </span>
             )}
             {general.mix_date && (
-              <span style={{ fontSize: 12, color: "#374151" }}>
+              <span style={{ fontSize: 13, color: "#374151" }}>
                 <span style={{ color: "var(--muted-foreground)" }}>Date : </span>
                 {general.mix_date}
               </span>
@@ -476,20 +636,20 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
       </div>
 
       {/* ── Recipe summary pills ── */}
-      <div style={{ padding: "0 14px", display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ padding: "0 16px", display: "flex", gap: 8, flexWrap: "wrap" }}>
         {recipes.map((r, i) => (
           <div
             key={i}
             style={{
-              border: `1.5px solid ${RECIPE_COLORS[i]}`,
-              borderRadius: 7,
-              padding: "5px 12px",
+              border: `2px solid ${RECIPE_COLORS[i]}`,
+              borderRadius: 8,
+              padding: "7px 14px",
               background: `${RECIPE_COLORS[i]}10`,
             }}
           >
             <div
               style={{
-                fontSize: 10.5,
+                fontSize: 11,
                 fontWeight: 700,
                 color: RECIPE_COLORS[i],
                 textTransform: "uppercase",
@@ -498,10 +658,10 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             >
               Recette {i + 1}
             </div>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>
               Bw {fmt(r.bw_mass_pct, 1)} %
             </div>
-            <div style={{ fontSize: 11, color: "#64748b" }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>
               Cw {fmt(r.solids_mass_pct, 1)} % · e {fmt(r.void_ratio, 3)}
             </div>
           </div>
@@ -515,18 +675,18 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               display: "flex",
               alignItems: "center",
               gap: 6,
-              padding: "6px 14px",
+              padding: "7px 14px",
               border: "1px solid var(--primary)",
               borderRadius: 7,
               background: "var(--primary-light)",
               color: "var(--primary)",
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: 600,
               cursor: "pointer",
               whiteSpace: "nowrap",
             }}
           >
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 13 13" fill="none" aria-hidden="true">
               <path d="M10.5 12H2.5a1 1 0 01-1-1V2a1 1 0 011-1h6l3 3v7a1 1 0 01-1 1z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M4 12V7h5v5M4 1v3h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -538,18 +698,18 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               display: "flex",
               alignItems: "center",
               gap: 6,
-              padding: "6px 14px",
+              padding: "7px 14px",
               border: "1px solid #16a34a",
               borderRadius: 7,
               background: "#f0fdf4",
               color: "#15803d",
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: 600,
               cursor: "pointer",
               whiteSpace: "nowrap",
             }}
           >
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 13 13" fill="none" aria-hidden="true">
               <path d="M6.5 1v8M3 6l3.5 3.5L10 6M2 11h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Excel
@@ -638,15 +798,15 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         </div>
       </div>
 
-      {/* ── Sections 1–5 : grid when maximized, flex column otherwise ── */}
+      {/* ── Sections 1–6 : grid when maximized, flex column otherwise ── */}
       <div
         style={
           isMaximized
-            ? { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "0 14px" }
-            : { display: "flex", flexDirection: "column", gap: 12, padding: "0 14px" }
+            ? { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, padding: "0 16px" }
+            : { display: "flex", flexDirection: "column", gap: 14, padding: "0 16px" }
         }
       >
-        {/* ── 1. Données du mélange ── */}
+        {/* ── 1. Donnees du melange ── */}
         <div
           style={{
             border: `1px solid ${SECTIONS.mix.border}`,
@@ -656,7 +816,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           }}
         >
           <SectionHeader
-            title={isEssai ? "Données du mélange ajusté" : "Données du mélange"}
+            title={isEssai ? "Donnees du melange ajuste" : "Donnees du melange"}
             sub="masses en kg"
             color={SECTIONS.mix}
           />
@@ -683,7 +843,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                 digits={2}
               />
               <DataRow
-                label={isEssai ? "Résidu sec (tot.)" : "Résidu sec Mr"}
+                label={isEssai ? "Residu sec (tot.)" : "Residu sec Mr"}
                 unit="kg"
                 getter={(r) => r.components?.residue_dry_mass_kg}
                 recipes={recipes}
@@ -691,7 +851,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               />
               {isRpg && (
                 <DataRow
-                  label="Agrégat sec Ma"
+                  label="Agregat sec Ma"
                   unit="kg"
                   getter={(r) => r.components?.aggregate_dry_mass_kg}
                   recipes={recipes}
@@ -706,7 +866,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                 bold
               />
               <DataRow
-                label="Résidu humide Mr-hum"
+                label="Residu humide Mr-hum"
                 unit="kg"
                 getter={(r) => r.components?.residue_wet_mass_kg}
                 recipes={recipes}
@@ -718,7 +878,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                 recipes={recipes}
               />
               <DataRow
-                label="Eau à ajouter Mw-aj"
+                label="Eau a ajouter Mw-aj"
                 unit="kg"
                 getter={(r) => r.components?.water_to_add_mass_kg}
                 recipes={recipes}
@@ -750,20 +910,20 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               {isEssai && (
                 <>
                   <DataRow
-                    label="Liant à rajouter Mb-ad"
+                    label="Liant a rajouter Mb-ad"
                     unit="kg"
                     getter={(r) => r.components?.binder_to_add_mass_kg}
                     recipes={recipes}
                   />
                   <DataRow
-                    label={`${binderName(1)} — à rajouter`}
+                    label={`${binderName(1)} — a rajouter`}
                     unit="kg"
                     getter={(r) => r.components?.binder_c1_to_add_mass_kg}
                     recipes={recipes}
                   />
                   {(general.binder_count ?? 1) >= 2 && (
                     <DataRow
-                      label={`${binderName(2)} — à rajouter`}
+                      label={`${binderName(2)} — a rajouter`}
                       unit="kg"
                       getter={(r) => r.components?.binder_c2_to_add_mass_kg}
                       recipes={recipes}
@@ -771,7 +931,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                   )}
                   {(general.binder_count ?? 1) >= 3 && (
                     <DataRow
-                      label={`${binderName(3)} — à rajouter`}
+                      label={`${binderName(3)} — a rajouter`}
                       unit="kg"
                       getter={(r) => r.components?.binder_c3_to_add_mass_kg}
                       recipes={recipes}
@@ -783,7 +943,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           </table>
         </div>
 
-        {/* ── 2. Géotechnique 1 : Cw, Cv, w, w/c, Sr ── */}
+        {/* ── 2. Geotechnique ── */}
         <div
           style={{
             border: `1px solid ${SECTIONS.geo1.border}`,
@@ -793,7 +953,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           }}
         >
           <SectionHeader
-            title="Paramètres géotechniques"
+            title="Parametres geotechniques"
             sub="pourcentages & rapports"
             color={SECTIONS.geo1}
           />
@@ -804,48 +964,12 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               </tr>
             </thead>
             <tbody>
-              <DataRow
-                label="Liant Bw%"
-                unit="%"
-                getter={(r) => r.bw_mass_pct}
-                recipes={recipes}
-                digits={2}
-                bold
-              />
-              <DataRow
-                label="Solides Cw%"
-                unit="% mass."
-                getter={(r) => r.solids_mass_pct}
-                recipes={recipes}
-                digits={2}
-              />
-              <DataRow
-                label="Solides Cv%"
-                unit="% vol."
-                getter={(r) => r.cv_vol_pct}
-                recipes={recipes}
-                digits={2}
-              />
-              <DataRow
-                label="Teneur en eau w"
-                unit="%"
-                getter={(r) => r.w_mass_pct}
-                recipes={recipes}
-                digits={2}
-              />
-              <DataRow
-                label="Rapport E/C"
-                getter={(r) => r.wc_ratio}
-                recipes={recipes}
-                digits={3}
-              />
-              <DataRow
-                label="Saturation Sr"
-                unit="%"
-                getter={(r) => r.saturation_pct}
-                recipes={recipes}
-                digits={1}
-              />
+              <DataRow label="Liant Bw%" unit="%" getter={(r) => r.bw_mass_pct} recipes={recipes} digits={2} bold />
+              <DataRow label="Solides Cw%" unit="% mass." getter={(r) => r.solids_mass_pct} recipes={recipes} digits={2} />
+              <DataRow label="Solides Cv%" unit="% vol." getter={(r) => r.cv_vol_pct} recipes={recipes} digits={2} />
+              <DataRow label="Teneur en eau w" unit="%" getter={(r) => r.w_mass_pct} recipes={recipes} digits={2} />
+              <DataRow label="Rapport E/C" getter={(r) => r.wc_ratio} recipes={recipes} digits={3} />
+              <DataRow label="Saturation Sr" unit="%" getter={(r) => r.saturation_pct} recipes={recipes} digits={1} />
             </tbody>
           </table>
         </div>
@@ -859,11 +983,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             background: SECTIONS.geo2.bg,
           }}
         >
-          <SectionHeader
-            title="Masses volumiques"
-            sub="densités et poids volumiques"
-            color={SECTIONS.geo2}
-          />
+          <SectionHeader title="Masses volumiques" sub="densites et poids volumiques" color={SECTIONS.geo2} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead>
               <tr style={{ background: SECTIONS.geo2.bg }}>
@@ -871,34 +991,10 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               </tr>
             </thead>
             <tbody>
-              <DataRow
-                label="ρ humide ρ_h"
-                unit="g/cm³"
-                getter={(r) => toGcm3(r.bulk_density_kg_m3)}
-                recipes={recipes}
-                bold
-              />
-              <DataRow
-                label="ρ sèche ρ_d"
-                unit="g/cm³"
-                getter={(r) => toGcm3(r.dry_density_kg_m3)}
-                recipes={recipes}
-                bold
-              />
-              <DataRow
-                label="γ humide γ_h"
-                unit="kN/m³"
-                getter={(r) => r.bulk_unit_weight_kN_m3}
-                recipes={recipes}
-                digits={2}
-              />
-              <DataRow
-                label="γ sèche γ_d"
-                unit="kN/m³"
-                getter={(r) => r.dry_unit_weight_kN_m3}
-                recipes={recipes}
-                digits={2}
-              />
+              <DataRow label="rho humide rho_h" unit="g/cm3" getter={(r) => toGcm3(r.bulk_density_kg_m3)} recipes={recipes} bold />
+              <DataRow label="rho seche rho_d" unit="g/cm3" getter={(r) => toGcm3(r.dry_density_kg_m3)} recipes={recipes} bold />
+              <DataRow label="gamma humide gamma_h" unit="kN/m3" getter={(r) => r.bulk_unit_weight_kN_m3} recipes={recipes} digits={2} />
+              <DataRow label="gamma seche gamma_d" unit="kN/m3" getter={(r) => r.dry_unit_weight_kN_m3} recipes={recipes} digits={2} />
             </tbody>
           </table>
         </div>
@@ -912,11 +1008,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             background: SECTIONS.geo3.bg,
           }}
         >
-          <SectionHeader
-            title="Indices des vides & structure"
-            sub="indice des vides, porosité, Gs"
-            color={SECTIONS.geo3}
-          />
+          <SectionHeader title="Indices des vides & structure" sub="indice des vides, porosite, Gs" color={SECTIONS.geo3} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead>
               <tr style={{ background: SECTIONS.geo3.bg }}>
@@ -924,34 +1016,11 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               </tr>
             </thead>
             <tbody>
-              <DataRow
-                label="Indice des vides e"
-                getter={(r) => r.void_ratio}
-                recipes={recipes}
-                bold
-              />
-              <DataRow
-                label="Porosité n"
-                getter={(r) => r.porosity}
-                recipes={recipes}
-              />
-              <DataRow
-                label="Teneur eau vol. θ"
-                unit="%"
-                getter={(r) => r.theta_pct}
-                recipes={recipes}
-                digits={2}
-              />
-              <DataRow
-                label="Gs remblai"
-                getter={(r) => r.gs_backfill}
-                recipes={recipes}
-              />
-              <DataRow
-                label="Gs liant"
-                getter={(r) => r.gs_binder}
-                recipes={recipes}
-              />
+              <DataRow label="Indice des vides e" getter={(r) => r.void_ratio} recipes={recipes} bold />
+              <DataRow label="Porosite n" getter={(r) => r.porosity} recipes={recipes} />
+              <DataRow label="Teneur eau vol. theta" unit="%" getter={(r) => r.theta_pct} recipes={recipes} digits={2} />
+              <DataRow label="Gs remblai" getter={(r) => r.gs_backfill} recipes={recipes} />
+              <DataRow label="Gs liant" getter={(r) => r.gs_binder} recipes={recipes} />
             </tbody>
           </table>
         </div>
@@ -966,11 +1035,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             ...(isMaximized ? { gridColumn: "1 / -1" } : {}),
           }}
         >
-          <SectionHeader
-            title="Volumes"
-            sub="en litres (L)"
-            color={SECTIONS.vols}
-          />
+          <SectionHeader title="Volumes" sub="en litres (L)" color={SECTIONS.vols} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead>
               <tr style={{ background: SECTIONS.vols.bg }}>
@@ -978,61 +1043,18 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               </tr>
             </thead>
             <tbody>
-              <DataRow
-                label="Volume moule V_moule"
-                unit="L"
-                getter={(r) => toLiters(r.container_volume_m3)}
-                recipes={recipes}
-                digits={4}
-              />
-              <DataRow
-                label="Volume total V_T"
-                unit="L"
-                getter={(r) => toLiters(r.total_backfill_volume_m3)}
-                recipes={recipes}
-                digits={4}
-                bold
-              />
-              <DataRow
-                label="Volume solide V_s"
-                unit="L"
-                getter={(r) => toLiters(r.solid_volume_m3)}
-                recipes={recipes}
-                digits={4}
-              />
-              <DataRow
-                label="Volume vides V_v"
-                unit="L"
-                getter={(r) => toLiters(r.void_volume_m3)}
-                recipes={recipes}
-                digits={4}
-              />
-              <DataRow
-                label="Volume résidu V_r"
-                unit="L"
-                getter={(r) => toLiters(r.residue_volume_m3)}
-                recipes={recipes}
-                digits={4}
-              />
-              <DataRow
-                label="Volume liant V_b"
-                unit="L"
-                getter={(r) => toLiters(r.binder_volume_m3)}
-                recipes={recipes}
-                digits={4}
-              />
-              <DataRow
-                label="Volume eau V_w"
-                unit="L"
-                getter={(r) => toLiters(r.water_volume_m3)}
-                recipes={recipes}
-                digits={4}
-              />
+              <DataRow label="Volume moule V_moule" unit="L" getter={(r) => toLiters(r.container_volume_m3)} recipes={recipes} digits={4} />
+              <DataRow label="Volume total V_T" unit="L" getter={(r) => toLiters(r.total_backfill_volume_m3)} recipes={recipes} digits={4} bold />
+              <DataRow label="Volume solide V_s" unit="L" getter={(r) => toLiters(r.solid_volume_m3)} recipes={recipes} digits={4} />
+              <DataRow label="Volume vides V_v" unit="L" getter={(r) => toLiters(r.void_volume_m3)} recipes={recipes} digits={4} />
+              <DataRow label="Volume residu V_r" unit="L" getter={(r) => toLiters(r.residue_volume_m3)} recipes={recipes} digits={4} />
+              <DataRow label="Volume liant V_b" unit="L" getter={(r) => toLiters(r.binder_volume_m3)} recipes={recipes} digits={4} />
+              <DataRow label="Volume eau V_w" unit="L" getter={(r) => toLiters(r.water_volume_m3)} recipes={recipes} digits={4} />
             </tbody>
           </table>
         </div>
 
-        {/* â”€â”€ 6. Full Results / RÃ©sultats complets â”€â”€ */}
+        {/* ── 6. Resultats complets ── */}
         <div
           style={{
             border: `1px solid ${SECTIONS.mix.border}`,
@@ -1042,11 +1064,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             ...(isMaximized ? { gridColumn: "1 / -1" } : {}),
           }}
         >
-          <SectionHeader
-            title="Full Results / Resultats complets"
-            sub="masses et volumes detailles (style Excel)"
-            color={SECTIONS.mix}
-          />
+          <SectionHeader title="Resultats complets" sub="masses et volumes detailles" color={SECTIONS.mix} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead>
               <tr style={{ background: SECTIONS.mix.bg }}>
@@ -1054,78 +1072,16 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               </tr>
             </thead>
             <tbody>
-              <DataRow
-                label="Masse rejet sec totale M_r_sec_tot"
-                unit="kg"
-                getter={(r) => masseRejetSecTotaleKg(r)}
-                recipes={recipes}
-                digits={6}
-                bold
-              />
-              <DataRow
-                label="Masse solides totale M_s"
-                unit="kg"
-                getter={(r) => masseSolidesTotaleKg(r)}
-                recipes={recipes}
-                digits={6}
-                bold
-              />
-              <DataRow
-                label="Masse eau totale M_w"
-                unit="kg"
-                getter={(r) => r.components?.water_total_mass_kg}
-                recipes={recipes}
-                digits={6}
-              />
-              <DataRow
-                label="Masse remblai totale M_t"
-                unit="kg"
-                getter={(r) => masseRemblaiTotaleKg(r)}
-                recipes={recipes}
-                digits={6}
-              />
-              <DataRow
-                label="Masse eau dans residu M_w-res"
-                unit="kg"
-                getter={(r) => masseEauDansResidusKg(r)}
-                recipes={recipes}
-                digits={6}
-              />
-              <DataRow
-                label="Masse eau a ajouter / retirer M_w-aj"
-                unit="kg"
-                getter={(r) => r.components?.water_to_add_mass_kg}
-                recipes={recipes}
-                digits={6}
-              />
-              <DataRow
-                label="Masse remblai totale M_t"
-                unit="g"
-                getter={(r) => toGrams(masseRemblaiTotaleKg(r))}
-                recipes={recipes}
-                digits={2}
-              />
-              <DataRow
-                label="Volume air V_air"
-                unit="L"
-                getter={(r) => toLiters(volumeAirM3(r))}
-                recipes={recipes}
-                digits={4}
-              />
-              <DataRow
-                label="Cw calcule (depuis masses)"
-                unit="%"
-                getter={(r) => cwCalculePct(r)}
-                recipes={recipes}
-                digits={4}
-              />
-              <DataRow
-                label="Cv calcule (depuis volumes)"
-                unit="%"
-                getter={(r) => cvCalculePct(r)}
-                recipes={recipes}
-                digits={4}
-              />
+              <DataRow label="Masse rejet sec totale M_r_sec_tot" unit="kg" getter={(r) => masseRejetSecTotaleKg(r)} recipes={recipes} digits={4} bold />
+              <DataRow label="Masse solides totale M_s" unit="kg" getter={(r) => masseSolidesTotaleKg(r)} recipes={recipes} digits={4} bold />
+              <DataRow label="Masse eau totale M_w" unit="kg" getter={(r) => r.components?.water_total_mass_kg} recipes={recipes} digits={4} />
+              <DataRow label="Masse remblai totale M_t" unit="kg" getter={(r) => masseRemblaiTotaleKg(r)} recipes={recipes} digits={4} />
+              <DataRow label="Eau dans residu M_w-res" unit="kg" getter={(r) => masseEauDansResidusKg(r)} recipes={recipes} digits={4} />
+              <DataRow label="Eau a ajouter/retirer M_w-aj" unit="kg" getter={(r) => r.components?.water_to_add_mass_kg} recipes={recipes} digits={4} />
+              <DataRow label="Masse remblai totale M_t" unit="g" getter={(r) => toGrams(masseRemblaiTotaleKg(r))} recipes={recipes} digits={2} />
+              <DataRow label="Volume air V_air" unit="L" getter={(r) => toLiters(volumeAirM3(r))} recipes={recipes} digits={4} />
+              <DataRow label="Cw calcule (depuis masses)" unit="%" getter={(r) => cwCalculePct(r)} recipes={recipes} digits={4} />
+              <DataRow label="Cv calcule (depuis volumes)" unit="%" getter={(r) => cvCalculePct(r)} recipes={recipes} digits={4} />
             </tbody>
           </table>
         </div>
