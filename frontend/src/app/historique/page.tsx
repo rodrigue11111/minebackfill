@@ -154,8 +154,8 @@ export default function HistoriquePage() {
                       gridTemplateColumns: "2fr 100px 80px 100px 160px 120px",
                       gap: 8,
                       padding: "12px 16px",
-                      background: isExpanded ? "var(--primary-light)" : "#fff",
-                      border: `1px solid ${isExpanded ? "var(--primary-mid)" : "var(--card-border)"}`,
+                      background: isExpanded ? "#f8fafc" : "#fff",
+                      border: `1px solid ${isExpanded ? "#cbd5e1" : "#e2e8f0"}`,
                       borderRadius: isExpanded ? "8px 8px 0 0" : 8,
                       alignItems: "center",
                       cursor: "pointer",
@@ -176,9 +176,9 @@ export default function HistoriquePage() {
                       style={{
                         fontSize: 11.5,
                         fontWeight: 700,
-                        color: sr.category === "RPG" ? "#d97706" : "var(--primary)",
-                        background: sr.category === "RPG" ? "#fffbeb" : "var(--primary-light)",
-                        border: `1px solid ${sr.category === "RPG" ? "#fde68a" : "var(--primary-mid)"}`,
+                        color: "#374151",
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
                         borderRadius: 4,
                         padding: "2px 8px",
                         textAlign: "center",
@@ -202,10 +202,10 @@ export default function HistoriquePage() {
                           padding: "4px 10px",
                           fontSize: 11.5,
                           fontWeight: 600,
-                          border: "1px solid var(--primary-mid)",
+                          border: "1px solid #e2e8f0",
                           borderRadius: 5,
-                          background: "var(--primary-light)",
-                          color: "var(--primary)",
+                          background: "#f8fafc",
+                          color: "#374151",
                           cursor: "pointer",
                         }}
                       >
@@ -252,7 +252,7 @@ export default function HistoriquePage() {
                     <div
                       style={{
                         background: "#fff",
-                        border: "1px solid var(--primary-mid)",
+                        border: "1px solid #e2e8f0",
                         borderTop: "none",
                         borderRadius: "0 0 8px 8px",
                         padding: 16,
@@ -285,8 +285,8 @@ export default function HistoriquePage() {
                       {/* Recipe summary table */}
                       <table className="result-table" style={{ background: "#fff" }}>
                         <thead>
-                          <tr style={{ background: "var(--primary-light)" }}>
-                            <th style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)" }}>
+                          <tr style={{ background: "#f8fafc" }}>
+                            <th style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
                               Parametre
                             </th>
                             {sr.recipes.map((_: any, i: number) => (
@@ -297,7 +297,7 @@ export default function HistoriquePage() {
                                   textAlign: "right",
                                   fontSize: 11,
                                   fontWeight: 700,
-                                  color: ["#2563eb", "#16a34a", "#d97706", "#dc2626"][i],
+                                  color: "#374151",
                                 }}
                               >
                                 R{i + 1}

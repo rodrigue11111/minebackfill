@@ -65,72 +65,28 @@ const cvCalculePct = (r: RecetteAffichage) => {
   return (vs / vt) * 100;
 };
 
-/* ── Section colours ── */
-const SECTIONS = {
-  mix: {
-    bg: "#eff6ff",
-    border: "#bfdbfe",
-    headerBg: "#dbeafe",
-    headerText: "#1d4ed8",
-    accent: "#2563eb",
-  },
-  geo1: {
-    bg: "#f0fdf4",
-    border: "#bbf7d0",
-    headerBg: "#dcfce7",
-    headerText: "#15803d",
-    accent: "#16a34a",
-  },
-  geo2: {
-    bg: "#faf5ff",
-    border: "#e9d5ff",
-    headerBg: "#f3e8ff",
-    headerText: "#7c3aed",
-    accent: "#7c3aed",
-  },
-  geo3: {
-    bg: "#fffbeb",
-    border: "#fde68a",
-    headerBg: "#fef3c7",
-    headerText: "#b45309",
-    accent: "#d97706",
-  },
-  vols: {
-    bg: "#ecfeff",
-    border: "#a5f3fc",
-    headerBg: "#cffafe",
-    headerText: "#0e7490",
-    accent: "#0891b2",
-  },
-} as const;
+/* ── Neutral palette ── */
+const SECTION_BORDER = "#e2e8f0";
+const HEADER_BG = "#f8fafc";
+const HEADER_TEXT = "#374151";
 
-const RECIPE_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626"];
-
-function SectionHeader({
-  title,
-  sub,
-  color,
-}: {
-  title: string;
-  sub?: string;
-  color: (typeof SECTIONS)[keyof typeof SECTIONS];
-}) {
+function SectionHeader({ title, sub }: { title: string; sub?: string }) {
   return (
     <div
       style={{
-        background: color.headerBg,
-        borderBottom: `2px solid ${color.border}`,
+        background: HEADER_BG,
+        borderBottom: `1px solid ${SECTION_BORDER}`,
         padding: "10px 16px",
         display: "flex",
         alignItems: "baseline",
         gap: 10,
       }}
     >
-      <span style={{ fontSize: 13.5, fontWeight: 700, color: color.headerText }}>
+      <span style={{ fontSize: 13.5, fontWeight: 700, color: HEADER_TEXT }}>
         {title}
       </span>
       {sub && (
-        <span style={{ fontSize: 12, color: color.headerText, opacity: 0.6 }}>
+        <span style={{ fontSize: 12, color: "#94a3b8" }}>
           {sub}
         </span>
       )}
@@ -161,7 +117,7 @@ function RecipeHeaders({ activeCount }: { activeCount: number }) {
             textAlign: "right",
             fontSize: 13,
             fontWeight: 800,
-            color: RECIPE_COLORS[i],
+            color: HEADER_TEXT,
             whiteSpace: "nowrap",
           }}
         >
@@ -215,7 +171,7 @@ function DataRow({
             fontSize: bold ? 15.5 : 14.5,
             fontVariantNumeric: "tabular-nums",
             fontWeight: bold ? 700 : 500,
-            color: bold ? RECIPE_COLORS[i] : "#0f172a",
+            color: "#0f172a",
             letterSpacing: "0.01em",
             borderBottom: "1px solid #f1f5f9",
           }}
@@ -641,17 +597,17 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           <div
             key={i}
             style={{
-              border: `2px solid ${RECIPE_COLORS[i]}`,
+              border: `1px solid ${SECTION_BORDER}`,
               borderRadius: 8,
               padding: "7px 14px",
-              background: `${RECIPE_COLORS[i]}10`,
+              background: "#fff",
             }}
           >
             <div
               style={{
                 fontSize: 11,
                 fontWeight: 700,
-                color: RECIPE_COLORS[i],
+                color: "#64748b",
                 textTransform: "uppercase",
                 letterSpacing: "0.05em",
               }}
@@ -676,10 +632,10 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               alignItems: "center",
               gap: 6,
               padding: "7px 14px",
-              border: "1px solid var(--primary)",
+              border: `1px solid ${SECTION_BORDER}`,
               borderRadius: 7,
-              background: "var(--primary-light)",
-              color: "var(--primary)",
+              background: "#fff",
+              color: HEADER_TEXT,
               fontSize: 12.5,
               fontWeight: 600,
               cursor: "pointer",
@@ -699,10 +655,10 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               alignItems: "center",
               gap: 6,
               padding: "7px 14px",
-              border: "1px solid #16a34a",
+              border: `1px solid ${SECTION_BORDER}`,
               borderRadius: 7,
-              background: "#f0fdf4",
-              color: "#15803d",
+              background: "#fff",
+              color: HEADER_TEXT,
               fontSize: 12.5,
               fontWeight: 600,
               cursor: "pointer",
@@ -724,7 +680,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                 right: 0,
                 width: 280,
                 background: "#fff",
-                border: "1px solid var(--border)",
+                border: `1px solid ${SECTION_BORDER}`,
                 borderRadius: 8,
                 padding: 14,
                 boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
@@ -733,14 +689,14 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             >
               {saveSuccess ? (
                 <div style={{ textAlign: "center", padding: "8px 0" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--success)", marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: HEADER_TEXT, marginBottom: 4 }}>
                     Sauvegarde effectuee
                   </div>
                   <button
                     onClick={() => setShowSaveDialog(false)}
                     style={{
                       fontSize: 12,
-                      color: "var(--muted-foreground)",
+                      color: "#64748b",
                       background: "none",
                       border: "none",
                       cursor: "pointer",
@@ -752,7 +708,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                 </div>
               ) : (
                 <>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: HEADER_TEXT, marginBottom: 6 }}>
                     Nom de la sauvegarde
                   </label>
                   <input
@@ -807,136 +763,28 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         }
       >
         {/* ── 1. Donnees du melange ── */}
-        <div
-          style={{
-            border: `1px solid ${SECTIONS.mix.border}`,
-            borderRadius: 8,
-            overflow: "hidden",
-            background: SECTIONS.mix.bg,
-          }}
-        >
-          <SectionHeader
-            title={isEssai ? "Donnees du melange ajuste" : "Donnees du melange"}
-            sub="masses en kg"
-            color={SECTIONS.mix}
-          />
+        <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+          <SectionHeader title={isEssai ? "Donnees du melange ajuste" : "Donnees du melange"} sub="masses en kg" />
           <table className="result-table" style={{ background: "#fff" }}>
-            <thead>
-              <tr style={{ background: SECTIONS.mix.bg }}>
-                <RecipeHeaders activeCount={recipes.length} />
-              </tr>
-            </thead>
+            <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
-              <DataRow
-                label={isEssai ? "Bw% cible" : "Liant Bw%"}
-                unit="%"
-                getter={(r) => r.bw_mass_pct}
-                recipes={recipes}
-                digits={2}
-                bold
-              />
-              <DataRow
-                label="Liant Bv%"
-                unit="% vol."
-                getter={(r) => r.bv_vol_pct}
-                recipes={recipes}
-                digits={2}
-              />
-              <DataRow
-                label={isEssai ? "Residu sec (tot.)" : "Residu sec Mr"}
-                unit="kg"
-                getter={(r) => r.components?.residue_dry_mass_kg}
-                recipes={recipes}
-                bold
-              />
-              {isRpg && (
-                <DataRow
-                  label="Agregat sec Ma"
-                  unit="kg"
-                  getter={(r) => r.components?.aggregate_dry_mass_kg}
-                  recipes={recipes}
-                  bold
-                />
-              )}
-              <DataRow
-                label={isEssai ? "Liant (tot.)" : "Liant Mb"}
-                unit="kg"
-                getter={(r) => r.components?.binder_total_mass_kg}
-                recipes={recipes}
-                bold
-              />
-              <DataRow
-                label="Residu humide Mr-hum"
-                unit="kg"
-                getter={(r) => r.components?.residue_wet_mass_kg}
-                recipes={recipes}
-              />
-              <DataRow
-                label="Eau totale Mw"
-                unit="kg"
-                getter={(r) => r.components?.water_total_mass_kg}
-                recipes={recipes}
-              />
-              <DataRow
-                label="Eau a ajouter Mw-aj"
-                unit="kg"
-                getter={(r) => r.components?.water_to_add_mass_kg}
-                recipes={recipes}
-              />
-              {(general.binder_count ?? 1) >= 1 && (
-                <DataRow
-                  label={`${binderName(1)} Mc1`}
-                  unit="kg"
-                  getter={(r) => r.components?.binder_c1_mass_kg}
-                  recipes={recipes}
-                />
-              )}
-              {(general.binder_count ?? 1) >= 2 && (
-                <DataRow
-                  label={`${binderName(2)} Mc2`}
-                  unit="kg"
-                  getter={(r) => r.components?.binder_c2_mass_kg}
-                  recipes={recipes}
-                />
-              )}
-              {(general.binder_count ?? 1) >= 3 && (
-                <DataRow
-                  label={`${binderName(3)} Mc3`}
-                  unit="kg"
-                  getter={(r) => r.components?.binder_c3_mass_kg}
-                  recipes={recipes}
-                />
-              )}
+              <DataRow label={isEssai ? "Bw% cible" : "Liant Bw%"} unit="%" getter={(r) => r.bw_mass_pct} recipes={recipes} digits={2} bold />
+              <DataRow label="Liant Bv%" unit="% vol." getter={(r) => r.bv_vol_pct} recipes={recipes} digits={2} />
+              <DataRow label={isEssai ? "Residu sec (tot.)" : "Residu sec Mr"} unit="kg" getter={(r) => r.components?.residue_dry_mass_kg} recipes={recipes} bold />
+              {isRpg && <DataRow label="Agregat sec Ma" unit="kg" getter={(r) => r.components?.aggregate_dry_mass_kg} recipes={recipes} bold />}
+              <DataRow label={isEssai ? "Liant (tot.)" : "Liant Mb"} unit="kg" getter={(r) => r.components?.binder_total_mass_kg} recipes={recipes} bold />
+              <DataRow label="Residu humide Mr-hum" unit="kg" getter={(r) => r.components?.residue_wet_mass_kg} recipes={recipes} />
+              <DataRow label="Eau totale Mw" unit="kg" getter={(r) => r.components?.water_total_mass_kg} recipes={recipes} />
+              <DataRow label="Eau a ajouter Mw-aj" unit="kg" getter={(r) => r.components?.water_to_add_mass_kg} recipes={recipes} />
+              {(general.binder_count ?? 1) >= 1 && <DataRow label={`${binderName(1)} Mc1`} unit="kg" getter={(r) => r.components?.binder_c1_mass_kg} recipes={recipes} />}
+              {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} Mc2`} unit="kg" getter={(r) => r.components?.binder_c2_mass_kg} recipes={recipes} />}
+              {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} Mc3`} unit="kg" getter={(r) => r.components?.binder_c3_mass_kg} recipes={recipes} />}
               {isEssai && (
                 <>
-                  <DataRow
-                    label="Liant a rajouter Mb-ad"
-                    unit="kg"
-                    getter={(r) => r.components?.binder_to_add_mass_kg}
-                    recipes={recipes}
-                  />
-                  <DataRow
-                    label={`${binderName(1)} — a rajouter`}
-                    unit="kg"
-                    getter={(r) => r.components?.binder_c1_to_add_mass_kg}
-                    recipes={recipes}
-                  />
-                  {(general.binder_count ?? 1) >= 2 && (
-                    <DataRow
-                      label={`${binderName(2)} — a rajouter`}
-                      unit="kg"
-                      getter={(r) => r.components?.binder_c2_to_add_mass_kg}
-                      recipes={recipes}
-                    />
-                  )}
-                  {(general.binder_count ?? 1) >= 3 && (
-                    <DataRow
-                      label={`${binderName(3)} — a rajouter`}
-                      unit="kg"
-                      getter={(r) => r.components?.binder_c3_to_add_mass_kg}
-                      recipes={recipes}
-                    />
-                  )}
+                  <DataRow label="Liant a rajouter Mb-ad" unit="kg" getter={(r) => r.components?.binder_to_add_mass_kg} recipes={recipes} />
+                  <DataRow label={`${binderName(1)} — a rajouter`} unit="kg" getter={(r) => r.components?.binder_c1_to_add_mass_kg} recipes={recipes} />
+                  {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} — a rajouter`} unit="kg" getter={(r) => r.components?.binder_c2_to_add_mass_kg} recipes={recipes} />}
+                  {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} — a rajouter`} unit="kg" getter={(r) => r.components?.binder_c3_to_add_mass_kg} recipes={recipes} />}
                 </>
               )}
             </tbody>
@@ -944,25 +792,10 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         </div>
 
         {/* ── 2. Geotechnique ── */}
-        <div
-          style={{
-            border: `1px solid ${SECTIONS.geo1.border}`,
-            borderRadius: 8,
-            overflow: "hidden",
-            background: SECTIONS.geo1.bg,
-          }}
-        >
-          <SectionHeader
-            title="Parametres geotechniques"
-            sub="pourcentages & rapports"
-            color={SECTIONS.geo1}
-          />
+        <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+          <SectionHeader title="Parametres geotechniques" sub="pourcentages & rapports" />
           <table className="result-table" style={{ background: "#fff" }}>
-            <thead>
-              <tr style={{ background: SECTIONS.geo1.bg }}>
-                <RecipeHeaders activeCount={recipes.length} />
-              </tr>
-            </thead>
+            <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
               <DataRow label="Liant Bw%" unit="%" getter={(r) => r.bw_mass_pct} recipes={recipes} digits={2} bold />
               <DataRow label="Solides Cw%" unit="% mass." getter={(r) => r.solids_mass_pct} recipes={recipes} digits={2} />
@@ -975,21 +808,10 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         </div>
 
         {/* ── 3. Masses volumiques ── */}
-        <div
-          style={{
-            border: `1px solid ${SECTIONS.geo2.border}`,
-            borderRadius: 8,
-            overflow: "hidden",
-            background: SECTIONS.geo2.bg,
-          }}
-        >
-          <SectionHeader title="Masses volumiques" sub="densites et poids volumiques" color={SECTIONS.geo2} />
+        <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+          <SectionHeader title="Masses volumiques" sub="densites et poids volumiques" />
           <table className="result-table" style={{ background: "#fff" }}>
-            <thead>
-              <tr style={{ background: SECTIONS.geo2.bg }}>
-                <RecipeHeaders activeCount={recipes.length} />
-              </tr>
-            </thead>
+            <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
               <DataRow label="rho humide rho_h" unit="g/cm3" getter={(r) => toGcm3(r.bulk_density_kg_m3)} recipes={recipes} bold />
               <DataRow label="rho seche rho_d" unit="g/cm3" getter={(r) => toGcm3(r.dry_density_kg_m3)} recipes={recipes} bold />
@@ -1000,21 +822,10 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         </div>
 
         {/* ── 4. Indices des vides & structure ── */}
-        <div
-          style={{
-            border: `1px solid ${SECTIONS.geo3.border}`,
-            borderRadius: 8,
-            overflow: "hidden",
-            background: SECTIONS.geo3.bg,
-          }}
-        >
-          <SectionHeader title="Indices des vides & structure" sub="indice des vides, porosite, Gs" color={SECTIONS.geo3} />
+        <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+          <SectionHeader title="Indices des vides & structure" sub="indice des vides, porosite, Gs" />
           <table className="result-table" style={{ background: "#fff" }}>
-            <thead>
-              <tr style={{ background: SECTIONS.geo3.bg }}>
-                <RecipeHeaders activeCount={recipes.length} />
-              </tr>
-            </thead>
+            <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
               <DataRow label="Indice des vides e" getter={(r) => r.void_ratio} recipes={recipes} bold />
               <DataRow label="Porosite n" getter={(r) => r.porosity} recipes={recipes} />
@@ -1026,22 +837,10 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         </div>
 
         {/* ── 5. Volumes ── */}
-        <div
-          style={{
-            border: `1px solid ${SECTIONS.vols.border}`,
-            borderRadius: 8,
-            overflow: "hidden",
-            background: SECTIONS.vols.bg,
-            ...(isMaximized ? { gridColumn: "1 / -1" } : {}),
-          }}
-        >
-          <SectionHeader title="Volumes" sub="en litres (L)" color={SECTIONS.vols} />
+        <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff", ...(isMaximized ? { gridColumn: "1 / -1" } : {}) }}>
+          <SectionHeader title="Volumes" sub="en litres (L)" />
           <table className="result-table" style={{ background: "#fff" }}>
-            <thead>
-              <tr style={{ background: SECTIONS.vols.bg }}>
-                <RecipeHeaders activeCount={recipes.length} />
-              </tr>
-            </thead>
+            <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
               <DataRow label="Volume moule V_moule" unit="L" getter={(r) => toLiters(r.container_volume_m3)} recipes={recipes} digits={4} />
               <DataRow label="Volume total V_T" unit="L" getter={(r) => toLiters(r.total_backfill_volume_m3)} recipes={recipes} digits={4} bold />
@@ -1055,22 +854,10 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         </div>
 
         {/* ── 6. Resultats complets ── */}
-        <div
-          style={{
-            border: `1px solid ${SECTIONS.mix.border}`,
-            borderRadius: 8,
-            overflow: "hidden",
-            background: "#f8fafc",
-            ...(isMaximized ? { gridColumn: "1 / -1" } : {}),
-          }}
-        >
-          <SectionHeader title="Resultats complets" sub="masses et volumes detailles" color={SECTIONS.mix} />
+        <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff", ...(isMaximized ? { gridColumn: "1 / -1" } : {}) }}>
+          <SectionHeader title="Resultats complets" sub="masses et volumes detailles" />
           <table className="result-table" style={{ background: "#fff" }}>
-            <thead>
-              <tr style={{ background: SECTIONS.mix.bg }}>
-                <RecipeHeaders activeCount={recipes.length} />
-              </tr>
-            </thead>
+            <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
               <DataRow label="Masse rejet sec totale M_r_sec_tot" unit="kg" getter={(r) => masseRejetSecTotaleKg(r)} recipes={recipes} digits={4} bold />
               <DataRow label="Masse solides totale M_s" unit="kg" getter={(r) => masseSolidesTotaleKg(r)} recipes={recipes} digits={4} bold />

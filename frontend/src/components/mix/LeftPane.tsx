@@ -29,7 +29,7 @@ const SECTION_LABEL: React.CSSProperties = {
 };
 
 export default function LeftPane() {
-  const { category, setCategory, method, setMethod, loadGeneral, general } = useStore();
+  const { category, setCategory, method, setMethod, loadGeneral, general, fillTestData } = useStore() as any;
 
   useEffect(() => {
     loadGeneral();
@@ -228,6 +228,25 @@ export default function LeftPane() {
           </p>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <button
+            type="button"
+            onClick={fillTestData}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "6px 12px",
+              borderRadius: 6,
+              border: "1px dashed var(--border)",
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+              background: "#f8fafc",
+              fontWeight: 500,
+              cursor: "pointer",
+              textAlign: "center",
+            }}
+          >
+            Valeurs de test
+          </button>
           <Link
             href="/"
             style={{

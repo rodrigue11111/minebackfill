@@ -21,7 +21,7 @@ const LABEL: React.CSSProperties = {
 
 export default function GeneralInfoPage() {
   const router = useRouter();
-  const { general, setGeneral, catalogue_liants } = useStore() as any;
+  const { general, setGeneral, catalogue_liants, fillTestData } = useStore() as any;
 
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
@@ -531,6 +531,14 @@ export default function GeneralInfoPage() {
               paddingTop: 4,
             }}
           >
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => { fillTestData(); router.push("/mix"); }}
+              style={{ padding: "10px 20px", fontSize: 14 }}
+            >
+              Valeurs de test
+            </button>
             <button type="submit" className="btn-primary" style={{ padding: "10px 28px", fontSize: 14 }}>
               Enregistrer et continuer
             </button>
