@@ -15,8 +15,9 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export default function IndustriePage() {
-  const { general, loadBinderPrices, loadProductionLog, loadUnits } = useStore() as any;
+  const { general, fillTestData, loadBinderPrices, loadProductionLog, loadUnits } = useStore() as any;
   const [activeTab, setActiveTab] = useState<Tab>("params");
+  const [testLoaded, setTestLoaded] = useState(false);
 
   useEffect(() => {
     loadBinderPrices();
@@ -51,6 +52,29 @@ export default function IndustriePage() {
                 {general.operator_name ? ` — ${general.operator_name}` : ""}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  fillTestData();
+                  loadBinderPrices();
+                  setTestLoaded(true);
+                  setTimeout(() => setTestLoaded(false), 2000);
+                } catch (e) {
+                  console.error("[fillTestData] industrie error:", e);
+                }
+              }}
+              style={{
+                padding: "8px 18px", borderRadius: 6,
+                border: "1px solid rgba(255,255,255,0.25)",
+                background: testLoaded ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.08)",
+                color: testLoaded ? "#86efac" : "rgba(255,255,255,0.7)",
+                fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                transition: "all 0.2s", whiteSpace: "nowrap",
+              }}
+            >
+              {testLoaded ? "Valeurs chargees" : "Valeurs de test"}
+            </button>
           </div>
         </div>
       </div>

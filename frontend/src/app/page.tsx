@@ -554,7 +554,7 @@ export default function GeneralInfoPage() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => { fillTestData(); router.push("/mix"); }}
+              onClick={() => { try { fillTestData(); } catch (e) { console.error("[fillTestData] error:", e); } router.push("/mix"); }}
               style={{ padding: "10px 20px", fontSize: 14 }}
             >
               Valeurs de test
