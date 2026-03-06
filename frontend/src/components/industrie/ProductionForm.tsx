@@ -136,7 +136,11 @@ export default function ProductionForm() {
 
       setIndustrieResults(costResults);
     } catch (e: any) {
-      setError(e.message || "Erreur inconnue");
+      if (e instanceof TypeError) {
+        setError("Impossible de joindre le serveur. Verifiez que le backend est demarre.");
+      } else {
+        setError(e.message || "Erreur inconnue");
+      }
     } finally {
       setLoading(false);
     }

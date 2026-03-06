@@ -95,6 +95,27 @@ def _resolve_solver_constants(constants: Optional[SolverConstants]) -> dict:
         "slump_model_offset": float(constants.slump_model_offset),
     }
 
+
+def _ensure_sequence_length(
+    *,
+    name: str,
+    values: Optional[list],
+    num_recipes: int,
+    required: bool = True,
+) -> None:
+    """
+    Validate that a sequence contains enough values for `num_recipes`.
+    """
+    if values is None:
+        if required:
+            raise ValueError(f"{name} est requis.")
+        return
+    if len(values) < num_recipes:
+        raise ValueError(
+            f"{name} doit contenir au moins {num_recipes} valeur(s). "
+            f"Recu: {len(values)}."
+        )
+
 # ======================================================================
 #  GEOMETRY UTILITIES
 # ======================================================================
@@ -468,6 +489,12 @@ def solve_rpc_cw(inputs: RpcCwInputs, debug: bool = False) -> MixDesignResult:
     """
     # 1) Binder system check
     inputs.binder_system.validate_total_fraction()
+    _ensure_sequence_length(
+        name="binder_mass_pct_recipes",
+        values=inputs.binder_mass_pct_recipes,
+        num_recipes=inputs.num_recipes,
+        required=True,
+    )
     constantes = _resolve_solver_constants(inputs.constants)
 
     # 2) Container volume
@@ -504,18 +531,6 @@ def solve_rpc_cw(inputs: RpcCwInputs, debug: bool = False) -> MixDesignResult:
         general=inputs.general,
         recipes=recipes,
     )
-
-
-# ======================================================================
-#  PLACEHOLDERS FOR WB / SLUMP / ESSAI-ERREUR
-# ======================================================================
-
-def solve_rpc_wb(inputs: RpcWbInputs) -> MixDesignResult:
-    raise NotImplementedError("solve_rpc_wb is not implemented yet.")
-
-
-def solve_rpc_slump(inputs: RpcSlumpInputs) -> MixDesignResult:
-    raise NotImplementedError("solve_rpc_slump is not implemented yet.")
 
 
 def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
@@ -563,6 +578,12 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
         base_result = solve_rpc_wb(base_inputs_wb)
     else:
         raise ValueError("base_method doit Ãªtre CW ou WB")
+
+    if len(base_result.recipes) < inputs.num_recipes:
+        raise ValueError(
+            "Le nombre de recettes calculees dans la methode de base est insuffisant "
+            f"({len(base_result.recipes)} pour {inputs.num_recipes} demandees)."
+        )
 
     # ------------------------------------------------------------------
     # 2) PrÃ©paration commune
@@ -894,18 +915,25 @@ def solve_rpc_wb(inputs: RpcWbInputs) -> MixDesignResult:
     Solver pour la mÃ©thode W/C (BW% + W/C imposÃ©).
     """
     inputs.binder_system.validate_total_fraction()
+    _ensure_sequence_length(
+        name="binder_mass_pct_recipes",
+        values=inputs.binder_mass_pct_recipes,
+        num_recipes=inputs.num_recipes,
+        required=True,
+    )
+    _ensure_sequence_length(
+        name="wc_ratio_recipes",
+        values=inputs.wc_ratio_recipes,
+        num_recipes=inputs.num_recipes,
+        required=True,
+    )
     constantes = _resolve_solver_constants(inputs.constants)
     Vc = compute_container_volume_m3(inputs.general)
 
     recipes: List[MixState] = []
     for i in range(inputs.num_recipes):
         bw_pct = inputs.binder_mass_pct_recipes[i]
-        # si wc_ratio non fourni, fallback simple: 0 -> 0.0
-        wc_ratio = (
-            inputs.wc_ratio_recipes[i]
-            if inputs.wc_ratio_recipes is not None and len(inputs.wc_ratio_recipes) > i
-            else 0.0
-        )
+        wc_ratio = inputs.wc_ratio_recipes[i]
         state_i = _solve_single_wb_recipe(
             Sr_pct=inputs.saturation_pct,
             residue=inputs.residue,
@@ -959,6 +987,12 @@ def solve_rpc_slump(inputs: RpcSlumpInputs) -> MixDesignResult:
       3) RAcutilise le solveur Cw sur chaque recette (mA"mes masses/volumes que Cw)
     """
     inputs.binder_system.validate_total_fraction()
+    _ensure_sequence_length(
+        name="binder_mass_pct_recipes",
+        values=inputs.binder_mass_pct_recipes,
+        num_recipes=inputs.num_recipes,
+        required=True,
+    )
     constantes = _resolve_solver_constants(inputs.constants)
 
     # Volume d'un moule (mA3)
@@ -1005,4 +1039,3 @@ def solve_rpc_slump(inputs: RpcSlumpInputs) -> MixDesignResult:
         general=inputs.general,
         recipes=recipes,
     )
-

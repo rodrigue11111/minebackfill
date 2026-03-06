@@ -82,10 +82,18 @@ export default function RpgCwForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`Erreur API (${res.status})`);
-      setRpgCwResult(await res.json());
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const detail = typeof data?.detail === "string" ? data.detail : `Erreur API (${res.status})`;
+        throw new Error(detail);
+      }
+      setRpgCwResult(data);
     } catch (err: any) {
-      setError(err.message || "Erreur inconnue");
+      if (err instanceof TypeError) {
+        setError("Impossible de joindre le serveur. Verifiez que le backend est demarre.");
+      } else {
+        setError(err.message || "Erreur inconnue");
+      }
     } finally {
       setLoading(false);
     }

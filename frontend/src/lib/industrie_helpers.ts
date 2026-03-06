@@ -35,7 +35,7 @@ export function buildCwPayload(
     containers_per_recipe: params.desired_qty || 1,
     safety_factor: params.safety_factor || 1,
     saturation_pct: params.saturation_pct || 100,
-    solids_mass_pct: 78, // placeholder — will be overridden by Bw%
+    solids_mass_pct: params.solids_mass_pct || 78,
     binder_mass_pct_recipes: [bwPct],
   };
 

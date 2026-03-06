@@ -120,10 +120,18 @@ export default function EssaiForm() {
       };
 
       const res = await fetch(`${API}/rpc/essai`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error(`Erreur API (${res.status})`);
-      setEssaiResult(await res.json() as any);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const detail = typeof data?.detail === "string" ? data.detail : `Erreur API (${res.status})`;
+        throw new Error(detail);
+      }
+      setEssaiResult(data as any);
     } catch (e: any) {
-      setError(e.message || "Erreur inconnue");
+      if (e instanceof TypeError) {
+        setError("Impossible de joindre le serveur. Verifiez que le backend est demarre.");
+      } else {
+        setError(e.message || "Erreur inconnue");
+      }
     } finally {
       setLoading(false);
     }

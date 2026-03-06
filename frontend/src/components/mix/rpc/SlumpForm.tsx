@@ -78,10 +78,18 @@ export default function SlumpForm() {
         binder_mass_pct_recipes: (slump.binder_pct || []).slice(0, slump.num_recipes),
       };
       const res = await fetch(`${API}/rpc/slump`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error(`Erreur API (${res.status})`);
-      setSlumpResult(await res.json() as any);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const detail = typeof data?.detail === "string" ? data.detail : `Erreur API (${res.status})`;
+        throw new Error(detail);
+      }
+      setSlumpResult(data as any);
     } catch (err: any) {
-      setError(err.message || "Erreur inconnue");
+      if (err instanceof TypeError) {
+        setError("Impossible de joindre le serveur. Verifiez que le backend est demarre.");
+      } else {
+        setError(err.message || "Erreur inconnue");
+      }
     } finally {
       setLoading(false);
     }

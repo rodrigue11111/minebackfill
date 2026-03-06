@@ -27,6 +27,7 @@ else:
         "http://127.0.0.1:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3001",
+        "https://frontend-eight-xi-64.vercel.app",
     ]
 
 allow_all_origins = "*" in origins

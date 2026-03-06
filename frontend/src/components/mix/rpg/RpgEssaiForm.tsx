@@ -141,10 +141,18 @@ export default function RpgEssaiForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`Erreur API (${res.status})`);
-      setRpgEssaiResult(await res.json());
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const detail = typeof data?.detail === "string" ? data.detail : `Erreur API (${res.status})`;
+        throw new Error(detail);
+      }
+      setRpgEssaiResult(data);
     } catch (e: any) {
-      setError(e.message || "Erreur inconnue");
+      if (e instanceof TypeError) {
+        setError("Impossible de joindre le serveur. Verifiez que le backend est demarre.");
+      } else {
+        setError(e.message || "Erreur inconnue");
+      }
     } finally {
       setLoading(false);
     }
