@@ -42,6 +42,13 @@ from .rpc_solver import (
     effective_binder_specific_gravity,
     _resolve_solver_constants,
 )
+from .mix_pipeline import (
+    solve_recipe,
+    apply_essai_adjustments,
+    gs_backfill_eff,
+    gs_nonbinder_eff,
+    cw_from_wc,
+)
 
 # ======================================================================
 #  PAF CORE FUNCTIONS  (direct translation from C#/VB.NET)
@@ -64,11 +71,7 @@ def _gs_paf(
     When A_m = 0 this reduces to the standard RPC formula:
         Gs_PAF = (1 + Bw/100) / (1/Gs_res + (Bw/100)/Gs_liant)
     """
-    Bw_frac = Bw_pct / 100.0
-    denom = A_m / Gs_agr + (1.0 - A_m) / Gs_res + Bw_frac / Gs_liant
-    if denom <= 0.0:
-        return 0.0
-    return (1.0 + Bw_frac) / denom
+    return gs_backfill_eff(Gs_res, A_m, Gs_agr, Bw_pct / 100.0, Gs_liant)
 
 
 def _rho_bulk_paf(Cw_pct: float, Gs_PAF: float, rho_eau: float) -> float:
@@ -163,102 +166,66 @@ def _solve_single_rpg_cw_recipe(
     """
     Sr = max(Sr_pct / 100.0, 1e-9)
 
-    # ── 1. Gs_PAF ──────────────────────────────────────────────────────
-    Gs_PAF = _gs_paf(A_m, Gs_agr, Gs_res, Gs_liant, Bw_pct)
+    # Pipeline Intra 2017 — identique à la feuille du professeur à Sr = 100 % ;
+    # Sr < 100 % est la généralisation cohérente (Ms = rho_d * V_T, e = w*Gs/Sr).
+    q = solve_recipe(
+        cw_frac=Cw_pct / 100.0,
+        sr_frac=Sr,
+        bw_frac=Bw_pct / 100.0,
+        xg_frac=A_m,
+        gs_r=Gs_res,
+        gs_g=Gs_agr,
+        gs_binder=Gs_liant,
+        w0_frac=w0_pct / 100.0,
+        v_total_m3=V_T,
+        water_density=water_density,
+    )
 
-    # ── 2. Bulk density ─────────────────────────────────────────────────
-    rho_h = _rho_bulk_paf(Cw_pct, Gs_PAF, water_density)
-
-    # ── 3. Total mass ───────────────────────────────────────────────────
-    MT_kg = rho_h * V_T  # kg (rho_h in kg/m³, V_T in m³)
-
-    # ── 4. Water content and geotechnical parameters ────────────────────
-    Cw_frac = Cw_pct / 100.0
-    w = (1.0 / Cw_frac - 1.0) if Cw_frac > 0 else 0.0  # dimensionless
-
-    e0 = w * Gs_PAF / Sr
-    n  = e0 / (1.0 + e0) if e0 > -1.0 else 0.0
-    Cv = 1.0 / (1.0 + e0) if e0 > -1.0 else 0.0
-
-    rho_d = Gs_PAF * water_density / (1.0 + e0) if e0 > -1.0 else 0.0
-    # double-check: rho_h ≈ rho_d * (1 + w)
-    rho_h_check = rho_d * (1.0 + w)
-
-    # ── 5. Component masses ─────────────────────────────────────────────
-    masses = _masses_paf(MT_kg, A_m, Cw_pct, Bw_pct, w0_pct)
-    Mr_sec = masses["Mr_sec"]
-    Ma_sec = masses["Ma_sec"]
-    Mb     = masses["Mb"]
-    Mw     = masses["Mw"]
-    Mr_hum = masses["Mr_hum"]
-    Mw_add = masses["Mw_add"]
-
-    # ── 6. Per-component binder masses ─────────────────────────────────
     def binder_split(idx: int) -> float:
         if idx >= len(binder_system.components):
             return 0.0
-        return Mb * binder_system.components[idx].mass_fraction
-
-    Mc1 = binder_split(0)
-    Mc2 = binder_split(1)
-    Mc3 = binder_split(2)
-
-    # ── 7. Volumetric binder ratio (Bv) ────────────────────────────────
-    Bv = 0.01 * Bw_pct * Gs_res / Gs_liant  # same formula as RPC
-
-    # ── 8. W/C ratio ───────────────────────────────────────────────────
-    wc_ratio = Mw / Mb if Mb > 0 else 0.0
-
-    # ── 9. Theta (volumetric water content) ────────────────────────────
-    theta = n * Sr
-
-    # ── 10. Unit weights ────────────────────────────────────────────────
-    bulk_uw  = rho_h_check * gravity / 1000.0  # kN/m³
-    dry_uw   = rho_d * gravity / 1000.0
-
-    # ── 11. Volumes ─────────────────────────────────────────────────────
-    V_s = Cv * V_T
-    V_v = V_T - V_s
-    V_r = V_s                              # convention C# : Vr = Vs
-    V_b = Mb / (Gs_liant * water_density)  # volume liant
-    V_w = Mw / water_density               # volume eau
+        return q.mb * binder_system.components[idx].mass_fraction
 
     components = MixComponentMass(
-        residue_dry_mass_kg   = Mr_sec,
-        residue_wet_mass_kg   = Mr_hum,
-        aggregate_dry_mass_kg = Ma_sec,
-        binder_total_mass_kg  = Mb,
-        binder_c1_mass_kg     = Mc1,
-        binder_c2_mass_kg     = Mc2,
-        binder_c3_mass_kg     = Mc3,
-        water_total_mass_kg   = Mw,
-        water_to_add_mass_kg  = Mw_add,
+        residue_dry_mass_kg   = q.mr_sec,
+        residue_wet_mass_kg   = q.mr_hum,
+        aggregate_dry_mass_kg = q.mg_sec,
+        binder_total_mass_kg  = q.mb,
+        binder_c1_mass_kg     = binder_split(0),
+        binder_c2_mass_kg     = binder_split(1),
+        binder_c3_mass_kg     = binder_split(2),
+        water_total_mass_kg   = q.mw_total,
+        water_to_add_mass_kg  = q.mw_to_add,
     )
 
     return MixState(
-        bulk_density_kg_m3      = rho_h_check,
-        dry_density_kg_m3       = rho_d,
+        bulk_density_kg_m3      = q.rho_h,
+        dry_density_kg_m3       = q.rho_d,
         solids_mass_pct         = Cw_pct,
         saturation_pct          = Sr_pct,
-        wc_ratio                = wc_ratio,
+        wc_ratio                = q.wc,
         bw_mass_pct             = Bw_pct,
-        bv_vol_pct              = Bv * 100.0,
-        cv_vol_pct              = Cv * 100.0,
-        w_mass_pct              = w * 100.0,
-        void_ratio              = e0,
-        porosity                = n,
-        theta_pct               = theta * 100.0,
+        bv_vol_pct              = q.bv * 100.0,
+        cv_vol_pct              = q.cv * 100.0,
+        w_mass_pct              = q.w * 100.0,
+        void_ratio              = q.e,
+        porosity                = q.n,
+        theta_pct               = q.theta * 100.0,
         gs_binder               = Gs_binder,
-        gs_backfill             = Gs_PAF,
-        bulk_unit_weight_kN_m3  = bulk_uw,
-        dry_unit_weight_kN_m3   = dry_uw,
+        gs_backfill             = q.gs_backfill,
+        bulk_unit_weight_kN_m3  = q.rho_h * gravity / 1000.0,
+        dry_unit_weight_kN_m3   = q.rho_d * gravity / 1000.0,
         container_volume_m3     = container_volume_m3,
         total_backfill_volume_m3= V_T,
-        residue_volume_m3       = V_r,
-        binder_volume_m3        = V_b,
-        water_volume_m3         = V_w,
-        solid_volume_m3         = V_s,
-        void_volume_m3          = V_v,
+        residue_volume_m3       = q.vr,
+        binder_volume_m3        = q.vb,
+        water_volume_m3         = q.vw,
+        solid_volume_m3         = q.vs,
+        void_volume_m3          = q.vv,
+        aggregate_volume_m3     = q.vg,
+        aggregate_vol_pct_of_residue=(q.vg / (q.vg + q.vr) * 100.0) if (q.vg + q.vr) > 0 else 0.0,
+        aggregate_vol_pct_of_backfill=(q.vg / V_T * 100.0) if V_T > 0 else 0.0,
+        aggregate_mass_pct      = (q.mg_sec / (q.mg_sec + q.mr_sec) * 100.0) if (q.mg_sec + q.mr_sec) > 0 else 0.0,
         components              = components,
     )
 
@@ -289,7 +256,7 @@ def _solve_single_rpg_wb_recipe(
     Then delegate to the Cw solver.
     """
     Bw_frac = Bw_pct / 100.0
-    Cw_frac = (1.0 + Bw_frac) / (1.0 + Bw_frac + wc_ratio * Bw_frac) if (Bw_frac > 0 and wc_ratio > 0) else 0.0
+    Cw_frac = cw_from_wc(Bw_frac, wc_ratio)
     Cw_pct  = Cw_frac * 100.0
 
     return _solve_single_rpg_cw_recipe(
@@ -493,142 +460,97 @@ def solve_rpg_essai(inputs: RpgEssaiInputs) -> MixDesignResult:
     if Gs_liant <= 0:
         Gs_liant = effective_binder_specific_gravity(bs)
 
+    # Composition de base pour les Gs (convention feuille : Gs de BASE figés)
+    A_m_base = max(0.0, min(float(base_inputs.aggregate_fraction_pct) / 100.0, 1.0))
+    gs_g_base = Gs_agr if Gs_agr > 0 else None
+    gs_nb_base = gs_nonbinder_eff(Gs_res, A_m_base if gs_g_base else 0.0, gs_g_base)
+
     recipes: List[MixState] = []
 
     for i in range(inputs.num_recipes):
         base_state = base_result.recipes[i]
-        base_comp  = base_state.components
+        base_comp = base_state.components
         adj = inputs.adjustments[i] if i < len(inputs.adjustments) else RpgEssaiAdjustment()
 
-        # ------------------------------------------------------------------
-        # A) Decompose adjustments
-        # ------------------------------------------------------------------
-        delta_sec = adj.added_dry_residue_mass
-        delta_wet = adj.added_wet_residue_mass
-        delta_eau = adj.added_water_mass
-        delta_agr = adj.added_aggregate_mass   # RPG-specific
-        w0_ag     = adj.aggregate_moisture_mass_pct / 100.0  # w0-ag
+        Gs_binder = base_state.gs_binder
 
-        sec_from_wet = delta_wet / (1.0 + w0) if (1.0 + w0) > 0 else 0.0
-        eau_from_wet = delta_wet - sec_from_wet   # [28]
-        eau_from_sec = delta_sec * w0
-        eau_from_agr = delta_agr * w0_ag          # water carried by added aggregate
+        # Ajustements selon la feuille Intra 2017 [D57-D96] : le volume total
+        # croît des volumes ajoutés, Sr reste à la valeur de base [D86-D87],
+        # liant/eau « à ajouter » non bornés (négatif = à retirer) [D65, D50].
+        eq = apply_essai_adjustments(
+            mr_sec_base=base_comp.residue_dry_mass_kg,
+            mg_sec_base=base_comp.aggregate_dry_mass_kg,
+            mb_base=base_comp.binder_total_mass_kg,
+            mw_base=base_comp.water_total_mass_kg,
+            vt_base=base_state.total_backfill_volume_m3,
+            bw_target_frac=base_state.bw_mass_pct / 100.0,
+            gs_r=Gs_res,
+            gs_g=gs_g_base,
+            gs_binder=Gs_binder,
+            gs_backfill_base=base_state.gs_backfill,
+            gs_nonbinder_base=gs_nb_base,
+            w0_frac=w0,
+            delta_dry_residue=adj.added_dry_residue_mass,
+            delta_wet_residue=adj.added_wet_residue_mass,
+            delta_water=adj.added_water_mass,
+            delta_aggregate=adj.added_aggregate_mass,
+            aggregate_w0_frac=adj.aggregate_moisture_mass_pct / 100.0,
+            water_density=water_density,
+        )
 
-        # ------------------------------------------------------------------
-        # B) Updated solid masses [23a] + aggregate
-        # ------------------------------------------------------------------
-        Mr_sec_Tot = base_comp.residue_dry_mass_kg + delta_sec + sec_from_wet  # [23a]
-        Ma_sec_Tot = base_comp.aggregate_dry_mass_kg + delta_agr
-
-        # ------------------------------------------------------------------
-        # C) New A_m (aggregate fraction among non-binder solids)
-        # ------------------------------------------------------------------
-        solids_non_binder = Mr_sec_Tot + Ma_sec_Tot
-        A_m_new = Ma_sec_Tot / solids_non_binder if solids_non_binder > 0 else 0.0
-
-        # ------------------------------------------------------------------
-        # D) Binder adjustment [24-27]  — Bw% denominator is (Mr_sec + Ma_sec)
-        # ------------------------------------------------------------------
-        Bw_target_pct = base_state.bw_mass_pct
-        Gs_binder     = base_state.gs_binder
-        rho_s_binder  = Gs_binder * water_density
-
-        # [25a] Total binder needed to maintain Bw_target_pct
-        Mb_Tot = Bw_target_pct / 100.0 * solids_non_binder
-
-        # [26] Binder mass to add (never remove)
-        Mb_ad = max(Mb_Tot - base_comp.binder_total_mass_kg, 0.0)
-
-        # [27a-c] Per-component binder to add
+        Mb_ad = eq.mb_ad
         Mc1_ad = Mb_ad * (fractions[0] if len(fractions) >= 1 else 0.0)
         Mc2_ad = Mb_ad * (fractions[1] if len(fractions) >= 2 else 0.0)
         Mc3_ad = Mb_ad * (fractions[2] if len(fractions) >= 3 else 0.0)
-
-        # ------------------------------------------------------------------
-        # E) Water total [29a-b]
-        # ------------------------------------------------------------------
-        Mw_Tot = base_comp.water_total_mass_kg + delta_eau + eau_from_wet + eau_from_sec + eau_from_agr
-        Vw_Tot = Mw_Tot / water_density
-
-        # ------------------------------------------------------------------
-        # F) New Gs_PAF with updated A_m and Bw_target
-        # ------------------------------------------------------------------
-        Gs_PAF_new = _gs_paf(A_m_new, Gs_agr, Gs_res, Gs_liant, Bw_target_pct)
-
-        # ------------------------------------------------------------------
-        # G) Derived parameters [30-34]
-        # ------------------------------------------------------------------
-        Ms_Tot = solids_non_binder + Mb_Tot   # all dry solids
-
-        cw_aj    = Ms_Tot / (Ms_Tot + Mw_Tot) * 100.0 if (Ms_Tot + Mw_Tot) > 0 else 0.0
-        w_aj     = Mw_Tot / Ms_Tot if Ms_Tot > 0 else 0.0
-        wc_aj    = Mw_Tot / Mb_Tot if Mb_Tot > 0 else 0.0
-
-        Sr_base  = max(base_state.saturation_pct / 100.0, 1e-6)
-        e_aj     = w_aj * Gs_PAF_new / Sr_base
-
-        n_aj     = e_aj / (1.0 + e_aj) if e_aj > -1.0 else 0.0
-        Cv_aj    = 1.0 / (1.0 + e_aj) if e_aj > -1.0 else 0.0
-        rho_d_aj = Gs_PAF_new * water_density / (1.0 + e_aj) if e_aj > -1.0 else 0.0
-        rho_h_aj = rho_d_aj * (1.0 + w_aj)
-
-        # ------------------------------------------------------------------
-        # H) Volumes [33a-c, 33g] — same containers, VT unchanged
-        # ------------------------------------------------------------------
-        VT_aj = base_state.total_backfill_volume_m3
-        Vs_aj = Cv_aj * VT_aj
-        Vv_aj = VT_aj - Vs_aj
-
-        Sr_aj_pct    = (Vw_Tot / Vv_aj * 100.0) if Vv_aj > 0 else 100.0
-        theta_aj_pct = n_aj * Sr_base * 100.0
-        Bv_aj_pct    = 0.01 * Bw_target_pct * (Gs_res / Gs_liant) * 100.0 if Gs_liant > 0 else 0.0
-
-        # ------------------------------------------------------------------
-        # I) Wet residue and water-to-add
-        # ------------------------------------------------------------------
-        Mr_hum_Tot = Mr_sec_Tot * (1.0 + w0)
-        Mw_to_add  = Mw_Tot - (Mr_hum_Tot - Mr_sec_Tot)
-
-        Mc1_tot = Mb_Tot * (fractions[0] if len(fractions) >= 1 else 0.0)
-        Mc2_tot = Mb_Tot * (fractions[1] if len(fractions) >= 2 else 0.0)
-        Mc3_tot = Mb_Tot * (fractions[2] if len(fractions) >= 3 else 0.0)
+        Mc1_tot = eq.mb_tot * (fractions[0] if len(fractions) >= 1 else 0.0)
+        Mc2_tot = eq.mb_tot * (fractions[1] if len(fractions) >= 2 else 0.0)
+        Mc3_tot = eq.mb_tot * (fractions[2] if len(fractions) >= 3 else 0.0)
 
         comp = MixComponentMass(
-            residue_dry_mass_kg      = Mr_sec_Tot,
-            residue_wet_mass_kg      = Mr_hum_Tot,
-            aggregate_dry_mass_kg    = Ma_sec_Tot,
-            binder_total_mass_kg     = Mb_Tot,
-            binder_c1_mass_kg        = Mc1_tot,
-            binder_c2_mass_kg        = Mc2_tot,
-            binder_c3_mass_kg        = Mc3_tot,
-            water_total_mass_kg      = Mw_Tot,
-            water_to_add_mass_kg     = Mw_to_add,
-            binder_to_add_mass_kg    = Mb_ad,
-            binder_c1_to_add_mass_kg = Mc1_ad,
-            binder_c2_to_add_mass_kg = Mc2_ad,
-            binder_c3_to_add_mass_kg = Mc3_ad,
+            residue_dry_mass_kg=eq.mr_sec_tot,
+            residue_wet_mass_kg=eq.mr_hum_tot,
+            aggregate_dry_mass_kg=eq.mg_sec_tot,
+            binder_total_mass_kg=eq.mb_tot,
+            binder_c1_mass_kg=Mc1_tot,
+            binder_c2_mass_kg=Mc2_tot,
+            binder_c3_mass_kg=Mc3_tot,
+            water_total_mass_kg=eq.mw_tot,
+            water_to_add_mass_kg=eq.mw_to_add,
+            binder_to_add_mass_kg=Mb_ad,
+            binder_c1_to_add_mass_kg=Mc1_ad,
+            binder_c2_to_add_mass_kg=Mc2_ad,
+            binder_c3_to_add_mass_kg=Mc3_ad,
         )
 
         recipes.append(MixState(
-            bulk_density_kg_m3       = rho_h_aj,
-            dry_density_kg_m3        = rho_d_aj,
-            solids_mass_pct          = cw_aj,
-            saturation_pct           = Sr_aj_pct,
-            wc_ratio                 = wc_aj,
-            bw_mass_pct              = Bw_target_pct,
-            bv_vol_pct               = Bv_aj_pct,
-            cv_vol_pct               = Cv_aj * 100.0,
-            w_mass_pct               = w_aj * 100.0,
-            void_ratio               = e_aj,
-            porosity                 = n_aj,
-            theta_pct                = theta_aj_pct,
-            gs_binder                = Gs_binder,
-            gs_backfill              = Gs_PAF_new,
-            bulk_unit_weight_kN_m3   = rho_h_aj * gravity / 1000.0,
-            dry_unit_weight_kN_m3    = rho_d_aj * gravity / 1000.0,
-            container_volume_m3      = base_state.container_volume_m3,
-            total_backfill_volume_m3 = VT_aj,
-            components               = comp,
+            bulk_density_kg_m3=eq.rho_h,
+            dry_density_kg_m3=eq.rho_d,
+            solids_mass_pct=eq.cw * 100.0,
+            saturation_pct=eq.sr * 100.0,
+            wc_ratio=eq.wc,
+            bw_mass_pct=base_state.bw_mass_pct,
+            bv_vol_pct=eq.bv * 100.0,
+            cv_vol_pct=eq.cv * 100.0,
+            w_mass_pct=eq.w * 100.0,
+            void_ratio=eq.e,
+            porosity=eq.n,
+            theta_pct=eq.theta * 100.0,
+            gs_binder=Gs_binder,
+            gs_backfill=eq.gs_backfill,
+            bulk_unit_weight_kN_m3=eq.rho_h * gravity / 1000.0,
+            dry_unit_weight_kN_m3=eq.rho_d * gravity / 1000.0,
+            container_volume_m3=base_state.container_volume_m3,
+            total_backfill_volume_m3=eq.vt_new,
+            residue_volume_m3=eq.vr_new,
+            binder_volume_m3=eq.vb_new,
+            water_volume_m3=eq.vw_tot,
+            solid_volume_m3=eq.vs_new,
+            void_volume_m3=eq.vv_new,
+            aggregate_volume_m3=eq.vg_new,
+            aggregate_vol_pct_of_residue=(eq.vg_new / (eq.vg_new + eq.vr_new) * 100.0) if (eq.vg_new + eq.vr_new) > 0 else 0.0,
+            aggregate_vol_pct_of_backfill=(eq.vg_new / eq.vt_new * 100.0) if eq.vt_new > 0 else 0.0,
+            aggregate_mass_pct=(eq.mg_sec_tot / (eq.mg_sec_tot + eq.mr_sec_tot) * 100.0) if (eq.mg_sec_tot + eq.mr_sec_tot) > 0 else 0.0,
+            components=comp,
         ))
 
     return MixDesignResult(

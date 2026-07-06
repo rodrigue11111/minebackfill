@@ -470,6 +470,12 @@ class MixState(BaseModel):
     water_volume_m3: float = 0.0      # Vw — volume d'eau totale
     solid_volume_m3: float = 0.0      # Vs — volume solide total
     void_volume_m3: float = 0.0       # Vv — volume des vides
+    aggregate_volume_m3: float = 0.0  # Vg — volume du granulat sec (RPG)
+
+    # Granulat (RPG) — équivalents feuille Intra 2017 (D24/D25, D83-D85)
+    aggregate_vol_pct_of_residue: float = 0.0    # % vol. granulat / (résidus + granulat)
+    aggregate_vol_pct_of_backfill: float = 0.0   # % vol. granulat / remblai total
+    aggregate_mass_pct: float = 0.0              # % massique granulat / solides hors liant
 
     # Masses de composants
     components: MixComponentMass
