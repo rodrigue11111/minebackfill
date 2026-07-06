@@ -5,12 +5,14 @@ import { useStore } from "@/lib/store";
 import ProductionForm from "@/components/industrie/ProductionForm";
 import CostDashboard from "@/components/industrie/CostDashboard";
 import ProductionLog from "@/components/industrie/ProductionLog";
+import UsineCalculator from "@/components/industrie/UsineCalculator";
 
-type Tab = "params" | "coûts" | "journal";
+type Tab = "params" | "coûts" | "usine" | "journal";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "params", label: "Paramètres de production" },
   { id: "coûts", label: "Comparaison des coûts" },
+  { id: "usine", label: "Usine de remblai (t/h)" },
   { id: "journal", label: "Journal de production" },
 ];
 
@@ -112,6 +114,7 @@ export default function IndustriePage() {
       <div style={{ maxWidth: 1140, margin: "0 auto", padding: "24px 24px 64px" }}>
         {activeTab === "params" && <ProductionForm />}
         {activeTab === "coûts" && <CostDashboard />}
+        {activeTab === "usine" && <UsineCalculator />}
         {activeTab === "journal" && <ProductionLog />}
       </div>
     </div>

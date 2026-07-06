@@ -40,6 +40,7 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm test
       # "pnpm lint" volontairement absent : 109 erreurs no-explicit-any
       # préexistantes — à réactiver après l'introduction du type Recipe partagé.
       - run: pnpm build
