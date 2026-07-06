@@ -283,7 +283,7 @@ export default function GeneralInfoPage() {
                       value={ct.value}
                       checked={active}
                       onChange={() => setGeneral({ container_type: ct.value })}
-                      style={{ display: "none" }}
+                      style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
                     />
                     {/* Custom radio dot */}
                     <span
@@ -433,7 +433,7 @@ export default function GeneralInfoPage() {
                         value={n}
                         checked={active}
                         onChange={() => setGeneral({ binder_count: n as 1 | 2 | 3 })}
-                        style={{ display: "none" }}
+                        style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
                       />
                       {n}
                     </label>

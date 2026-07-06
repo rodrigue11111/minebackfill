@@ -143,6 +143,7 @@ export default function HistoriquePage() {
             </p>
           </div>
         ) : (
+          <div className="historique-table">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {/* ── Table header ── */}
             <div
@@ -408,6 +409,7 @@ export default function HistoriquePage() {
                 </div>
               );
             })}
+          </div>
           </div>
         )}
       </div>

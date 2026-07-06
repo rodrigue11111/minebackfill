@@ -56,7 +56,11 @@ const SYMBOL_TO_RECIPE: Record<string, (r: any) => number | null> = {
   // Densities
   "\\rho_h": (r) => r.bulk_density_kg_m3 ?? null,
   "\\rho_d": (r) => r.dry_density_kg_m3 ?? null,
-  "\\rho_w": () => 1000,
+  "\rho_w": (r) => {
+    // rho_w = rho_d*(1+e)/Gs — reflète la constante réellement utilisée
+    const rd = r.dry_density_kg_m3, e = r.void_ratio, gs = r.gs_backfill;
+    return rd != null && e != null && gs ? (rd * (1 + e)) / gs : 1000;
+  },
   "G_s": (r) => r.gs_backfill ?? null,
   "S_r": (r) => r.saturation_pct != null ? r.saturation_pct / 100 : null,
 
@@ -68,7 +72,11 @@ const SYMBOL_TO_RECIPE: Record<string, (r: any) => number | null> = {
   // Unit weight
   "\\gamma_h": (r) => r.bulk_unit_weight_kN_m3 ?? null,
   "\\gamma_d": (r) => r.dry_unit_weight_kN_m3 ?? null,
-  "g": () => 9.81,
+  "g": (r) => {
+    // g = gamma_h*1000/rho_h — reflète la constante réellement utilisée
+    const gh = r.bulk_unit_weight_kN_m3, rh = r.bulk_density_kg_m3;
+    return gh != null && rh ? (gh * 1000) / rh : 9.81;
+  },
 
   // W/C
   "(W/C)_m": (r) => r.wc_ratio ?? null,
@@ -158,7 +166,7 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
   const formulas = formulaIds.map((id) => FORMULA_MAP.get(id)).filter(Boolean) as Formula[];
   if (formulas.length === 0) return null;
 
-  const popoverW = 420;
+  const popoverW = Math.min(420, typeof window !== "undefined" ? window.innerWidth - 24 : 420);
   const left = Math.min(
     Math.max(anchorRect.left, 8),
     window.innerWidth - popoverW - 8,

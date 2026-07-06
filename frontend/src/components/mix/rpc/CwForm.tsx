@@ -227,7 +227,7 @@ export default function CwForm() {
                   <input
                     type="radio"
                     name="cw_num_recipes"
-                    style={{ display: "none" }}
+                    style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
                     checked={active}
                     onChange={() => setCw({ num_recipes: n as 1 | 2 | 3 | 4 })}
                   />

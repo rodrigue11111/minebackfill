@@ -164,7 +164,7 @@ export default function ProductionForm() {
                   fontSize: 13.5, color: active ? "#2563eb" : "#374151", transition: "all 0.13s",
                 }}
               >
-                <input type="radio" name="ind_cat" style={{ display: "none" }} checked={active} onChange={() => setIndustrie({ category: c })} />
+                <input type="radio" name="ind_cat" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setIndustrie({ category: c })} />
                 {c === "RPC" ? "RPC (sans agrégat)" : "RPG (avec agrégat)"}
               </label>
             );
@@ -287,7 +287,7 @@ export default function ProductionForm() {
                     transition: "all 0.13s",
                   }}
                 >
-                  <input type="radio" name="ind_binder_count" style={{ display: "none" }} checked={active}
+                  <input type="radio" name="ind_binder_count" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active}
                     onChange={() => setGeneral({ binder_count: n as 1 | 2 | 3 })} />
                   {n}
                 </label>

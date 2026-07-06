@@ -271,3 +271,70 @@ body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   Accessibilité clavier — les radios personnalisées sont masquées en
+   sr-only : l'anneau de focus s'affiche sur le label parent.
+   ══════════════════════════════════════════════════════════════════ */
+label:has(> input[type="radio"]:focus-visible),
+label:has(input[type="radio"]:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Adaptation aux écrans étroits (tablette / fenêtre réduite).
+   Les composants utilisent des styles inline : on ne surcharge ici
+   que la géométrie de mise en page, via des classes dédiées.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Barre de navigation : défilement horizontal plutôt que débordement */
+.nav-links {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-links::-webkit-scrollbar { display: none; }
+
+@media (max-width: 900px) {
+  /* Page Calculs : les trois panneaux s'empilent verticalement */
+  .mix-body {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+  .mix-sidebar {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border);
+    overflow-y: visible !important;
+  }
+  .mix-main {
+    overflow-y: visible !important;
+  }
+  .mix-results {
+    width: 100% !important;
+    flex: none !important;
+    border-top: 2px solid var(--border);
+  }
+  .mix-drag {
+    display: none !important;
+  }
+  /* Historique : le tableau garde sa largeur et défile horizontalement */
+  .historique-table {
+    overflow-x: auto;
+  }
+  .historique-table > div {
+    min-width: 780px;
+  }
+  /* Grilles de formulaires : 2 colonnes maximum */
+  .form-card div[style*="grid-template-columns"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .nav-version { display: none; }
+}
+
+@media (max-width: 560px) {
+  /* Très étroit : une seule colonne dans les formulaires */
+  .form-card div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+}

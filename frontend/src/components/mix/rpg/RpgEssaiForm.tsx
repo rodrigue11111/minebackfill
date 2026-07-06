@@ -190,7 +190,7 @@ export default function RpgEssaiForm() {
                   background: active ? "#f0fdf4" : "#fff", cursor: "pointer", minWidth: 160, transition: "all 0.13s",
                 }}
               >
-                <input type="radio" name="rpg_essai_base_method" style={{ display: "none" }} checked={active} onChange={() => setRpgEssai({ base_method: opt.value as "dosage_cw" | "wb" })} />
+                <input type="radio" name="rpg_essai_base_method" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setRpgEssai({ base_method: opt.value as "dosage_cw" | "wb" })} />
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: active ? "#16a34a" : "#374151" }}>{opt.label}</span>
                 <span style={{ fontSize: 11.5, color: active ? "#4ade80" : "#94a3b8" }}>{opt.sub}</span>
               </label>

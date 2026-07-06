@@ -142,7 +142,7 @@ export default function WbForm() {
               const active = numRecipes === n;
               return (
                 <label key={n} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 34, borderRadius: 6, border: `1.5px solid ${active ? "#2563eb" : "#e2e8f0"}`, background: active ? "#2563eb" : "#fff", cursor: "pointer", fontWeight: 700, fontSize: 14, color: active ? "#fff" : "#374151", transition: "all 0.13s" }}>
-                  <input type="radio" name="wb_num_recipes" style={{ display: "none" }} checked={active} onChange={() => setWb({ num_recipes: n as 1 | 2 | 3 | 4 })} />
+                  <input type="radio" name="wb_num_recipes" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setWb({ num_recipes: n as 1 | 2 | 3 | 4 })} />
                   {n}
                 </label>
               );

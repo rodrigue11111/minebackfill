@@ -144,10 +144,11 @@ export default function MixPage() {
       }}
     >
       {/* ── Body: sidebar + form + results ── */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
+      <div className="mix-body" style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
         {/* Left sidebar — hidden when maximized */}
         {!isMaximized && (
           <aside
+            className="mix-sidebar"
             style={{
               width: 240,
               flexShrink: 0,
@@ -163,6 +164,7 @@ export default function MixPage() {
         {/* Center: form — hidden when maximized */}
         {!isMaximized && (
           <main
+            className="mix-main"
             style={{
               flex: 1,
               overflowY: "auto",
@@ -228,6 +230,7 @@ export default function MixPage() {
         {/* Drag handle — hidden when maximized */}
         {!isMaximized && (
           <div
+            className="mix-drag"
             onMouseDown={startDrag}
             title="Glisser pour redimensionner"
             style={{
@@ -249,6 +252,7 @@ export default function MixPage() {
 
         {/* Right: results */}
         <aside
+          className="mix-results"
           style={{
             width: isMaximized ? undefined : resultsWidth,
             flex: isMaximized ? 1 : undefined,

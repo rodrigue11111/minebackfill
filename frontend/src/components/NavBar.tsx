@@ -93,7 +93,7 @@ export default function NavBar() {
       </Link>
 
       {/* ── Navigation links ── */}
-      <div style={{ display: "flex", gap: 2, alignItems: "center", flex: 1 }}>
+      <div className="nav-links" style={{ display: "flex", gap: 2, alignItems: "center", flex: 1 }}>
         {NAV_LINKS.map((link, idx) => {
           const active = pathname === link.href;
           const isWorkflow = link.step !== null;
@@ -165,6 +165,7 @@ export default function NavBar() {
 
       {/* ── Version tag ── */}
       <div
+        className="nav-version"
         style={{
           fontSize: 10.5,
           color: "rgba(255,255,255,0.3)",

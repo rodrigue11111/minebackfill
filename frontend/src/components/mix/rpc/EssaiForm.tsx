@@ -168,7 +168,7 @@ export default function EssaiForm() {
                   background: active ? "#eff6ff" : "#fff", cursor: "pointer", minWidth: 160, transition: "all 0.13s",
                 }}
               >
-                <input type="radio" name="base_method" style={{ display: "none" }} checked={active} onChange={() => setEssai({ base_method: opt.value as any })} />
+                <input type="radio" name="base_method" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setEssai({ base_method: opt.value as any })} />
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: active ? "#2563eb" : "#374151" }}>{opt.label}</span>
                 <span style={{ fontSize: 11.5, color: active ? "#60a5fa" : "#94a3b8" }}>{opt.sub}</span>
               </label>
