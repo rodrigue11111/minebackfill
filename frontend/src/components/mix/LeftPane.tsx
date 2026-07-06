@@ -8,7 +8,7 @@ import { useStore, type Category, type RpcMethod } from "@/lib/store";
 const CATEGORIES: { id: Category; label: string; desc: string; disabled?: boolean }[] = [
   { id: "RPC", label: "RPC", desc: "Remblai en pâte cimenté" },
   { id: "RPG", label: "RPG", desc: "Remblai pâte granulaire" },
-  { id: "RRC", label: "RRC", desc: "A venir", disabled: true },
+  { id: "RRC", label: "RRC", desc: "Remblai rocheux cimenté" },
 ];
 
 const METHODS: { id: RpcMethod; label: string; desc: string; rpcOnly?: boolean }[] = [
@@ -42,6 +42,7 @@ export default function LeftPane() {
   };
 
   const availableMethods =
+    category === "RRC" ? [] :
     category === "RPG" ? METHODS.filter((m) => !m.rpcOnly) : METHODS;
 
   return (
@@ -130,6 +131,12 @@ export default function LeftPane() {
         {/* ── Methods ── */}
         <div style={{ marginBottom: 12 }}>
           <p style={SECTION_LABEL}>Méthode de calcul</p>
+          {category === "RRC" && (
+            <p style={{ fontSize: 12, color: "var(--muted-foreground)", padding: "4px 2px" }}>
+              Méthode unique : dosage par Bw (liant/roches stériles) et W/C du coulis
+              (cours, Dias 66-70).
+            </p>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {availableMethods.map((m) => {
               const active = method === m.id;

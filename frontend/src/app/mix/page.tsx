@@ -13,6 +13,7 @@ import EssaiForm from "@/src/components/mix/rpc/EssaiForm";
 import RpgCwForm from "@/src/components/mix/rpg/RpgCwForm";
 import RpgWbForm from "@/src/components/mix/rpg/RpgWbForm";
 import RpgEssaiForm from "@/src/components/mix/rpg/RpgEssaiForm";
+import RrcForm from "@/src/components/mix/rrc/RrcForm";
 
 const METHOD_LABELS: Record<string, string> = {
   dosage_cw: "Dosage selon Cw (%)",
@@ -71,23 +72,7 @@ export default function MixPage() {
 
   const renderForm = () => {
     if (category === "RRC") {
-      return (
-        <div
-          style={{
-            background: "#fff",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            padding: "32px 24px",
-            textAlign: "center",
-            color: "var(--muted-foreground)",
-          }}
-        >
-            <p style={{ fontWeight: 600, fontSize: 15, color: "#374151" }}>Module RRC — à venir</p>
-          <p style={{ fontSize: 13, marginTop: 6 }}>
-            Les formulaires pour la catégorie <strong>RRC</strong> seront disponibles dans une prochaine version.
-          </p>
-        </div>
-      );
+      return <RrcForm />;
     }
 
     if (category === "RPG" && method === "slump") {
@@ -186,7 +171,7 @@ export default function MixPage() {
             }}
           >
             {/* Container dimensions warning */}
-            {dimensionsManquantes && (
+            {dimensionsManquantes && category !== "RRC" && (
               <div
                 style={{
                   display: "flex",
@@ -215,7 +200,7 @@ export default function MixPage() {
             {/* Method breadcrumb */}
             <div style={{ marginBottom: 18 }}>
               <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                {category || "—"} · {METHOD_LABELS[method] || "Sélectionner une méthode"}
+                {category || "—"} · {category === "RRC" ? "Dosage Bw et W/C (CRF)" : METHOD_LABELS[method] || "Sélectionner une méthode"}
               </div>
               {category === "RPG" && (
                 <div

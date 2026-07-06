@@ -582,3 +582,88 @@ class MixDesignResult(BaseModel):
     general: GeneralInfo
     recipes: List[MixState]
 
+
+
+# ======================================================================
+#  RRC: Remblai Rocheux Cimenté (Cemented Rockfill — CRF)
+#  Formules du cours, Dias 66-70 (feuille Intra 2017 non applicable :
+#  le CRF est dosé par masse totale ou volume de chantier).
+# ======================================================================
+
+class RrcInputs(BaseModel):
+    """
+    Entrées pour le RRC/CRF.
+
+    Le mélange est défini par :
+      - la quantité de CRF : volume de chantier x masse volumique humide,
+        ou masse totale directe ;
+      - Bw = Mc/MWR (taux massique de liant par rapport aux roches stériles) ;
+      - W/C = M*/Mc (fluide = eau + retardateur, par rapport au ciment) ;
+      - le dosage du retardateur de prise D0 (ml/100 kg de ciment, 0 = aucun).
+    """
+
+    category: MixCategory = MixCategory.RRC
+    general: GeneralInfo
+    num_recipes: conint(ge=1, le=4) = Field(1, description="Nombre de recettes (1 à 4).")
+
+    quantity_mode: Literal["volume", "masse"] = Field(
+        "volume",
+        description="Quantité de CRF donnée par volume de chantier ou masse totale.",
+    )
+    volume_m3: Optional[confloat(gt=0)] = Field(
+        default=None, description="Volume du chantier à remblayer (m³) — mode volume.",
+    )
+    wet_density_kg_m3: Optional[confloat(gt=0)] = Field(
+        default=2200.0, description="Masse volumique humide du CRF (kg/m³) — mode volume.",
+    )
+    total_mass_kg: Optional[confloat(gt=0)] = Field(
+        default=None, description="Masse totale de CRF (kg) — mode masse.",
+    )
+
+    binder_mass_pct_recipes: List[confloat(ge=0, le=100)] = Field(
+        ..., description="Bw% (= Mc/MWR x 100) pour chaque recette.",
+    )
+    wc_ratio_recipes: List[confloat(gt=0)] = Field(
+        ..., description="Rapport W/C du coulis (fluide/ciment) pour chaque recette.",
+    )
+
+    cement_specific_gravity: confloat(gt=0) = Field(
+        3.15, description="Gs du ciment (pour le volume du coulis).",
+    )
+    retarder_dosage_ml_per_100kg: confloat(ge=0) = Field(
+        0.0, description="Dosage du retardateur D0 (ml/100 kg de ciment). 0 = aucun.",
+    )
+    retarder_density_g_ml: confloat(gt=0) = Field(
+        1.2, description="Masse volumique du retardateur (g/ml).",
+    )
+
+    constants: Optional[SolverConstants] = None
+
+
+class RrcRecipeState(BaseModel):
+    """Résultat d'une recette RRC/CRF (formules Dias 68-70)."""
+
+    bw_mass_pct: float          # Bw (%)
+    wc_ratio: float             # W/C du coulis
+    w_mass_pct: float           # teneur en eau massique w (%)
+    solids_mass_pct: float      # Cw (%)
+    retarder_dosage_mass_pct: float  # D_m% = rho_SR*D1*100
+
+    total_mass_kg: float        # M_CRF
+    crf_volume_m3: float        # V_CRF (0 si mode masse sans densité)
+    waste_rock_mass_kg: float   # M_WR
+    cement_mass_kg: float       # M_c
+    fluid_mass_kg: float        # M* (eau + retardateur)
+    water_mass_kg: float        # M_w
+    retarder_mass_kg: float     # M_SR
+    retarder_volume_l: float    # V_SR (litres)
+    slurry_mass_kg: float       # M_c-slurry (ciment + eau + retardateur)
+    slurry_volume_m3: float     # V_c-slurry
+
+
+class RrcResult(BaseModel):
+    """Résultat global du solveur RRC."""
+
+    category: MixCategory
+    general: GeneralInfo
+    recipes: List[RrcRecipeState]

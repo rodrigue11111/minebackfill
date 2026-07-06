@@ -67,6 +67,32 @@ export interface MixResult {
   recipes: Recipe[];
 }
 
+// ── RRC / CRF (remblai rocheux cimenté) — miroir de RrcRecipeState ──
+
+export interface RrcRecipe {
+  bw_mass_pct?: number | null;
+  wc_ratio?: number | null;
+  w_mass_pct?: number | null;
+  solids_mass_pct?: number | null;
+  retarder_dosage_mass_pct?: number | null;
+  total_mass_kg?: number | null;
+  crf_volume_m3?: number | null;
+  waste_rock_mass_kg?: number | null;
+  cement_mass_kg?: number | null;
+  fluid_mass_kg?: number | null;
+  water_mass_kg?: number | null;
+  retarder_mass_kg?: number | null;
+  retarder_volume_l?: number | null;
+  slurry_mass_kg?: number | null;
+  slurry_volume_m3?: number | null;
+}
+
+export interface RrcResultat {
+  category?: string;
+  general?: Record<string, unknown>;
+  recipes: RrcRecipe[];
+}
+
 /** Accès numérique sûr : null si absent/NaN. */
 export const champ = (v: number | null | undefined): number | null =>
   v === null || v === undefined || Number.isNaN(v) ? null : v;

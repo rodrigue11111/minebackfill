@@ -8,6 +8,7 @@ import {
   type UnitPreferences,
 } from "@/lib/units";
 import FormulaPopover from "@/components/mix/FormulaPopover";
+import type { RrcRecipe } from "@/lib/types";
 
 /* ── helpers ── */
 const fmt = (v: number | undefined | null, digits = 3) => {
@@ -478,6 +479,68 @@ export async function exportToExcel(
   saveAs(blob, filename);
 }
 
+function RrcResultatsView({ recipes, massLabel, toMass }: {
+  recipes: RrcRecipe[];
+  massLabel: string;
+  toMass: (kg: number | null | undefined) => number | null;
+}) {
+  const n = recipes.length;
+  const rows: { label: string; get: (r: RrcRecipe) => number | null | undefined; digits?: number; bold?: boolean }[] = [
+    { label: "Bw (liant/roches) (%)", get: (r) => r.bw_mass_pct, digits: 2, bold: true },
+    { label: "W/C du coulis", get: (r) => r.wc_ratio, digits: 3 },
+    { label: "Teneur en eau w (%)", get: (r) => r.w_mass_pct, digits: 3 },
+    { label: "Solides Cw (%)", get: (r) => r.solids_mass_pct, digits: 3 },
+    { label: `Masse totale M_CRF (${massLabel})`, get: (r) => toMass(r.total_mass_kg), bold: true },
+    { label: "Volume CRF V_CRF (m3)", get: (r) => r.crf_volume_m3, digits: 2 },
+    { label: `Roches stériles M_WR (${massLabel})`, get: (r) => toMass(r.waste_rock_mass_kg), bold: true },
+    { label: `Ciment M_c (${massLabel})`, get: (r) => toMass(r.cement_mass_kg), bold: true },
+    { label: `Eau M_w (${massLabel})`, get: (r) => toMass(r.water_mass_kg) },
+    { label: `Fluide (eau + SR) M* (${massLabel})`, get: (r) => toMass(r.fluid_mass_kg) },
+    { label: `Retardateur M_SR (${massLabel})`, get: (r) => toMass(r.retarder_mass_kg) },
+    { label: "Retardateur V_SR (L)", get: (r) => r.retarder_volume_l, digits: 2 },
+    { label: "Dosage retardateur D_m (% de Mc)", get: (r) => r.retarder_dosage_mass_pct, digits: 3 },
+    { label: `Coulis M_c-slurry (${massLabel})`, get: (r) => toMass(r.slurry_mass_kg) },
+    { label: "Coulis V_c-slurry (m3)", get: (r) => r.slurry_volume_m3, digits: 3 },
+  ];
+  return (
+    <div style={{ padding: "16px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+        <SectionHeader title="RRC — Remblai rocheux cimenté (CRF)" sub="masses, retardateur de prise et coulis — cours Dias 66-70" />
+        <table className="result-table" style={{ background: "#fff" }}>
+          <thead>
+            <tr style={{ background: HEADER_BG }}>
+              <th style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Paramètre</th>
+              {Array.from({ length: n }).map((_, i) => (
+                <th key={i} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#374151" }}>
+                  Recette {i + 1}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={ri} style={{ borderTop: "1px solid #f1f5f9" }}>
+                <td style={{ padding: "6px 10px", fontSize: 12.5, color: "#475569", fontWeight: row.bold ? 700 : 400 }}>
+                  {row.label}
+                </td>
+                {recipes.map((r, ci) => (
+                  <td key={ci} style={{ padding: "6px 10px", fontSize: 12.5, textAlign: "right", fontWeight: row.bold ? 700 : 400, color: "#0f172a", fontFamily: "var(--font-geist-mono)" }}>
+                    {fmt(row.get(r), row.digits ?? 3)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p style={{ fontSize: 11.5, color: "#94a3b8", padding: "0 2px" }}>
+        Invariant : M_WR + M_c + M* = M_CRF. Le coulis = ciment + eau + retardateur.
+        Sauvegarde et exports Excel/PDF pour le RRC : à venir.
+      </p>
+    </div>
+  );
+}
+
 export default function ResultsPanel({ isMaximized = false }: { isMaximized?: boolean }) {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveLabel, setSaveLabel] = useState("");
@@ -546,6 +609,28 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
       ? cw.desired_qty
       : wb.desired_qty
     : cw.desired_qty;
+
+  /* ── RRC : vue dédiée (formules CRF, pas de MixState) ── */
+  if (category === "RRC") {
+    const rrcRecipes = store.rrcResult?.recipes ?? [];
+    if (rrcRecipes.length === 0) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: 32, textAlign: "center", gap: 14, color: "var(--muted-foreground)" }}>
+          <p style={{ fontWeight: 600, fontSize: 15, color: "#374151", margin: 0 }}>Résultats RRC / CRF</p>
+          <p style={{ fontSize: 13, maxWidth: 260, lineHeight: 1.5 }}>
+            Renseignez la quantité de CRF, Bw et W/C puis cliquez sur <strong>Lancer le calcul</strong>.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <RrcResultatsView
+        recipes={rrcRecipes}
+        massLabel={massLabel}
+        toMass={(kg) => fromStoreMass(kg, units.mass)}
+      />
+    );
+  }
 
   /* ── Empty state ── */
   if (recipes.length === 0) {

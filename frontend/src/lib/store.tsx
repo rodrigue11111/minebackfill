@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { type UnitPreferences, DEFAULT_UNITS } from "./units";
-import type { MixResult, Recipe } from "./types";
+import type { MixResult, Recipe, RrcResultat } from "./types";
 
 // Version des solveurs : estampillée sur chaque résultat sauvegardé.
 // À incrémenter quand les formules changent (voir Issues.md).
@@ -137,6 +137,19 @@ export interface RpgEssaiState {
   base_cw?: RpgCwState;
   base_wb?: RpgWbState;
   ajustements: RpgEssaiAdjustment[];
+}
+
+export interface RrcState {
+  quantity_mode: "volume" | "masse";
+  volume_m3: number;
+  wet_density_kg_m3: number;
+  total_mass_kg: number;
+  num_recipes: 1 | 2 | 3 | 4;
+  binder_pct: number[];   // Bw% par recette
+  wc_ratio: number[];     // W/C par recette
+  cement_sg: number;
+  retarder_d0: number;    // ml/100 kg de ciment
+  retarder_density: number; // g/ml
 }
 
 export type RpcCwResponse = MixResult;
@@ -354,6 +367,12 @@ interface AppState {
   setRpgEssaiAjustement: (index: number, patch: RpgEssaiAdjustment) => void;
   rpgEssaiResult: MixResult | null;
   setRpgEssaiResult: (res: MixResult | null) => void;
+
+  rrc: RrcState;
+  setRrc: (patch: Partial<RrcState>) => void;
+  setRrcRecipe: (index: number, patch: { binder_pct?: number; wc_ratio?: number }) => void;
+  rrcResult: RrcResultat | null;
+  setRrcResult: (res: RrcResultat | null) => void;
 
   fillTestData: () => void;
 
@@ -689,6 +708,31 @@ export const useStore = create<AppState>((set, get) => ({
     }),
   rpgEssaiResult: null,
   setRpgEssaiResult: (res) => set({ rpgEssaiResult: res }),
+
+  // ── RRC / CRF ── valeurs par défaut prêtes pour la démo (Dias 66-70)
+  rrc: {
+    quantity_mode: "volume",
+    volume_m3: 1000,
+    wet_density_kg_m3: 2200,
+    total_mass_kg: 0,
+    num_recipes: 1,
+    binder_pct: [5, 5, 6, 7],
+    wc_ratio: [1, 1, 1, 1],
+    cement_sg: 3.15,
+    retarder_d0: 100,
+    retarder_density: 1.2,
+  },
+  setRrc: (patch) => set((state) => ({ rrc: { ...state.rrc, ...patch } })),
+  setRrcRecipe: (index, patch) =>
+    set((state) => {
+      const binder_pct = [...state.rrc.binder_pct];
+      const wc_ratio = [...state.rrc.wc_ratio];
+      if (patch.binder_pct !== undefined) binder_pct[index] = patch.binder_pct;
+      if (patch.wc_ratio !== undefined) wc_ratio[index] = patch.wc_ratio;
+      return { rrc: { ...state.rrc, binder_pct, wc_ratio } };
+    }),
+  rrcResult: null,
+  setRrcResult: (res) => set({ rrcResult: res }),
 
   fillTestData: () =>
     set((state) => {

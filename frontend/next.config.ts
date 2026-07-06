@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
         source: "/rpg/:path*",
         destination: `${backendUrl}/rpg/:path*`,
       },
+      {
+        source: "/rrc/:path*",
+        destination: `${backendUrl}/rrc/:path*`,
+      },
     ];
   },
 };
