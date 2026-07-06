@@ -1,19 +1,35 @@
 # app/main.py
 from __future__ import annotations
 
+import logging
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.routers import rpc, rpg
 
+logger = logging.getLogger("minebackfill")
 
 app = FastAPI(
     title="MineBackfill API",
-    version="0.1.0",
+    version="1.0.0",
     description="API pour le dimensionnement des mélanges de remblais cimentés (RPC, RPG, RRC).",
 )
+
+
+# ----------------------------------------------------------------------
+# Les erreurs métier des solveurs (dimensions de contenant manquantes,
+# fractions de liant invalides, etc.) sont levées en ValueError.
+# Sans ce handler elles deviennent des 500 sans en-têtes CORS : le
+# navigateur bloque la réponse et le frontend affiche à tort
+# « Impossible de joindre le serveur ».
+# ----------------------------------------------------------------------
+@app.exception_handler(ValueError)
+async def valeur_invalide_handler(request: Request, exc: ValueError):
+    logger.warning("Entrée invalide sur %s : %s", request.url.path, exc)
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 # ----------------------------------------------------------------------
 # CORS: allow frontend (Next.js) to call the API from http://localhost:3000

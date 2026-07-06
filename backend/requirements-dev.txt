@@ -1,0 +1,4 @@
+# Dev/test local : uvicorn pour lancer l'API, pytest pour les tests d'or.
+-r requirements.txt
+uvicorn==0.38.0
+pytest==9.0.1

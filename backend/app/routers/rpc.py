@@ -54,7 +54,7 @@ def rpc_wb_endpoint(payload: RpcWbInputs) -> MixDesignResult:
 @router.post("/rpc/slump", response_model=MixDesignResult)
 def rpc_slump_endpoint(payload: RpcSlumpInputs) -> MixDesignResult:
     """
-    RPC - Ajustement pour slump (prAcdiction Cw%).
+    RPC - Ajustement pour slump (prédiction Cw%).
     """
     result = solve_rpc_slump(payload)
     return result
@@ -63,7 +63,7 @@ def rpc_slump_endpoint(payload: RpcSlumpInputs) -> MixDesignResult:
 @router.post("/rpc/essai", response_model=MixDesignResult)
 def rpc_essai_endpoint(payload: RpcEssaiInputs) -> MixDesignResult:
     """
-    RPC - MActhode essai-erreur (ajustements masse/eau).
+    RPC - Méthode essai-erreur (ajustements masse/eau).
     """
     result = solve_rpc_essai(payload)
     return result

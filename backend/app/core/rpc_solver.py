@@ -3,12 +3,12 @@ Solver functions for mine backfill mix design.
 
 Right now we implement:
 
-- solve_rpc_cw : RPC â€“ Dosage selon Cw (% de solides massiques)
+- solve_rpc_cw : RPC – Dosage selon Cw (% de solides massiques)
 
-The logic is aligned with the C#/Excel "ModÃ¨le C1" sheet:
+The logic is aligned with the C#/Excel "Modèle C1" sheet:
 
-1) Gs_liant from the binary/ternary binder (fractions 1â€“3)
-2) Gs_bkf (remblai) from Gs_residu, Gs_liant and Bw% (liant/rÃ©sidu)
+1) Gs_liant from the binary/ternary binder (fractions 1–3)
+2) Gs_bkf (remblai) from Gs_residu, Gs_liant and Bw% (liant/résidu)
 3) Water content from Cw%:
        w = (1/Cw - 1)
 4) e0 from w, Gs_bkf, Sr:
@@ -130,9 +130,9 @@ def _ensure_sequence_length(
 
 def compute_container_volume_m3(general: GeneralInfo) -> float:
     """
-    Compute mould/container volume [mÂ³] from GeneralInfo.
+    Compute mould/container volume [m³] from GeneralInfo.
 
-    - SECTION_HEIGHT: section (cmÂ²) + height (cm)
+    - SECTION_HEIGHT: section (cm²) + height (cm)
     - RADIUS_HEIGHT:  radius (cm) + height (cm)
     - LENGTH_WIDTH_HEIGHT: length, width, height (cm)
 
@@ -141,26 +141,24 @@ def compute_container_volume_m3(general: GeneralInfo) -> float:
     # Type de contenant
     ct = general.container_type
     if ct is None:
-        raise ValueError("container_type must be provided in GeneralInfo.")
+        raise ValueError("Type de contenant manquant : renseignez-le sur la page Informations.")
 
-    # SECTION_HEIGHT: V = section(cmÂ²) * height(cm)  => mÂ³
+    # SECTION_HEIGHT: V = section(cm²) * height(cm)  => m³
     if ct == ContainerType.SECTION_HEIGHT:
         if general.container_section is None or general.container_height is None:
             raise ValueError(
-                "container_section and container_height are required "
-                "for SECTION_HEIGHT."
+                "Section et hauteur du contenant requises pour le type section + hauteur."
             )
         section_cm2 = float(general.container_section)
         h_cm = float(general.container_height)
-        # 1 cmÂ² = 1e-4 mÂ², 1 cm = 1e-2 m -> cmÂ²*cm = 1e-6 mÂ³
+        # 1 cm² = 1e-4 m², 1 cm = 1e-2 m -> cm²*cm = 1e-6 m³
         return section_cm2 * h_cm * 1.0e-6
 
-    # RADIUS_HEIGHT: V = Ï€ rÂ² h (r, h in cm)
+    # RADIUS_HEIGHT: V = π r² h (r, h in cm)
     if ct == ContainerType.RADIUS_HEIGHT:
         if general.container_radius is None or general.container_height is None:
             raise ValueError(
-                "container_radius and container_height are required "
-                "for RADIUS_HEIGHT."
+                "Rayon et hauteur du contenant requis pour le type rayon + hauteur."
             )
         r_m = float(general.container_radius) / 100.0
         h_m = float(general.container_height) / 100.0
@@ -174,15 +172,14 @@ def compute_container_volume_m3(general: GeneralInfo) -> float:
             or general.container_height is None
         ):
             raise ValueError(
-                "container_length, container_width and container_height "
-                "are required for LENGTH_WIDTH_HEIGHT."
+                "Longueur, largeur et hauteur du contenant requises pour le type longueur x largeur x hauteur."
             )
         L_m = float(general.container_length) / 100.0
         W_m = float(general.container_width) / 100.0
         H_m = float(general.container_height) / 100.0
         return L_m * W_m * H_m
 
-    raise ValueError(f"Unknown container_type: {ct}")
+    raise ValueError(f"Type de contenant inconnu : {ct}")
 
 
 # ======================================================================
@@ -195,7 +192,7 @@ def masse_volumique_S_liant_fonction(
     """
     Formule harmonique (C#) pour le Gs du liant :
         Gs_liant = 1 / (0.01*f1/gs1 + 0.01*f2/gs2 + 0.01*f3/gs3)
-    Les fractions sont donnÃ©es en pourcentage (0â€“100).
+    Les fractions sont données en pourcentage (0–100).
     """
     denom = 0.01 * f1_pct / gs1 + 0.01 * f2_pct / gs2 + 0.01 * f3_pct / gs3
     return 1.0 / denom if denom > 0 else 0.0
@@ -213,7 +210,7 @@ def effective_binder_specific_gravity(binder_system: BinderSystem) -> float:
     for c in binder_system.components:
         denom += c.mass_fraction / c.specific_gravity
     if denom <= 0.0:
-        raise ValueError("Invalid binder specific gravity combination.")
+        raise ValueError("Combinaison de Gs de liants invalide.")
     return 1.0 / denom
 
 
@@ -225,7 +222,7 @@ def equivalent_backfill_specific_gravity(
     binder_gs_override: Optional[float] = None,
 ) -> float:
     """
-    Equivalent specific gravity Gs_remblai for the mixture "rÃ©sidu + liant"
+    Equivalent specific gravity Gs_remblai for the mixture "résidu + liant"
     for a given recipe.
 
     binder_mass_pct is Bw% defined like in Excel:
@@ -253,7 +250,7 @@ def equivalent_backfill_specific_gravity(
 
 
 # ======================================================================
-#  RPC â€“ DOSAGE SELON Cw (% DE SOLIDES MASSIQUES)
+#  RPC – DOSAGE SELON Cw (% DE SOLIDES MASSIQUES)
 # ======================================================================
 
 def _solve_single_cw_recipe(
@@ -425,7 +422,7 @@ def _solve_single_cw_recipe(
 
 def solve_rpc_cw(inputs: RpcCwInputs, debug: bool = False) -> MixDesignResult:
     """
-    Main solver for RPC â€“ Dosage selon Cw.
+    Main solver for RPC – Dosage selon Cw.
 
     1) Validate binder system fractions.
     2) Compute mould volume from GeneralInfo.
@@ -482,20 +479,20 @@ def solve_rpc_cw(inputs: RpcCwInputs, debug: bool = False) -> MixDesignResult:
 
 def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
     """
-    MÃ©thode essai-erreur (Section 3 du Module 1) :
+    Méthode essai-erreur (Section 3 du Module 1) :
       1) Calcule une recette de base (Cw ou W/C).
-      2) Applique des ajustements de masses (rÃ©sidu sec/humide, eau) pour atteindre
-         le slump visÃ©.
-      3) Maintient le Bw% cible en ajustant la quantitÃ© de liant si du rÃ©sidu est ajoutÃ©.
-      4) Recalcule tous les paramÃ¨tres gÃ©otechniques (Cw%, w/c, e, n, Ï, Sr%).
+      2) Applique des ajustements de masses (résidu sec/humide, eau) pour atteindre
+         le slump visé.
+      3) Maintient le Bw% cible en ajustant la quantité de liant si du résidu est ajouté.
+      4) Recalcule tous les paramètres géotechniques (Cw%, w/c, e, n, ρ, Sr%).
 
-    Formules implÃ©mentÃ©es : [23a]-[34] de Module 1.
+    Formules implémentées : [23a]-[34] de Module 1.
 
-    HypothÃ¨ses :
-      - Le liant est ajustÃ© pour maintenir le Bw% cible de la recette de base [24-26].
-      - Le volume total (VT) reste celui calculÃ© Ã  lâ€™Ã©tape de base (mÃªmes contenants).
-      - Sr_base est utilisÃ© comme hypothÃ¨se de saturation dans la formule de lâ€™indice
-        des vides [33d] ; Sr_aj [33g] est ensuite recalculÃ© a posteriori.
+    Hypothèses :
+      - Le liant est ajusté pour maintenir le Bw% cible de la recette de base [24-26].
+      - Le volume total (VT) reste celui calculé à l'étape de base (mêmes contenants).
+      - Sr_base est utilisé comme hypothèse de saturation dans la formule de l'indice
+        des vides [33d] ; Sr_aj [33g] est ensuite recalculé a posteriori.
     """
     inputs.binder_system.validate_total_fraction()
     constantes = _resolve_solver_constants(inputs.constants)
@@ -524,7 +521,7 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
             )
         base_result = solve_rpc_wb(base_inputs_wb)
     else:
-        raise ValueError("base_method doit Ãªtre CW ou WB")
+        raise ValueError("base_method doit être CW ou WB")
 
     if len(base_result.recipes) < inputs.num_recipes:
         raise ValueError(
@@ -533,9 +530,9 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
         )
 
     # ------------------------------------------------------------------
-    # 2) PrÃ©paration commune
+    # 2) Préparation commune
     # ------------------------------------------------------------------
-    w0 = inputs.residue.moisture_mass_pct / 100.0          # teneur en eau du rÃ©sidu
+    w0 = inputs.residue.moisture_mass_pct / 100.0          # teneur en eau du résidu
     rho_s_residue = float(inputs.residue.specific_gravity) * water_density
     fractions = [c.mass_fraction for c in inputs.binder_system.components]
 
@@ -646,7 +643,7 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
 
 
 # ======================================================================
-#  RPC / RPG â€“ RAPPORT EAU/CIMENT (W/C)
+#  RPC / RPG – RAPPORT EAU/CIMENT (W/C)
 # ======================================================================
 
 def _solve_single_wb_recipe(
@@ -655,7 +652,7 @@ def _solve_single_wb_recipe(
     residue: ResidueProps,
     binder_system: BinderSystem,
     binder_pct_recipe: float,     # Bw% = Mb/Mr_sec * 100
-    wc_ratio_recipe: float,       # W/C massique imposÃ© (mÃªme convention que l'Excel/C# : 4, 6, 7)
+    wc_ratio_recipe: float,       # W/C massique imposé (même convention que l'Excel/C# : 4, 6, 7)
     container_volume_m3: float,
     containers_per_recipe: int,
     safety_factor: float,
@@ -663,11 +660,11 @@ def _solve_single_wb_recipe(
     gravity: float,
 ) -> MixState:
     """
-    Calcul d'une recette Ã  partir de Bw% et W/C imposÃ©.
+    Calcul d'une recette à partir de Bw% et W/C imposé.
 
-    HypothÃ¨ses (alignÃ©es sur Cw mais avec W/C imposÃ©) :
-      - Vr = Vs (mÃªme convention que Cw)
-      - w% dÃ©duit uniquement de Bw% et W/C :
+    Hypothèses (alignées sur Cw mais avec W/C imposé) :
+      - Vr = Vs (même convention que Cw)
+      - w% déduit uniquement de Bw% et W/C :
             Bw_ratio = Bw% / 100 = Mb / Mr_sec
             w = (Mw / Ms) = (W/C * Mb) / (Mr_sec + Mb) = wc / (1 + 1/Bw_ratio)
         soit w_mass_fraction = wc_ratio / (1 + 100/Bw%)
@@ -675,7 +672,7 @@ def _solve_single_wb_recipe(
       - Cv = 1/(1+e), V_s = Cv * V_T, Vr = V_s
       - Bv = 0.01 * Bw% * (Gs_res / Gs_liant)
       - Vb = Bv * Vr, Mb = rho_s_binder * Vb
-      - Mw_total = wc_ratio * Mb (dÃ©finition W/C)
+      - Mw_total = wc_ratio * Mb (définition W/C)
     """
     Sr = max(Sr_pct / 100.0, 1e-6)
     bw_ratio = binder_pct_recipe / 100.0
@@ -760,7 +757,7 @@ def _solve_single_wb_recipe(
 
 def solve_rpc_wb(inputs: RpcWbInputs) -> MixDesignResult:
     """
-    Solver pour la mÃ©thode W/C (BW% + W/C imposÃ©).
+    Solver pour la méthode W/C (BW% + W/C imposé).
     """
     inputs.binder_system.validate_total_fraction()
     _ensure_sequence_length(
@@ -805,7 +802,7 @@ def solve_rpc_wb(inputs: RpcWbInputs) -> MixDesignResult:
 
 
 # ======================================================================
-#  RPC - AJUSTEMENT POUR SLUMP (prAcdiction de Cw% via slump)
+#  RPC - AJUSTEMENT POUR SLUMP (prédiction de Cw% via slump)
 # ======================================================================
 
 def _predict_cw_pct_from_slump(
@@ -818,7 +815,7 @@ def _predict_cw_pct_from_slump(
     """
     Formule empirique (C# / document Word) :
         Cw% = 4.95e6 * (1 + Bw%) / ( slump*(1+Bw%)/Gs_res + 235.5122 )^2
-    Bw% est donnAc en pourcentage (ex : 4.5), slump en mm (grand cA'ne).
+    Bw% est donné en pourcentage (ex : 4.5), slump en mm (grand cône).
     """
     b = 1.0 + 0.01 * bw_mass_pct
     denom = slump_mm_grand_cone * b / gs_residue + model_offset
@@ -830,7 +827,7 @@ def _predict_cw_pct_from_slump(
 def solve_rpc_slump(inputs: RpcSlumpInputs) -> MixDesignResult:
     """
     Ajustement pour slump :
-      1) Convertit le slump en grand cA'ne si besoin (mini -> grand : x2.335)
+      1) Convertit le slump en grand cône si besoin (mini -> grand : x2.335)
       2) PrAcdict Cw% par recette avec la formule ci-dessus
       3) RAcutilise le solveur Cw sur chaque recette (mA"mes masses/volumes que Cw)
     """
@@ -846,7 +843,7 @@ def solve_rpc_slump(inputs: RpcSlumpInputs) -> MixDesignResult:
     # Volume d'un moule (mA3)
     Vc = compute_container_volume_m3(inputs.general)
 
-    # Slump effectif (grand cA'ne)
+    # Slump effectif (grand cône)
     slump_mm_eff = float(inputs.slump_mm)
     if inputs.cone_type == "mini":
         slump_mm_eff *= constantes["slump_small_to_large_factor"]

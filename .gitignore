@@ -27,7 +27,12 @@ frontend/.next/
 
 # Temp/exports
 tmp_pdf_pages/
+tmp_*
 *.log
+
+# Office lock files (created when the reference .xlsx is open)
+~$*
+**/~$*
 
 # Legacy backup assets (too deep / long Windows paths)
 Progiciel de Mr Belem/

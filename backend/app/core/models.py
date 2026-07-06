@@ -21,19 +21,19 @@ from pydantic import BaseModel, Field, confloat, conint
 
 class ContainerType(str, Enum):
     """
-    Type de gÃ©omÃ©trie du contenant de moulage.
+    Type de géométrie du contenant de moulage.
     Le frontend envoie ces valeurs exactes dans 'general.container_type'.
     """
-    SECTION_HEIGHT = "section_hauteur"                 # Section (cmÂ²) + hauteur (cm)
+    SECTION_HEIGHT = "section_hauteur"                 # Section (cm²) + hauteur (cm)
     RADIUS_HEIGHT = "rayon_hauteur"                    # Rayon (cm) + hauteur (cm)
     LENGTH_WIDTH_HEIGHT = "longueur_largeur_hauteur"   # L, l, H (cm)
 
 
 class MixCategory(str, Enum):
     """
-    CatÃ©gorie de remblai.
-    - RPC : Remblai en pÃ¢te cimentÃ©
-    - RPG : Remblai pÃ¢te granulaire
+    Catégorie de remblai.
+    - RPC : Remblai en pâte cimenté
+    - RPG : Remblai pâte granulaire
     - RRC : Remblai rocheux
     """
     RPC = "RPC"
@@ -43,30 +43,30 @@ class MixCategory(str, Enum):
 
 class RpcMethod(str, Enum):
     """
-    MÃ©thode de calcul pour la catÃ©gorie RPC (et plus tard RPG).
-    Les valeurs correspondent Ã  ce que le frontend utilise dÃ©jÃ .
+    Méthode de calcul pour la catégorie RPC (et plus tard RPG).
+    Les valeurs correspondent à ce que le frontend utilise déjà.
     """
     CW = "dosage_cw"   # Dosage selon Cw (% de solides massiques)
     WB = "wb"          # Rapport eau/ciment (W/C)
     SLUMP = "slump"    # Ajustement pour slump
-    ESSAI = "essai"    # MÃ©thode essai-erreur
+    ESSAI = "essai"    # Méthode essai-erreur
 
 
 
 # ======================================================================
-#  INFORMATIONS GÃ‰NÃ‰RALES (page "Informations")
+#  INFORMATIONS GÉNÉRALES (page "Informations")
 # ======================================================================
 
 class GeneralInfo(BaseModel):
     """
-    Informations gÃ©nÃ©rales renseignÃ©es sur la page dâ€™accueil.
-    Correspond Ã  useStore().general cÃ´tÃ© frontend.
+    Informations générales renseignées sur la page d'accueil.
+    Correspond à useStore().general côté frontend.
     """
 
     # Informations de base
     operator_name: Optional[str] = Field(
         default=None,
-        description="Nom de l'opÃ©rateur qui prÃ©pare la recette.",
+        description="Nom de l'opérateur qui prépare la recette.",
     )
     project_name: Optional[str] = Field(
         default=None,
@@ -74,24 +74,24 @@ class GeneralInfo(BaseModel):
     )
     residue_id: Optional[str] = Field(
         default=None,
-        description="Identifiant du rÃ©sidu (ex: code labo).",
+        description="Identifiant du résidu (ex: code labo).",
     )
     mix_date: Optional[str] = Field(
         default=None,
-        description="Date de mÃ©lange au format YYYY-MM-DD (on garde une string pour lâ€™instant).",
+        description="Date de mélange au format YYYY-MM-DD (on garde une string pour l'instant).",
     )
 
-    # ------------------ GÃ©omÃ©trie du contenant de moulage ------------------
+    # ------------------ Géométrie du contenant de moulage ------------------
 
     container_type: Optional[ContainerType] = Field(
         default=None,
-        description="Type de contenant utilisÃ© pour le moulage.",
+        description="Type de contenant utilisé pour le moulage.",
     )
 
     # Pour SECTION_HEIGHT : on utilise section + hauteur
     container_section: Optional[confloat(ge=0)] = Field(
         default=None,
-        description="Section du contenant en cmÂ² (si type 'section_hauteur').",
+        description="Section du contenant en cm² (si type 'section_hauteur').",
     )
     container_height: Optional[confloat(ge=0)] = Field(
         default=None,
@@ -114,11 +114,11 @@ class GeneralInfo(BaseModel):
         description="Largeur du contenant en cm (si type 'longueur_largeur_hauteur').",
     )
 
-    # ------------------ Composition du liant (1 Ã  3 ciments) ---------------
+    # ------------------ Composition du liant (1 à 3 ciments) ---------------
 
     binder_count: Optional[conint(ge=1, le=3)] = Field(
         default=None,
-        description="Nombre de ciments dans le liant (1 Ã  3).",
+        description="Nombre de ciments dans le liant (1 à 3).",
     )
     binder1_type: Optional[str] = Field(
         default=None,
@@ -135,67 +135,67 @@ class GeneralInfo(BaseModel):
 
 
 # ======================================================================
-#  PROPRIÃ‰TÃ‰S DU RÃ‰SIDU ET DU LIANT
+#  PROPRIÉTÉS DU RÉSIDU ET DU LIANT
 # ======================================================================
 
 class ResidueProps(BaseModel):
     """
-    PropriÃ©tÃ©s du rÃ©sidu.
-    Tous les pourcentages ici sont des % massiques (0â€“100).
+    Propriétés du résidu.
+    Tous les pourcentages ici sont des % massiques (0–100).
     """
 
     specific_gravity: confloat(gt=0) = Field(
         ...,
-        description="Poids spÃ©cifique (SG) du rÃ©sidu (sans unitÃ©).",
+        description="Poids spécifique (SG) du résidu (sans unité).",
     )
     moisture_mass_pct: confloat(ge=0, le=100) = Field(
         ...,
-        description="Teneur en eau massique du rÃ©sidu humide, en % (ex: 20 pour 20%).",
+        description="Teneur en eau massique du résidu humide, en % (ex: 20 pour 20%).",
     )
 
 
 class BinderComponent(BaseModel):
     """
-    Un composant de liant (un ciment) dans le systÃ¨me de liant.
-    'mass_fraction' = fraction massique de ce ciment par rapport au liant total (0â€“1).
+    Un composant de liant (un ciment) dans le système de liant.
+    'mass_fraction' = fraction massique de ce ciment par rapport au liant total (0–1).
     """
 
     type: str
     specific_gravity: confloat(gt=0) = Field(
         ...,
-        description="Poids spÃ©cifique (SG) du ciment (sans unitÃ©).",
+        description="Poids spécifique (SG) du ciment (sans unité).",
     )
     mass_fraction: confloat(ge=0, le=1) = Field(
         ...,
         description=(
-            "Fraction massique du ciment dans le liant total (0â€“1). "
-            "La somme de toutes les fractions doit Ãªtre Ã©gale Ã  1."
+            "Fraction massique du ciment dans le liant total (0–1). "
+            "La somme de toutes les fractions doit être égale à 1."
         ),
     )
 
 
 class BinderSystem(BaseModel):
     """
-    SystÃ¨me de liant contenant 1 Ã  3 composants (ciments).
+    Système de liant contenant 1 à 3 composants (ciments).
     """
 
     components: List[BinderComponent]
 
     def validate_total_fraction(self) -> None:
         """
-        VÃ©rifie que la somme des 'mass_fraction' vaut ~1.
-        AppelÃ©e explicitement dans le solver (on pourrait aussi utiliser un validator).
+        Vérifie que la somme des 'mass_fraction' vaut ~1.
+        Appelée explicitement dans le solver (on pourrait aussi utiliser un validator).
         """
         total = sum(c.mass_fraction for c in self.components)
-        # On tolÃ¨re une petite erreur numÃ©rique (par ex. 0.999999 au lieu de 1)
+        # On tolère une petite erreur numérique (par ex. 0.999999 au lieu de 1)
         if abs(total - 1.0) > 1e-6:
             raise ValueError(
-                f"Mass fractions must sum to 1. Got {total:.6f} for components."
+                f"Les fractions massiques des liants doivent totaliser 100 % (somme actuelle : {total*100:.2f} %)."
             )
 
 
 # ======================================================================
-#  BASE COMMUNE Ã€ TOUS LES SCÃ‰NARIOS
+#  BASE COMMUNE À TOUS LES SCÉNARIOS
 # ======================================================================
 
 class SolverConstants(BaseModel):
@@ -228,7 +228,7 @@ class SolverConstants(BaseModel):
 
 class BaseMixDesignInput(BaseModel):
     """
-    Champs communs pour tous les scÃ©narios de mÃ©lange
+    Champs communs pour tous les scénarios de mélange
     (RPC Cw, RPC W/B, RPC Slump, Essai-erreur, plus tard RPG et RRC).
     """
 
@@ -243,7 +243,7 @@ class BaseMixDesignInput(BaseModel):
 
     num_recipes: conint(ge=1, le=4) = Field(
         1,
-        description="Nombre de recettes Ã  calculer (1 Ã  4).",
+        description="Nombre de recettes à calculer (1 à 4).",
     )
     containers_per_recipe: conint(ge=1) = Field(
         1,
@@ -251,7 +251,7 @@ class BaseMixDesignInput(BaseModel):
     )
     safety_factor: confloat(gt=0) = Field(
         1.0,
-        description="Facteur de sÃ©curitÃ© appliquÃ© au volume total.",
+        description="Facteur de sécurité appliqué au volume total.",
     )
 
 
@@ -261,7 +261,7 @@ class BaseMixDesignInput(BaseModel):
 
 class RpcCwInputs(BaseMixDesignInput):
     """
-    EntrÃ©es pour la mÃ©thode RPC â€“ Dosage selon Cw%.
+    Entrées pour la méthode RPC – Dosage selon Cw%.
     """
 
     solids_mass_pct: confloat(ge=0, le=100) = Field(
@@ -270,26 +270,26 @@ class RpcCwInputs(BaseMixDesignInput):
     )
     saturation_pct: confloat(ge=0, le=100) = Field(
         ...,
-        description="DegrÃ© de saturation S_r (%) du remblai.",
+        description="Degré de saturation S_r (%) du remblai.",
     )
 
-    # Pourcentage massique de liant par recette (1 Ã  4)
+    # Pourcentage massique de liant par recette (1 à 4)
     binder_mass_pct_recipes: List[confloat(ge=0, le=100)] = Field(
         ...,
         description=(
             "Pourcentage massique de liant dans chaque recette (%). "
-            "La liste doit contenir au moins num_recipes Ã©lÃ©ments (jusqu'Ã  4)."
+            "La liste doit contenir au moins num_recipes éléments (jusqu'à 4)."
         ),
     )
 
-    # ParamÃ¨tres optionnels pour l'utilisation d'agrÃ©gats (A_m)
+    # Paramètres optionnels pour l'utilisation d'agrégats (A_m)
     aggregate_fraction_pct: Optional[confloat(ge=0, le=100)] = Field(
         default=0.0,
-        description="Fraction massique d'agrÃ©gat co-mixing (%). Si 0 -> aucun agrÃ©gat.",
+        description="Fraction massique d'agrégat co-mixing (%). Si 0 -> aucun agrégat.",
     )
     aggregate_specific_gravity: Optional[confloat(gt=0)] = Field(
         default=None,
-        description="Masse volumique spÃ©cifique (Gs) de l'agrÃ©gat. Optionnel.",
+        description="Masse volumique spécifique (Gs) de l'agrégat. Optionnel.",
     )
 
 
@@ -299,18 +299,18 @@ class RpcCwInputs(BaseMixDesignInput):
 
 class RpcWbInputs(BaseMixDesignInput):
     """
-    EntrÃ©es pour la mÃ©thode RPC â€“ rapport eau/ciment (W/C).
+    Entrées pour la méthode RPC – rapport eau/ciment (W/C).
 
     Dans ton C#, tu utilisais la valeur -99 pour signifier :
       'le programme calcule W/C automatiquement'.
     Ici on fait plus propre :
       - si wc_ratio_recipes est None, le solver le calcule
-      - si wc_ratio_recipes est fourni, on utilise ces valeurs imposÃ©es
+      - si wc_ratio_recipes est fourni, on utilise ces valeurs imposées
     """
 
     saturation_pct: confloat(ge=0, le=100) = Field(
         ...,
-        description="DegrÃ© de saturation S_r (%) du remblai.",
+        description="Degré de saturation S_r (%) du remblai.",
     )
 
     binder_mass_pct_recipes: List[confloat(ge=0, le=100)] = Field(
@@ -321,8 +321,8 @@ class RpcWbInputs(BaseMixDesignInput):
     wc_ratio_recipes: Optional[List[confloat(gt=0)]] = Field(
         default=None,
         description=(
-            "Rapport eau/ciment imposÃ© pour chaque recette. "
-            "Si None -> le solveur le calcule Ã  partir des autres paramÃ¨tres."
+            "Rapport eau/ciment imposé pour chaque recette. "
+            "Si None -> le solveur le calcule à partir des autres paramètres."
         ),
     )
 
@@ -333,12 +333,12 @@ class RpcWbInputs(BaseMixDesignInput):
 
 class RpcSlumpInputs(BaseMixDesignInput):
     """
-    EntrÃ©es pour la mÃ©thode RPC â€“ Ajustement pour slump.
+    Entrées pour la méthode RPC – Ajustement pour slump.
     """
 
     cone_type: Literal["mini", "grand"] = Field(
         "mini",
-        description="Type de cÃ´ne d'Abrams utilisÃ© (mini ou grand).",
+        description="Type de cône d'Abrams utilisé (mini ou grand).",
     )
     slump_mm: confloat(ge=0) = Field(
         ...,
@@ -347,7 +347,7 @@ class RpcSlumpInputs(BaseMixDesignInput):
 
     saturation_pct: confloat(ge=0, le=100) = Field(
         ...,
-        description="DegrÃ© de saturation S_r (%) du remblai.",
+        description="Degré de saturation S_r (%) du remblai.",
     )
 
     binder_mass_pct_recipes: List[confloat(ge=0, le=100)] = Field(
@@ -362,38 +362,38 @@ class RpcSlumpInputs(BaseMixDesignInput):
 
 class RpcEssaiAdjustment(BaseModel):
     """
-    Ajustements appliquÃ©s Ã  une recette lors de la mÃ©thode essai-erreur.
+    Ajustements appliqués à une recette lors de la méthode essai-erreur.
 
     Valeurs positives = ajout
-    Valeurs nÃ©gatives = retrait
+    Valeurs négatives = retrait
     """
 
     added_dry_residue_mass: float = Field(
-        0.0, description="Masse de rÃ©sidu sec ajoutÃ©e (kg)."
+        0.0, description="Masse de résidu sec ajoutée (kg)."
     )
     added_wet_residue_mass: float = Field(
-        0.0, description="Masse de rÃ©sidu humide ajoutÃ©e (kg)."
+        0.0, description="Masse de résidu humide ajoutée (kg)."
     )
     added_water_mass: float = Field(
-        0.0, description="Masse d'eau ajoutÃ©e (kg)."
+        0.0, description="Masse d'eau ajoutée (kg)."
     )
-    # plus tard : ajout dâ€™agrÃ©gats, etc.
+    # plus tard : ajout d'agrégats, etc.
 
 
 class RpcEssaiInputs(BaseMixDesignInput):
     """
-    EntrÃ©es pour la mÃ©thode RPC â€“ Essai-erreur.
+    Entrées pour la méthode RPC – Essai-erreur.
 
-    On part d'une recette de base (calculÃ©e par CW ou W/B),
-    puis on applique des ajustements (ajout/retrait d'eau, rÃ©sidu, etc.).
+    On part d'une recette de base (calculée par CW ou W/B),
+    puis on applique des ajustements (ajout/retrait d'eau, résidu, etc.).
     """
 
     base_method: RpcMethod = Field(
         ...,
-        description="MÃ©thode utilisÃ©e pour la recette de base (CW ou WB en pratique).",
+        description="Méthode utilisée pour la recette de base (CW ou WB en pratique).",
     )
 
-    # Un des deux doit Ãªtre non-nul suivant base_method
+    # Un des deux doit être non-nul suivant base_method
     base_inputs_cw: Optional[RpcCwInputs] = None
     base_inputs_wb: Optional[RpcWbInputs] = None
 
@@ -405,16 +405,16 @@ class RpcEssaiInputs(BaseMixDesignInput):
 
 
 # ======================================================================
-#  SORTIES (rÃ©sultats du solveur)
+#  SORTIES (résultats du solveur)
 # ======================================================================
 
 class MixComponentMass(BaseModel):
     """
-    Masses des diffÃ©rents composants d'une recette de remblai.
+    Masses des différents composants d'une recette de remblai.
     Toutes les masses sont en kg.
 
-    Les champs *_to_add_* sont utilisÃ©s par la mÃ©thode essai-erreur pour indiquer
-    les masses supplÃ©mentaires Ã  ajouter par rapport Ã  la recette de base.
+    Les champs *_to_add_* sont utilisés par la méthode essai-erreur pour indiquer
+    les masses supplémentaires à ajouter par rapport à la recette de base.
     """
 
     residue_dry_mass_kg: float
@@ -429,7 +429,7 @@ class MixComponentMass(BaseModel):
     # RPG (PAF): masse sèche d'agrégat (0 pour RPC)
     aggregate_dry_mass_kg: float = 0.0
 
-    # Essai-erreur: masses supplÃ©mentaires Ã  rajouter (formules [26], [27a-c])
+    # Essai-erreur: masses supplémentaires à rajouter (formules [26], [27a-c])
     binder_to_add_mass_kg: float = 0.0       # Mb_ad  [26]
     binder_c1_to_add_mass_kg: float = 0.0    # Mc1_ad [27a]
     binder_c2_to_add_mass_kg: float = 0.0    # Mc2_ad [27b]
@@ -438,16 +438,16 @@ class MixComponentMass(BaseModel):
 
 class MixState(BaseModel):
     """
-    RÃ©sumÃ© de l'Ã©tat d'une recette de remblai aprÃ¨s calcul.
-    Tu pourras enrichir cette classe (porositÃ©, compacitÃ©, etc.) plus tard.
+    Résumé de l'état d'une recette de remblai après calcul.
+    Tu pourras enrichir cette classe (porosité, compacité, etc.) plus tard.
     """
 
-    # DensitÃ©s (kg/mÂ³)
+    # Densités (kg/m³)
     bulk_density_kg_m3: float
     dry_density_kg_m3: float
 
     # Ratios et pourcentages
-    solids_mass_pct: float      # Cw% effectif aprÃ¨s calcul
+    solids_mass_pct: float      # Cw% effectif après calcul
     saturation_pct: float       # S_r effectif
     wc_ratio: float             # rapport eau/ciment effectif
     bw_mass_pct: float          # % massique de liant (Bw%)
@@ -455,7 +455,7 @@ class MixState(BaseModel):
     cv_vol_pct: float           # % volumique de solides (Cv)
     w_mass_pct: float           # teneur en eau massique (%)
     void_ratio: float           # indice des vides e
-    porosity: float             # porositÃ© n
+    porosity: float             # porosité n
     theta_pct: float            # teneur en eau volumique (%)
     gs_binder: float            # Gs du liant
     gs_backfill: float          # Gs du remblai
@@ -569,12 +569,12 @@ class RpgEssaiInputs(BaseMixDesignInput):
 
 class MixDesignResult(BaseModel):
     """
-    RÃ©sultat global renvoyÃ© par un solveur (CW, WB, Slump, Essai-erreur).
+    Résultat global renvoyé par un solveur (CW, WB, Slump, Essai-erreur).
     Contient:
-      - la catÃ©gorie (RPC/RPG/RRC)
-      - la mÃ©thode (dosage_cw, wb, slump, essai)
-      - les infos gÃ©nÃ©rales
-      - la liste de recettes calculÃ©es
+      - la catégorie (RPC/RPG/RRC)
+      - la méthode (dosage_cw, wb, slump, essai)
+      - les infos générales
+      - la liste de recettes calculées
     """
 
     category: MixCategory
