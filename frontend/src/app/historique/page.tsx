@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useStore, type SavedResult } from "@/lib/store";
+import { useStore, SOLVER_VERSION, type SavedResult } from "@/lib/store";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
+import BackupButtons from "@/components/BackupButtons";
 
 const METHOD_LABELS: Record<string, string> = {
   dosage_cw: "Cw%",
@@ -18,7 +20,27 @@ const fmt = (v: number | undefined | null, digits = 3) => {
 };
 
 export default function HistoriquePage() {
-  const { savedResults, loadSavedResults, deleteSavedResult, units, loadUnits } = useStore() as any;
+  const router = useRouter();
+  const { savedResults, loadSavedResults, deleteSavedResult, restoreSavedResult, units, loadUnits } = useStore() as any;
+
+  const binderNameFor = (sr: SavedResult) => (n: 1 | 2 | 3): string =>
+    ((sr.general as Record<string, unknown>)[`binder${n}_type`] as string) || `Ciment ${n}`;
+
+  const recharger = (sr: SavedResult) => {
+    if (restoreSavedResult(sr.id)) router.push("/mix");
+  };
+  const exporterExcel = async (sr: SavedResult) => {
+    const { exportToExcel } = await import("@/components/mix/ResultsPanel");
+    exportToExcel(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method, units);
+  };
+  const exporterPdf = async (sr: SavedResult) => {
+    const { exportToPdf } = await import("@/lib/pdf-report");
+    exportToPdf(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method, units);
+  };
+  const exporterFeuilleLabo = async (sr: SavedResult) => {
+    const { exportPreparationPdf } = await import("@/lib/preparation-sheet");
+    exportPreparationPdf(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method, units);
+  };
   const massLabel = MASS_LABELS[units?.mass as keyof typeof MASS_LABELS] ?? "kg";
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -68,11 +90,15 @@ export default function HistoriquePage() {
                   letterSpacing: "-0.01em",
                 }}
               >
-                Résultats sauvegardes
+                Résultats sauvegardés
               </h1>
               <p style={{ color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 13 }}>
-                {savedResults.length} sauvegarde{savedResults.length !== 1 ? "s" : ""} en memoire locale
+                {savedResults.length} sauvegarde{savedResults.length !== 1 ? "s" : ""} en mémoire locale
+                — pensez à exporter vos données (navigateur uniquement)
               </p>
+              <div style={{ marginTop: 10 }}>
+                <BackupButtons />
+              </div>
             </div>
             <Link
               href="/mix"
@@ -112,7 +138,7 @@ export default function HistoriquePage() {
               Aucune sauvegarde
             </p>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)", maxWidth: 340, margin: "0 auto" }}>
-              Après avoir effectue un calcul, cliquez sur le bouton
+              Après avoir effectué un calcul, cliquez sur le bouton
               {" "}<strong>Sauvegarder</strong> dans le panneau de résultats pour enregistrer vos résultats ici.
             </p>
           </div>
@@ -172,8 +198,16 @@ export default function HistoriquePage() {
                       if (!isExpanded) (e.currentTarget as HTMLElement).style.background = "#fff";
                     }}
                   >
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
-                      {sr.label}
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sr.label}</span>
+                      {sr.solverVersion !== SOLVER_VERSION && (
+                        <span
+                          title="Résultat calculé avec une version antérieure des formules (avant l'alignement sur la feuille Intra 2017). Rechargez et relancez le calcul pour des valeurs à jour."
+                          style={{ fontSize: 10, fontWeight: 700, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap", flexShrink: 0 }}
+                        >
+                          anciennes formules
+                        </span>
+                      )}
                     </span>
                     <span
                       style={{
@@ -261,6 +295,32 @@ export default function HistoriquePage() {
                         padding: 16,
                       }}
                     >
+                      {/* Actions */}
+                      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                        <button className="btn-primary" style={{ padding: "6px 14px", fontSize: 12.5 }}
+                          onClick={(e) => { e.stopPropagation(); recharger(sr); }}
+                          title="Recharge la catégorie, la méthode, les entrées et les résultats dans la page Calculs">
+                          Recharger dans Calculs
+                        </button>
+                        <button className="btn-secondary" style={{ padding: "6px 14px", fontSize: 12.5 }}
+                          onClick={(e) => { e.stopPropagation(); exporterExcel(sr); }}>
+                          Excel
+                        </button>
+                        <button className="btn-secondary" style={{ padding: "6px 14px", fontSize: 12.5 }}
+                          onClick={(e) => { e.stopPropagation(); exporterPdf(sr); }}>
+                          PDF
+                        </button>
+                        <button className="btn-secondary" style={{ padding: "6px 14px", fontSize: 12.5 }}
+                          onClick={(e) => { e.stopPropagation(); exporterFeuilleLabo(sr); }}>
+                          Feuille labo
+                        </button>
+                        {!sr.inputs && (
+                          <span style={{ fontSize: 11.5, color: "#94a3b8", alignSelf: "center" }}>
+                            (sauvegarde ancienne : rechargement des résultats seulement, sans les entrées)
+                          </span>
+                        )}
+                      </div>
+
                       {/* General info */}
                       {(sr.general.operator_name || sr.general.project_name || sr.general.residue_id) && (
                         <div style={{ display: "flex", gap: 20, marginBottom: 14, flexWrap: "wrap" }}>

@@ -202,7 +202,7 @@ function DataRow({
 }
 
 /* ── Excel export (professional formatting with ExcelJS) ── */
-async function exportToExcel(
+export async function exportToExcel(
   recipes: any[],
   general: any,
   binderName: (n: 1 | 2 | 3) => string,
@@ -481,7 +481,7 @@ async function exportToExcel(
 export default function ResultsPanel({ isMaximized = false }: { isMaximized?: boolean }) {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveLabel, setSaveLabel] = useState("");
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveOutcome, setSaveOutcome] = useState<"ok" | "erreur" | null>(null);
 
   /* ── Formula popover state ── */
   const [formulaPopover, setFormulaPopover] = useState<{
@@ -670,7 +670,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         {/* ── Save & Export buttons ── */}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, position: "relative" }}>
           <button
-            onClick={() => { setShowSaveDialog(true); setSaveLabel(""); setSaveSuccess(false); }}
+            onClick={() => { setShowSaveDialog(true); setSaveLabel(""); setSaveOutcome(null); }}
             style={{
               display: "flex",
               alignItems: "center",
@@ -784,10 +784,12 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                 zIndex: 20,
               }}
             >
-              {saveSuccess ? (
+              {saveOutcome ? (
                 <div style={{ textAlign: "center", padding: "8px 0" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: HEADER_TEXT, marginBottom: 4 }}>
-                    Sauvegarde effectuee
+                  <div style={{ fontSize: 13, fontWeight: 600, color: saveOutcome === "ok" ? HEADER_TEXT : "#dc2626", marginBottom: 4 }}>
+                    {saveOutcome === "ok"
+                      ? "Sauvegarde effectuée"
+                      : "Sauvegarde locale impossible (stockage plein ou bloqué) — exportez vos données depuis Réglages."}
                   </div>
                   <button
                     onClick={() => setShowSaveDialog(false)}
@@ -818,8 +820,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         const lbl = saveLabel.trim() || `${category} ${method} — ${new Date().toLocaleDateString("fr-CA")}`;
-                        store.saveCurrentResult(lbl);
-                        setSaveSuccess(true);
+                        setSaveOutcome(store.saveCurrentResult(lbl) ? "ok" : "erreur");
                       }
                       if (e.key === "Escape") setShowSaveDialog(false);
                     }}
@@ -828,8 +829,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                     <button
                       onClick={() => {
                         const lbl = saveLabel.trim() || `${category} ${method} — ${new Date().toLocaleDateString("fr-CA")}`;
-                        store.saveCurrentResult(lbl);
-                        setSaveSuccess(true);
+                        setSaveOutcome(store.saveCurrentResult(lbl) ? "ok" : "erreur");
                       }}
                       className="btn-primary"
                       style={{ flex: 1, justifyContent: "center", padding: "7px 12px", fontSize: 12 }}

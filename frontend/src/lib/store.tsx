@@ -2,6 +2,11 @@
 
 import { create } from "zustand";
 import { type UnitPreferences, DEFAULT_UNITS } from "./units";
+import type { MixResult, Recipe } from "./types";
+
+// Version des solveurs : estampillée sur chaque résultat sauvegardé.
+// À incrémenter quand les formules changent (voir Issues.md).
+export const SOLVER_VERSION = "intra2017-1.0";
 
 export type Category = "RPC" | "RPG" | "RRC";
 export type RpcMethod = "dosage_cw" | "wb" | "slump" | "essai";
@@ -134,7 +139,7 @@ export interface RpgEssaiState {
   ajustements: RpgEssaiAdjustment[];
 }
 
-export type RpcCwResponse = any;
+export type RpcCwResponse = MixResult;
 
 /* ── Industrie types ── */
 export interface BinderPrice {
@@ -159,7 +164,7 @@ export interface IndustrieState {
 
 export interface IndustrieCostResult {
   bw_pct: number;
-  recipe: any;
+  recipe: Recipe;
   binder_cost: number;
   cost_per_m3: number;
   cost_per_tonne: number;
@@ -176,7 +181,7 @@ export interface ProductionLogEntry {
   aggregate_sg?: number;
   aggregate_fraction_pct?: number;
   bw_pct: number;
-  recipe: any;
+  recipe: Recipe;
   binder_prices: BinderPrice[];
   binder_cost: number;
   cost_per_m3: number;
@@ -190,7 +195,11 @@ export interface SavedResult {
   category: Category;
   method: RpcMethod;
   general: GeneralInfo;
-  recipes: any[];
+  recipes: Recipe[];
+  /** Entrées du formulaire au moment du calcul — permet « Recharger ». */
+  inputs?: unknown;
+  /** Version des solveurs qui a produit ces résultats. */
+  solverVersion?: string;
 }
 
 /* ── localStorage helpers (SSR-safe) ── */
@@ -206,11 +215,15 @@ function loadSavedFromStorage(): SavedResult[] {
   }
 }
 
-function persistSaved(items: SavedResult[]) {
-  if (typeof window === "undefined") return;
+function persistSaved(items: SavedResult[]): boolean {
+  if (typeof window === "undefined") return false;
   try {
     localStorage.setItem(SAVED_KEY, JSON.stringify(items));
-  } catch { /* storage full — silently ignore */ }
+    return true;
+  } catch {
+    // quota atteint ou stockage bloqué (navigation privée)
+    return false;
+  }
 }
 
 const UNITS_KEY = "minebackfill_unit_prefs";
@@ -302,14 +315,14 @@ interface AppState {
     index: number,
     patch: { binder_pct?: number; wc_ratio?: number }
   ) => void;
-  wbResult: any | null;
-  setWbResult: (res: any | null) => void;
+  wbResult: MixResult | null;
+  setWbResult: (res: MixResult | null) => void;
 
   slump: SlumpState;
   setSlump: (patch: Partial<SlumpState>) => void;
   setSlumpRecipe: (index: number, patch: { binder_pct?: number }) => void;
-  slumpResult: any | null;
-  setSlumpResult: (res: any | null) => void;
+  slumpResult: MixResult | null;
+  setSlumpResult: (res: MixResult | null) => void;
 
   essai: EssaiInputsState;
   setEssai: (patch: Partial<EssaiInputsState>) => void;
@@ -321,26 +334,26 @@ interface AppState {
       ajout_eau?: number;
     }
   ) => void;
-  essaiResult: any | null;
-  setEssaiResult: (res: any | null) => void;
+  essaiResult: MixResult | null;
+  setEssaiResult: (res: MixResult | null) => void;
 
   rpgCw: RpgCwState;
   setRpgCw: (patch: Partial<RpgCwState>) => void;
   setRpgCwRecipe: (index: number, patch: { binder_pct?: number }) => void;
-  rpgCwResult: any | null;
-  setRpgCwResult: (res: any | null) => void;
+  rpgCwResult: MixResult | null;
+  setRpgCwResult: (res: MixResult | null) => void;
 
   rpgWb: RpgWbState;
   setRpgWb: (patch: Partial<RpgWbState>) => void;
   setRpgWbRecipe: (index: number, patch: { binder_pct?: number; wc_ratio?: number }) => void;
-  rpgWbResult: any | null;
-  setRpgWbResult: (res: any | null) => void;
+  rpgWbResult: MixResult | null;
+  setRpgWbResult: (res: MixResult | null) => void;
 
   rpgEssai: RpgEssaiState;
   setRpgEssai: (patch: Partial<RpgEssaiState>) => void;
   setRpgEssaiAjustement: (index: number, patch: RpgEssaiAdjustment) => void;
-  rpgEssaiResult: any | null;
-  setRpgEssaiResult: (res: any | null) => void;
+  rpgEssaiResult: MixResult | null;
+  setRpgEssaiResult: (res: MixResult | null) => void;
 
   fillTestData: () => void;
 
@@ -349,9 +362,10 @@ interface AppState {
   loadUnits: () => void;
 
   savedResults: SavedResult[];
-  saveCurrentResult: (label: string) => void;
+  saveCurrentResult: (label: string) => boolean;
   deleteSavedResult: (id: string) => void;
   loadSavedResults: () => void;
+  restoreSavedResult: (id: string) => boolean;
 
   industrie: IndustrieState;
   setIndustrie: (patch: Partial<IndustrieState>) => void;
@@ -381,7 +395,7 @@ const catalogueLiantsDefaut: LiantCatalogueItem[] = [
   { id: "liant_chaux", code: "CHAUX", nom: "Chaux", gs: 2.6 },
 ];
 
-export const useStore = create<AppState>((set) => ({
+export const useStore = create<AppState>((set, get) => ({
   // Par défaut on appelle l'API en relatif (/rpc, /rpg) via le proxy Next.js
   API: process.env.NEXT_PUBLIC_API_URL?.trim() || "",
 
@@ -766,27 +780,64 @@ export const useStore = create<AppState>((set) => ({
 
   savedResults: [],
   loadSavedResults: () => set({ savedResults: loadSavedFromStorage() }),
-  saveCurrentResult: (label) =>
-    set((state) => {
-      const isRpg = state.category === "RPG";
-      const m = state.method;
-      const result = isRpg
-        ? m === "wb" ? state.rpgWbResult : m === "essai" ? state.rpgEssaiResult : state.rpgCwResult
-        : m === "wb" ? state.wbResult : m === "slump" ? state.slumpResult : m === "essai" ? state.essaiResult : state.cwResult;
-      if (!result?.recipes?.length) return {};
-      const entry: SavedResult = {
-        id: `sr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        savedAt: new Date().toISOString(),
-        label,
-        category: state.category,
-        method: state.method,
-        general: { ...state.general },
-        recipes: result.recipes,
-      };
-      const updated = [entry, ...state.savedResults];
-      persistSaved(updated);
-      return { savedResults: updated };
-    }),
+  saveCurrentResult: (label) => {
+    const state = get();
+    const isRpg = state.category === "RPG";
+    const m = state.method;
+    const result = isRpg
+      ? m === "wb" ? state.rpgWbResult : m === "essai" ? state.rpgEssaiResult : state.rpgCwResult
+      : m === "wb" ? state.wbResult : m === "slump" ? state.slumpResult : m === "essai" ? state.essaiResult : state.cwResult;
+    if (!result?.recipes?.length) return false;
+    // Instantané des entrées du formulaire actif (pour « Recharger »)
+    const inputs = isRpg
+      ? m === "wb" ? state.rpgWb : m === "essai" ? state.rpgEssai : state.rpgCw
+      : m === "wb" ? state.wb : m === "slump" ? state.slump : m === "essai" ? state.essai : state.cw;
+    const entry: SavedResult = {
+      id: `sr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      savedAt: new Date().toISOString(),
+      label,
+      category: state.category,
+      method: state.method,
+      general: { ...state.general },
+      recipes: result.recipes,
+      inputs: JSON.parse(JSON.stringify(inputs)),
+      solverVersion: SOLVER_VERSION,
+    };
+    const updated = [entry, ...state.savedResults];
+    const persisted = persistSaved(updated);
+    set({ savedResults: updated });
+    return persisted;
+  },
+  restoreSavedResult: (id) => {
+    const state = get();
+    const entry = state.savedResults.find((s) => s.id === id);
+    if (!entry) return false;
+    const result: MixResult = {
+      category: entry.category,
+      method: entry.method,
+      general: entry.general as Record<string, unknown>,
+      recipes: entry.recipes,
+    };
+    const patch: Partial<AppState> = {
+      category: entry.category,
+      method: entry.method,
+      general: { ...entry.general },
+    };
+    const isRpg = entry.category === "RPG";
+    const m = entry.method;
+    if (isRpg) {
+      if (m === "wb") { patch.rpgWbResult = result; if (entry.inputs) patch.rpgWb = entry.inputs as RpgWbState; }
+      else if (m === "essai") { patch.rpgEssaiResult = result; if (entry.inputs) patch.rpgEssai = entry.inputs as RpgEssaiState; }
+      else { patch.rpgCwResult = result; if (entry.inputs) patch.rpgCw = entry.inputs as RpgCwState; }
+    } else {
+      if (m === "wb") { patch.wbResult = result; if (entry.inputs) patch.wb = entry.inputs as WbState; }
+      else if (m === "slump") { patch.slumpResult = result; if (entry.inputs) patch.slump = entry.inputs as SlumpState; }
+      else if (m === "essai") { patch.essaiResult = result; if (entry.inputs) patch.essai = entry.inputs as EssaiInputsState; }
+      else { patch.cwResult = result; if (entry.inputs) patch.cw = entry.inputs as CwState; }
+    }
+    set(patch);
+    return true;
+  },
   deleteSavedResult: (id) =>
     set((state) => {
       const updated = state.savedResults.filter((s) => s.id !== id);

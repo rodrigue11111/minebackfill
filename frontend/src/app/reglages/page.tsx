@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { useStore } from "@/lib/store";
 import { UNIT_CATEGORIES } from "@/lib/units";
+import BackupButtons from "@/components/BackupButtons";
 
 export default function ReglagesPage() {
   const {
@@ -266,6 +267,16 @@ export default function ReglagesPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="form-card" style={{ marginTop: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, marginBottom: 8 }}>Données locales</h2>
+          <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 14 }}>
+            Les résultats sauvegardés, les prix des liants et le journal de production sont stockés
+            dans ce navigateur uniquement. Exportez-les régulièrement pour ne rien perdre, ou pour
+            les transférer sur un autre poste.
+          </p>
+          <BackupButtons />
         </div>
       </div>
     </div>
