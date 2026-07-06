@@ -740,6 +740,33 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             </svg>
             PDF
           </button>
+          <button
+            onClick={async () => {
+              const { exportPreparationPdf } = await import("@/lib/preparation-sheet");
+              exportPreparationPdf(recipes, general, binderName, category, method, units);
+            }}
+            title="Feuille de préparation à imprimer : masses à peser, cases à cocher, mesures après la gâchée"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "7px 14px",
+              border: `1px solid ${SECTION_BORDER}`,
+              borderRadius: 7,
+              background: "#fff",
+              color: HEADER_TEXT,
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M2 2.5h10M2 6h10M2 9.5h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              <path d="M9 10.5l1.2 1.2 2-2.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Feuille labo
+          </button>
 
           {/* ── Save dialog ── */}
           {showSaveDialog && (

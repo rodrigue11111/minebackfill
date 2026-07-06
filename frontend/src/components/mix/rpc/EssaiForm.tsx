@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
+import MesuresLabo from "@/components/mix/MesuresLabo";
 import {
   construireConstantesPayload,
   construireGeneralPayload,
@@ -58,6 +59,7 @@ export default function EssaiForm() {
     setEssai,
     setEssaiAjustement,
     setEssaiResult,
+    essaiResult,
     units,
   } = useStore() as any;
   const massLabel = MASS_LABELS[units.mass as keyof typeof MASS_LABELS] ?? "kg";
@@ -208,6 +210,9 @@ export default function EssaiForm() {
           })}
         </div>
       </CardSection>
+
+      {/* ── Mesures laboratoire (feuille Intra 2017, lignes 72-77) ── */}
+      <MesuresLabo numRecipes={numRecipes} recipes={essaiResult?.recipes} />
 
       {/* ── Actions ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
