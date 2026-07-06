@@ -229,15 +229,15 @@ export async function exportToPdf(
   drawDataRow(isEssai ? "Liant (tot.)" : "Liant Mb", massLabel, (r) => fromStoreMass(r.components?.binder_total_mass_kg, units.mass), 3, true);
   drawDataRow("Residu humide Mr-hum", massLabel, (r) => fromStoreMass(r.components?.residue_wet_mass_kg, units.mass));
   drawDataRow("Eau totale Mw", massLabel, (r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass));
-  drawDataRow("Eau a ajouter Mw-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass));
+  drawDataRow("Eau a ajouter/retirer Mw-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass));
   if (bcount >= 1) drawDataRow(`${binderName(1)} Mc1`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_mass_kg, units.mass));
   if (bcount >= 2) drawDataRow(`${binderName(2)} Mc2`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_mass_kg, units.mass));
   if (bcount >= 3) drawDataRow(`${binderName(3)} Mc3`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_mass_kg, units.mass));
   if (isEssai) {
-    drawDataRow("Liant a rajouter Mb-ad", massLabel, (r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass));
-    drawDataRow(`${binderName(1)} a rajouter`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass));
-    if (bcount >= 2) drawDataRow(`${binderName(2)} a rajouter`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass));
-    if (bcount >= 3) drawDataRow(`${binderName(3)} a rajouter`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass));
+    drawDataRow("Liant a ajouter/retirer Mb-ad", massLabel, (r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass));
+    drawDataRow(`${binderName(1)} a ajouter/retirer`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass));
+    if (bcount >= 2) drawDataRow(`${binderName(2)} a ajouter/retirer`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass));
+    if (bcount >= 3) drawDataRow(`${binderName(3)} a ajouter/retirer`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass));
   }
   y += 4;
 
@@ -251,6 +251,11 @@ export async function exportToPdf(
   drawDataRow("Teneur en eau w", "%", (r) => r.w_mass_pct, 2);
   drawDataRow("Rapport E/C", "", (r) => r.wc_ratio, 3);
   drawDataRow("Saturation Sr", "%", (r) => r.saturation_pct, 1);
+  if (isRpg) {
+    drawDataRow("Granulat massique Am", "%", (r) => r.aggregate_mass_pct, 2);
+    drawDataRow("Granulat vol. / residus", "% vol.", (r) => r.aggregate_vol_pct_of_residue, 2);
+    drawDataRow("Granulat vol. / remblai", "% vol.", (r) => r.aggregate_vol_pct_of_backfill, 2);
+  }
   y += 4;
 
   /* ── Section 3: Densities ── */
@@ -261,6 +266,8 @@ export async function exportToPdf(
   drawDataRow("Masse vol. seche rho_d", densLabel, (r) => fromStoreDensity(r.dry_density_kg_m3, units.density), 4, true);
   drawDataRow("Poids vol. humide gamma_h", "kN/m3", (r) => r.bulk_unit_weight_kN_m3, 2);
   drawDataRow("Poids vol. sec gamma_d", "kN/m3", (r) => r.dry_unit_weight_kN_m3, 2);
+  drawDataRow("Masse vol. solide rho_s", densLabel, (r) => fromStoreDensity((r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)), units.density), 4);
+  drawDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => (r.bulk_density_kg_m3 ? (r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)) * (r.bulk_unit_weight_kN_m3 / r.bulk_density_kg_m3) : null), 2);
   y += 4;
 
   /* ── Section 4: Void indices ── */
@@ -285,6 +292,7 @@ export async function exportToPdf(
   drawDataRow("Volume residu V_r", volLabel, (r) => fromStoreVolume(r.residue_volume_m3, units.volume), 4);
   drawDataRow("Volume liant V_b", volLabel, (r) => fromStoreVolume(r.binder_volume_m3, units.volume), 4);
   drawDataRow("Volume eau V_w", volLabel, (r) => fromStoreVolume(r.water_volume_m3, units.volume), 4);
+  if (isRpg) drawDataRow("Volume granulat V_g", volLabel, (r) => fromStoreVolume(r.aggregate_volume_m3, units.volume), 4);
   y += 4;
 
   /* ── Section 6: Complete results ── */

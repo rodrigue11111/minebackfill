@@ -63,8 +63,16 @@ Principe impose par l'utilisateur:
    - masses: `kg`
    - volumes: `m3`
    - densites: `kg/m3` (affichees aussi en `g/cm3`)
-3. **Convention C# conservee**:
-   - `Vr = Vs` (volume des rejets egal volume de solides du remblai)
+3. **Convention de calcul (depuis 2026-07-06): feuille "Intra 2017"**
+   - Reference: `Data/Feuille calculs mélanges_tonne (Intra 2017).xlsx`
+   - `Ms_total = rho_d * V_T` puis repartition par `(1+Bw)` — pipeline
+     partage dans `backend/app/core/mix_pipeline.py` (RPC = cas Xg=0 du RPG)
+   - L'ancienne convention C# `Vr = Vs` (Modele C1b 2005) est ABANDONNEE:
+     elle gonflait toutes les masses d'un facteur exact (1+Bv). Voir Issues.md #3.
+   - Essai-erreur: le volume total croit des volumes ajoutes; Sr reste a la
+     valeur de base; "a ajouter" negatif = "a retirer" (pas de bornage a 0).
+   - Tests d'or: `backend/app/tests/test_excel_golden.py` (oracle
+     `excel_twin.py` — ne jamais l'editer pour faire passer un test).
 4. **A_m (agregat/co-mixing)**:
    - garde dans la logique (preparation futures methodes), ne pas supprimer
 5. **Champs de sortie**:

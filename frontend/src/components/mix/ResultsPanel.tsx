@@ -370,15 +370,15 @@ async function exportToExcel(
   addDataRow(isEssai ? "Liant (tot.)" : "Liant Mb", massLabel, (r) => fromStoreMass(r.components?.binder_total_mass_kg, units.mass), 3, true);
   addDataRow("Residu humide Mr-hum", massLabel, (r) => fromStoreMass(r.components?.residue_wet_mass_kg, units.mass));
   addDataRow("Eau totale Mw", massLabel, (r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass));
-  addDataRow("Eau a ajouter Mw-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass));
+  addDataRow("Eau a ajouter/retirer Mw-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass));
   if (bcount >= 1) addDataRow(`${binderName(1)} Mc1`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_mass_kg, units.mass));
   if (bcount >= 2) addDataRow(`${binderName(2)} Mc2`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_mass_kg, units.mass));
   if (bcount >= 3) addDataRow(`${binderName(3)} Mc3`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_mass_kg, units.mass));
   if (isEssai) {
-    addDataRow("Liant a rajouter Mb-ad", massLabel, (r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass));
-    addDataRow(`${binderName(1)} a rajouter Mc1-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass));
-    if (bcount >= 2) addDataRow(`${binderName(2)} a rajouter Mc2-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass));
-    if (bcount >= 3) addDataRow(`${binderName(3)} a rajouter Mc3-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass));
+    addDataRow("Liant a ajouter/retirer Mb-ad", massLabel, (r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass));
+    addDataRow(`${binderName(1)} a ajouter/retirer Mc1-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass));
+    if (bcount >= 2) addDataRow(`${binderName(2)} a ajouter/retirer Mc2-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass));
+    if (bcount >= 3) addDataRow(`${binderName(3)} a ajouter/retirer Mc3-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass));
   }
 
   ws.addRow([]);
@@ -393,6 +393,11 @@ async function exportToExcel(
   addDataRow("Teneur en eau w", "%", (r) => r.w_mass_pct, 2);
   addDataRow("Rapport E/C", "", (r) => r.wc_ratio, 3);
   addDataRow("Saturation Sr", "%", (r) => r.saturation_pct, 1);
+  if (isRpg) {
+    addDataRow("Granulat massique Am", "%", (r) => r.aggregate_mass_pct, 2);
+    addDataRow("Granulat vol. / residus", "% vol.", (r) => r.aggregate_vol_pct_of_residue, 2);
+    addDataRow("Granulat vol. / remblai", "% vol.", (r) => r.aggregate_vol_pct_of_backfill, 2);
+  }
 
   ws.addRow([]);
 
@@ -404,6 +409,8 @@ async function exportToExcel(
   addDataRow("Masse vol. seche rho_d", densLabel, (r) => fromStoreDensity(r.dry_density_kg_m3, units.density), 4, true);
   addDataRow("Poids vol. humide gamma_h", "kN/m3", (r) => r.bulk_unit_weight_kN_m3, 2);
   addDataRow("Poids vol. sec gamma_d", "kN/m3", (r) => r.dry_unit_weight_kN_m3, 2);
+  addDataRow("Masse vol. solide rho_s", densLabel, (r) => fromStoreDensity((r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)), units.density), 4);
+  addDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => (r.bulk_density_kg_m3 ? (r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)) * (r.bulk_unit_weight_kN_m3 / r.bulk_density_kg_m3) : null), 2);
 
   ws.addRow([]);
 
@@ -430,6 +437,7 @@ async function exportToExcel(
   addDataRow("Volume residu V_r", volLabel, (r) => fromStoreVolume(r.residue_volume_m3, units.volume), 4);
   addDataRow("Volume liant V_b", volLabel, (r) => fromStoreVolume(r.binder_volume_m3, units.volume), 4);
   addDataRow("Volume eau V_w", volLabel, (r) => fromStoreVolume(r.water_volume_m3, units.volume), 4);
+  if (isRpg) addDataRow("Volume granulat V_g", volLabel, (r) => fromStoreVolume(r.aggregate_volume_m3, units.volume), 4);
 
   ws.addRow([]);
 
@@ -837,16 +845,16 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               <DataRow label={isEssai ? "Liant (tot.)" : "Liant Mb"} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_total_mass_kg, units.mass)} recipes={recipes} bold />
               <DataRow label="Residu humide Mr-hum" unit={massLabel} getter={(r) => fromStoreMass(r.components?.residue_wet_mass_kg, units.mass)} recipes={recipes} />
               <DataRow label="Eau totale Mw" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass)} recipes={recipes} />
-              <DataRow label="Eau a ajouter Mw-aj" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass)} recipes={recipes} />
+              <DataRow label="Eau a ajouter/retirer Mw-aj" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass)} recipes={recipes} />
               {(general.binder_count ?? 1) >= 1 && <DataRow label={`${binderName(1)} Mc1`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c1_mass_kg, units.mass)} recipes={recipes} />}
               {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} Mc2`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c2_mass_kg, units.mass)} recipes={recipes} />}
               {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} Mc3`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c3_mass_kg, units.mass)} recipes={recipes} />}
               {isEssai && (
                 <>
-                  <DataRow label="Liant a rajouter Mb-ad" unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass)} recipes={recipes} />
-                  <DataRow label={`${binderName(1)} — a rajouter`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass)} recipes={recipes} />
-                  {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} — a rajouter`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass)} recipes={recipes} />}
-                  {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} — a rajouter`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass)} recipes={recipes} />}
+                  <DataRow label="Liant a ajouter/retirer Mb-ad" unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass)} recipes={recipes} />
+                  <DataRow label={`${binderName(1)} — a ajouter/retirer`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass)} recipes={recipes} />
+                  {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} — a ajouter/retirer`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass)} recipes={recipes} />}
+                  {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} — a ajouter/retirer`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass)} recipes={recipes} />}
                 </>
               )}
             </tbody>
@@ -865,6 +873,9 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               <DataRow label="Teneur en eau w" unit="%" getter={(r) => r.w_mass_pct} recipes={recipes} digits={2} formulaIds={["F001"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="Rapport E/C" getter={(r) => r.wc_ratio} recipes={recipes} digits={3} formulaIds={["F028"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="Saturation Sr" unit="%" getter={(r) => r.saturation_pct} recipes={recipes} digits={1} formulaIds={["F003"]} onFormulaClick={handleFormulaClick} />
+              {isRpg && <DataRow label="Granulat massique Am" unit="%" getter={(r) => r.aggregate_mass_pct} recipes={recipes} digits={2} />}
+              {isRpg && <DataRow label="Granulat vol. / residus" unit="% vol." getter={(r) => r.aggregate_vol_pct_of_residue} recipes={recipes} digits={2} />}
+              {isRpg && <DataRow label="Granulat vol. / remblai" unit="% vol." getter={(r) => r.aggregate_vol_pct_of_backfill} recipes={recipes} digits={2} />}
             </tbody>
           </table>
         </div>
@@ -879,6 +890,8 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               <DataRow label="rho seche rho_d" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3, units.density)} recipes={recipes} bold formulaIds={["F007"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="gamma humide gamma_h" unit="kN/m3" getter={(r) => r.bulk_unit_weight_kN_m3} recipes={recipes} digits={2} formulaIds={["F027"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="gamma seche gamma_d" unit="kN/m3" getter={(r) => r.dry_unit_weight_kN_m3} recipes={recipes} digits={2} />
+              <DataRow label="rho solide rho_s" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3 * (1 + (r.void_ratio ?? 0)), units.density)} recipes={recipes} />
+              <DataRow label="gamma solide gamma_s" unit="kN/m3" getter={(r) => (r.bulk_density_kg_m3 ? r.dry_density_kg_m3 * (1 + (r.void_ratio ?? 0)) * (r.bulk_unit_weight_kN_m3 / r.bulk_density_kg_m3) : null)} recipes={recipes} digits={2} />
             </tbody>
           </table>
         </div>
@@ -911,6 +924,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               <DataRow label="Volume residu V_r" unit={volLabel} getter={(r) => fromStoreVolume(r.residue_volume_m3, units.volume)} recipes={recipes} digits={4} />
               <DataRow label="Volume liant V_b" unit={volLabel} getter={(r) => fromStoreVolume(r.binder_volume_m3, units.volume)} recipes={recipes} digits={4} />
               <DataRow label="Volume eau V_w" unit={volLabel} getter={(r) => fromStoreVolume(r.water_volume_m3, units.volume)} recipes={recipes} digits={4} />
+              {isRpg && <DataRow label="Volume granulat V_g" unit={volLabel} getter={(r) => fromStoreVolume(r.aggregate_volume_m3, units.volume)} recipes={recipes} digits={4} />}
             </tbody>
           </table>
         </div>

@@ -161,7 +161,7 @@ export default function SlumpForm() {
           <Field label="Quantité (nb. de moules)">
             <input type="number" style={inputStyle} min={1} value={slump.desired_qty ?? 1} onChange={(e) => setSlump({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de sécurité">
+          <Field label="Facteur de sécurité (multiplicateur)" hint="1 = aucun surplus ; 1,05 = +5 % (feuille prof : FS % = FS/100 + 1)">
             <input type="number" step="any" style={inputStyle} min={1} value={slump.safety_factor ?? 1} onChange={(e) => setSlump({ safety_factor: num(e.target.value) })} />
           </Field>
         </div>

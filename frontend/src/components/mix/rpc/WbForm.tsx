@@ -130,7 +130,7 @@ export default function WbForm() {
           <Field label="Quantité (nb. de moules)">
             <input type="number" style={inputStyle} min={1} value={wb?.desired_qty ?? 1} onChange={(e) => setWb({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de sécurité">
+          <Field label="Facteur de sécurité (multiplicateur)" hint="1 = aucun surplus ; 1,05 = +5 % (feuille prof : FS % = FS/100 + 1)">
             <input type="number" step="any" style={inputStyle} min={1} value={wb?.safety_factor ?? 1} onChange={(e) => setWb({ safety_factor: num(e.target.value) })} />
           </Field>
         </div>

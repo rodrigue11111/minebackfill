@@ -350,7 +350,7 @@ export default function ProductionForm() {
             <input type="number" style={inputStyle} min={1} value={industrie.desired_qty ?? 1}
               onChange={(e) => setIndustrie({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de securite">
+          <Field label="Facteur de sécurité (multiplicateur)">
             <input type="number" step="any" style={inputStyle} min={1} value={industrie.safety_factor ?? 1}
               onChange={(e) => setIndustrie({ safety_factor: num(e.target.value) })} />
           </Field>
