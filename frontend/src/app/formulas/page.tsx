@@ -444,7 +444,7 @@ function FormulaDetail({
           </div>
         )}
 
-        {/* Page reference */}
+        {/* Page référence */}
         <div
           style={{
             fontSize: 12,

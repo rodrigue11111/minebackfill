@@ -6,8 +6,8 @@ import { useEffect, useState } from "react";
 import { useStore, type Category, type RpcMethod } from "@/lib/store";
 
 const CATEGORIES: { id: Category; label: string; desc: string; disabled?: boolean }[] = [
-  { id: "RPC", label: "RPC", desc: "Remblai en pate cimente" },
-  { id: "RPG", label: "RPG", desc: "Remblai pate granulaire" },
+  { id: "RPC", label: "RPC", desc: "Remblai en pâte cimenté" },
+  { id: "RPG", label: "RPG", desc: "Remblai pâte granulaire" },
   { id: "RRC", label: "RRC", desc: "A venir", disabled: true },
 ];
 
@@ -60,7 +60,7 @@ export default function LeftPane() {
 
         {/* ── Category ── */}
         <div style={{ marginBottom: 22 }}>
-          <p style={SECTION_LABEL}>Categorie</p>
+          <p style={SECTION_LABEL}>Catégorie</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {CATEGORIES.map((cat) => {
               const active = category === cat.id;
@@ -129,7 +129,7 @@ export default function LeftPane() {
 
         {/* ── Methods ── */}
         <div style={{ marginBottom: 12 }}>
-          <p style={SECTION_LABEL}>Methode de calcul</p>
+          <p style={SECTION_LABEL}>Méthode de calcul</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {availableMethods.map((m) => {
               const active = method === m.id;
@@ -206,7 +206,7 @@ export default function LeftPane() {
           <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 10 }}>
             {general.operator_name && (
               <div style={{ fontSize: 11.5, color: "#374151" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>Operateur : </span>
+                <span style={{ color: "var(--muted-foreground)" }}>Opérateur : </span>
                 {general.operator_name}
               </div>
             )}
@@ -218,7 +218,7 @@ export default function LeftPane() {
             )}
             {general.residue_id && (
               <div style={{ fontSize: 11.5, color: "#374151" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>Residu : </span>
+                <span style={{ color: "var(--muted-foreground)" }}>Résidu : </span>
                 {general.residue_id}
               </div>
             )}

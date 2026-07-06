@@ -41,7 +41,7 @@ export default function RootLayout({
           <span className="status-bar-dot" />
           <span>MineBackfill v1.0</span>
           <span className="status-bar-sep" />
-          <span>Module 1 — Dimensionnement des melanges</span>
+          <span>Module 1 — Dimensionnement des mélanges</span>
           <span style={{ marginLeft: "auto" }}>Desktop</span>
         </footer>
       </body>

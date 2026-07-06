@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
+import { messageErreurApi } from "@/lib/api-error";
 import type { IndustrieCostResult } from "@/lib/store";
 import {
   buildCwPayload,
@@ -113,7 +114,7 @@ export default function ProductionForm() {
         });
         const data = await res.json().catch(() => null);
         if (!res.ok) {
-          const detail = typeof data?.detail === "string" ? data.detail : `Erreur API pour Bw=${bw}% (${res.status})`;
+          const detail = `Bw=${bw}% : ${messageErreurApi(data, res.status)}`;
           throw new Error(detail);
         }
         return { bw, recipe: data.recipes?.[0] ?? null };
@@ -137,7 +138,7 @@ export default function ProductionForm() {
       setIndustrieResults(costResults);
     } catch (e: any) {
       if (e instanceof TypeError) {
-        setError("Impossible de joindre le serveur. Verifiez que le backend est demarre.");
+        setError("Impossible de joindre le serveur. Vérifiez que le backend est démarré.");
       } else {
         setError(e.message || "Erreur inconnue");
       }
@@ -149,7 +150,7 @@ export default function ProductionForm() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Category */}
-      <CardSection title="Categorie de remblai">
+      <CardSection title="Catégorie de remblai">
         <div style={{ display: "flex", gap: 10 }}>
           {(["RPC", "RPG"] as const).map((c) => {
             const active = cat === c;
@@ -164,7 +165,7 @@ export default function ProductionForm() {
                 }}
               >
                 <input type="radio" name="ind_cat" style={{ display: "none" }} checked={active} onChange={() => setIndustrie({ category: c })} />
-                {c === "RPC" ? "RPC (sans agregat)" : "RPG (avec agregat)"}
+                {c === "RPC" ? "RPC (sans agrégat)" : "RPG (avec agrégat)"}
               </label>
             );
           })}
@@ -172,9 +173,9 @@ export default function ProductionForm() {
       </CardSection>
 
       {/* Residue */}
-      <CardSection title="Proprietes du residu" subtitle="Parametres recus du laboratoire">
+      <CardSection title="Propriétés du résidu" subtitle="Paramètres reçus du laboratoire">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
-          <Field label="Gs residu">
+          <Field label="Gs résidu">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4"
               value={industrie.residue_sg || ""} onChange={(e) => setIndustrie({ residue_sg: num(e.target.value) })} />
           </Field>
@@ -193,15 +194,15 @@ export default function ProductionForm() {
         </div>
         {isRpg && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px 14px", marginTop: 10 }}>
-            <Field label="Gs agregat">
+            <Field label="Gs agrégat">
               <input type="number" step="any" style={inputStyle} placeholder="ex : 2.7"
                 value={industrie.aggregate_sg || ""} onChange={(e) => setIndustrie({ aggregate_sg: num(e.target.value) })} />
             </Field>
-            <Field label="w0 agregat (%)">
+            <Field label="w0 agrégat (%)">
               <input type="number" step="any" style={inputStyle} placeholder="ex : 3"
                 value={industrie.aggregate_w_pct || ""} onChange={(e) => setIndustrie({ aggregate_w_pct: num(e.target.value) })} />
             </Field>
-            <Field label="Fraction agregat A_m (%)">
+            <Field label="Fraction agrégat A_m (%)">
               <input type="number" step="any" style={inputStyle} placeholder="ex : 25"
                 value={industrie.aggregate_fraction_pct || ""} onChange={(e) => setIndustrie({ aggregate_fraction_pct: num(e.target.value) })} />
             </Field>
@@ -220,7 +221,7 @@ export default function ProductionForm() {
       </CardSection>
 
       {/* Bw% levels */}
-      <CardSection title="Niveaux de Bw% a comparer" subtitle="Le calcul sera effectue pour chaque niveau">
+      <CardSection title="Niveaux de Bw% a comparer" subtitle="Le calcul sera effectué pour chaque niveau">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           {(industrie.bw_levels || []).map((bw: number, i: number) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -265,7 +266,7 @@ export default function ProductionForm() {
       </CardSection>
 
       {/* Binder system + prices */}
-      <CardSection title="Systeme liant" subtitle="Configuration, proportions et prix des liants">
+      <CardSection title="Système liant" subtitle="Configuration, proportions et prix des liants">
         {/* Binder count */}
         <div>
           <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
@@ -338,15 +339,15 @@ export default function ProductionForm() {
             border: `1px solid ${fractionOk ? "#bbf7d0" : "#fecaca"}`,
           }}>
             Total des fractions : {fractionTotal.toFixed(1)} %
-            {!fractionOk && " (doit etre 100%)"}
+            {!fractionOk && " (doit être 100%)"}
           </div>
         )}
       </CardSection>
 
       {/* Mix params */}
-      <CardSection title="Parametres du melange">
+      <CardSection title="Paramètres du mélange">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
-          <Field label="Quantite (nb. de moules)">
+          <Field label="Quantité (nb. de moules)">
             <input type="number" style={inputStyle} min={1} value={industrie.desired_qty ?? 1}
               onChange={(e) => setIndustrie({ desired_qty: num(e.target.value) })} />
           </Field>
@@ -366,7 +367,7 @@ export default function ProductionForm() {
               Calcul en cours...
             </>
           ) : (
-            "Calculer les couts"
+            "Calculer les coûts"
           )}
         </button>
       </div>

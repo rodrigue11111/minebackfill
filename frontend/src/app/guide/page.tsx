@@ -143,7 +143,7 @@ function Method({
       <div style={{ padding: "14px 18px" }}>
         <Para><strong>Quand l&apos;utiliser :</strong> {when}</Para>
         <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-          Parametres requis :
+          Paramètres requis :
         </div>
         <ul style={{ margin: "0 0 10px", paddingLeft: 20 }}>
           {inputs.map((inp, i) => (
@@ -210,8 +210,8 @@ export default function GuidePage() {
             Guide d&apos;utilisation — MineBackfill
           </h1>
           <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, maxWidth: 560, margin: 0 }}>
-            Outil de dimensionnement des melanges de remblai cimente en pate pour l&apos;industrie miniere.
-            Ce guide explique chaque etape, methode et parametre.
+            Outil de dimensionnement des mélanges de remblai cimenté en pâte pour l&apos;industrie minière.
+            Ce guide explique chaque étape, méthode et paramètre.
           </p>
           <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
             <Link
@@ -261,8 +261,8 @@ export default function GuidePage() {
               ["2", "Flux de travail"],
               ["3", "Categories de remblai"],
               ["4", "Methodes de calcul"],
-              ["5", "Reference des parametres"],
-              ["6", "Lecture des resultats"],
+              ["5", "Reference des paramètres"],
+              ["6", "Lecture des résultats"],
               ["7", "Export Excel"],
               ["8", "Page Formules"],
             ].map(([num, title]) => (
@@ -280,17 +280,17 @@ export default function GuidePage() {
         <Card accent>
           <SectionTitle>1. Vue d&apos;ensemble</SectionTitle>
           <Para>
-            <strong>MineBackfill</strong> est un outil de dimensionnement de melanges de remblai cimente en pate
-            (RCP) et de remblai pate granulaire (RPG) destine aux laboratoires et bureaux d&apos;etudes miniers.
+            <strong>MineBackfill</strong> est un outil de dimensionnement de mélanges de remblai cimenté en pâte
+            (RCP) et de remblai pâte granulaire (RPG) destine aux laboratoires et bureaux d&apos;etudes miniers.
             Il implemente les formules du <strong>Module 1</strong> du programme de calcul de M. Belem
             (Universite du Quebec en Abitibi-Temiscamingue) et permet de :
           </Para>
           <ul style={{ margin: "0 0 14px", paddingLeft: 22 }}>
             {[
-              "Calculer les masses et volumes de chaque composant du remblai (residu, liant, eau) pour 1 a 4 recettes en parallele.",
-              "Determiner les parametres geotechniques fondamentaux : indice des vides, porosite, degre de saturation, densites humide et seche.",
-              "Ajuster les recettes par methode essai-erreur (ajout de residu, d'eau ou de liant).",
-              "Exporter l'integralite des resultats au format Excel (.xlsx).",
+              "Calculer les masses et volumes de chaque composant du remblai (résidu, liant, eau) pour 1 a 4 recettes en parallele.",
+              "Determiner les paramètres géotechniques fondamentaux : indice des vides, porosité, degre de saturation, densités humide et sèche.",
+              "Ajuster les recettes par methode essai-erreur (ajout de résidu, d'eau ou de liant).",
+              "Exporter l'integralite des résultats au format Excel (.xlsx).",
               "Consulter les formules mathematiques avec rendu LaTeX interactif.",
             ].map((item, i) => (
               <li key={i} style={{ fontSize: 13.5, color: "#475569", marginBottom: 6, lineHeight: 1.6 }}>
@@ -311,42 +311,42 @@ export default function GuidePage() {
         <Card accent>
           <SectionTitle>2. Flux de travail</SectionTitle>
           <Para>
-            L&apos;application est organisee en deux etapes principales accessibles depuis la barre de navigation.
-            Suivez l&apos;ordre ci-dessous pour obtenir des resultats valides.
+            L&apos;application est organisee en deux étapes principales accessibles depuis la barre de navigation.
+            Suivez l&apos;ordre ci-dessous pour obtenir des résultats valides.
           </Para>
 
-          <Step n={1} title="Configurer les informations generales (page Informations)">
-            Renseignez l&apos;identification du projet (operateur, nom, residu, date), la geometrie du contenant
-            de moulage (section, rayon ou dimensions), et le systeme liant (1 a 3 ciments avec leurs
+          <Step n={1} title="Configurer les informations générales (page Informations)">
+            Renseignez l&apos;identification du projet (opérateur, nom, résidu, date), la géométrie du contenant
+            de moulage (section, rayon ou dimensions), et le système liant (1 à 3 ciments avec leurs
             fractions massiques). Ces informations apparaissent dans l&apos;en-tete de l&apos;export Excel.
           </Step>
 
-          <Step n={2} title="Verifier les reglages (page Reglages — optionnel)">
+          <Step n={2} title="Verifier les reglages (page Réglages — optionnel)">
             La page Reglages vous permet de modifier les constantes physiques (masse volumique de l&apos;eau,
-            gravite) et le catalogue des liants (Gs de chaque type de ciment). Les valeurs par defaut sont
+            gravite) et le catalogue des liants (Gs de chaque type de ciment). Les valeurs par défaut sont
             conformes aux standards industriels et ne necessitent generalement pas de modification.
           </Step>
 
           <Step n={3} title="Choisir la categorie et la methode (page Calculs, panneau gauche)">
-            Selectionnez la categorie de remblai (<strong>RPC</strong> ou <strong>RPG</strong>) puis la
-            methode de calcul souhaitee. Le formulaire central se met a jour automatiquement.
+            Sélectionnez la catégorie de remblai (<strong>RPC</strong> ou <strong>RPG</strong>) puis la
+            méthode de calcul souhaitée. Le formulaire central se met à jour automatiquement.
           </Step>
 
-          <Step n={4} title="Renseigner les parametres et lancer le calcul">
-            Completez le formulaire (proprietes du residu, Cw%, Bw%, Sr%, nombre de moules, facteur de
-            securite, etc.) puis cliquez sur <strong>Lancer le calcul</strong>. Le panneau de droite affiche
-            instantanement les resultats.
+          <Step n={4} title="Renseigner les paramètres et lancer le calcul">
+            Complétez le formulaire (propriétés du résidu, Cw%, Bw%, Sr%, nombre de moules, facteur de
+            sécurité, etc.) puis cliquez sur <strong>Lancer le calcul</strong>. Le panneau de droite affiche
+            instantanément les résultats.
           </Step>
 
-          <Step n={5} title="Analyser et exporter les resultats">
-            Consultez les six sections du panneau de resultats : masses, parametres geotechniques,
+          <Step n={5} title="Analyser et exporter les résultats">
+            Consultez les six sections du panneau de résultats : masses, paramètres géotechniques,
             densites, indices des vides, volumes et resultats detailles. Cliquez sur{" "}
-            <strong>Exporter Excel</strong> pour telecharger un fichier .xlsx complet.
+            <strong>Exporter Excel</strong> pour télécharger un fichier .xlsx complet.
           </Step>
 
           <InfoBox type="tip">
             <strong>Astuce :</strong> Utilisez le bouton plein ecran (icone en haut a droite du panneau
-            de resultats) pour afficher les tableaux en disposition a deux colonnes, plus lisible avec
+            de résultats) pour afficher les tableaux en disposition a deux colonnes, plus lisible avec
             plusieurs recettes.
           </InfoBox>
         </Card>
@@ -371,8 +371,8 @@ export default function GuidePage() {
                 Remblai en Pate Cimente
               </div>
               <Para>
-                Compose uniquement de residu filtre (taille &lt; 20 mm), de liant et d&apos;eau. Le residu
-                constitue la fraction solide principale. Toutes les methodes de calcul sont disponibles :
+                Compose uniquement de résidu filtre (taille &lt; 20 mm), de liant et d&apos;eau. Le résidu
+                constitue la fraction solide principale. Toutes les méthodes de calcul sont disponibles :
                 Cw%, E/C, slump et essai-erreur.
               </Para>
               <div
@@ -403,9 +403,9 @@ export default function GuidePage() {
                 Remblai Pate Granulaire (PAF)
               </div>
               <Para>
-                Ajoute une fraction d&apos;agregat grossier (sable, gravier) au remblai en pate. Necessite
-                deux parametres supplementaires : fraction massique d&apos;agregat (A_m%) et poids
-                specifique de l&apos;agregat (Gs_agr). La methode slump n&apos;est pas applicable.
+                Ajoute une fraction d&apos;agrégat grossier (sable, gravier) au remblai en pâte. Necessite
+                deux paramètres supplementaires : fraction massique d&apos;agrégat (A_m%) et poids
+                spécifique de l&apos;agrégat (Gs_agr). La méthode slump n&apos;est pas applicable.
               </Para>
               <div
                 style={{
@@ -424,8 +424,8 @@ export default function GuidePage() {
           </div>
 
           <InfoBox type="warning">
-            <strong>RRC (Remblai Rocheux Cimente) :</strong> Cette categorie sera disponible dans une
-            prochaine version du logiciel. Elle utilisera des formules specifiques aux remblais a
+            <strong>RRC (Remblai Rocheux Cimente) :</strong> Cette catégorie sera disponible dans une
+            prochaine version du logiciel. Elle utilisera des formules spécifiques aux remblais a
             granulometrie grossiere.
           </InfoBox>
         </Card>
@@ -436,22 +436,22 @@ export default function GuidePage() {
         <Card accent>
           <SectionTitle>4. Methodes de calcul</SectionTitle>
           <Para>
-            Chaque methode determine le meme ensemble de sorties (masses, volumes, parametres geotechniques)
-            mais a partir de variables d&apos;entree differentes. Choisissez la methode en fonction des
-            donnees disponibles en laboratoire.
+            Chaque méthode determine le même ensemble de sorties (masses, volumes, paramètres géotechniques)
+            mais à partir de variables d&apos;entrée différentes. Choisissez la méthode en fonction des
+            données disponibles en laboratoire.
           </Para>
 
           <Method
             badge="Dosage Cw%"
             title="Dosage selon la teneur en solides massique"
-            when="Vous connaissez le pourcentage massique de solides desire dans le melange (Cw%). C'est la methode la plus courante en pratique industrielle."
+            when="Vous connaissez le pourcentage massique de solides desire dans le mélange (Cw%). C'est la methode la plus courante en pratique industrielle."
             inputs={[
               "Cw% — teneur massique en solides (%)",
               "Sr% — degre de saturation cible (%)",
               "Bw% — pourcentage massique de liant pour chaque recette (%)",
-              "Gs du residu, w0 du residu humide",
-              "Systeme liant (1 a 3 ciments, fractions et Gs)",
-              "Geometrie du moule, nombre de moules, facteur de securite",
+              "Gs du résidu, w0 du résidu humide",
+              "Système liant (1 a 3 ciments, fractions et Gs)",
+              "Geometrie du moule, nombre de moules, facteur de sécurité",
             ]}
             formula="Cw = Ms / (Ms + Mw) × 100   |   e = (w/100) × Gs_bkf / Sr"
           />
@@ -464,8 +464,8 @@ export default function GuidePage() {
               "Bw% — pourcentage massique de liant pour chaque recette (%)",
               "E/C — rapport eau sur ciment pour chaque recette (ex. : 4.0, 6.5)",
               "Sr% — degre de saturation cible (%)",
-              "Gs du residu, w0 du residu",
-              "Systeme liant",
+              "Gs du résidu, w0 du résidu",
+              "Système liant",
             ]}
             formula="Cw calcule a partir de : Cw = (1 + Bw) / (1 + Bw + E/C × Bw)"
           />
@@ -473,23 +473,23 @@ export default function GuidePage() {
           <Method
             badge="Slump (RPC uniquement)"
             title="Ajustement par mesure d'affaissement"
-            when="Vous avez mesure l'affaissement (slump) au cone d'Abrams et souhaitez en deduire Cw% optimal. Methode empirique, specifique RPC."
+            when="Vous avez mesure l'affaissement (slump) au cone d'Abrams et souhaitez en deduire Cw% optimal. Méthode empirique, specifique RPC."
             inputs={[
               "Slump cible en mm",
               "Type de cone : mini ou grand (facteur de conversion 2.335)",
               "Sr%, Bw%, systeme liant",
             ]}
-            formula="Cw = f(slump) via modele predictif : Cw = 4.95×10^6 / (slump - 235.5122)"
+            formula="Cw = f(slump) via modèle prédictif : Cw = 4.95×10^6 / (slump - 235.5122)"
           />
 
           <Method
             badge="Essai-erreur"
             title="Ajustements manuels a partir d'une recette de base"
-            when="Vous disposez d'une recette de base (Cw% ou E/C) et souhaitez simuler l'effet d'ajouts de residu sec, de residu humide ou d'eau supplementaire."
+            when="Vous disposez d'une recette de base (Cw% ou E/C) et souhaitez simuler l'effet d'ajouts de résidu sec, de résidu humide ou d'eau supplementaire."
             inputs={[
-              "Methode de base : Cw% ou E/C (avec tous ses parametres)",
-              "Pour chaque recette : masse de residu sec ajoute (kg)",
-              "Pour chaque recette : masse de residu humide ajoute (kg)",
+              "Méthode de base : Cw% ou E/C (avec tous ses paramètres)",
+              "Pour chaque recette : masse de résidu sec ajoute (kg)",
+              "Pour chaque recette : masse de résidu humide ajoute (kg)",
               "Pour chaque recette : masse d'eau ajoutee (kg)",
             ]}
             formula="Mr_sec_tot = Mr_base + delta_sec + sec_from_wet   |   Mb_ad = max(Mb_cible - Mb_base, 0)"
@@ -497,38 +497,38 @@ export default function GuidePage() {
         </Card>
 
         {/* ─────────────────────────────────────────── */}
-        {/* 5. Parametres */}
+        {/* 5. Paramètres */}
         {/* ─────────────────────────────────────────── */}
         <Card accent>
-          <SectionTitle>5. Reference des parametres d&apos;entree</SectionTitle>
+          <SectionTitle>5. Reference des paramètres d&apos;entrée</SectionTitle>
           <Para>
-            Voici la definition de chaque parametre utilise dans les formulaires, avec les unites et plages
-            de valeurs typiques pour les remblais en pate miniers.
+            Voici la definition de chaque paramètre utilise dans les formulaires, avec les unités et plages
+            de valeurs typiques pour les remblais en pâte miniers.
           </Para>
 
           <div style={{ overflowX: "auto" }}>
             <table className="guide-param-table">
               <thead>
                 <tr>
-                  <th style={{ width: "18%" }}>Parametre</th>
-                  <th style={{ width: "8%" }}>Unite</th>
+                  <th style={{ width: "18%" }}>Paramètre</th>
+                  <th style={{ width: "8%" }}>Unité</th>
                   <th style={{ width: "16%" }}>Plage typique</th>
                   <th>Description</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  ["Gs residu", "—", "2.6 – 4.0", "Poids specifique (densite relative) du residu sec. Determine par pycnometre. Valeur typique : 2.85 – 3.20 pour tailings metalliques."],
-                  ["w0 (humidite)", "%", "0 – 35 %", "Teneur en eau massique du residu tel que livre (humide). Influence la masse d'eau a ajouter."],
-                  ["Cw%", "%", "65 – 85 %", "Pourcentage massique de solides dans le remblai frais. Valeur plus elevee = melange plus epais. Recommande : 72 – 80 % pour RPC."],
-                  ["Bw%", "%", "3 – 12 %", "Pourcentage massique de liant rapporte a la masse de residu sec. Ex. : Bw = 5 % signifie 5 kg de liant pour 100 kg de residu sec."],
-                  ["Sr%", "%", "80 – 100 %", "Degre de saturation : fraction des vides occupee par l'eau. Sr = 100 % correspond a un melange sature (aucun air). Generalement fixe a 100 % pour RPC."],
-                  ["E/C (W/B)", "—", "3 – 10", "Rapport masse d'eau / masse de liant. Valeur elevee = melange plus fluide et moins resistant."],
+                  ["Gs résidu", "—", "2.6 – 4.0", "Poids specifique (densite relative) du résidu sec. Determine par pycnometre. Valeur typique : 2.85 – 3.20 pour tailings metalliques."],
+                  ["w0 (humidite)", "%", "0 – 35 %", "Teneur en eau massique du résidu tel que livre (humide). Influence la masse d'eau a ajouter."],
+                  ["Cw%", "%", "65 – 85 %", "Pourcentage massique de solides dans le remblai frais. Valeur plus elevee = mélange plus epais. Recommande : 72 – 80 % pour RPC."],
+                  ["Bw%", "%", "3 – 12 %", "Pourcentage massique de liant rapporte a la masse de résidu sec. Ex. : Bw = 5 % signifie 5 kg de liant pour 100 kg de résidu sec."],
+                  ["Sr%", "%", "80 – 100 %", "Degre de saturation : fraction des vides occupee par l'eau. Sr = 100 % correspond a un mélange sature (aucun air). Generalement fixe a 100 % pour RPC."],
+                  ["E/C (W/B)", "—", "3 – 10", "Rapport masse d'eau / masse de liant. Valeur elevee = mélange plus fluide et moins resistant."],
                   ["Gs liant", "—", "2.80 – 3.20", "Poids specifique du systeme liant (calcule automatiquement comme moyenne harmonique des composants)."],
-                  ["A_m% (RPG)", "%", "10 – 60 %", "Fraction massique d'agregat dans les solides non-liant. Ex. : A_m = 30 % signifie 30 g d'agregat pour 100 g de (residu + agregat)."],
-                  ["Gs agregat (RPG)", "—", "2.50 – 2.80", "Poids specifique de l'agregat utilise en RPG (sable ou gravier). Valeur typique pour sable siliceux : 2.65."],
+                  ["A_m% (RPG)", "%", "10 – 60 %", "Fraction massique d'agrégat dans les solides non-liant. Ex. : A_m = 30 % signifie 30 g d'agrégat pour 100 g de (résidu + agrégat)."],
+                  ["Gs agrégat (RPG)", "—", "2.50 – 2.80", "Poids specifique de l'agrégat utilise en RPG (sable ou gravier). Valeur typique pour sable siliceux : 2.65."],
                   ["N moules", "—", "1 – 200+", "Nombre de contenants de moulage par recette. Determine le volume total a preparer."],
-                  ["Facteur securite (FS)", "—", "1.0 – 1.15", "Multiplie le volume total pour compenser les pertes lors du coulage. FS = 1 signifie pas de supplement."],
+                  ["Facteur sécurité (FS)", "—", "1.0 – 1.15", "Multiplie le volume total pour compenser les pertes lors du coulage. FS = 1 signifie pas de supplément."],
                 ].map(([param, unit, range, desc]) => (
                   <tr key={param as string}>
                     <td><strong style={{ color: "var(--navy)", fontFamily: "monospace", fontSize: 12.5 }}>{param}</strong></td>
@@ -543,45 +543,45 @@ export default function GuidePage() {
         </Card>
 
         {/* ─────────────────────────────────────────── */}
-        {/* 6. Resultats */}
+        {/* 6. Résultats */}
         {/* ─────────────────────────────────────────── */}
         <Card accent>
-          <SectionTitle>6. Lecture des resultats</SectionTitle>
+          <SectionTitle>6. Lecture des résultats</SectionTitle>
           <Para>
-            Le panneau de resultats (a droite) est divise en six sections, chacune codee par couleur.
+            Le panneau de résultats (a droite) est divise en six sections, chacune codee par couleur.
             Les valeurs sont calculees pour chaque recette independamment.
           </Para>
 
           {[
             {
               color: "#1d4ed8", bg: "#eff6ff", border: "#bfdbfe",
-              title: "Donnees du melange",
-              desc: "Masses en kilogrammes de chaque composant : residu sec, residu humide, liant total, eau totale, eau a ajouter et masses individuelles de chaque ciment (Mc1, Mc2, Mc3). Pour la methode essai-erreur, affiche egalement les masses a rajouter (Mb-ad, Mc1-ad...).",
+              title: "Données du mélange",
+              desc: "Masses en kilogrammes de chaque composant : résidu sec, résidu humide, liant total, eau totale, eau a ajouter et masses individuelles de chaque ciment (Mc1, Mc2, Mc3). Pour la methode essai-erreur, affiche egalement les masses a rajouter (Mb-ad, Mc1-ad...).",
             },
             {
               color: "#15803d", bg: "#f0fdf4", border: "#bbf7d0",
-              title: "Parametres geotechniques",
+              title: "Paramètres géotechniques",
               desc: "Cw% (teneur en solides), Cv% (fraction volumique de solides), w% (teneur en eau massique), E/C (rapport eau/ciment effectif) et Sr% (saturation finale).",
             },
             {
               color: "#7c3aed", bg: "#faf5ff", border: "#e9d5ff",
               title: "Masses volumiques",
-              desc: "Densite humide rho_h et seche rho_d en g/cm3, poids volumiques humide gamma_h et sec gamma_d en kN/m3.",
+              desc: "Densite humide rho_h et sèche rho_d en g/cm3, poids volumiques humide gamma_h et sec gamma_d en kN/m3.",
             },
             {
               color: "#b45309", bg: "#fffbeb", border: "#fde68a",
               title: "Indices des vides et structure",
-              desc: "Indice des vides e, porosite n, teneur en eau volumique theta, poids specifique du remblai (Gs_backfill) et du liant (Gs liant).",
+              desc: "Indice des vides e, porosité n, teneur en eau volumique theta, poids specifique du remblai (Gs_backfill) et du liant (Gs liant).",
             },
             {
               color: "#0e7490", bg: "#ecfeff", border: "#a5f3fc",
               title: "Volumes",
-              desc: "Tous les volumes en litres : volume du moule (V_moule), volume total (V_T), volume solide (V_s), volume des vides (V_v), volume du residu (V_r), volume du liant (V_b) et volume de l'eau (V_w).",
+              desc: "Tous les volumes en litres : volume du moule (V_moule), volume total (V_T), volume solide (V_s), volume des vides (V_v), volume du résidu (V_r), volume du liant (V_b) et volume de l'eau (V_w).",
             },
             {
               color: "#1d4ed8", bg: "#f8fafc", border: "#bfdbfe",
-              title: "Resultats complets",
-              desc: "Recapitulatif complet style Excel : masses totales (Mr_sec_tot, Ms, Mt), eau dans le residu, eau a ajouter, masse totale en grammes, volume d'air, Cw% et Cv% calcules a partir des masses et volumes.",
+              title: "Résultats complets",
+              desc: "Recapitulatif complet style Excel : masses totales (Mr_sec_tot, Ms, Mt), eau dans le résidu, eau a ajouter, masse totale en grammes, volume d'air, Cw% et Cv% calcules a partir des masses et volumes.",
             },
           ].map(({ color, bg, border, title, desc }) => (
             <div
@@ -622,20 +622,20 @@ export default function GuidePage() {
         <Card accent>
           <SectionTitle>7. Export Excel</SectionTitle>
           <Para>
-            Le bouton <strong>Exporter Excel</strong> (barre verte en haut du panneau de resultats)
+            Le bouton <strong>Exporter Excel</strong> (barre verte en haut du panneau de résultats)
             genere un fichier <code style={{ background: "#f1f5f9", padding: "1px 6px", borderRadius: 4, fontSize: 12.5 }}>.xlsx</code> directement dans le navigateur, sans connexion serveur.
           </Para>
 
           <SubTitle>Contenu du fichier exporte</SubTitle>
           <ul style={{ margin: "0 0 14px", paddingLeft: 22 }}>
             {[
-              "En-tete : operateur, projet, residu, date, categorie, methode.",
-              "Section Donnees du melange : toutes les masses (Bw%, Bv%, Mr, Ma, Mb, Mw, Mw-aj, Mc1/2/3, ajouts essai-erreur).",
-              "Section Parametres geotechniques : Cw%, Cv%, w%, E/C, Sr%.",
+              "En-tete : opérateur, projet, résidu, date, categorie, methode.",
+              "Section Données du mélange : toutes les masses (Bw%, Bv%, Mr, Ma, Mb, Mw, Mw-aj, Mc1/2/3, ajouts essai-erreur).",
+              "Section Paramètres géotechniques : Cw%, Cv%, w%, E/C, Sr%.",
               "Section Masses volumiques : rho_h, rho_d, gamma_h, gamma_d.",
               "Section Indices des vides : e, n, theta, Gs_backfill, Gs_liant.",
               "Section Volumes : V_moule, V_T, V_s, V_v, V_r, V_b, V_w (en litres).",
-              "Section Resultats complets : masses totales detaillees, volume d'air, Cw% et Cv% recalcules.",
+              "Section Résultats complets : masses totales detaillees, volume d'air, Cw% et Cv% recalcules.",
             ].map((item, i) => (
               <li key={i} style={{ fontSize: 13.5, color: "#475569", marginBottom: 5, lineHeight: 1.6 }}>
                 {item}
@@ -647,7 +647,7 @@ export default function GuidePage() {
             <code style={{ margin: "0 4px", padding: "1px 5px", background: "#d1fae5", borderRadius: 3, fontSize: 12 }}>
               minebackfill_RPC_dosage_cw_2024-03-15.xlsx
             </code>
-            avec la categorie, la methode et la date du calcul.
+            avec la catégorie, la méthode et la date du calcul.
           </InfoBox>
         </Card>
 
@@ -710,7 +710,7 @@ export default function GuidePage() {
               Pret a commencer ?
             </div>
             <div style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>
-              Renseignez les informations du projet, puis lancez vos premiers calculs de melange.
+              Renseignez les informations du projet, puis lancez vos premiers calculs de mélange.
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>

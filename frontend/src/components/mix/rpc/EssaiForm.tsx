@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
+import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
   construireGeneralPayload,
@@ -122,13 +123,13 @@ export default function EssaiForm() {
       const res = await fetch(`${API}/rpc/essai`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        const detail = typeof data?.detail === "string" ? data.detail : `Erreur API (${res.status})`;
+        const detail = messageErreurApi(data, res.status);
         throw new Error(detail);
       }
       setEssaiResult(data as any);
     } catch (e: any) {
       if (e instanceof TypeError) {
-        setError("Impossible de joindre le serveur. Verifiez que le backend est demarre.");
+        setError(messageErreurReseau());
       } else {
         setError(e.message || "Erreur inconnue");
       }

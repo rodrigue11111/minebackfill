@@ -18,7 +18,7 @@ const RechartsLineChart = dynamic(
             <YAxis tick={{ fontSize: 11, fill: "#64748b" }} />
             <Tooltip
               contentStyle={{ fontSize: 12, borderRadius: 6, border: "1px solid #e2e8f0" }}
-              formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(2)} $/m3`, "Cout"]}
+              formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(2)} $/m3`, "Coût"]}
             />
             <Line type="monotone" dataKey="cost_per_m3" stroke="#2563eb" strokeWidth={2} dot={{ r: 4, fill: "#2563eb" }} />
           </LineChart>
@@ -53,10 +53,10 @@ export default function CostDashboard() {
           <rect x="32" y="6" width="8" height="32" rx="2" fill="#64748b" />
         </svg>
         <p style={{ fontSize: 15, fontWeight: 600, color: "#374151", margin: "0 0 6px" }}>
-          Aucun resultat
+          Aucun résultat
         </p>
         <p style={{ fontSize: 13, maxWidth: 320, margin: "0 auto" }}>
-          Renseignez les parametres de production et cliquez sur <strong>Calculer les couts</strong> pour afficher la comparaison.
+          Renseignez les paramètres de production et cliquez sur <strong>Calculer les coûts</strong> pour afficher la comparaison.
         </p>
       </div>
     );
@@ -80,10 +80,10 @@ export default function CostDashboard() {
         <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "14px 18px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Bw% optimal</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: "#2563eb", marginTop: 4 }}>{fmt(cheapest.bw_pct, 1)} %</div>
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Cout le plus bas</div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Coût le plus bas</div>
         </div>
         <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "14px 18px" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Cout minimal</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Coût minimal</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: "#16a34a", marginTop: 4 }}>{fmt(cheapest.cost_per_m3)} $/m3</div>
           <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>a Bw% = {fmt(cheapest.bw_pct, 1)} %</div>
         </div>
@@ -97,16 +97,16 @@ export default function CostDashboard() {
       {/* Cost table */}
       <div style={{ background: "#fff", border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden" }}>
         <div style={{ padding: "10px 16px", borderBottom: `1px solid ${SECTION_BORDER}`, background: "#f8fafc" }}>
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: "#374151" }}>Comparaison des couts par Bw%</span>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: "#374151" }}>Comparaison des coûts par Bw%</span>
         </div>
         <table className="result-table" style={{ background: "#fff" }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
               <th style={{ padding: "9px 14px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "#64748b" }}>Bw%</th>
               <th style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "#64748b" }}>Liant Mb ({massLabel})</th>
-              <th style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "#64748b" }}>Cout liant ($)</th>
-              <th style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "#64748b" }}>Cout/m3 ($/m3)</th>
-              <th style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "#64748b" }}>Cout/t ($/t)</th>
+              <th style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "#64748b" }}>Coût liant ($)</th>
+              <th style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "#64748b" }}>Coût/m3 ($/m3)</th>
+              <th style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "#64748b" }}>Coût/t ($/t)</th>
               <th style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "#64748b" }}>E/C</th>
             </tr>
           </thead>
@@ -145,7 +145,7 @@ export default function CostDashboard() {
       {trendData.length >= 2 && (
         <div style={{ background: "#fff", border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden" }}>
           <div style={{ padding: "10px 16px", borderBottom: `1px solid ${SECTION_BORDER}`, background: "#f8fafc" }}>
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: "#374151" }}>Evolution des couts dans le temps</span>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: "#374151" }}>Évolution des coûts dans le temps</span>
           </div>
           <div style={{ padding: 16 }}>
             <RechartsLineChart data={trendData} />

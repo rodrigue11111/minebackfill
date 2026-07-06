@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useStore } from "@/lib/store";
 import LeftPane from "@/src/components/mix/LeftPane";
 import ResultsPanel from "@/src/components/mix/ResultsPanel";
@@ -25,7 +26,17 @@ const RESULTS_MAX = 780;
 const RESULTS_DEFAULT = 440;
 
 export default function MixPage() {
-  const { category, method } = useStore();
+  const { category, method, general } = useStore();
+
+  // Dimensions du contenant : requises par tous les calculs, saisies sur
+  // la page Informations. Sans elles, l'API renvoie une erreur de validation.
+  const dimensionsManquantes = (() => {
+    const g = general || {};
+    if (!g.container_type) return true;
+    if (g.container_type === "section_hauteur") return !g.container_section || !g.container_height;
+    if (g.container_type === "rayon_hauteur") return !g.container_radius || !g.container_height;
+    return !g.container_length || !g.container_width || !g.container_height;
+  })();
 
   /* ── Resizable results panel ── */
   const [resultsWidth, setResultsWidth] = useState(RESULTS_DEFAULT);
@@ -174,6 +185,33 @@ export default function MixPage() {
               minWidth: 0,
             }}
           >
+            {/* Container dimensions warning */}
+            {dimensionsManquantes && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: "#fef3c7",
+                  border: "1px solid #fcd34d",
+                  borderRadius: 8,
+                  padding: "10px 14px",
+                  marginBottom: 16,
+                  fontSize: 13,
+                  color: "#92400e",
+                }}
+              >
+                <span style={{ fontWeight: 700 }}>Dimensions du contenant manquantes.</span>
+                <span>
+                  Renseignez le type et les dimensions du moule sur la page{" "}
+                  <Link href="/" style={{ color: "#92400e", fontWeight: 700, textDecoration: "underline" }}>
+                    Informations
+                  </Link>{" "}
+                  avant de lancer un calcul.
+                </span>
+              </div>
+            )}
+
             {/* Method breadcrumb */}
             <div style={{ marginBottom: 18 }}>
               <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>

@@ -6,11 +6,11 @@ import ProductionForm from "@/components/industrie/ProductionForm";
 import CostDashboard from "@/components/industrie/CostDashboard";
 import ProductionLog from "@/components/industrie/ProductionLog";
 
-type Tab = "params" | "couts" | "journal";
+type Tab = "params" | "coûts" | "journal";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "params", label: "Parametres de production" },
-  { id: "couts", label: "Comparaison des couts" },
+  { id: "params", label: "Paramètres de production" },
+  { id: "coûts", label: "Comparaison des coûts" },
   { id: "journal", label: "Journal de production" },
 ];
 
@@ -48,7 +48,7 @@ export default function IndustriePage() {
                 Industrie
               </h1>
               <p style={{ color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 13 }}>
-                {general.project_name ? `Projet : ${general.project_name}` : "Optimisation des couts et suivi de production"}
+                {general.project_name ? `Projet : ${general.project_name}` : "Optimisation des coûts et suivi de production"}
                 {general.operator_name ? ` — ${general.operator_name}` : ""}
               </p>
             </div>
@@ -111,7 +111,7 @@ export default function IndustriePage() {
       {/* Tab content */}
       <div style={{ maxWidth: 1140, margin: "0 auto", padding: "24px 24px 64px" }}>
         {activeTab === "params" && <ProductionForm />}
-        {activeTab === "couts" && <CostDashboard />}
+        {activeTab === "coûts" && <CostDashboard />}
         {activeTab === "journal" && <ProductionLog />}
       </div>
     </div>

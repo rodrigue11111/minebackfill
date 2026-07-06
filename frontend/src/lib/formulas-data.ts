@@ -589,7 +589,7 @@ export const FORMULAS: Formula[] = [
     pageNumber: 16,
     equationLatex:
       "B_v = \\frac{V_b}{V_t} = B_w \\cdot \\frac{\\rho_{s\\text{-résidus}}}{\\rho_{s\\text{-liant}}}",
-    equationPlainText: "Bv = Vb/Vt = Bw*(rho_s-residus/rho_s-liant)",
+    equationPlainText: "Bv = Vb/Vt = Bw*(rho_s-résidus/rho_s-liant)",
     variables: [
       { symbol: "B_v", description: "Taux volumique de liant (vs résidus)", unit: null },
       { symbol: "V_b", description: "Volume du liant", unit: "m³" },
@@ -1176,7 +1176,7 @@ export const FORMULAS: Formula[] = [
     pageNumber: 49,
     equationLatex:
       "B_{v\\text{-init}} = B_{w\\text{-init}} \\cdot \\frac{\\rho_{s\\text{-résidus}}}{\\rho_{s\\text{-liant}}}",
-    equationPlainText: "Bv-init = Bw-init * (rho_s-residus / rho_s-liant)",
+    equationPlainText: "Bv-init = Bw-init * (rho_s-résidus / rho_s-liant)",
     variables: [
       { symbol: "B_{v\\text{-init}}", description: "Taux volumique initial de liant", unit: null },
       { symbol: "B_{w\\text{-init}}", description: "Taux massique initial de liant", unit: null },
@@ -1695,7 +1695,7 @@ export const FORMULAS: Formula[] = [
     pageNumber: 75,
     equationLatex:
       "M_{r\\text{-hyd}} = M_{\\text{minerai}} \\cdot N_T \\qquad M_{r\\text{-pâte}} = M_{\\text{minerai}} \\cdot N_P",
-    equationPlainText: "Mr-hyd = Mminerai*NT ; Mr-pate = Mminerai*NP",
+    equationPlainText: "Mr-hyd = Mminerai*NT ; Mr-pâte = Mminerai*NP",
     variables: [
       { symbol: "M_{r\\text{-hyd}}", description: "Masse de remblai hydraulique nécessaire", unit: "t" },
       { symbol: "M_{r\\text{-pâte}}", description: "Masse de remblai en pâte nécessaire", unit: "t" },
@@ -2779,7 +2779,7 @@ export const FORMULAS: Formula[] = [
   {
     id: "F104",
     title: "Expression de Bw en fonction de Cb, Cw et c_c",
-    subtitle: "Quantite de liant (Dia. 14)",
+    subtitle: "Quantité de liant (Dia. 14)",
     section: "Description des remblais miniers — Quantité de liant",
     chapter: "Chapitre 4 — Calculs des mélanges",
     pageNumber: 14,
@@ -2793,7 +2793,7 @@ export const FORMULAS: Formula[] = [
       { symbol: "C_w", description: "Pourcentage solide massique du remblai", unit: null },
       { symbol: "c_c", description: "Teneur massique de liant vs solides (alias Bws)", unit: null },
     ],
-    keywords: ["Bw", "Cb", "Cw", "cc", "c_c", "Bws", "Dia 14", "quantite de liant"],
+    keywords: ["Bw", "Cb", "Cw", "cc", "c_c", "Bws", "Dia 14", "quantité de liant"],
     contextSnippet:
       "Diapo 14: forme algebrique complete reliant Bw, Cb, Cw et l'alias c_c (=Bws).",
     derivationLinks: {

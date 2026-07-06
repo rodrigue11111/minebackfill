@@ -13,7 +13,7 @@ import {
 
 /**
  * Build a Cw% payload for a single Bw% level.
- * Works for both RPC and RPG categories.
+ * Works for both RPC and RPG catégories.
  */
 export function buildCwPayload(
   bwPct: number,

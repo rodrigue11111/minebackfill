@@ -88,7 +88,7 @@ export default function ProductionLog() {
             }}>
               {saveSuccess ? (
                 <div style={{ textAlign: "center", padding: "8px 0" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Lot enregistre</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Lot enregistré</div>
                   <button onClick={() => setShowSave(false)} style={{ fontSize: 12, color: "#64748b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", marginTop: 4 }}>
                     Fermer
                   </button>
@@ -139,7 +139,7 @@ export default function ProductionLog() {
             Aucun lot enregistre
           </p>
           <p style={{ fontSize: 13, maxWidth: 340, margin: "0 auto" }}>
-            Apres avoir effectue un calcul de couts, cliquez sur <strong>Enregistrer le lot du jour</strong> pour sauvegarder les resultats ici.
+            Après avoir effectue un calcul de coûts, cliquez sur <strong>Enregistrer le lot du jour</strong> pour sauvegarder les résultats ici.
           </p>
         </div>
       ) : (
@@ -152,9 +152,9 @@ export default function ProductionLog() {
             borderBottom: "2px solid #e2e8f0",
           }}>
             <span>Date</span>
-            <span>Categorie</span>
+            <span>Catégorie</span>
             <span>Bw%</span>
-            <span>Cout/m3</span>
+            <span>Coût/m3</span>
             <span>Notes</span>
             <span style={{ textAlign: "right" }}>Actions</span>
           </div>
@@ -206,16 +206,16 @@ export default function ProductionLog() {
                 {isExpanded && (
                   <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderTop: "none", borderRadius: "0 0 8px 8px", padding: 16 }}>
                     <div style={{ display: "flex", gap: 20, marginBottom: 12, flexWrap: "wrap", fontSize: 12 }}>
-                      <span><span style={{ color: "#94a3b8" }}>Gs residu : </span>{fmt(entry.residue_sg, 3)}</span>
+                      <span><span style={{ color: "#94a3b8" }}>Gs résidu : </span>{fmt(entry.residue_sg, 3)}</span>
                       <span><span style={{ color: "#94a3b8" }}>w0 : </span>{fmt(entry.residue_w_pct, 1)}%</span>
-                      {entry.aggregate_sg ? <span><span style={{ color: "#94a3b8" }}>Gs agregat : </span>{fmt(entry.aggregate_sg, 3)}</span> : null}
+                      {entry.aggregate_sg ? <span><span style={{ color: "#94a3b8" }}>Gs agrégat : </span>{fmt(entry.aggregate_sg, 3)}</span> : null}
                       {entry.aggregate_fraction_pct ? <span><span style={{ color: "#94a3b8" }}>A_m : </span>{fmt(entry.aggregate_fraction_pct, 1)}%</span> : null}
-                      <span><span style={{ color: "#94a3b8" }}>Cout/t : </span>{fmt(entry.cost_per_tonne)} $/t</span>
+                      <span><span style={{ color: "#94a3b8" }}>Coût/t : </span>{fmt(entry.cost_per_tonne)} $/t</span>
                     </div>
                     <table className="result-table" style={{ background: "#fff" }}>
                       <thead>
                         <tr style={{ background: "#f8fafc" }}>
-                          <th style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Parametre</th>
+                          <th style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Paramètre</th>
                           <th style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#374151" }}>Valeur</th>
                         </tr>
                       </thead>
@@ -225,8 +225,8 @@ export default function ProductionLog() {
                           { label: "Cw%", value: fmt(entry.recipe?.solids_mass_pct, 2) + " %" },
                           { label: "E/C", value: fmt(entry.recipe?.wc_ratio, 3) },
                           { label: "e (indice des vides)", value: fmt(entry.recipe?.void_ratio, 4) },
-                          { label: "Cout liant", value: fmt(entry.binder_cost, 2) + " $" },
-                          { label: "Cout/m3", value: fmt(entry.cost_per_m3, 2) + " $/m3" },
+                          { label: "Coût liant", value: fmt(entry.binder_cost, 2) + " $" },
+                          { label: "Coût/m3", value: fmt(entry.cost_per_m3, 2) + " $/m3" },
                         ].map((row, ri) => (
                           <tr key={ri} style={{ borderTop: "1px solid #f1f5f9" }}>
                             <td style={{ padding: "5px 10px", fontSize: 12, color: "#475569" }}>{row.label}</td>

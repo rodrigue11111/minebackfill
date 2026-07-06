@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import {
   fromStoreLength, toStoreLength,
@@ -27,6 +27,7 @@ const LABEL: React.CSSProperties = {
 export default function GeneralInfoPage() {
   const router = useRouter();
   const { general, setGeneral, catalogue_liants, fillTestData, units, loadUnits } = useStore() as any;
+  const [testLoaded, setTestLoaded] = useState(false);
 
   useEffect(() => { loadUnits(); }, [loadUnits]);
 
@@ -95,7 +96,7 @@ export default function GeneralInfoPage() {
                   marginBottom: 6,
                 }}
               >
-                Etape 01 — Configuration du projet
+                Étape 01 — Configuration du projet
               </div>
               <h1
                 style={{
@@ -106,7 +107,7 @@ export default function GeneralInfoPage() {
                   letterSpacing: "-0.01em",
                 }}
               >
-                Informations generales
+                Informations générales
               </h1>
               <p
                 style={{
@@ -116,8 +117,8 @@ export default function GeneralInfoPage() {
                   maxWidth: 520,
                 }}
               >
-                Renseignez l&apos;identification du projet, la geometrie du contenant de moulage
-                et le systeme liant. Ces informations apparaitront dans l&apos;export Excel.
+                Renseignez l&apos;identification du projet, la géométrie du contenant de moulage
+                et le système liant. Ces informations apparaîtront dans l&apos;export Excel.
               </p>
             </div>
             <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
@@ -188,7 +189,7 @@ export default function GeneralInfoPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
               <div>
-                <label style={LABEL}>Nom de l&apos;operateur</label>
+                <label style={LABEL}>Nom de l&apos;opérateur</label>
                 <input
                   type="text"
                   className="field-input"
@@ -208,7 +209,7 @@ export default function GeneralInfoPage() {
                 />
               </div>
               <div>
-                <label style={LABEL}>Identification du residu</label>
+                <label style={LABEL}>Identification du résidu</label>
                 <input
                   type="text"
                   className="field-input"
@@ -218,7 +219,7 @@ export default function GeneralInfoPage() {
                 />
               </div>
               <div>
-                <label style={LABEL}>Date de melange</label>
+                <label style={LABEL}>Date de mélange</label>
                 <input
                   type="date"
                   className="field-input"
@@ -369,7 +370,7 @@ export default function GeneralInfoPage() {
                     color: "var(--primary)",
                   }}
                 >
-                  Selectionnez un type de contenant ci-dessus pour saisir les dimensions.
+                  Sélectionnez un type de contenant ci-dessus pour saisir les dimensions.
                 </div>
               )}
             </div>
@@ -396,7 +397,7 @@ export default function GeneralInfoPage() {
                 3
               </div>
               <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
-                Systeme liant hydraulique
+                Système liant hydraulique
               </h2>
             </div>
 
@@ -476,7 +477,7 @@ export default function GeneralInfoPage() {
                           value={general[typeKey] ?? ""}
                           onChange={(e) => setGeneral({ [typeKey]: e.target.value || null })}
                         >
-                          <option value="">Selectionner...</option>
+                          <option value="">Sélectionner...</option>
                           {liantsValides.map((liant: any) => (
                             <option key={liant.id} value={liant.code}>
                               {liant.nom} ({liant.code}) — Gs {Number(liant.gs).toFixed(4)}
@@ -517,7 +518,7 @@ export default function GeneralInfoPage() {
                 }}
               >
                 Total des fractions : <strong>{fractionTotal.toFixed(1)} %</strong>
-                {!fractionOk && " — la somme doit etre egale a 100 %"}
+                {!fractionOk && " — la somme doit être égale à 100 %"}
               </div>
             )}
 
@@ -554,10 +555,11 @@ export default function GeneralInfoPage() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => { try { fillTestData(); } catch (e) { console.error("[fillTestData] error:", e); } router.push("/mix"); }}
+              onClick={() => { try { fillTestData(); setTestLoaded(true); setTimeout(() => setTestLoaded(false), 2500); } catch (e) { console.error("[fillTestData] error:", e); } }}
               style={{ padding: "10px 20px", fontSize: 14 }}
+              title="Charge les valeurs du classeur de référence Intra 2017"
             >
-              Valeurs de test
+              {testLoaded ? "Valeurs Intra 2017 chargées" : "Exemple Intra 2017"}
             </button>
             <button type="submit" className="btn-primary" style={{ padding: "10px 28px", fontSize: 14 }}>
               Enregistrer et continuer

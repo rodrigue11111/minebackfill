@@ -68,7 +68,7 @@ export default function HistoriquePage() {
                   letterSpacing: "-0.01em",
                 }}
               >
-                Resultats sauvegardes
+                Résultats sauvegardes
               </h1>
               <p style={{ color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 13 }}>
                 {savedResults.length} sauvegarde{savedResults.length !== 1 ? "s" : ""} en memoire locale
@@ -112,8 +112,8 @@ export default function HistoriquePage() {
               Aucune sauvegarde
             </p>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)", maxWidth: 340, margin: "0 auto" }}>
-              Apres avoir effectue un calcul, cliquez sur le bouton
-              {" "}<strong>Sauvegarder</strong> dans le panneau de resultats pour enregistrer vos resultats ici.
+              Après avoir effectue un calcul, cliquez sur le bouton
+              {" "}<strong>Sauvegarder</strong> dans le panneau de résultats pour enregistrer vos résultats ici.
             </p>
           </div>
         ) : (
@@ -134,8 +134,8 @@ export default function HistoriquePage() {
               }}
             >
               <span>Nom</span>
-              <span>Categorie</span>
-              <span>Methode</span>
+              <span>Catégorie</span>
+              <span>Méthode</span>
               <span>Recettes</span>
               <span>Date</span>
               <span style={{ textAlign: "right" }}>Actions</span>
@@ -266,7 +266,7 @@ export default function HistoriquePage() {
                         <div style={{ display: "flex", gap: 20, marginBottom: 14, flexWrap: "wrap" }}>
                           {sr.general.operator_name && (
                             <span style={{ fontSize: 12, color: "#374151" }}>
-                              <span style={{ color: "var(--muted-foreground)" }}>Operateur : </span>
+                              <span style={{ color: "var(--muted-foreground)" }}>Opérateur : </span>
                               {sr.general.operator_name}
                             </span>
                           )}
@@ -278,7 +278,7 @@ export default function HistoriquePage() {
                           )}
                           {sr.general.residue_id && (
                             <span style={{ fontSize: 12, color: "#374151" }}>
-                              <span style={{ color: "var(--muted-foreground)" }}>Residu : </span>
+                              <span style={{ color: "var(--muted-foreground)" }}>Résidu : </span>
                               {sr.general.residue_id}
                             </span>
                           )}
@@ -290,7 +290,7 @@ export default function HistoriquePage() {
                         <thead>
                           <tr style={{ background: "#f8fafc" }}>
                             <th style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
-                              Parametre
+                              Paramètre
                             </th>
                             {sr.recipes.map((_: any, i: number) => (
                               <th
@@ -313,11 +313,11 @@ export default function HistoriquePage() {
                             { label: "Bw%", getter: (r: any) => r.bw_mass_pct, digits: 2, unit: "%" },
                             { label: "Cw%", getter: (r: any) => r.solids_mass_pct, digits: 2, unit: "%" },
                             { label: "e (indice des vides)", getter: (r: any) => r.void_ratio, digits: 4, unit: "" },
-                            { label: "n (porosite)", getter: (r: any) => r.porosity, digits: 4, unit: "" },
+                            { label: "n (porosité)", getter: (r: any) => r.porosity, digits: 4, unit: "" },
                             { label: "w (%)", getter: (r: any) => r.w_mass_pct, digits: 2, unit: "%" },
                             { label: "E/C", getter: (r: any) => r.wc_ratio, digits: 3, unit: "" },
                             { label: "Sr (%)", getter: (r: any) => r.saturation_pct, digits: 1, unit: "%" },
-                            { label: `Residu sec (${massLabel})`, getter: (r: any) => fromStoreMass(r.components?.residue_dry_mass_kg, units?.mass), digits: 3, unit: massLabel },
+                            { label: `Résidu sec (${massLabel})`, getter: (r: any) => fromStoreMass(r.components?.residue_dry_mass_kg, units?.mass), digits: 3, unit: massLabel },
                             { label: `Liant (${massLabel})`, getter: (r: any) => fromStoreMass(r.components?.binder_total_mass_kg, units?.mass), digits: 3, unit: massLabel },
                             { label: `Eau totale (${massLabel})`, getter: (r: any) => fromStoreMass(r.components?.water_total_mass_kg, units?.mass), digits: 3, unit: massLabel },
                           ].map((row, ri) => (

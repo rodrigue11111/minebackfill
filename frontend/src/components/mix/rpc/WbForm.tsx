@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
+import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
   construireGeneralPayload,
@@ -89,13 +90,13 @@ export default function WbForm() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        const detail = typeof data?.detail === "string" ? data.detail : `Erreur API (${res.status})`;
+        const detail = messageErreurApi(data, res.status);
         throw new Error(detail);
       }
       setWbResult(data as any);
     } catch (err: any) {
       if (err instanceof TypeError) {
-        setError("Impossible de joindre le serveur. Verifiez que le backend est demarre.");
+        setError(messageErreurReseau());
       } else {
         setError(err.message || "Erreur inconnue");
       }

@@ -104,7 +104,7 @@ function RecipeHeaders({ activeCount }: { activeCount: number }) {
           width: "40%",
         }}
       >
-        Parametre
+        Paramètre
       </th>
       {Array.from({ length: activeCount }).map((_, i) => (
         <th
@@ -217,7 +217,7 @@ async function exportToExcel(
   wb.creator = "MineBackfill v1.0";
   wb.created = new Date();
 
-  const ws = wb.addWorksheet("Resultats", {
+  const ws = wb.addWorksheet("Résultats", {
     properties: { defaultColWidth: 18 },
   });
 
@@ -256,7 +256,7 @@ async function exportToExcel(
   for (let c = 3; c <= totalCols; c++) ws.getColumn(c).width = 18;
 
   /* ── Title block ── */
-  const titleRow = ws.addRow(["MINEBACKFILL — Resultats de calcul"]);
+  const titleRow = ws.addRow(["MINEBACKFILL — Résultats de calcul"]);
   ws.mergeCells(titleRow.number, 1, titleRow.number, totalCols);
   titleRow.height = 36;
   const titleCell = titleRow.getCell(1);
@@ -285,9 +285,9 @@ async function exportToExcel(
     r.getCell(2).font = { name: "Calibri", size: 10, color: { argb: "1E293B" } };
   };
 
-  addInfoRow("Operateur", general.operator_name ?? "");
+  addInfoRow("Opérateur", general.operator_name ?? "");
   addInfoRow("Projet", general.project_name ?? "");
-  addInfoRow("Residu", general.residue_id ?? "");
+  addInfoRow("Résidu", general.residue_id ?? "");
   addInfoRow("Date", general.mix_date ?? "");
 
   ws.addRow([]); // spacer
@@ -312,7 +312,7 @@ async function exportToExcel(
   };
 
   const addColumnHeaders = () => {
-    const hdrs = ["Parametre", "Unite", ...recipes.map((_, i) => `Recette ${i + 1}`)];
+    const hdrs = ["Paramètre", "Unité", ...recipes.map((_, i) => `Recette ${i + 1}`)];
     const r = ws.addRow(hdrs);
     r.height = 22;
     r.eachCell((cell, colNumber) => {
@@ -360,31 +360,31 @@ async function exportToExcel(
   };
 
   /* ── Section 1: Mix data ── */
-  addSectionHeader("DONNEES DU MELANGE", PRIMARY_LIGHT.replace("#", ""), PRIMARY);
+  addSectionHeader("DONNÉES DU MÉLANGE", PRIMARY_LIGHT.replace("#", ""), PRIMARY);
   addColumnHeaders();
   rowIndex = 0;
   addDataRow(isEssai ? "Bw% cible" : "Liant Bw%", "%", (r) => r.bw_mass_pct, 2, true);
   addDataRow("Liant Bv%", "% vol.", (r) => r.bv_vol_pct, 2);
-  addDataRow(isEssai ? "Residu sec (tot.)" : "Residu sec Mr", massLabel, (r) => fromStoreMass(r.components?.residue_dry_mass_kg, units.mass), 3, true);
-  if (isRpg) addDataRow("Agregat sec Ma", massLabel, (r) => fromStoreMass(r.components?.aggregate_dry_mass_kg, units.mass), 3, true);
+  addDataRow(isEssai ? "Résidu sec (tot.)" : "Résidu sec Mr", massLabel, (r) => fromStoreMass(r.components?.residue_dry_mass_kg, units.mass), 3, true);
+  if (isRpg) addDataRow("Agrégat sec Ma", massLabel, (r) => fromStoreMass(r.components?.aggregate_dry_mass_kg, units.mass), 3, true);
   addDataRow(isEssai ? "Liant (tot.)" : "Liant Mb", massLabel, (r) => fromStoreMass(r.components?.binder_total_mass_kg, units.mass), 3, true);
-  addDataRow("Residu humide Mr-hum", massLabel, (r) => fromStoreMass(r.components?.residue_wet_mass_kg, units.mass));
+  addDataRow("Résidu humide Mr-hum", massLabel, (r) => fromStoreMass(r.components?.residue_wet_mass_kg, units.mass));
   addDataRow("Eau totale Mw", massLabel, (r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass));
-  addDataRow("Eau a ajouter/retirer Mw-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass));
+  addDataRow("Eau à ajouter/retirer Mw-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass));
   if (bcount >= 1) addDataRow(`${binderName(1)} Mc1`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_mass_kg, units.mass));
   if (bcount >= 2) addDataRow(`${binderName(2)} Mc2`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_mass_kg, units.mass));
   if (bcount >= 3) addDataRow(`${binderName(3)} Mc3`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_mass_kg, units.mass));
   if (isEssai) {
-    addDataRow("Liant a ajouter/retirer Mb-ad", massLabel, (r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass));
-    addDataRow(`${binderName(1)} a ajouter/retirer Mc1-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass));
-    if (bcount >= 2) addDataRow(`${binderName(2)} a ajouter/retirer Mc2-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass));
-    if (bcount >= 3) addDataRow(`${binderName(3)} a ajouter/retirer Mc3-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass));
+    addDataRow("Liant à ajouter/retirer Mb-ad", massLabel, (r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass));
+    addDataRow(`${binderName(1)} à ajouter/retirer Mc1-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass));
+    if (bcount >= 2) addDataRow(`${binderName(2)} à ajouter/retirer Mc2-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass));
+    if (bcount >= 3) addDataRow(`${binderName(3)} à ajouter/retirer Mc3-ad`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass));
   }
 
   ws.addRow([]);
 
   /* ── Section 2: Geotechnical ── */
-  addSectionHeader("PARAMETRES GEOTECHNIQUES", GREEN_HDR.replace("#", ""), GREEN_TXT);
+  addSectionHeader("PARAMÈTRES GÉOTECHNIQUES", GREEN_HDR.replace("#", ""), GREEN_TXT);
   addColumnHeaders();
   rowIndex = 0;
   addDataRow("Liant Bw%", "%", (r) => r.bw_mass_pct, 2, true);
@@ -395,7 +395,7 @@ async function exportToExcel(
   addDataRow("Saturation Sr", "%", (r) => r.saturation_pct, 1);
   if (isRpg) {
     addDataRow("Granulat massique Am", "%", (r) => r.aggregate_mass_pct, 2);
-    addDataRow("Granulat vol. / residus", "% vol.", (r) => r.aggregate_vol_pct_of_residue, 2);
+    addDataRow("Granulat vol. / résidus", "% vol.", (r) => r.aggregate_vol_pct_of_residue, 2);
     addDataRow("Granulat vol. / remblai", "% vol.", (r) => r.aggregate_vol_pct_of_backfill, 2);
   }
 
@@ -406,7 +406,7 @@ async function exportToExcel(
   addColumnHeaders();
   rowIndex = 0;
   addDataRow("Masse vol. humide rho_h", densLabel, (r) => fromStoreDensity(r.bulk_density_kg_m3, units.density), 4, true);
-  addDataRow("Masse vol. seche rho_d", densLabel, (r) => fromStoreDensity(r.dry_density_kg_m3, units.density), 4, true);
+  addDataRow("Masse vol. sèche rho_d", densLabel, (r) => fromStoreDensity(r.dry_density_kg_m3, units.density), 4, true);
   addDataRow("Poids vol. humide gamma_h", "kN/m3", (r) => r.bulk_unit_weight_kN_m3, 2);
   addDataRow("Poids vol. sec gamma_d", "kN/m3", (r) => r.dry_unit_weight_kN_m3, 2);
   addDataRow("Masse vol. solide rho_s", densLabel, (r) => fromStoreDensity((r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)), units.density), 4);
@@ -419,7 +419,7 @@ async function exportToExcel(
   addColumnHeaders();
   rowIndex = 0;
   addDataRow("Indice des vides e", "", (r) => r.void_ratio, 5, true);
-  addDataRow("Porosite n", "", (r) => r.porosity, 5);
+  addDataRow("Porosité n", "", (r) => r.porosity, 5);
   addDataRow("Teneur eau vol. theta", "%", (r) => r.theta_pct, 2);
   addDataRow("Gs remblai", "", (r) => r.gs_backfill, 5);
   addDataRow("Gs liant", "", (r) => r.gs_binder, 4);
@@ -434,7 +434,7 @@ async function exportToExcel(
   addDataRow("Volume total V_T", volLabel, (r) => fromStoreVolume(r.total_backfill_volume_m3, units.volume), 4, true);
   addDataRow("Volume solide V_s", volLabel, (r) => fromStoreVolume(r.solid_volume_m3, units.volume), 4);
   addDataRow("Volume vides V_v", volLabel, (r) => fromStoreVolume(r.void_volume_m3, units.volume), 4);
-  addDataRow("Volume residu V_r", volLabel, (r) => fromStoreVolume(r.residue_volume_m3, units.volume), 4);
+  addDataRow("Volume résidu V_r", volLabel, (r) => fromStoreVolume(r.residue_volume_m3, units.volume), 4);
   addDataRow("Volume liant V_b", volLabel, (r) => fromStoreVolume(r.binder_volume_m3, units.volume), 4);
   addDataRow("Volume eau V_w", volLabel, (r) => fromStoreVolume(r.water_volume_m3, units.volume), 4);
   if (isRpg) addDataRow("Volume granulat V_g", volLabel, (r) => fromStoreVolume(r.aggregate_volume_m3, units.volume), 4);
@@ -442,22 +442,22 @@ async function exportToExcel(
   ws.addRow([]);
 
   /* ── Section 6: Complete results ── */
-  addSectionHeader("RESULTATS COMPLETS", PRIMARY_LIGHT.replace("#", ""), PRIMARY);
+  addSectionHeader("RÉSULTATS COMPLETS", PRIMARY_LIGHT.replace("#", ""), PRIMARY);
   addColumnHeaders();
   rowIndex = 0;
   addDataRow("Masse rejet sec totale M_r_sec_tot", massLabel, (r) => fromStoreMass(masseRejetSecTotaleKg(r), units.mass), 4, true);
   addDataRow("Masse solides totale M_s", massLabel, (r) => fromStoreMass(masseSolidesTotaleKg(r), units.mass), 4, true);
   addDataRow("Masse eau totale M_w", massLabel, (r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass), 4);
   addDataRow("Masse remblai totale M_t", massLabel, (r) => fromStoreMass(masseRemblaiTotaleKg(r), units.mass), 4);
-  addDataRow("Eau dans residu M_w-res", massLabel, (r) => fromStoreMass(masseEauDansResidusKg(r), units.mass), 4);
-  addDataRow("Eau a ajouter/retirer M_w-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass), 4);
+  addDataRow("Eau dans résidu M_w-res", massLabel, (r) => fromStoreMass(masseEauDansResidusKg(r), units.mass), 4);
+  addDataRow("Eau à ajouter/retirer M_w-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass), 4);
   addDataRow("Volume air V_air", volLabel, (r) => fromStoreVolume(volumeAirM3(r), units.volume), 4);
   addDataRow("Cw calcule (depuis masses)", "%", (r) => cwCalculePct(r), 4);
   addDataRow("Cv calcule (depuis volumes)", "%", (r) => cvCalculePct(r), 4);
 
   /* ── Footer ── */
   ws.addRow([]);
-  const footerRow = ws.addRow(["Genere par MineBackfill v1.0 — Module 1"]);
+  const footerRow = ws.addRow(["Généré par MineBackfill v1.0 — Module 1"]);
   ws.mergeCells(footerRow.number, 1, footerRow.number, totalCols);
   footerRow.getCell(1).font = { name: "Calibri", size: 9, italic: true, color: { argb: "94A3B8" } };
 
@@ -570,11 +570,11 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         </svg>
         <div>
           <p style={{ fontWeight: 600, fontSize: 15, color: "#374151", margin: 0 }}>
-            Resultats de calcul
+            Résultats de calcul
           </p>
           <p style={{ fontSize: 13, maxWidth: 240, marginTop: 6, lineHeight: 1.5 }}>
             Renseignez les parametres et cliquez sur{" "}
-            <strong>Lancer le calcul</strong> pour afficher les resultats ici.
+            <strong>Lancer le calcul</strong> pour afficher les résultats ici.
           </p>
         </div>
       </div>
@@ -609,13 +609,13 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 24px" }}>
             {general.residue_id && (
               <span style={{ fontSize: 13, color: "#374151" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>Residu : </span>
+                <span style={{ color: "var(--muted-foreground)" }}>Résidu : </span>
                 {general.residue_id}
               </span>
             )}
             {general.operator_name && (
               <span style={{ fontSize: 13, color: "#374151" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>Operateur : </span>
+                <span style={{ color: "var(--muted-foreground)" }}>Opérateur : </span>
                 {general.operator_name}
               </span>
             )}
@@ -832,29 +832,29 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             : { display: "flex", flexDirection: "column", gap: 14, padding: "0 16px" }
         }
       >
-        {/* ── 1. Donnees du melange ── */}
+        {/* ── 1. Données du mélange ── */}
         <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-          <SectionHeader title={isEssai ? "Donnees du melange ajuste" : "Donnees du melange"} sub={`masses en ${massLabel}`} />
+          <SectionHeader title={isEssai ? "Données du mélange ajuste" : "Données du mélange"} sub={`masses en ${massLabel}`} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
               <DataRow label={isEssai ? "Bw% cible" : "Liant Bw%"} unit="%" getter={(r) => r.bw_mass_pct} recipes={recipes} digits={2} bold formulaIds={["F016"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="Liant Bv%" unit="% vol." getter={(r) => r.bv_vol_pct} recipes={recipes} digits={2} formulaIds={["F022"]} onFormulaClick={handleFormulaClick} />
-              <DataRow label={isEssai ? "Residu sec (tot.)" : "Residu sec Mr"} unit={massLabel} getter={(r) => fromStoreMass(r.components?.residue_dry_mass_kg, units.mass)} recipes={recipes} bold />
-              {isRpg && <DataRow label="Agregat sec Ma" unit={massLabel} getter={(r) => fromStoreMass(r.components?.aggregate_dry_mass_kg, units.mass)} recipes={recipes} bold />}
+              <DataRow label={isEssai ? "Résidu sec (tot.)" : "Résidu sec Mr"} unit={massLabel} getter={(r) => fromStoreMass(r.components?.residue_dry_mass_kg, units.mass)} recipes={recipes} bold />
+              {isRpg && <DataRow label="Agrégat sec Ma" unit={massLabel} getter={(r) => fromStoreMass(r.components?.aggregate_dry_mass_kg, units.mass)} recipes={recipes} bold />}
               <DataRow label={isEssai ? "Liant (tot.)" : "Liant Mb"} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_total_mass_kg, units.mass)} recipes={recipes} bold />
-              <DataRow label="Residu humide Mr-hum" unit={massLabel} getter={(r) => fromStoreMass(r.components?.residue_wet_mass_kg, units.mass)} recipes={recipes} />
+              <DataRow label="Résidu humide Mr-hum" unit={massLabel} getter={(r) => fromStoreMass(r.components?.residue_wet_mass_kg, units.mass)} recipes={recipes} />
               <DataRow label="Eau totale Mw" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass)} recipes={recipes} />
-              <DataRow label="Eau a ajouter/retirer Mw-aj" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass)} recipes={recipes} />
+              <DataRow label="Eau à ajouter/retirer Mw-aj" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass)} recipes={recipes} />
               {(general.binder_count ?? 1) >= 1 && <DataRow label={`${binderName(1)} Mc1`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c1_mass_kg, units.mass)} recipes={recipes} />}
               {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} Mc2`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c2_mass_kg, units.mass)} recipes={recipes} />}
               {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} Mc3`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c3_mass_kg, units.mass)} recipes={recipes} />}
               {isEssai && (
                 <>
-                  <DataRow label="Liant a ajouter/retirer Mb-ad" unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass)} recipes={recipes} />
-                  <DataRow label={`${binderName(1)} — a ajouter/retirer`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass)} recipes={recipes} />
-                  {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} — a ajouter/retirer`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass)} recipes={recipes} />}
-                  {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} — a ajouter/retirer`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass)} recipes={recipes} />}
+                  <DataRow label="Liant à ajouter/retirer Mb-ad" unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass)} recipes={recipes} />
+                  <DataRow label={`${binderName(1)} — à ajouter/retirer`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass)} recipes={recipes} />
+                  {(general.binder_count ?? 1) >= 2 && <DataRow label={`${binderName(2)} — à ajouter/retirer`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass)} recipes={recipes} />}
+                  {(general.binder_count ?? 1) >= 3 && <DataRow label={`${binderName(3)} — à ajouter/retirer`} unit={massLabel} getter={(r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass)} recipes={recipes} />}
                 </>
               )}
             </tbody>
@@ -863,7 +863,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
 
         {/* ── 2. Geotechnique ── */}
         <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-          <SectionHeader title="Parametres geotechniques" sub="pourcentages & rapports" />
+          <SectionHeader title="Paramètres géotechniques" sub="pourcentages & rapports" />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
@@ -874,7 +874,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               <DataRow label="Rapport E/C" getter={(r) => r.wc_ratio} recipes={recipes} digits={3} formulaIds={["F028"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="Saturation Sr" unit="%" getter={(r) => r.saturation_pct} recipes={recipes} digits={1} formulaIds={["F003"]} onFormulaClick={handleFormulaClick} />
               {isRpg && <DataRow label="Granulat massique Am" unit="%" getter={(r) => r.aggregate_mass_pct} recipes={recipes} digits={2} />}
-              {isRpg && <DataRow label="Granulat vol. / residus" unit="% vol." getter={(r) => r.aggregate_vol_pct_of_residue} recipes={recipes} digits={2} />}
+              {isRpg && <DataRow label="Granulat vol. / résidus" unit="% vol." getter={(r) => r.aggregate_vol_pct_of_residue} recipes={recipes} digits={2} />}
               {isRpg && <DataRow label="Granulat vol. / remblai" unit="% vol." getter={(r) => r.aggregate_vol_pct_of_backfill} recipes={recipes} digits={2} />}
             </tbody>
           </table>
@@ -882,14 +882,14 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
 
         {/* ── 3. Masses volumiques ── */}
         <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-          <SectionHeader title="Masses volumiques" sub={`densites en ${densLabel}`} />
+          <SectionHeader title="Masses volumiques" sub={`densités en ${densLabel}`} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
               <DataRow label="rho humide rho_h" unit={densLabel} getter={(r) => fromStoreDensity(r.bulk_density_kg_m3, units.density)} recipes={recipes} bold formulaIds={["F023", "F024"]} onFormulaClick={handleFormulaClick} />
-              <DataRow label="rho seche rho_d" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3, units.density)} recipes={recipes} bold formulaIds={["F007"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="rho sèche rho_d" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3, units.density)} recipes={recipes} bold formulaIds={["F007"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="gamma humide gamma_h" unit="kN/m3" getter={(r) => r.bulk_unit_weight_kN_m3} recipes={recipes} digits={2} formulaIds={["F027"]} onFormulaClick={handleFormulaClick} />
-              <DataRow label="gamma seche gamma_d" unit="kN/m3" getter={(r) => r.dry_unit_weight_kN_m3} recipes={recipes} digits={2} />
+              <DataRow label="gamma sèche gamma_d" unit="kN/m3" getter={(r) => r.dry_unit_weight_kN_m3} recipes={recipes} digits={2} />
               <DataRow label="rho solide rho_s" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3 * (1 + (r.void_ratio ?? 0)), units.density)} recipes={recipes} />
               <DataRow label="gamma solide gamma_s" unit="kN/m3" getter={(r) => (r.bulk_density_kg_m3 ? r.dry_density_kg_m3 * (1 + (r.void_ratio ?? 0)) * (r.bulk_unit_weight_kN_m3 / r.bulk_density_kg_m3) : null)} recipes={recipes} digits={2} />
             </tbody>
@@ -898,12 +898,12 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
 
         {/* ── 4. Indices des vides & structure ── */}
         <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-          <SectionHeader title="Indices des vides & structure" sub="indice des vides, porosite, Gs" />
+          <SectionHeader title="Indices des vides & structure" sub="indice des vides, porosité, Gs" />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
               <DataRow label="Indice des vides e" getter={(r) => r.void_ratio} recipes={recipes} bold formulaIds={["F004"]} onFormulaClick={handleFormulaClick} />
-              <DataRow label="Porosite n" getter={(r) => r.porosity} recipes={recipes} formulaIds={["F005"]} onFormulaClick={handleFormulaClick} />
+              <DataRow label="Porosité n" getter={(r) => r.porosity} recipes={recipes} formulaIds={["F005"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="Teneur eau vol. theta" unit="%" getter={(r) => r.theta_pct} recipes={recipes} digits={2} formulaIds={["F002"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="Gs remblai" getter={(r) => r.gs_backfill} recipes={recipes} formulaIds={["F026"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="Gs liant" getter={(r) => r.gs_binder} recipes={recipes} formulaIds={["F008"]} onFormulaClick={handleFormulaClick} />
@@ -921,7 +921,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               <DataRow label="Volume total V_T" unit={volLabel} getter={(r) => fromStoreVolume(r.total_backfill_volume_m3, units.volume)} recipes={recipes} digits={4} bold />
               <DataRow label="Volume solide V_s" unit={volLabel} getter={(r) => fromStoreVolume(r.solid_volume_m3, units.volume)} recipes={recipes} digits={4} />
               <DataRow label="Volume vides V_v" unit={volLabel} getter={(r) => fromStoreVolume(r.void_volume_m3, units.volume)} recipes={recipes} digits={4} />
-              <DataRow label="Volume residu V_r" unit={volLabel} getter={(r) => fromStoreVolume(r.residue_volume_m3, units.volume)} recipes={recipes} digits={4} />
+              <DataRow label="Volume résidu V_r" unit={volLabel} getter={(r) => fromStoreVolume(r.residue_volume_m3, units.volume)} recipes={recipes} digits={4} />
               <DataRow label="Volume liant V_b" unit={volLabel} getter={(r) => fromStoreVolume(r.binder_volume_m3, units.volume)} recipes={recipes} digits={4} />
               <DataRow label="Volume eau V_w" unit={volLabel} getter={(r) => fromStoreVolume(r.water_volume_m3, units.volume)} recipes={recipes} digits={4} />
               {isRpg && <DataRow label="Volume granulat V_g" unit={volLabel} getter={(r) => fromStoreVolume(r.aggregate_volume_m3, units.volume)} recipes={recipes} digits={4} />}
@@ -929,9 +929,9 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
           </table>
         </div>
 
-        {/* ── 6. Resultats complets ── */}
+        {/* ── 6. Résultats complets ── */}
         <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff", ...(isMaximized ? { gridColumn: "1 / -1" } : {}) }}>
-          <SectionHeader title="Resultats complets" sub={`masses en ${massLabel}, volumes en ${volLabel}`} />
+          <SectionHeader title="Résultats complets" sub={`masses en ${massLabel}, volumes en ${volLabel}`} />
           <table className="result-table" style={{ background: "#fff" }}>
             <thead><tr style={{ background: HEADER_BG }}><RecipeHeaders activeCount={recipes.length} /></tr></thead>
             <tbody>
@@ -939,8 +939,8 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               <DataRow label="Masse solides totale M_s" unit={massLabel} getter={(r) => fromStoreMass(masseSolidesTotaleKg(r), units.mass)} recipes={recipes} digits={4} bold />
               <DataRow label="Masse eau totale M_w" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass)} recipes={recipes} digits={4} />
               <DataRow label="Masse remblai totale M_t" unit={massLabel} getter={(r) => fromStoreMass(masseRemblaiTotaleKg(r), units.mass)} recipes={recipes} digits={4} />
-              <DataRow label="Eau dans residu M_w-res" unit={massLabel} getter={(r) => fromStoreMass(masseEauDansResidusKg(r), units.mass)} recipes={recipes} digits={4} />
-              <DataRow label="Eau a ajouter/retirer M_w-aj" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass)} recipes={recipes} digits={4} />
+              <DataRow label="Eau dans résidu M_w-res" unit={massLabel} getter={(r) => fromStoreMass(masseEauDansResidusKg(r), units.mass)} recipes={recipes} digits={4} />
+              <DataRow label="Eau à ajouter/retirer M_w-aj" unit={massLabel} getter={(r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass)} recipes={recipes} digits={4} />
               <DataRow label="Volume air V_air" unit={volLabel} getter={(r) => fromStoreVolume(volumeAirM3(r), units.volume)} recipes={recipes} digits={4} />
               <DataRow label="Cw calcule (depuis masses)" unit="%" getter={(r) => cwCalculePct(r)} recipes={recipes} digits={4} formulaIds={["F009"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="Cv calcule (depuis volumes)" unit="%" getter={(r) => cvCalculePct(r)} recipes={recipes} digits={4} formulaIds={["F010"]} onFormulaClick={handleFormulaClick} />

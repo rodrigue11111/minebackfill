@@ -676,70 +676,84 @@ export const useStore = create<AppState>((set) => ({
   rpgEssaiResult: null,
   setRpgEssaiResult: (res) => set({ rpgEssaiResult: res }),
 
-  fillTestData: () => {
-    const rf = (min: number, max: number, dec: number) =>
-      parseFloat((min + Math.random() * (max - min)).toFixed(dec));
-    const numR = [2, 3, 4][Math.floor(Math.random() * 3)] as 2 | 3 | 4;
-    const gs = rf(3.2, 3.6, 2);
-    const w0 = rf(18, 30, 1);
-    const cwPct = rf(74, 82, 1);
-    const qty = Math.floor(rf(20, 100, 0));
-    const makeBw = () => Array.from({ length: 4 }, (_, i) => rf(3 + i * 1.5, 5 + i * 1.5, 1));
-    const makeWc = () => Array.from({ length: 4 }, () => rf(4, 10, 1));
-    const aggSg = rf(2.5, 2.9, 2);
-    const aggPct = rf(15, 35, 1);
-    const radius = rf(4.5, 6, 4);
-    const height = rf(18, 23, 1);
-    const newGeneral: GeneralInfo = {
-      operator_name: "Test Operateur",
-      project_name: "Projet Test",
-      residue_id: `R-${new Date().getFullYear()}-T`,
-      mix_date: new Date().toISOString().slice(0, 10),
-      container_type: "rayon_hauteur",
-      container_radius: radius,
-      container_height: height,
-      binder_count: 2,
-      binder1_type: "CP10",
-      binder2_type: "SLAG",
-      binder3_type: null,
-      binder1_fraction_pct: 60,
-      binder2_fraction_pct: 40,
-      binder3_fraction_pct: 0,
-    };
-    const newCw: CwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw() };
-    const newWb: WbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw(), wc_ratio: makeWc() };
-    const newSlump: SlumpState = { cone_type: "mini", slump_mm: Math.floor(rf(100, 250, 0)), saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw() };
-    const newRpgCw: RpgCwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw() };
-    const newRpgWb: RpgWbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: numR, desired_qty: qty, safety_factor: 1, binder_pct: makeBw(), wc_ratio: makeWc() };
-    // Industrie test data
-    const indCat = Math.random() > 0.5 ? "RPG" : "RPC";
-    const newIndustrie: IndustrieState = {
-      category: indCat as Category,
-      residue_sg: gs,
-      residue_w_pct: w0,
-      saturation_pct: 100,
-      solids_mass_pct: cwPct,
-      aggregate_sg: indCat === "RPG" ? aggSg : 0,
-      aggregate_w_pct: indCat === "RPG" ? rf(1, 5, 1) : 0,
-      aggregate_fraction_pct: indCat === "RPG" ? aggPct : 0,
-      slump_measured_mm: Math.floor(rf(150, 260, 0)),
-      bw_levels: [3, 4.5, 5, 6, 7, 8],
-      desired_qty: qty,
-      safety_factor: 1,
-    };
-    // Random binder prices
-    const testBinderPrices: BinderPrice[] = [
-      { code: "CP10", price_per_kg: rf(0.10, 0.20, 3) },
-      { code: "CP50", price_per_kg: rf(0.12, 0.25, 3) },
-      { code: "SLAG", price_per_kg: rf(0.05, 0.12, 3) },
-      { code: "FLY_ASH", price_per_kg: rf(0.03, 0.08, 3) },
-      { code: "CHAUX", price_per_kg: rf(0.06, 0.10, 3) },
-    ];
-    persistBinderPrices(testBinderPrices);
+  fillTestData: () =>
+    set((state) => {
+      // Jeu de valeurs DÉTERMINISTE : le « Mélange 1 » du classeur de référence
+      // du professeur (Feuille calculs mélanges_tonne, Intra 2017). Avec ces
+      // entrées, l'application reproduit le classeur cellule par cellule
+      // (mêmes valeurs que les 215 tests d'or du backend).
+      const gs = 3.05;                       // Gs résidus (Casa Berardi)
+      const w0 = 31.5789;                    // teneur en eau = 1/0.76 - 1 (% solide humide 76 %)
+      const cwPct = 70;                      // Cw initial
+      const aggSg = 2.8;                     // Gs granulat (concassé LaRonde)
+      const aggPct = 30;                     // Xg pour la démo RPG
+      const bwLevels = [4.5, 3, 5, 6];       // Bw% par recette (recette 1 = 4.5 %, comme la feuille)
+      const wcLevels = [9.9524, 7, 8, 10];   // W/C recette 1 = valeur D26 de la feuille
 
-    console.log("[fillTestData] Setting test values — Cw:", cwPct, "Gs:", gs, "w0:", w0, "recipes:", numR);
-    set({ general: newGeneral, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb, industrie: newIndustrie, binderPrices: testBinderPrices });
-  },
+      // Liants de la feuille : 20 % GU (Gs 3.15) + 80 % Slag GGBFS (Gs 2.9).
+      // On les AJOUTE au catalogue s'ils n'existent pas (sans toucher aux
+      // entrées existantes de l'utilisateur).
+      const catalogue = [...state.catalogue_liants];
+      const upsert = (code: string, nom: string, gsLiant: number) => {
+        if (!catalogue.some((l) => l.code === code)) {
+          catalogue.push({ id: `liant_${code.toLowerCase()}`, code, nom, gs: gsLiant });
+        }
+      };
+      upsert("GU", "Ciment GU (T10)", 3.15);
+      upsert("GGBFS", "Slag (GGBFS)", 2.9);
+
+      const newGeneral: GeneralInfo = {
+        operator_name: "Démo Intra 2017",
+        project_name: "Feuille de référence",
+        residue_id: "Casa Berardi",
+        mix_date: new Date().toISOString().slice(0, 10),
+        // 55 m x 20 m x 10 m = 11 000 m³ (le « contenant » de la feuille)
+        container_type: "longueur_largeur_hauteur",
+        container_length: 5500,
+        container_width: 2000,
+        container_height: 1000,
+        binder_count: 2,
+        binder1_type: "GU",
+        binder2_type: "GGBFS",
+        binder3_type: null,
+        binder1_fraction_pct: 20,
+        binder2_fraction_pct: 80,
+        binder3_fraction_pct: 0,
+      };
+      const newCw: CwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [...bwLevels] };
+      const newWb: WbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [...bwLevels], wc_ratio: [...wcLevels] };
+      const newSlump: SlumpState = { cone_type: "mini", slump_mm: 180, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [...bwLevels] };
+      const newRpgCw: RpgCwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [...bwLevels] };
+      const newRpgWb: RpgWbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [...bwLevels], wc_ratio: [...wcLevels] };
+      const newIndustrie: IndustrieState = {
+        category: "RPC",
+        residue_sg: gs,
+        residue_w_pct: w0,
+        saturation_pct: 100,
+        solids_mass_pct: cwPct,
+        aggregate_sg: 0,
+        aggregate_w_pct: 0,
+        aggregate_fraction_pct: 0,
+        slump_measured_mm: 180,
+        bw_levels: [3, 4.5, 5, 6, 7, 8],
+        desired_qty: 1,
+        safety_factor: 1,
+      };
+      // Coûts de liant de la feuille (K55/K56) : GU 195 $/t, Slag 210 $/t.
+      const testBinderPrices: BinderPrice[] = [
+        { code: "GU", price_per_kg: 0.195 },
+        { code: "GGBFS", price_per_kg: 0.21 },
+        { code: "CP10", price_per_kg: 0.195 },
+        { code: "CP50", price_per_kg: 0.22 },
+        { code: "SLAG", price_per_kg: 0.21 },
+        { code: "FLY_ASH", price_per_kg: 0.06 },
+        { code: "CHAUX", price_per_kg: 0.08 },
+      ];
+      persistBinderPrices(testBinderPrices);
+
+      console.log("[fillTestData] Valeurs Intra 2017 chargées — Cw:", cwPct, "Gs:", gs, "w0:", w0, "Bw:", bwLevels[0]);
+      return { general: newGeneral, catalogue_liants: catalogue, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb, industrie: newIndustrie, binderPrices: testBinderPrices };
+    }),
 
   units: DEFAULT_UNITS,
   setUnits: (patch) =>
