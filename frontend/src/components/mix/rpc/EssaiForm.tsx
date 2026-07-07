@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
+import ErrorBox from "@/components/ErrorBox";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import MesuresLabo from "@/components/mix/MesuresLabo";
 import {
@@ -11,7 +12,7 @@ import {
 } from "@/lib/rpc_payload";
 import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
 
-const num = (v: any) => {
+const num = (v: string) => {
   const x = parseFloat(String(v));
   return Number.isFinite(x) ? x : 0;
 };
@@ -61,7 +62,7 @@ export default function EssaiForm() {
     setEssaiResult,
     essaiResult,
     units,
-  } = useStore() as any;
+  } = useStore();
   const massLabel = MASS_LABELS[units.mass as keyof typeof MASS_LABELS] ?? "kg";
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -115,7 +116,7 @@ export default function EssaiForm() {
         base_method,
         base_inputs_cw: base_method === "dosage_cw" ? base_inputs : null,
         base_inputs_wb: base_method === "wb" ? base_inputs : null,
-        adjustments: (essai.ajustements || []).map((a: any) => ({
+        adjustments: (essai.ajustements || []).map((a) => ({
           added_dry_residue_mass: a.ajout_residu_sec || 0,
           added_wet_residue_mass: a.ajout_residu_humide || 0,
           added_water_mass: a.ajout_eau || 0,
@@ -128,12 +129,12 @@ export default function EssaiForm() {
         const detail = messageErreurApi(data, res.status);
         throw new Error(detail);
       }
-      setEssaiResult(data as any);
-    } catch (e: any) {
+      setEssaiResult(data);
+    } catch (e) {
       if (e instanceof TypeError) {
         setError(messageErreurReseau());
       } else {
-        setError(e.message || "Erreur inconnue");
+        setError(e instanceof Error ? e.message : "Erreur inconnue");
       }
     } finally {
       setLoading(false);
@@ -168,7 +169,7 @@ export default function EssaiForm() {
                   background: active ? "#eff6ff" : "#fff", cursor: "pointer", minWidth: 160, transition: "all 0.13s",
                 }}
               >
-                <input type="radio" name="base_method" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setEssai({ base_method: opt.value as any })} />
+                <input type="radio" name="base_method" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setEssai({ base_method: opt.value as "dosage_cw" | "wb" })} />
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: active ? "#2563eb" : "#374151" }}>{opt.label}</span>
                 <span style={{ fontSize: 11.5, color: active ? "#60a5fa" : "#94a3b8" }}>{opt.sub}</span>
               </label>
@@ -196,13 +197,13 @@ export default function EssaiForm() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px 12px" }}>
                   <Field label={`Résidu sec (${massLabel})`}>
-                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_residu_sec, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_sec: toStoreMass(num(e.target.value), units.mass) })} />
+                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_residu_sec, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_sec: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
                   </Field>
                   <Field label={`Résidu humide (${massLabel})`}>
-                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) })} />
+                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
                   </Field>
                   <Field label={`Eau (${massLabel})`}>
-                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_eau, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_eau: toStoreMass(num(e.target.value), units.mass) })} />
+                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_eau, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_eau: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
                   </Field>
                 </div>
               </div>
@@ -224,11 +225,7 @@ export default function EssaiForm() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "10px 14px", fontSize: 13, color: "#dc2626" }}>
-          {error}
-        </div>
-      )}
+      <ErrorBox message={error} />
     </div>
   );
 }

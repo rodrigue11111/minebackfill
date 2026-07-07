@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
+import ErrorBox from "@/components/ErrorBox";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import MesuresLabo from "@/components/mix/MesuresLabo";
 import {
@@ -11,7 +12,7 @@ import {
 } from "@/lib/rpc_payload";
 import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
 
-const num = (v: any) => {
+const num = (v: string) => {
   const x = parseFloat(String(v));
   return Number.isFinite(x) ? x : 0;
 };
@@ -61,7 +62,7 @@ export default function RpgEssaiForm() {
     setRpgEssaiResult,
     rpgEssaiResult,
     units,
-  } = useStore() as any;
+  } = useStore();
   const massLabel = MASS_LABELS[units.mass as keyof typeof MASS_LABELS] ?? "kg";
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -130,7 +131,7 @@ export default function RpgEssaiForm() {
         base_method,
         base_inputs_cw,
         base_inputs_wb,
-        adjustments: (rpgEssai.ajustements || []).map((a: any) => ({
+        adjustments: (rpgEssai.ajustements || []).map((a) => ({
           added_dry_residue_mass: a.ajout_residu_sec || 0,
           added_wet_residue_mass: a.ajout_residu_humide || 0,
           added_aggregate_mass: a.ajout_agregat || 0,
@@ -150,11 +151,11 @@ export default function RpgEssaiForm() {
         throw new Error(detail);
       }
       setRpgEssaiResult(data);
-    } catch (e: any) {
+    } catch (e) {
       if (e instanceof TypeError) {
         setError(messageErreurReseau());
       } else {
-        setError(e.message || "Erreur inconnue");
+        setError(e instanceof Error ? e.message : "Erreur inconnue");
       }
     } finally {
       setLoading(false);
@@ -223,17 +224,17 @@ export default function RpgEssaiForm() {
                   <Field label={`Résidu sec (${massLabel})`}>
                     <input type="number" step="any" style={inputStyle} placeholder="0"
                       value={fromStoreMass(aj.ajout_residu_sec, units.mass) ?? ""}
-                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_sec: toStoreMass(num(e.target.value), units.mass) })} />
+                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_sec: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
                   </Field>
                   <Field label={`Résidu humide (${massLabel})`}>
                     <input type="number" step="any" style={inputStyle} placeholder="0"
                       value={fromStoreMass(aj.ajout_residu_humide, units.mass) ?? ""}
-                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) })} />
+                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
                   </Field>
                   <Field label={`Agrégat sec (${massLabel})`} hint="Modifie A_m et recalcule Gs_PAF">
                     <input type="number" step="any" style={inputStyle} placeholder="0"
                       value={fromStoreMass(aj.ajout_agregat, units.mass) ?? ""}
-                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_agregat: toStoreMass(num(e.target.value), units.mass) })} />
+                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_agregat: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
                   </Field>
                   <Field label="w0-ag agrégat (%)" hint="Teneur en eau de l'agrégat ajouté">
                     <input type="number" step="any" style={inputStyle} placeholder="0"
@@ -243,7 +244,7 @@ export default function RpgEssaiForm() {
                   <Field label={`Eau (${massLabel})`}>
                     <input type="number" step="any" style={inputStyle} placeholder="0"
                       value={fromStoreMass(aj.ajout_eau, units.mass) ?? ""}
-                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_eau: toStoreMass(num(e.target.value), units.mass) })} />
+                      onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_eau: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
                   </Field>
                 </div>
               </div>
@@ -265,11 +266,7 @@ export default function RpgEssaiForm() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "10px 14px", fontSize: 13, color: "#dc2626" }}>
-          {error}
-        </div>
-      )}
+      <ErrorBox message={error} />
     </div>
   );
 }

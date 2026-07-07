@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { FORMULAS, FORMULA_MAP, SECTIONS, VARIABLES_ALL, type Formula, type FormulaVariable } from "@/lib/formulas-data";
+import { FORMULAS, FORMULA_MAP, SECTIONS, VARIABLES_ALL, type Formula } from "@/lib/formulas-data";
 import { searchFormulas, getSuggestions, findDerivableFormulas, type SearchResult, type Suggestion, type DerivableResult } from "@/lib/formula-search";
 import { KaTeX } from "@/components/formulas/KaTeXRenderer";
 

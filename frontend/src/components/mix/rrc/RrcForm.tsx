@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
+import ErrorBox from "@/components/ErrorBox";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 
 /**
@@ -236,11 +237,7 @@ export default function RrcForm() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "10px 14px", fontSize: 13, color: "#dc2626" }}>
-          {error}
-        </div>
-      )}
+      <ErrorBox message={error} />
     </div>
   );
 }

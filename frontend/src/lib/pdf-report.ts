@@ -1,4 +1,6 @@
 import type { UnitPreferences } from "@/lib/units";
+import type { Recipe } from "@/lib/types";
+import type { GeneralInfo } from "@/lib/store";
 import {
   fromStoreMass, fromStoreVolume, fromStoreDensity,
   MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS,
@@ -8,23 +10,23 @@ import {
 const val = (x: number | null | undefined, fallback = 0) =>
   x === undefined || x === null || Number.isNaN(x) ? fallback : x;
 
-const masseRejetSecTotaleKg = (r: any) =>
+const masseRejetSecTotaleKg = (r: Recipe) =>
   val(r?.components?.residue_dry_mass_kg) + val(r?.components?.aggregate_dry_mass_kg);
-const masseSolidesTotaleKg = (r: any) =>
+const masseSolidesTotaleKg = (r: Recipe) =>
   masseRejetSecTotaleKg(r) + val(r?.components?.binder_total_mass_kg);
-const masseRemblaiTotaleKg = (r: any) =>
+const masseRemblaiTotaleKg = (r: Recipe) =>
   masseSolidesTotaleKg(r) + val(r?.components?.water_total_mass_kg);
-const masseEauDansResidusKg = (r: any) =>
+const masseEauDansResidusKg = (r: Recipe) =>
   val(r?.components?.residue_wet_mass_kg) - val(r?.components?.residue_dry_mass_kg);
-const volumeAirM3 = (r: any) =>
+const volumeAirM3 = (r: Recipe) =>
   val(r?.void_volume_m3) - val(r?.water_volume_m3);
-const cwCalculePct = (r: any) => {
+const cwCalculePct = (r: Recipe) => {
   const ms = masseSolidesTotaleKg(r);
   const mw = val(r?.components?.water_total_mass_kg);
   const mt = ms + mw;
   return mt <= 0 ? null : (ms / mt) * 100;
 };
-const cvCalculePct = (r: any) => {
+const cvCalculePct = (r: Recipe) => {
   const vs = val(r?.solid_volume_m3);
   const vt = val(r?.total_backfill_volume_m3);
   return vt <= 0 ? null : (vs / vt) * 100;
@@ -53,8 +55,8 @@ const TEXT_DARK: [number, number, number] = [15, 23, 42];
 const TEXT_MUTED: [number, number, number] = [100, 116, 139];
 
 export async function exportToPdf(
-  recipes: any[],
-  general: any,
+  recipes: Recipe[],
+  general: GeneralInfo,
   binderName: (n: 1 | 2 | 3) => string,
   category: string,
   method: string,
@@ -86,7 +88,7 @@ export async function exportToPdf(
 
   /* ── Footer on every page ── */
   const addFooter = () => {
-    const pages = (doc as any).internal.getNumberOfPages();
+    const pages = doc.getNumberOfPages();
     for (let i = 1; i <= pages; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
@@ -184,7 +186,7 @@ export async function exportToPdf(
   };
 
   let rowIdx = 0;
-  const drawDataRow = (label: string, unit: string, getter: (r: any) => number | null | undefined, digits = 3, bold = false) => {
+  const drawDataRow = (label: string, unit: string, getter: (r: Recipe) => number | null | undefined, digits = 3, bold = false) => {
     checkPageBreak(5.5);
     const rowH = 5.5;
     const isAlt = rowIdx % 2 === 1;
@@ -267,7 +269,7 @@ export async function exportToPdf(
   drawDataRow("Poids vol. humide gamma_h", "kN/m3", (r) => r.bulk_unit_weight_kN_m3, 2);
   drawDataRow("Poids vol. sec gamma_d", "kN/m3", (r) => r.dry_unit_weight_kN_m3, 2);
   drawDataRow("Masse vol. solide rho_s", densLabel, (r) => fromStoreDensity((r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)), units.density), 4);
-  drawDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => (r.bulk_density_kg_m3 ? (r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)) * (r.bulk_unit_weight_kN_m3 / r.bulk_density_kg_m3) : null), 2);
+  drawDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => (r.bulk_density_kg_m3 ? (r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)) * ((r.bulk_unit_weight_kN_m3 ?? 0) / r.bulk_density_kg_m3) : null), 2);
   y += 4;
 
   /* ── Section 4: Void indices ── */

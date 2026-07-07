@@ -17,7 +17,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export default function IndustriePage() {
-  const { general, fillTestData, loadBinderPrices, loadProductionLog, loadUnits } = useStore() as any;
+  const { general, fillTestData, loadBinderPrices, loadProductionLog, loadUnits } = useStore();
   const [activeTab, setActiveTab] = useState<Tab>("params");
   const [testLoaded, setTestLoaded] = useState(false);
 

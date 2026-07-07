@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
+import ErrorBox from "@/components/ErrorBox";
 import { messageErreurApi } from "@/lib/api-error";
-import type { IndustrieCostResult } from "@/lib/store";
+import type { IndustrieCostResult, GeneralInfo, LiantCatalogueItem, BinderPrice } from "@/lib/store";
 import {
   buildCwPayload,
   computeBinderCost,
@@ -11,7 +12,7 @@ import {
   computeCostPerTonne,
 } from "@/lib/industrie_helpers";
 
-const num = (v: any) => {
+const num = (v: string) => {
   const x = parseFloat(String(v));
   return Number.isFinite(x) ? x : 0;
 };
@@ -54,7 +55,7 @@ function CardSection({ title, subtitle, children }: { title: string; subtitle?: 
 }
 
 export default function ProductionForm() {
-  const store = useStore() as any;
+  const store = useStore();
   const {
     API,
     general,
@@ -75,18 +76,18 @@ export default function ProductionForm() {
   const isRpg = cat === "RPG";
 
   const getPrice = (code: string) => {
-    const p = binderPrices.find((bp: any) => bp.code === code);
+    const p = binderPrices.find((bp: BinderPrice) => bp.code === code);
     return p?.price_per_kg ?? 0;
   };
 
   const bcount = general.binder_count ?? 1;
-  const liantsValides = catalogue_liants.filter((l: any) => String(l.code ?? "").trim() !== "");
+  const liantsValides = catalogue_liants.filter((l: LiantCatalogueItem) => String(l.code ?? "").trim() !== "");
 
   const activeBinders: { code: string; nom: string }[] = [];
   for (let i = 1; i <= bcount; i++) {
-    const code = general[`binder${i}_type`];
+    const code = general[`binder${i}_type` as keyof GeneralInfo] as string | null;
     if (code) {
-      const item = catalogue_liants.find((l: any) => l.code === code);
+      const item = catalogue_liants.find((l: LiantCatalogueItem) => l.code === code);
       activeBinders.push({ code, nom: item?.nom ?? code });
     }
   }
@@ -136,11 +137,11 @@ export default function ProductionForm() {
         });
 
       setIndustrieResults(costResults);
-    } catch (e: any) {
+    } catch (e) {
       if (e instanceof TypeError) {
         setError("Impossible de joindre le serveur. Vérifiez que le backend est démarré.");
       } else {
-        setError(e.message || "Erreur inconnue");
+        setError(e instanceof Error ? e.message : "Erreur inconnue");
       }
     } finally {
       setLoading(false);
@@ -239,7 +240,7 @@ export default function ProductionForm() {
               <button
                 type="button"
                 onClick={() => {
-                  const arr = industrie.bw_levels.filter((_: any, j: number) => j !== i);
+                  const arr = industrie.bw_levels.filter((_: number, j: number) => j !== i);
                   setIndustrie({ bw_levels: arr });
                 }}
                 style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16, padding: "0 2px" }}
@@ -300,9 +301,9 @@ export default function ProductionForm() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {[1, 2, 3].map((idx) => {
             if (idx > bcount) return null;
-            const typeKey = `binder${idx}_type` as any;
-            const fracKey = `binder${idx}_fraction_pct` as any;
-            const code = general[typeKey] ?? "";
+            const typeKey = `binder${idx}_type` as keyof GeneralInfo;
+            const fracKey = `binder${idx}_fraction_pct` as keyof GeneralInfo;
+            const code = (general[typeKey] as string | null) ?? "";
             return (
               <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 100px 120px", gap: 10, alignItems: "end" }}>
                 <Field label={`Liant ${idx}`}>
@@ -312,7 +313,7 @@ export default function ProductionForm() {
                     onChange={(e) => setGeneral({ [typeKey]: e.target.value })}
                   >
                     <option value="">-- Choisir --</option>
-                    {liantsValides.map((l: any) => (
+                    {liantsValides.map((l: LiantCatalogueItem) => (
                       <option key={l.code} value={l.code}>{l.nom} (Gs={l.gs})</option>
                     ))}
                   </select>
@@ -372,11 +373,7 @@ export default function ProductionForm() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "10px 14px", fontSize: 13, color: "#dc2626" }}>
-          {error}
-        </div>
-      )}
+      <ErrorBox message={error} />
     </div>
   );
 }

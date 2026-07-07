@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { useStore } from "@/lib/store";
 import { UNIT_CATEGORIES } from "@/lib/units";
+import type { LiantCatalogueItem } from "@/lib/store";
 import BackupButtons from "@/components/BackupButtons";
 
 export default function ReglagesPage() {
@@ -17,7 +18,7 @@ export default function ReglagesPage() {
     units,
     setUnits,
     loadUnits,
-  } = useStore() as any;
+  } = useStore();
 
   useEffect(() => {
     loadUnits();
@@ -56,7 +57,7 @@ export default function ReglagesPage() {
           >
             <div>
               <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                Masse volumique de l'eau (kg/m³)
+                Masse volumique de l&apos;eau (kg/m³)
               </label>
               <input
                 type="number"
@@ -136,7 +137,7 @@ export default function ReglagesPage() {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {catalogue_liants.map((liant: any, index: number) => {
+            {catalogue_liants.map((liant: LiantCatalogueItem, index: number) => {
               const code = String(liant.code ?? "");
               const duplique = code && codesDupliques.has(code);
               return (

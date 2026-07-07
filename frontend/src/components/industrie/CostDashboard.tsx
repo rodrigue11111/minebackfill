@@ -3,7 +3,8 @@
 import React from "react";
 import { useStore } from "@/lib/store";
 import type { IndustrieCostResult } from "@/lib/store";
-import { fromStoreMass, MASS_LABELS, fromStoreVolume, VOLUME_LABELS } from "@/lib/units";
+import { fromStoreMass, MASS_LABELS } from "@/lib/units";
+import type { ProductionLogEntry } from "@/lib/store";
 import dynamic from "next/dynamic";
 
 const RechartsLineChart = dynamic(
@@ -37,12 +38,11 @@ const fmt = (v: number | undefined | null, digits = 2) => {
 const SECTION_BORDER = "#e2e8f0";
 
 export default function CostDashboard() {
-  const store = useStore() as any;
+  const store = useStore();
   const { industrieResults, productionLog, units } = store;
   const results: IndustrieCostResult[] = industrieResults || [];
 
   const massLabel = MASS_LABELS[units?.mass as keyof typeof MASS_LABELS] ?? "kg";
-  const volLabel = VOLUME_LABELS[units?.volume as keyof typeof VOLUME_LABELS] ?? "L";
 
   if (results.length === 0) {
     return (
@@ -70,8 +70,8 @@ export default function CostDashboard() {
   // Trend data from production log
   const trendData = (productionLog || [])
     .slice()
-    .sort((a: any, b: any) => a.date.localeCompare(b.date))
-    .map((e: any) => ({ date: e.date, cost_per_m3: e.cost_per_m3 }));
+    .sort((a: ProductionLogEntry, b: ProductionLogEntry) => a.date.localeCompare(b.date))
+    .map((e: ProductionLogEntry) => ({ date: e.date, cost_per_m3: e.cost_per_m3 }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

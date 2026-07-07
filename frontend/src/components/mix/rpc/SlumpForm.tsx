@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
+import ErrorBox from "@/components/ErrorBox";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/rpc_payload";
 import { fromStoreSlump, toStoreSlump, SLUMP_LABELS } from "@/lib/units";
 
-const num = (v: any) => {
+const num = (v: string) => {
   const x = parseFloat(String(v));
   return Number.isFinite(x) ? x : 0;
 };
@@ -55,7 +56,7 @@ export default function SlumpForm() {
     setSlumpRecipe,
     setSlumpResult,
     units,
-  } = useStore() as any;
+  } = useStore();
   const slumpLabel = SLUMP_LABELS[units.slump as keyof typeof SLUMP_LABELS] ?? "mm";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,12 +85,12 @@ export default function SlumpForm() {
         const detail = messageErreurApi(data, res.status);
         throw new Error(detail);
       }
-      setSlumpResult(data as any);
-    } catch (err: any) {
+      setSlumpResult(data);
+    } catch (err) {
       if (err instanceof TypeError) {
         setError(messageErreurReseau());
       } else {
-        setError(err.message || "Erreur inconnue");
+        setError(err instanceof Error ? err.message : "Erreur inconnue");
       }
     } finally {
       setLoading(false);
@@ -136,7 +137,7 @@ export default function SlumpForm() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
           <Field label={`Affaissement slump (${slumpLabel})`} hint="Valeur mesurée au cône d'Abrams">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 180" value={fromStoreSlump(slump.slump_mm, units.slump) ?? ""} onChange={(e) => setSlump({ slump_mm: toStoreSlump(num(e.target.value), units.slump) })} />
+            <input type="number" step="any" style={inputStyle} placeholder="ex : 180" value={fromStoreSlump(slump.slump_mm, units.slump) ?? ""} onChange={(e) => setSlump({ slump_mm: toStoreSlump(num(e.target.value), units.slump) ?? undefined })} />
           </Field>
           <Field label="Saturation Sr (%)" hint="100% = entièrement saturé">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 100" value={slump.saturation_pct ?? ""} onChange={(e) => setSlump({ saturation_pct: num(e.target.value) })} />
@@ -210,11 +211,7 @@ export default function SlumpForm() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "10px 14px", fontSize: 13, color: "#dc2626" }}>
-          {error}
-        </div>
-      )}
+      <ErrorBox message={error} />
     </div>
   );
 }

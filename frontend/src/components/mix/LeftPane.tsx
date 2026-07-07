@@ -29,7 +29,7 @@ const SECTION_LABEL: React.CSSProperties = {
 };
 
 export default function LeftPane() {
-  const { category, setCategory, method, setMethod, loadGeneral, general, fillTestData } = useStore() as any;
+  const { category, setCategory, method, setMethod, loadGeneral, general, fillTestData } = useStore();
   const [testLoaded, setTestLoaded] = useState(false);
 
   useEffect(() => {

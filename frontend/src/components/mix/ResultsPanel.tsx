@@ -2,13 +2,14 @@
 
 import { useState, useCallback } from "react";
 import { useStore } from "@/lib/store";
+import type { GeneralInfo, LiantCatalogueItem } from "@/lib/store";
 import {
   fromStoreMass, fromStoreVolume, fromStoreDensity,
   MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS,
   type UnitPreferences,
 } from "@/lib/units";
 import FormulaPopover from "@/components/mix/FormulaPopover";
-import type { RrcRecipe } from "@/lib/types";
+import type { Recipe, RrcRecipe } from "@/lib/types";
 
 /* ── helpers ── */
 const fmt = (v: number | undefined | null, digits = 3) => {
@@ -138,12 +139,12 @@ function DataRow({
 }: {
   label: string;
   unit?: string;
-  getter: (r: any) => number | undefined | null;
-  recipes: any[];
+  getter: (r: Recipe) => number | undefined | null;
+  recipes: Recipe[];
   digits?: number;
   bold?: boolean;
   formulaIds?: string[];
-  onFormulaClick?: (formulaIds: string[], recipe: any, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe, rect: DOMRect) => void;
 }) {
   const hasFormula = formulaIds && formulaIds.length > 0 && onFormulaClick;
   return (
@@ -204,8 +205,8 @@ function DataRow({
 
 /* ── Excel export (professional formatting with ExcelJS) ── */
 export async function exportToExcel(
-  recipes: any[],
-  general: any,
+  recipes: Recipe[],
+  general: GeneralInfo,
   binderName: (n: 1 | 2 | 3) => string,
   category: string,
   method: string,
@@ -242,7 +243,7 @@ export async function exportToExcel(
   const WHITE = "FFFFFF";
   const RECIPE_HEX = ["2563EB", "16A34A", "D97706", "DC2626"];
 
-  const thinBorder = (color = BORDER_CLR): any => ({ style: "thin", color: { argb: color } });
+  const thinBorder = (color = BORDER_CLR) => ({ style: "thin" as const, color: { argb: color } });
 
   const allBorders = {
     top: thinBorder(),
@@ -325,7 +326,7 @@ export async function exportToExcel(
   };
 
   let rowIndex = 0;
-  const addDataRow = (label: string, unit: string, getter: (r: any) => number | null | undefined, digits = 3, isBold = false) => {
+  const addDataRow = (label: string, unit: string, getter: (r: Recipe) => number | null | undefined, digits = 3, isBold = false) => {
     const values = recipes.map((r) => {
       const v = getter(r);
       return v === null || v === undefined || Number.isNaN(v) ? null : parseFloat(v.toFixed(digits));
@@ -411,7 +412,7 @@ export async function exportToExcel(
   addDataRow("Poids vol. humide gamma_h", "kN/m3", (r) => r.bulk_unit_weight_kN_m3, 2);
   addDataRow("Poids vol. sec gamma_d", "kN/m3", (r) => r.dry_unit_weight_kN_m3, 2);
   addDataRow("Masse vol. solide rho_s", densLabel, (r) => fromStoreDensity((r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)), units.density), 4);
-  addDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => (r.bulk_density_kg_m3 ? (r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)) * (r.bulk_unit_weight_kN_m3 / r.bulk_density_kg_m3) : null), 2);
+  addDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => (r.bulk_density_kg_m3 ? (r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)) * ((r.bulk_unit_weight_kN_m3 ?? 0) / r.bulk_density_kg_m3) : null), 2);
 
   ws.addRow([]);
 
@@ -479,10 +480,12 @@ export async function exportToExcel(
   saveAs(blob, filename);
 }
 
-function RrcResultatsView({ recipes, massLabel, toMass }: {
+function RrcResultatsView({ recipes, massLabel, toMass, general, units }: {
   recipes: RrcRecipe[];
   massLabel: string;
   toMass: (kg: number | null | undefined) => number | null;
+  general: GeneralInfo;
+  units: UnitPreferences;
 }) {
   const n = recipes.length;
   const rows: { label: string; get: (r: RrcRecipe) => number | null | undefined; digits?: number; bold?: boolean }[] = [
@@ -533,9 +536,25 @@ function RrcResultatsView({ recipes, massLabel, toMass }: {
           </tbody>
         </table>
       </div>
+      <div style={{ display: "flex", gap: 8, padding: "0 2px" }}>
+        <button className="btn-secondary" style={{ padding: "6px 14px", fontSize: 12.5 }}
+          onClick={async () => {
+            const { exportRrcExcel } = await import("@/lib/rrc-export");
+            exportRrcExcel(recipes, general, units);
+          }}>
+          Excel
+        </button>
+        <button className="btn-secondary" style={{ padding: "6px 14px", fontSize: 12.5 }}
+          onClick={async () => {
+            const { exportRrcPdf } = await import("@/lib/rrc-export");
+            exportRrcPdf(recipes, general, units);
+          }}
+          title="Feuille de préparation : masses à charger, coulis, signature">
+          Feuille labo (PDF)
+        </button>
+      </div>
       <p style={{ fontSize: 11.5, color: "#94a3b8", padding: "0 2px" }}>
         Invariant : M_WR + M_c + M* = M_CRF. Le coulis = ciment + eau + retardateur.
-        Sauvegarde et exports Excel/PDF pour le RRC : à venir.
       </p>
     </div>
   );
@@ -549,16 +568,16 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
   /* ── Formula popover state ── */
   const [formulaPopover, setFormulaPopover] = useState<{
     formulaIds: string[];
-    recipe: any;
+    recipe: Recipe;
     anchorRect: DOMRect;
   } | null>(null);
 
-  const handleFormulaClick = useCallback((formulaIds: string[], recipe: any, rect: DOMRect) => {
+  const handleFormulaClick = useCallback((formulaIds: string[], recipe: Recipe, rect: DOMRect) => {
     setFormulaPopover({ formulaIds, recipe, anchorRect: rect });
   }, []);
-  const store = useStore() as any;
-  const { category, method, general = {}, cw = {}, wb = {}, slump = {}, essai = {}, rpgCw = {}, rpgWb = {}, rpgEssai = {} as any } = store;
-  const catalogue_liants: any[] = store.catalogue_liants ?? [];
+  const store = useStore();
+  const { category, method, general, cw, wb, slump, essai, rpgCw, rpgWb, rpgEssai } = store;
+  const catalogue_liants: LiantCatalogueItem[] = store.catalogue_liants ?? [];
   const units: UnitPreferences = store.units ?? { length: "cm", area: "cm2", mass: "kg", volume: "L", density: "g/cm3", slump: "mm" };
   const massLabel = MASS_LABELS[units.mass] ?? "kg";
   const volLabel = VOLUME_LABELS[units.volume] ?? "L";
@@ -591,7 +610,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
     ? essaiResult
     : cwResult;
 
-  const allRecipes: any[] = Array.isArray(result?.recipes) ? result.recipes : [];
+  const allRecipes: Recipe[] = Array.isArray(result?.recipes) ? result.recipes : [];
   const recipes = allRecipes.filter(Boolean);
 
   const desiredQty = isRpg
@@ -628,6 +647,8 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         recipes={rrcRecipes}
         massLabel={massLabel}
         toMass={(kg) => fromStoreMass(kg, units.mass)}
+        general={general}
+        units={units}
       />
     );
   }
@@ -1002,8 +1023,8 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               <DataRow label="rho sèche rho_d" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3, units.density)} recipes={recipes} bold formulaIds={["F007"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="gamma humide gamma_h" unit="kN/m3" getter={(r) => r.bulk_unit_weight_kN_m3} recipes={recipes} digits={2} formulaIds={["F027"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="gamma sèche gamma_d" unit="kN/m3" getter={(r) => r.dry_unit_weight_kN_m3} recipes={recipes} digits={2} />
-              <DataRow label="rho solide rho_s" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3 * (1 + (r.void_ratio ?? 0)), units.density)} recipes={recipes} />
-              <DataRow label="gamma solide gamma_s" unit="kN/m3" getter={(r) => (r.bulk_density_kg_m3 ? r.dry_density_kg_m3 * (1 + (r.void_ratio ?? 0)) * (r.bulk_unit_weight_kN_m3 / r.bulk_density_kg_m3) : null)} recipes={recipes} digits={2} />
+              <DataRow label="rho solide rho_s" unit={densLabel} getter={(r) => fromStoreDensity((r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)), units.density)} recipes={recipes} />
+              <DataRow label="gamma solide gamma_s" unit="kN/m3" getter={(r) => (r.bulk_density_kg_m3 ? (r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)) * ((r.bulk_unit_weight_kN_m3 ?? 0) / r.bulk_density_kg_m3) : null)} recipes={recipes} digits={2} />
             </tbody>
           </table>
         </div>

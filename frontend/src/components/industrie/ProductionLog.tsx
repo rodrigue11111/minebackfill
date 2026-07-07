@@ -12,7 +12,7 @@ const fmt = (v: number | undefined | null, digits = 2) => {
 const SECTION_BORDER = "#e2e8f0";
 
 export default function ProductionLog() {
-  const store = useStore() as any;
+  const store = useStore();
   const {
     industrie,
     industrieResults,

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
+import ErrorBox from "@/components/ErrorBox";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
@@ -9,7 +10,7 @@ import {
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
 
-const num = (v: any) => {
+const num = (v: string) => {
   const x = parseFloat(String(v));
   return Number.isFinite(x) ? x : 0;
 };
@@ -93,12 +94,12 @@ export default function WbForm() {
         const detail = messageErreurApi(data, res.status);
         throw new Error(detail);
       }
-      setWbResult(data as any);
-    } catch (err: any) {
+      setWbResult(data);
+    } catch (err) {
       if (err instanceof TypeError) {
         setError(messageErreurReseau());
       } else {
-        setError(err.message || "Erreur inconnue");
+        setError(err instanceof Error ? err.message : "Erreur inconnue");
       }
     } finally {
       setLoading(false);
@@ -221,11 +222,7 @@ export default function WbForm() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "10px 14px", fontSize: 13, color: "#dc2626" }}>
-          {error}
-        </div>
-      )}
+      <ErrorBox message={error} />
     </div>
   );
 }

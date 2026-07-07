@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
+import type { GeneralInfo, LiantCatalogueItem } from "@/lib/store";
 import {
   fromStoreLength, toStoreLength,
   fromStoreArea, toStoreArea,
@@ -26,7 +27,7 @@ const LABEL: React.CSSProperties = {
 
 export default function GeneralInfoPage() {
   const router = useRouter();
-  const { general, setGeneral, catalogue_liants, fillTestData, units, loadUnits } = useStore() as any;
+  const { general, setGeneral, catalogue_liants, fillTestData, units, loadUnits } = useStore();
   const [testLoaded, setTestLoaded] = useState(false);
 
   useEffect(() => { loadUnits(); }, [loadUnits]);
@@ -70,7 +71,7 @@ export default function GeneralInfoPage() {
     (general.binder3_fraction_pct ?? 0);
 
   const fractionOk = Math.abs(fractionTotal - 100) < 0.01;
-  const liantsValides = catalogue_liants.filter((l: any) => String(l.code ?? "").trim() !== "");
+  const liantsValides = catalogue_liants.filter((l: LiantCatalogueItem) => String(l.code ?? "").trim() !== "");
 
   return (
     <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
@@ -445,8 +446,8 @@ export default function GeneralInfoPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[1, 2, 3].map((idx) => {
                 if (idx > (general.binder_count ?? 1)) return null;
-                const typeKey = `binder${idx}_type` as any;
-                const fracKey = `binder${idx}_fraction_pct` as any;
+                const typeKey = `binder${idx}_type` as keyof GeneralInfo;
+                const fracKey = `binder${idx}_fraction_pct` as keyof GeneralInfo;
                 return (
                   <div
                     key={idx}
@@ -478,7 +479,7 @@ export default function GeneralInfoPage() {
                           onChange={(e) => setGeneral({ [typeKey]: e.target.value || null })}
                         >
                           <option value="">Sélectionner...</option>
-                          {liantsValides.map((liant: any) => (
+                          {liantsValides.map((liant: LiantCatalogueItem) => (
                             <option key={liant.id} value={liant.code}>
                               {liant.nom} ({liant.code}) — Gs {Number(liant.gs).toFixed(4)}
                             </option>
@@ -494,7 +495,7 @@ export default function GeneralInfoPage() {
                           max={100}
                           className="field-input"
                           value={general[fracKey] ?? ""}
-                          onChange={(e) => numChange(fracKey, e.target.value)}
+                          onChange={(e) => numChange(fracKey as "binder1_fraction_pct", e.target.value)}
                           placeholder={`Ex. : ${idx === 1 ? 60 : 40}`}
                         />
                       </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useStore, SOLVER_VERSION, type SavedResult } from "@/lib/store";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
+import type { Recipe } from "@/lib/types";
 import BackupButtons from "@/components/BackupButtons";
 
 const METHOD_LABELS: Record<string, string> = {
@@ -21,7 +22,7 @@ const fmt = (v: number | undefined | null, digits = 3) => {
 
 export default function HistoriquePage() {
   const router = useRouter();
-  const { savedResults, loadSavedResults, deleteSavedResult, restoreSavedResult, units, loadUnits } = useStore() as any;
+  const { savedResults, loadSavedResults, deleteSavedResult, restoreSavedResult, units, loadUnits } = useStore();
 
   const binderNameFor = (sr: SavedResult) => (n: 1 | 2 | 3): string =>
     ((sr.general as Record<string, unknown>)[`binder${n}_type`] as string) || `Ciment ${n}`;
@@ -353,7 +354,7 @@ export default function HistoriquePage() {
                             <th style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
                               Paramètre
                             </th>
-                            {sr.recipes.map((_: any, i: number) => (
+                            {sr.recipes.map((_: Recipe, i: number) => (
                               <th
                                 key={i}
                                 style={{
@@ -371,22 +372,22 @@ export default function HistoriquePage() {
                         </thead>
                         <tbody>
                           {[
-                            { label: "Bw%", getter: (r: any) => r.bw_mass_pct, digits: 2, unit: "%" },
-                            { label: "Cw%", getter: (r: any) => r.solids_mass_pct, digits: 2, unit: "%" },
-                            { label: "e (indice des vides)", getter: (r: any) => r.void_ratio, digits: 4, unit: "" },
-                            { label: "n (porosité)", getter: (r: any) => r.porosity, digits: 4, unit: "" },
-                            { label: "w (%)", getter: (r: any) => r.w_mass_pct, digits: 2, unit: "%" },
-                            { label: "E/C", getter: (r: any) => r.wc_ratio, digits: 3, unit: "" },
-                            { label: "Sr (%)", getter: (r: any) => r.saturation_pct, digits: 1, unit: "%" },
-                            { label: `Résidu sec (${massLabel})`, getter: (r: any) => fromStoreMass(r.components?.residue_dry_mass_kg, units?.mass), digits: 3, unit: massLabel },
-                            { label: `Liant (${massLabel})`, getter: (r: any) => fromStoreMass(r.components?.binder_total_mass_kg, units?.mass), digits: 3, unit: massLabel },
-                            { label: `Eau totale (${massLabel})`, getter: (r: any) => fromStoreMass(r.components?.water_total_mass_kg, units?.mass), digits: 3, unit: massLabel },
+                            { label: "Bw%", getter: (r: Recipe) => r.bw_mass_pct, digits: 2, unit: "%" },
+                            { label: "Cw%", getter: (r: Recipe) => r.solids_mass_pct, digits: 2, unit: "%" },
+                            { label: "e (indice des vides)", getter: (r: Recipe) => r.void_ratio, digits: 4, unit: "" },
+                            { label: "n (porosité)", getter: (r: Recipe) => r.porosity, digits: 4, unit: "" },
+                            { label: "w (%)", getter: (r: Recipe) => r.w_mass_pct, digits: 2, unit: "%" },
+                            { label: "E/C", getter: (r: Recipe) => r.wc_ratio, digits: 3, unit: "" },
+                            { label: "Sr (%)", getter: (r: Recipe) => r.saturation_pct, digits: 1, unit: "%" },
+                            { label: `Résidu sec (${massLabel})`, getter: (r: Recipe) => fromStoreMass(r.components?.residue_dry_mass_kg, units?.mass), digits: 3, unit: massLabel },
+                            { label: `Liant (${massLabel})`, getter: (r: Recipe) => fromStoreMass(r.components?.binder_total_mass_kg, units?.mass), digits: 3, unit: massLabel },
+                            { label: `Eau totale (${massLabel})`, getter: (r: Recipe) => fromStoreMass(r.components?.water_total_mass_kg, units?.mass), digits: 3, unit: massLabel },
                           ].map((row, ri) => (
                             <tr key={ri} style={{ borderTop: "1px solid #f1f5f9" }}>
                               <td style={{ padding: "5px 10px", fontSize: 12, color: "#475569" }}>
                                 {row.label}
                               </td>
-                              {sr.recipes.map((r: any, ci: number) => (
+                              {sr.recipes.map((r: Recipe, ci: number) => (
                                 <td
                                   key={ci}
                                   style={{

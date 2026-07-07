@@ -5,6 +5,8 @@
 
 import type { UnitPreferences } from "@/lib/units";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
+import type { Recipe } from "@/lib/types";
+import type { GeneralInfo } from "@/lib/store";
 
 const NAVY: [number, number, number] = [12, 30, 66];
 const WHITE: [number, number, number] = [255, 255, 255];
@@ -28,8 +30,8 @@ const CONTENANT_LABELS: Record<string, string> = {
 };
 
 export async function exportPreparationPdf(
-  recipes: any[],
-  general: any,
+  recipes: Recipe[],
+  general: GeneralInfo,
   binderName: (n: 1 | 2 | 3) => string,
   category: string,
   method: string,

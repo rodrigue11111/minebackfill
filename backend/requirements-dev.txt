@@ -2,3 +2,4 @@
 -r requirements.txt
 uvicorn==0.38.0
 pytest==9.0.1
+httpx==0.28.1

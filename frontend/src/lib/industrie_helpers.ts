@@ -5,6 +5,7 @@ import type {
   BinderPrice,
   IndustrieState,
 } from "@/lib/store";
+import type { Recipe } from "@/lib/types";
 import {
   construireSystemeLiant,
   construireGeneralPayload,
@@ -54,7 +55,7 @@ export function buildCwPayload(
  * Compute total binder cost from a recipe result.
  */
 export function computeBinderCost(
-  recipe: any,
+  recipe: Recipe,
   binderPrices: BinderPrice[],
   catalogue: LiantCatalogueItem[],
   general: GeneralInfo,
@@ -67,8 +68,8 @@ export function computeBinderCost(
 
   for (let i = 1; i <= bcount; i++) {
     const code = general[`binder${i}_type` as keyof GeneralInfo] as string | undefined;
-    const massKey = `binder_c${i}_mass_kg` as string;
-    const mass = recipe.components[massKey] ?? 0;
+    const massKey = `binder_c${i}_mass_kg` as keyof NonNullable<Recipe["components"]>;
+    const mass = (recipe.components?.[massKey] as number | null | undefined) ?? 0;
     const price = (code && priceMap.get(code)) || 0;
     total += mass * price;
   }
@@ -79,7 +80,7 @@ export function computeBinderCost(
 /**
  * Cost per cubic metre of backfill.
  */
-export function computeCostPerM3(recipe: any, binderCost: number): number {
+export function computeCostPerM3(recipe: Recipe, binderCost: number): number {
   const vol = recipe?.total_backfill_volume_m3;
   if (!vol || vol <= 0) return 0;
   return binderCost / vol;
@@ -88,7 +89,7 @@ export function computeCostPerM3(recipe: any, binderCost: number): number {
 /**
  * Cost per tonne of backfill.
  */
-export function computeCostPerTonne(recipe: any, binderCost: number): number {
+export function computeCostPerTonne(recipe: Recipe, binderCost: number): number {
   const comp = recipe?.components;
   if (!comp) return 0;
   const totalMassKg =

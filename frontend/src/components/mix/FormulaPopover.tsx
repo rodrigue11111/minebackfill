@@ -2,9 +2,10 @@
 
 import React, { useEffect, useRef } from "react";
 import { FORMULA_MAP, type Formula } from "@/lib/formulas-data";
+import type { Recipe } from "@/lib/types";
 
 /* ── Value substitution: map formula variable symbols to recipe fields ── */
-const SYMBOL_TO_RECIPE: Record<string, (r: any) => number | null> = {
+const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
   // Binder dosage
   "B_w": (r) => r.bw_mass_pct != null ? r.bw_mass_pct / 100 : null,
   "M_b": (r) => r.components?.binder_total_mass_kg ?? null,
@@ -101,7 +102,7 @@ const SYMBOL_TO_RECIPE: Record<string, (r: any) => number | null> = {
   },
 };
 
-function getFormulaValues(formula: Formula, recipe: any): { symbol: string; description: string; unit: string | null; value: number | null }[] {
+function getFormulaValues(formula: Formula, recipe: Recipe): { symbol: string; description: string; unit: string | null; value: number | null }[] {
   return formula.variables.map((v) => {
     const getter = SYMBOL_TO_RECIPE[v.symbol];
     const value = getter ? getter(recipe) : null;
@@ -137,7 +138,7 @@ function KaTeXBlock({ latex }: { latex: string }) {
 /* ── Main component ── */
 interface FormulaPopoverProps {
   formulaIds: string[];
-  recipe: any;
+  recipe: Recipe;
   anchorRect: DOMRect;
   onClose: () => void;
 }
