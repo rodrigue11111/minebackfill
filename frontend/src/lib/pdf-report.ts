@@ -2,35 +2,14 @@ import type { UnitPreferences } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
 import type { GeneralInfo } from "@/lib/store";
 import {
+  val, masseRejetSecTotaleKg, masseSolidesTotaleKg, masseRemblaiTotaleKg,
+  masseEauDansResidusKg, volumeAirM3, cwCalculePct, cvCalculePct,
+  rhoSolideKgM3, gammaSolideKNM3,
+} from "@/lib/derived";
+import {
   fromStoreMass, fromStoreVolume, fromStoreDensity,
   MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS,
 } from "@/lib/units";
-
-/* ── helpers ── */
-const val = (x: number | null | undefined, fallback = 0) =>
-  x === undefined || x === null || Number.isNaN(x) ? fallback : x;
-
-const masseRejetSecTotaleKg = (r: Recipe) =>
-  val(r?.components?.residue_dry_mass_kg) + val(r?.components?.aggregate_dry_mass_kg);
-const masseSolidesTotaleKg = (r: Recipe) =>
-  masseRejetSecTotaleKg(r) + val(r?.components?.binder_total_mass_kg);
-const masseRemblaiTotaleKg = (r: Recipe) =>
-  masseSolidesTotaleKg(r) + val(r?.components?.water_total_mass_kg);
-const masseEauDansResidusKg = (r: Recipe) =>
-  val(r?.components?.residue_wet_mass_kg) - val(r?.components?.residue_dry_mass_kg);
-const volumeAirM3 = (r: Recipe) =>
-  val(r?.void_volume_m3) - val(r?.water_volume_m3);
-const cwCalculePct = (r: Recipe) => {
-  const ms = masseSolidesTotaleKg(r);
-  const mw = val(r?.components?.water_total_mass_kg);
-  const mt = ms + mw;
-  return mt <= 0 ? null : (ms / mt) * 100;
-};
-const cvCalculePct = (r: Recipe) => {
-  const vs = val(r?.solid_volume_m3);
-  const vt = val(r?.total_backfill_volume_m3);
-  return vt <= 0 ? null : (vs / vt) * 100;
-};
 
 const fmtNum = (v: number | null | undefined, digits = 3): string => {
   if (v === null || v === undefined || Number.isNaN(v)) return "\u2014";
@@ -268,8 +247,8 @@ export async function exportToPdf(
   drawDataRow("Masse vol. sèche rho_d", densLabel, (r) => fromStoreDensity(r.dry_density_kg_m3, units.density), 4, true);
   drawDataRow("Poids vol. humide gamma_h", "kN/m3", (r) => r.bulk_unit_weight_kN_m3, 2);
   drawDataRow("Poids vol. sec gamma_d", "kN/m3", (r) => r.dry_unit_weight_kN_m3, 2);
-  drawDataRow("Masse vol. solide rho_s", densLabel, (r) => fromStoreDensity((r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)), units.density), 4);
-  drawDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => (r.bulk_density_kg_m3 ? (r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)) * ((r.bulk_unit_weight_kN_m3 ?? 0) / r.bulk_density_kg_m3) : null), 2);
+  drawDataRow("Masse vol. solide rho_s", densLabel, (r) => fromStoreDensity(rhoSolideKgM3(r), units.density), 4);
+  drawDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => gammaSolideKNM3(r), 2);
   y += 4;
 
   /* ── Section 4: Void indices ── */

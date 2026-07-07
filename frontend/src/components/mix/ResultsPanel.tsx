@@ -10,6 +10,11 @@ import {
 } from "@/lib/units";
 import FormulaPopover from "@/components/mix/FormulaPopover";
 import type { Recipe, RrcRecipe } from "@/lib/types";
+import {
+  val, masseRejetSecTotaleKg, masseSolidesTotaleKg, masseRemblaiTotaleKg,
+  masseEauDansResidusKg, volumeAirM3, cwCalculePct, cvCalculePct,
+  rhoSolideKgM3, gammaSolideKNM3,
+} from "@/lib/derived";
 
 /* ── helpers ── */
 const fmt = (v: number | undefined | null, digits = 3) => {
@@ -31,38 +36,6 @@ type RecetteAffichage = {
   water_volume_m3?: number | null;
 };
 
-const val = (x: number | null | undefined, fallback = 0) =>
-  x === undefined || x === null || Number.isNaN(x) ? fallback : x;
-
-const masseRejetSecTotaleKg = (r: RecetteAffichage) =>
-  val(r?.components?.residue_dry_mass_kg) + val(r?.components?.aggregate_dry_mass_kg);
-
-const masseSolidesTotaleKg = (r: RecetteAffichage) =>
-  masseRejetSecTotaleKg(r) + val(r?.components?.binder_total_mass_kg);
-
-const masseRemblaiTotaleKg = (r: RecetteAffichage) =>
-  masseSolidesTotaleKg(r) + val(r?.components?.water_total_mass_kg);
-
-const masseEauDansResidusKg = (r: RecetteAffichage) =>
-  val(r?.components?.residue_wet_mass_kg) - val(r?.components?.residue_dry_mass_kg);
-
-const volumeAirM3 = (r: RecetteAffichage) =>
-  val(r?.void_volume_m3) - val(r?.water_volume_m3);
-
-const cwCalculePct = (r: RecetteAffichage) => {
-  const ms = masseSolidesTotaleKg(r);
-  const mw = val(r?.components?.water_total_mass_kg);
-  const mt = ms + mw;
-  if (mt <= 0) return null;
-  return (ms / mt) * 100;
-};
-
-const cvCalculePct = (r: RecetteAffichage) => {
-  const vs = val(r?.solid_volume_m3);
-  const vt = val(r?.total_backfill_volume_m3);
-  if (vt <= 0) return null;
-  return (vs / vt) * 100;
-};
 
 /* ── Neutral palette ── */
 const SECTION_BORDER = "#e2e8f0";
@@ -411,8 +384,8 @@ export async function exportToExcel(
   addDataRow("Masse vol. sèche rho_d", densLabel, (r) => fromStoreDensity(r.dry_density_kg_m3, units.density), 4, true);
   addDataRow("Poids vol. humide gamma_h", "kN/m3", (r) => r.bulk_unit_weight_kN_m3, 2);
   addDataRow("Poids vol. sec gamma_d", "kN/m3", (r) => r.dry_unit_weight_kN_m3, 2);
-  addDataRow("Masse vol. solide rho_s", densLabel, (r) => fromStoreDensity((r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)), units.density), 4);
-  addDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => (r.bulk_density_kg_m3 ? (r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)) * ((r.bulk_unit_weight_kN_m3 ?? 0) / r.bulk_density_kg_m3) : null), 2);
+  addDataRow("Masse vol. solide rho_s", densLabel, (r) => fromStoreDensity(rhoSolideKgM3(r), units.density), 4);
+  addDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => gammaSolideKNM3(r), 2);
 
   ws.addRow([]);
 
@@ -1023,8 +996,8 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               <DataRow label="rho sèche rho_d" unit={densLabel} getter={(r) => fromStoreDensity(r.dry_density_kg_m3, units.density)} recipes={recipes} bold formulaIds={["F007"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="gamma humide gamma_h" unit="kN/m3" getter={(r) => r.bulk_unit_weight_kN_m3} recipes={recipes} digits={2} formulaIds={["F027"]} onFormulaClick={handleFormulaClick} />
               <DataRow label="gamma sèche gamma_d" unit="kN/m3" getter={(r) => r.dry_unit_weight_kN_m3} recipes={recipes} digits={2} />
-              <DataRow label="rho solide rho_s" unit={densLabel} getter={(r) => fromStoreDensity((r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)), units.density)} recipes={recipes} />
-              <DataRow label="gamma solide gamma_s" unit="kN/m3" getter={(r) => (r.bulk_density_kg_m3 ? (r.dry_density_kg_m3 ?? 0) * (1 + (r.void_ratio ?? 0)) * ((r.bulk_unit_weight_kN_m3 ?? 0) / r.bulk_density_kg_m3) : null)} recipes={recipes} digits={2} />
+              <DataRow label="rho solide rho_s" unit={densLabel} getter={(r) => fromStoreDensity(rhoSolideKgM3(r), units.density)} recipes={recipes} />
+              <DataRow label="gamma solide gamma_s" unit="kN/m3" getter={(r) => gammaSolideKNM3(r)} recipes={recipes} digits={2} />
             </tbody>
           </table>
         </div>

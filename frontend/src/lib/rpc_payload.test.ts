@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { construireSystemeLiant, gsLiant, gsParDefaut } from "./rpc_payload";
+import {
+  construireConstantesPayload,
+  construireGeneralPayload,
+  construireSystemeLiant,
+  gsLiant,
+  gsParDefaut,
+} from "./rpc_payload";
 import { messageErreurApi } from "./api-error";
-import type { GeneralInfo, LiantCatalogueItem } from "./store";
+import type { ConstantesCalcul, GeneralInfo, LiantCatalogueItem } from "./store";
 
 const CATALOGUE: LiantCatalogueItem[] = [
   { id: "l1", code: "GU", nom: "Ciment GU", gs: 3.15 },
@@ -63,5 +69,46 @@ describe("messageErreurApi", () => {
   });
   it("réponse vide -> repli générique avec le code HTTP", () => {
     expect(messageErreurApi(null, 500)).toBe("Erreur API (500)");
+  });
+});
+
+describe("construireGeneralPayload — correspondance des champs", () => {
+  it("transmet la géométrie du contenant, y compris le volume direct", () => {
+    const g: GeneralInfo = {
+      operator_name: "Op", project_name: "Proj",
+      container_type: "volume", container_volume_m3: 0.00165,
+      binder_count: 2, binder1_type: "GU", binder2_type: "GGBFS",
+      binder1_fraction_pct: 20, binder2_fraction_pct: 80,
+    };
+    const p = construireGeneralPayload(g);
+    expect(p.container_type).toBe("volume");
+    expect(p.container_volume_m3).toBeCloseTo(0.00165, 12);
+    expect(p.operator_name).toBe("Op");
+    expect(p.binder1_fraction_pct).toBe(20);
+  });
+  it("champs absents -> null (jamais undefined dans le JSON)", () => {
+    const p = construireGeneralPayload({});
+    expect(p.container_type).toBeNull();
+    expect(p.container_volume_m3).toBeNull();
+    expect(p.residue_id).toBeNull();
+  });
+});
+
+describe("construireConstantesPayload — correspondance des clés API", () => {
+  it("mappe chaque constante FR vers la clé backend", () => {
+    const c: ConstantesCalcul = {
+      masse_volumique_eau_kg_m3: 998.2,
+      gravite_m_s2: 9.79,
+      facteur_petit_cone_vers_grand_cone: 2.5,
+      coefficient_modele_slump: 5e6,
+      constante_modele_slump: 240,
+    };
+    expect(construireConstantesPayload(c)).toEqual({
+      water_density: 998.2,
+      gravity: 9.79,
+      slump_small_to_large_factor: 2.5,
+      slump_model_coeff: 5e6,
+      slump_model_offset: 240,
+    });
   });
 });

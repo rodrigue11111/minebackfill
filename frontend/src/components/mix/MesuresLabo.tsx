@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { calculeMesures, type MesureLabo } from "@/lib/mesures";
 
 /**
  * Bloc « Paramètres mesurés au laboratoire » de la feuille Intra 2017
@@ -31,13 +32,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-interface Mesure {
-  slump?: number;
-  tare?: number;
-  mh?: number;   // tare + pâte humide (g)
-  ms?: number;   // tare + pâte sèche (g)
-}
-
 interface RecetteCalculee {
   w_mass_pct?: number | null;
   solids_mass_pct?: number | null;
@@ -50,16 +44,6 @@ const num = (v: string): number | undefined => {
 
 const fmt = (v: number | null | undefined, d = 2) =>
   v === null || v === undefined || Number.isNaN(v) ? "—" : v.toFixed(d);
-
-function calculeMesures(m: Mesure): { w: number | null; cw: number | null } {
-  const { tare, mh, ms } = m;
-  if (tare === undefined || mh === undefined || ms === undefined) return { w: null, cw: null };
-  if (!(mh > ms && ms > tare)) return { w: null, cw: null };
-  return {
-    w: ((mh - ms) / (ms - tare)) * 100.0,   // [D76]
-    cw: ((ms - tare) / (mh - tare)) * 100.0, // [D77]
-  };
-}
 
 function Ecart({ mesure, calcule }: { mesure: number | null; calcule: number | null | undefined }) {
   if (mesure === null || calcule === null || calcule === undefined) return null;
@@ -79,9 +63,9 @@ export default function MesuresLabo({
   numRecipes: number;
   recipes?: RecetteCalculee[] | null;
 }) {
-  const [mesures, setMesures] = useState<Mesure[]>([]);
+  const [mesures, setMesures] = useState<MesureLabo[]>([]);
 
-  const setMesure = (i: number, patch: Partial<Mesure>) =>
+  const setMesure = (i: number, patch: Partial<MesureLabo>) =>
     setMesures((prev) => {
       const next = [...prev];
       while (next.length <= i) next.push({});

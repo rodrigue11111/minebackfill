@@ -26,10 +26,13 @@ Les solveurs reproduisent **cellule par cellule** le classeur de référence du 
 
 - `backend/app/tests/excel_twin.py` — réplique Python exacte de la feuille, validée sur
   38 valeurs du classeur (précision ~1e-15) ;
-- `backend/app/tests/test_excel_golden.py` — **215 tests d'or** (tolérance 1e-9) : cas
+- `backend/app/tests/` — **507 tests** : les tests d'or (tolérance 1e-9, cas
   canonique « Mélange 1 », grille de 144 combinaisons Cw, grille W/C avec invariant
-  Mw = W/C × Mb, 13 scénarios d'essai-erreur (ajouts, retraits, granulat), invariants à
-  Sr < 100 %, conventions facteur de sécurité et nombre de contenants.
+  Mw = W/C × Mb, 13 scénarios d'essai-erreur), les tests d'or RRC/CRF, les tests
+  unitaires du pipeline (identités algébriques sur grille aléatoire reproductible,
+  constantes personnalisées, géométrie du contenant, modèle de slump) et les tests
+  de contrat HTTP. Côté frontend : 71 tests Vitest (conversions d'unités, calculs
+  usine, grandeurs dérivées, w/Cw mesurés, constructeurs de payload).
 
 Le bouton **« Exemple Intra 2017 »** de la page Informations charge exactement les entrées du
 classeur : l'application affiche alors les mêmes valeurs que la feuille du professeur.
@@ -71,7 +74,9 @@ Tests :
 
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe -m pytest   # 215 tests d'or
+.\.venv\Scripts\python.exe -m pytest   # 507 tests (or + unitaires + contrat)
+cd ../frontend
+pnpm test                              # 71 tests Vitest
 ```
 
 ## Notes de conventions
