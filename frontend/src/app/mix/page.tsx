@@ -34,6 +34,7 @@ export default function MixPage() {
   const dimensionsManquantes = (() => {
     const g = general || {};
     if (!g.container_type) return true;
+    if (g.container_type === "volume") return !g.container_volume_m3;
     if (g.container_type === "section_hauteur") return !g.container_section || !g.container_height;
     if (g.container_type === "rayon_hauteur") return !g.container_radius || !g.container_height;
     return !g.container_length || !g.container_width || !g.container_height;

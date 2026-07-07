@@ -400,6 +400,29 @@ def test_safety_factor_mapping():
     _assert_close("FS: VT", st.total_backfill_volume_m3, tw["VT"])
 
 
+def test_container_volume_direct():
+    """Saisie directe du volume == géométrie équivalente (55x20x10 m = 11000 m³)."""
+    spec = BINDER_SPECS["GU20/Slag80"]
+    kwargs_geo = _common_kwargs(0.70, 0.045, W0_REF, 3.05, spec)  # container LWH = 11000 m3
+    geo = solve_rpc_cw(RpcCwInputs(category="RPC", **kwargs_geo)).recipes[0]
+
+    kwargs_vol = _common_kwargs(0.70, 0.045, W0_REF, 3.05, spec)
+    kwargs_vol["general"] = GeneralInfo(container_type="volume", container_volume_m3=11000.0)
+    vol = solve_rpc_cw(RpcCwInputs(category="RPC", **kwargs_vol)).recipes[0]
+
+    _assert_close("V_moule", vol.container_volume_m3, geo.container_volume_m3)
+    _assert_close("Mr_sec", vol.components.residue_dry_mass_kg, geo.components.residue_dry_mass_kg)
+    _assert_close("Mb", vol.components.binder_total_mass_kg, geo.components.binder_total_mass_kg)
+    _assert_close("VT", vol.total_backfill_volume_m3, geo.total_backfill_volume_m3)
+
+
+def test_container_volume_missing_raises():
+    kwargs = _common_kwargs(0.70, 0.045, W0_REF, 3.05, BINDER_SPECS["GU20/Slag80"])
+    kwargs["general"] = GeneralInfo(container_type="volume")  # pas de volume
+    with pytest.raises(ValueError, match="[Vv]olume du contenant"):
+        solve_rpc_cw(RpcCwInputs(category="RPC", **kwargs))
+
+
 def test_containers_mapping():
     spec = BINDER_SPECS["GU20/Slag80"]
     tw = _run_twin(0.70, 0.045, 0.0, W0_REF, 3.05, spec, nb=3.0)

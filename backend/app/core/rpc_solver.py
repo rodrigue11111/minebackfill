@@ -135,6 +135,7 @@ def compute_container_volume_m3(general: GeneralInfo) -> float:
     - SECTION_HEIGHT: section (cm²) + height (cm)
     - RADIUS_HEIGHT:  radius (cm) + height (cm)
     - LENGTH_WIDTH_HEIGHT: length, width, height (cm)
+    - VOLUME:        volume saisi directement (m³)
 
     Raises if required dimensions are missing.
     """
@@ -142,6 +143,14 @@ def compute_container_volume_m3(general: GeneralInfo) -> float:
     ct = general.container_type
     if ct is None:
         raise ValueError("Type de contenant manquant : renseignez-le sur la page Informations.")
+
+    # VOLUME : le volume est saisi directement en m³
+    if ct == ContainerType.VOLUME:
+        if general.container_volume_m3 is None or general.container_volume_m3 <= 0:
+            raise ValueError(
+                "Volume du contenant requis (et supérieur à 0) pour le type « volume »."
+            )
+        return float(general.container_volume_m3)
 
     # SECTION_HEIGHT: V = section(cm²) * height(cm)  => m³
     if ct == ContainerType.SECTION_HEIGHT:

@@ -27,6 +27,7 @@ class ContainerType(str, Enum):
     SECTION_HEIGHT = "section_hauteur"                 # Section (cm²) + hauteur (cm)
     RADIUS_HEIGHT = "rayon_hauteur"                    # Rayon (cm) + hauteur (cm)
     LENGTH_WIDTH_HEIGHT = "longueur_largeur_hauteur"   # L, l, H (cm)
+    VOLUME = "volume"                                  # Volume saisi directement (m³)
 
 
 class MixCategory(str, Enum):
@@ -112,6 +113,12 @@ class GeneralInfo(BaseModel):
     container_width: Optional[confloat(ge=0)] = Field(
         default=None,
         description="Largeur du contenant en cm (si type 'longueur_largeur_hauteur').",
+    )
+
+    # Pour VOLUME : le volume du contenant est saisi directement (en m³)
+    container_volume_m3: Optional[confloat(gt=0)] = Field(
+        default=None,
+        description="Volume du contenant en m³ (si type 'volume', saisi directement).",
     )
 
     # ------------------ Composition du liant (1 à 3 ciments) ---------------

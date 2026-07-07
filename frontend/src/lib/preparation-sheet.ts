@@ -27,6 +27,7 @@ const CONTENANT_LABELS: Record<string, string> = {
   section_hauteur: "Section + hauteur",
   rayon_hauteur: "Rayon + hauteur",
   longueur_largeur_hauteur: "Longueur x largeur x hauteur",
+  volume: "Volume direct",
 };
 
 export async function exportPreparationPdf(
@@ -65,6 +66,8 @@ export async function exportPreparationPdf(
       return `${label} — ${fmtNum(general.container_section, 1)} cm² x ${fmtNum(general.container_height, 1)} cm`;
     if (t === "rayon_hauteur")
       return `${label} — r ${fmtNum(general.container_radius, 2)} cm x h ${fmtNum(general.container_height, 1)} cm`;
+    if (t === "volume")
+      return `${label} — ${fmtNum(general.container_volume_m3, 4)} m³`;
     return `${label} — ${fmtNum(general.container_length, 1)} x ${fmtNum(general.container_width, 1)} x ${fmtNum(general.container_height, 1)} cm`;
   };
 

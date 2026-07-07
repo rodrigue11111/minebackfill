@@ -78,6 +78,7 @@ export function construireGeneralPayload(general: GeneralInfo) {
     container_radius: general.container_radius ?? null,
     container_length: general.container_length ?? null,
     container_width: general.container_width ?? null,
+    container_volume_m3: general.container_volume_m3 ?? null,
     binder_count: general.binder_count ?? null,
     binder1_type: general.binder1_type ?? null,
     binder2_type: general.binder2_type ?? null,

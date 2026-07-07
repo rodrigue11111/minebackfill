@@ -21,12 +21,14 @@ export interface GeneralInfo {
     | "section_hauteur"
     | "rayon_hauteur"
     | "longueur_largeur_hauteur"
+    | "volume"
     | null;
   container_section?: number | null;
   container_height?: number | null;
   container_radius?: number | null;
   container_length?: number | null;
   container_width?: number | null;
+  container_volume_m3?: number | null;   // volume saisi directement (store: m³)
 
   binder_count?: 1 | 2 | 3 | null;
   binder1_type?: string | null;

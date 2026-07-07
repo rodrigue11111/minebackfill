@@ -8,13 +8,15 @@ import type { GeneralInfo, LiantCatalogueItem } from "@/lib/store";
 import {
   fromStoreLength, toStoreLength,
   fromStoreArea, toStoreArea,
-  LENGTH_LABELS, AREA_LABELS,
+  fromStoreVolume, toStoreVolume,
+  LENGTH_LABELS, AREA_LABELS, VOLUME_LABELS,
 } from "@/lib/units";
 
 const CONTAINER_TYPES = [
   { value: "section_hauteur", label: "Section + hauteur" },
   { value: "rayon_hauteur", label: "Rayon + hauteur" },
   { value: "longueur_largeur_hauteur", label: "Longueur x largeur x hauteur" },
+  { value: "volume", label: "Volume direct" },
 ] as const;
 
 const LABEL: React.CSSProperties = {
@@ -39,6 +41,7 @@ export default function GeneralInfoPage() {
 
   const lengthLabel = LENGTH_LABELS[units.length as keyof typeof LENGTH_LABELS] ?? "cm";
   const areaLabel = AREA_LABELS[units.area as keyof typeof AREA_LABELS] ?? "cm\u00B2";
+  const volumeLabel = VOLUME_LABELS[units.volume as keyof typeof VOLUME_LABELS] ?? "L";
 
   const dimFields = new Set(["container_height", "container_radius", "container_length", "container_width"]);
 
@@ -49,6 +52,7 @@ export default function GeneralInfoPage() {
       | "container_radius"
       | "container_length"
       | "container_width"
+      | "container_volume_m3"
       | "binder1_fraction_pct"
       | "binder2_fraction_pct"
       | "binder3_fraction_pct",
@@ -58,6 +62,8 @@ export default function GeneralInfoPage() {
       setGeneral({ [field]: undefined });
     } else if (field === "container_section") {
       setGeneral({ [field]: toStoreArea(Number(value), units.area) });
+    } else if (field === "container_volume_m3") {
+      setGeneral({ [field]: toStoreVolume(Number(value), units.volume) });
     } else if (dimFields.has(field)) {
       setGeneral({ [field]: toStoreLength(Number(value), units.length) });
     } else {
@@ -358,6 +364,12 @@ export default function GeneralInfoPage() {
                     <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_height, units.length) ?? ""} onChange={(e) => numChange("container_height", e.target.value)} />
                   </div>
                 </>
+              )}
+              {general.container_type === "volume" && (
+                <div>
+                  <label style={LABEL}>Volume du contenant ({volumeLabel})</label>
+                  <input type="number" step="any" className="field-input" value={fromStoreVolume(general.container_volume_m3, units.volume) ?? ""} onChange={(e) => numChange("container_volume_m3", e.target.value)} placeholder="Ex. : 1.65" />
+                </div>
               )}
               {!general.container_type && (
                 <div
