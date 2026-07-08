@@ -10,7 +10,7 @@ import {
   fromStoreArea, toStoreArea,
   fromStoreVolume, toStoreVolume,
   LENGTH_LABELS, AREA_LABELS, VOLUME_LABELS,
-  type VolumeUnit,
+  type VolumeUnit, type LengthUnit, type AreaUnit,
 } from "@/lib/units";
 
 const CONTAINER_TYPES = [
@@ -19,6 +19,11 @@ const CONTAINER_TYPES = [
   { value: "longueur_largeur_hauteur", label: "Longueur x largeur x hauteur" },
   { value: "volume", label: "Volume direct" },
 ] as const;
+
+// L'unité d'aire (section) suit l'unité de longueur choisie (cm -> cm², etc.),
+// pour que l'opérateur ne choisisse qu'une seule unité de mesure.
+const AREA_OF_LENGTH: Record<LengthUnit, AreaUnit> = { cm: "cm2", mm: "mm2", m: "m2", in: "in2" };
+const LENGTH_UNIT_OPTIONS = ["cm", "mm", "m", "in"] as const;
 
 const LABEL: React.CSSProperties = {
   display: "block",
@@ -265,6 +270,30 @@ export default function GeneralInfoPage() {
                 Contenant pour le moulage
               </h2>
             </div>
+
+            {/* Unité de mesure — choisie en premier, s'applique aux dimensions
+                (et à la section, en unité²). Le volume direct a sa propre unité. */}
+            {general.container_type !== "volume" && (
+              <div style={{ marginBottom: 18, padding: "12px 14px", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", borderRadius: 8 }}>
+                <label style={LABEL}>Unité de mesure des dimensions</label>
+                <select
+                  className="field-input"
+                  style={{ width: 220, cursor: "pointer" }}
+                  value={units.length}
+                  onChange={(e) => {
+                    const L = e.target.value as LengthUnit;
+                    setUnits({ length: L, area: AREA_OF_LENGTH[L] });
+                  }}
+                >
+                  {LENGTH_UNIT_OPTIONS.map((u) => (
+                    <option key={u} value={u}>{LENGTH_LABELS[u]}</option>
+                  ))}
+                </select>
+                <p style={{ fontSize: 11, color: "var(--primary)", marginTop: 5, opacity: 0.85 }}>
+                  S&apos;applique aux longueurs (rayon, hauteur, côtés) et à la section (en {areaLabel}).
+                </p>
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
               {CONTAINER_TYPES.map((ct) => {
