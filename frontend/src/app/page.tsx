@@ -271,29 +271,49 @@ export default function GeneralInfoPage() {
               </h2>
             </div>
 
-            {/* Unité de mesure — choisie en premier, s'applique aux dimensions
-                (et à la section, en unité²). Le volume direct a sa propre unité. */}
-            {general.container_type !== "volume" && (
-              <div style={{ marginBottom: 18, padding: "12px 14px", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", borderRadius: 8 }}>
-                <label style={LABEL}>Unité de mesure des dimensions</label>
-                <select
-                  className="field-input"
-                  style={{ width: 220, cursor: "pointer" }}
-                  value={units.length}
-                  onChange={(e) => {
-                    const L = e.target.value as LengthUnit;
-                    setUnits({ length: L, area: AREA_OF_LENGTH[L] });
-                  }}
-                >
-                  {LENGTH_UNIT_OPTIONS.map((u) => (
-                    <option key={u} value={u}>{LENGTH_LABELS[u]}</option>
-                  ))}
-                </select>
-                <p style={{ fontSize: 11, color: "var(--primary)", marginTop: 5, opacity: 0.85 }}>
-                  S&apos;applique aux longueurs (rayon, hauteur, côtés) et à la section (en {areaLabel}).
-                </p>
-              </div>
-            )}
+            {/* Unité de mesure — choisie en premier, unique pour le contenant :
+                unité de longueur pour les géométries dimensionnelles, unité de
+                volume pour le « volume direct ». */}
+            <div style={{ marginBottom: 18, padding: "12px 14px", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", borderRadius: 8 }}>
+              {general.container_type === "volume" ? (
+                <>
+                  <label style={LABEL}>Unité de volume</label>
+                  <select
+                    className="field-input"
+                    style={{ width: 220, cursor: "pointer" }}
+                    value={units.volume}
+                    onChange={(e) => setUnits({ volume: e.target.value as VolumeUnit })}
+                  >
+                    {(["L", "mL", "cm3", "m3", "in3"] as const).map((u) => (
+                      <option key={u} value={u}>{VOLUME_LABELS[u]}</option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: 11, color: "var(--primary)", marginTop: 5, opacity: 0.85 }}>
+                    S&apos;applique au volume saisi et aux volumes des résultats.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <label style={LABEL}>Unité de mesure des dimensions</label>
+                  <select
+                    className="field-input"
+                    style={{ width: 220, cursor: "pointer" }}
+                    value={units.length}
+                    onChange={(e) => {
+                      const L = e.target.value as LengthUnit;
+                      setUnits({ length: L, area: AREA_OF_LENGTH[L] });
+                    }}
+                  >
+                    {LENGTH_UNIT_OPTIONS.map((u) => (
+                      <option key={u} value={u}>{LENGTH_LABELS[u]}</option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: 11, color: "var(--primary)", marginTop: 5, opacity: 0.85 }}>
+                    S&apos;applique aux longueurs (rayon, hauteur, côtés) et à la section (en {areaLabel}).
+                  </p>
+                </>
+              )}
+            </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
               {CONTAINER_TYPES.map((ct) => {
@@ -399,32 +419,15 @@ export default function GeneralInfoPage() {
               )}
               {general.container_type === "volume" && (
                 <div>
-                  <label style={LABEL}>Volume du contenant</label>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                      type="number"
-                      step="any"
-                      className="field-input"
-                      style={{ flex: 1 }}
-                      value={fromStoreVolume(general.container_volume_m3, volumeUnit) ?? ""}
-                      onChange={(e) => numChange("container_volume_m3", e.target.value)}
-                      placeholder="Ex. : 1.65"
-                    />
-                    <select
-                      className="field-input"
-                      style={{ width: 96, flexShrink: 0, cursor: "pointer" }}
-                      value={volumeUnit}
-                      onChange={(e) => setUnits({ volume: e.target.value as VolumeUnit })}
-                      title="Unité de volume — s'applique aussi aux résultats"
-                    >
-                      {(["L", "mL", "cm3", "m3", "in3"] as const).map((u) => (
-                        <option key={u} value={u}>{VOLUME_LABELS[u]}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
-                    L&apos;unité choisie s&apos;applique aussi aux volumes des résultats.
-                  </p>
+                  <label style={LABEL}>Volume du contenant ({VOLUME_LABELS[volumeUnit]})</label>
+                  <input
+                    type="number"
+                    step="any"
+                    className="field-input"
+                    value={fromStoreVolume(general.container_volume_m3, volumeUnit) ?? ""}
+                    onChange={(e) => numChange("container_volume_m3", e.target.value)}
+                    placeholder="Ex. : 1.65"
+                  />
                 </div>
               )}
               {!general.container_type && (
