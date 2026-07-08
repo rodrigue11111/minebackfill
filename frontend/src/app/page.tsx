@@ -10,6 +10,7 @@ import {
   fromStoreArea, toStoreArea,
   fromStoreVolume, toStoreVolume,
   LENGTH_LABELS, AREA_LABELS, VOLUME_LABELS,
+  type VolumeUnit,
 } from "@/lib/units";
 
 const CONTAINER_TYPES = [
@@ -29,7 +30,7 @@ const LABEL: React.CSSProperties = {
 
 export default function GeneralInfoPage() {
   const router = useRouter();
-  const { general, setGeneral, catalogue_liants, fillTestData, units, loadUnits } = useStore();
+  const { general, setGeneral, catalogue_liants, fillTestData, units, setUnits, loadUnits } = useStore();
   const [testLoaded, setTestLoaded] = useState(false);
 
   useEffect(() => { loadUnits(); }, [loadUnits]);
@@ -41,9 +42,9 @@ export default function GeneralInfoPage() {
 
   const lengthLabel = LENGTH_LABELS[units.length as keyof typeof LENGTH_LABELS] ?? "cm";
   const areaLabel = AREA_LABELS[units.area as keyof typeof AREA_LABELS] ?? "cm\u00B2";
-  // Unité de saisie du volume du contenant : propre à ce champ (indépendante
-  // de l'unité de volume des résultats). Par défaut, celle des réglages.
-  const volumeUnit = (general.container_volume_unit ?? units.volume) as keyof typeof VOLUME_LABELS;
+  // Unité de volume (saisie du contenant ET affichage des résultats) : une
+  // seule préférence globale, aussi modifiable dans Réglages.
+  const volumeUnit = units.volume as VolumeUnit;
 
   const dimFields = new Set(["container_height", "container_radius", "container_length", "container_width"]);
 
@@ -384,14 +385,17 @@ export default function GeneralInfoPage() {
                       className="field-input"
                       style={{ width: 96, flexShrink: 0, cursor: "pointer" }}
                       value={volumeUnit}
-                      onChange={(e) => setGeneral({ container_volume_unit: e.target.value as typeof volumeUnit })}
-                      title="Unité de saisie du volume"
+                      onChange={(e) => setUnits({ volume: e.target.value as VolumeUnit })}
+                      title="Unité de volume — s'applique aussi aux résultats"
                     >
                       {(["L", "mL", "cm3", "m3", "in3"] as const).map((u) => (
                         <option key={u} value={u}>{VOLUME_LABELS[u]}</option>
                       ))}
                     </select>
                   </div>
+                  <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                    L&apos;unité choisie s&apos;applique aussi aux volumes des résultats.
+                  </p>
                 </div>
               )}
               {!general.container_type && (
