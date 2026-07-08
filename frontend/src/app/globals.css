@@ -338,3 +338,14 @@ label:has(input[type="radio"]:focus-visible) {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   KaTeX — les formules en mode « display » sont centrées, avec une
+   marge verticale mesurée (évite le rognage dans les cadres d'équation).
+   ══════════════════════════════════════════════════════════════════ */
+.katex-display {
+  margin: 0.35em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}

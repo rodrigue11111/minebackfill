@@ -28,11 +28,14 @@ export function KaTeX({ tex, displayMode = false, className, style }: Props) {
     }
   }, [tex, displayMode]);
 
+  // En mode « display », KaTeX produit un bloc (.katex-display) : le
+  // conteneur doit être block pour en mesurer toute la hauteur, sinon un
+  // span en ligne rogne les formules hautes (fractions).
   return (
     <span
       ref={ref}
       className={className}
-      style={style}
+      style={{ display: displayMode ? "block" : undefined, ...style }}
       suppressHydrationWarning
     >
       {tex}

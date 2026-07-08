@@ -30,32 +30,6 @@ function getSectionColor(section: string) {
 // ──────────────────────────────────────────────
 // Tiny helper components
 // ──────────────────────────────────────────────
-function SectionBadge({ section, small }: { section: string; small?: boolean }) {
-  const col = getSectionColor(section);
-  const label = section.split("—")[0].trim().split(" ").slice(0, 5).join(" ");
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        fontSize: small ? 10 : 10.5,
-        fontWeight: 600,
-        padding: small ? "1px 6px" : "2px 8px",
-        borderRadius: 4,
-        background: col.bg,
-        color: col.color,
-        border: `1px solid ${col.border}`,
-        letterSpacing: "0.02em",
-        whiteSpace: "nowrap",
-        maxWidth: 220,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
 type MatchField = "title" | "section" | "equation" | "keyword" | "variable" | "context";
 const MATCH_LABELS: Record<MatchField, string> = {
   title: "titre", section: "section", equation: "équation",
@@ -212,7 +186,6 @@ function FormulaDetail({
             <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px", color: "var(--foreground)", lineHeight: 1.25 }}>
               {formula.title}
             </h2>
-            <SectionBadge section={formula.section} />
           </div>
           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
             {/* Fullscreen toggle */}
@@ -524,7 +497,6 @@ function FormulaCard({
           >
             {formula.title}
           </div>
-          <SectionBadge section={formula.section} small />
         </div>
         <span style={{ fontSize: 10.5, color: "var(--muted-foreground)", whiteSpace: "nowrap", flexShrink: 0, fontFamily: "monospace" }}>
           {formula.id} · p.{formula.pageNumber}
@@ -1129,7 +1101,6 @@ function DeriveResultCard({
               }}
             />
           </div>
-          <SectionBadge section={formula.section} small />
         </div>
       </div>
 
