@@ -41,7 +41,9 @@ export default function GeneralInfoPage() {
 
   const lengthLabel = LENGTH_LABELS[units.length as keyof typeof LENGTH_LABELS] ?? "cm";
   const areaLabel = AREA_LABELS[units.area as keyof typeof AREA_LABELS] ?? "cm\u00B2";
-  const volumeLabel = VOLUME_LABELS[units.volume as keyof typeof VOLUME_LABELS] ?? "L";
+  // Unité de saisie du volume du contenant : propre à ce champ (indépendante
+  // de l'unité de volume des résultats). Par défaut, celle des réglages.
+  const volumeUnit = (general.container_volume_unit ?? units.volume) as keyof typeof VOLUME_LABELS;
 
   const dimFields = new Set(["container_height", "container_radius", "container_length", "container_width"]);
 
@@ -63,7 +65,7 @@ export default function GeneralInfoPage() {
     } else if (field === "container_section") {
       setGeneral({ [field]: toStoreArea(Number(value), units.area) });
     } else if (field === "container_volume_m3") {
-      setGeneral({ [field]: toStoreVolume(Number(value), units.volume) });
+      setGeneral({ [field]: toStoreVolume(Number(value), volumeUnit) });
     } else if (dimFields.has(field)) {
       setGeneral({ [field]: toStoreLength(Number(value), units.length) });
     } else {
@@ -367,8 +369,29 @@ export default function GeneralInfoPage() {
               )}
               {general.container_type === "volume" && (
                 <div>
-                  <label style={LABEL}>Volume du contenant ({volumeLabel})</label>
-                  <input type="number" step="any" className="field-input" value={fromStoreVolume(general.container_volume_m3, units.volume) ?? ""} onChange={(e) => numChange("container_volume_m3", e.target.value)} placeholder="Ex. : 1.65" />
+                  <label style={LABEL}>Volume du contenant</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      type="number"
+                      step="any"
+                      className="field-input"
+                      style={{ flex: 1 }}
+                      value={fromStoreVolume(general.container_volume_m3, volumeUnit) ?? ""}
+                      onChange={(e) => numChange("container_volume_m3", e.target.value)}
+                      placeholder="Ex. : 1.65"
+                    />
+                    <select
+                      className="field-input"
+                      style={{ width: 96, flexShrink: 0, cursor: "pointer" }}
+                      value={volumeUnit}
+                      onChange={(e) => setGeneral({ container_volume_unit: e.target.value as typeof volumeUnit })}
+                      title="Unité de saisie du volume"
+                    >
+                      {(["L", "mL", "cm3", "m3", "in3"] as const).map((u) => (
+                        <option key={u} value={u}>{VOLUME_LABELS[u]}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
               {!general.container_type && (

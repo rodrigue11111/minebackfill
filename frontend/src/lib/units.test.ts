@@ -18,7 +18,7 @@ describe("aller-retour toStore/fromStore (identité)", () => {
     ["longueur", toStoreLength as never, fromStoreLength as never, ["cm", "mm", "m", "in"]],
     ["aire", toStoreArea as never, fromStoreArea as never, ["cm2", "mm2", "m2", "in2"]],
     ["masse", toStoreMass as never, fromStoreMass as never, ["kg", "g", "t", "lb"]],
-    ["volume", toStoreVolume as never, fromStoreVolume as never, ["L", "mL", "m3", "cm3"]],
+    ["volume", toStoreVolume as never, fromStoreVolume as never, ["L", "mL", "m3", "cm3", "in3"]],
     ["densité", toStoreDensity as never, fromStoreDensity as never, ["g/cm3", "kg/m3", "t/m3"]],
     ["slump", toStoreSlump as never, fromStoreSlump as never, ["mm", "cm", "in"]],
   ];
@@ -42,6 +42,11 @@ describe("valeurs de référence", () => {
   it("masse : 1 t = 1000 kg ; 1 lb = 0.45359237 kg", () => {
     expect(toStoreMass(1, "t" as MassUnit)).toBeCloseTo(1000, 12);
     expect(toStoreMass(1, "lb" as MassUnit)).toBeCloseTo(0.45359237, 12);
+  });
+  it("volume : 1 po³ = 16.387 cm³ = 1.6387064e-5 m3", () => {
+    expect(toStoreVolume(1, "in3" as VolumeUnit)).toBeCloseTo(1.6387064e-5, 15);
+    // moule labo 2 po x 4 po (r=1 po, h=4 po) ≈ 12.566 po³ ≈ 205.9 cm³
+    expect(fromStoreVolume(205.92591950522308e-6, "in3" as VolumeUnit)).toBeCloseTo(Math.PI * 1 * 4, 6);
   });
   it("volume : 1 L = 0.001 m3 (unité du store)", () => {
     expect(toStoreVolume(1, "L" as VolumeUnit)).toBeCloseTo(0.001, 12);

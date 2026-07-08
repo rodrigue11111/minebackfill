@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { create } from "zustand";
-import { type UnitPreferences, DEFAULT_UNITS } from "./units";
+import { type UnitPreferences, type VolumeUnit, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
 
 // Version des solveurs : estampillée sur chaque résultat sauvegardé.
@@ -29,6 +29,7 @@ export interface GeneralInfo {
   container_length?: number | null;
   container_width?: number | null;
   container_volume_m3?: number | null;   // volume saisi directement (store: m³)
+  container_volume_unit?: VolumeUnit | null;  // unité de saisie du volume direct
 
   binder_count?: 1 | 2 | 3 | null;
   binder1_type?: string | null;
