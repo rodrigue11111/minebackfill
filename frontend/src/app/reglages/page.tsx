@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { useStore } from "@/lib/store";
-import { UNIT_CATEGORIES } from "@/lib/units";
+import { UNIT_CATEGORIES, unitsForLength, type LengthUnit } from "@/lib/units";
 import type { LiantCatalogueItem } from "@/lib/store";
 import BackupButtons from "@/components/BackupButtons";
 
@@ -225,7 +225,8 @@ export default function ReglagesPage() {
             Unites de mesure
           </h2>
           <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 16 }}>
-            Choisissez les unités d&apos;affichage pour les entrées et les résultats.
+            Choisissez les unités d&apos;affichage pour les entrées et les résultats. L&apos;aire et le
+            volume suivent automatiquement l&apos;unité de longueur (son carré et son cube).
           </p>
           <div
             style={{
@@ -234,10 +235,10 @@ export default function ReglagesPage() {
               gap: "14px 20px",
             }}
           >
-            {UNIT_CATEGORIES.map((cat) => (
+            {UNIT_CATEGORIES.filter((cat) => cat.key !== "area" && cat.key !== "volume").map((cat) => (
               <div key={cat.key}>
                 <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5, fontWeight: 600 }}>
-                  {cat.label}
+                  {cat.key === "length" ? "Longueur (aire et volume suivent)" : cat.label}
                 </label>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {cat.options.map((opt) => {
@@ -247,7 +248,11 @@ export default function ReglagesPage() {
                       <button
                         key={opt}
                         type="button"
-                        onClick={() => setUnits({ [cat.key]: opt })}
+                        onClick={() =>
+                          cat.key === "length"
+                            ? setUnits(unitsForLength(opt as LengthUnit))
+                            : setUnits({ [cat.key]: opt })
+                        }
                         style={{
                           padding: "5px 12px",
                           fontSize: 12.5,

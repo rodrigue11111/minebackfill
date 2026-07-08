@@ -5,7 +5,7 @@
 export type LengthUnit  = "cm" | "mm" | "m" | "in";
 export type AreaUnit    = "cm2" | "mm2" | "m2" | "in2";
 export type MassUnit    = "kg" | "g" | "t" | "lb";
-export type VolumeUnit  = "L" | "mL" | "m3" | "cm3" | "in3";
+export type VolumeUnit  = "L" | "mL" | "m3" | "cm3" | "mm3" | "in3";
 export type DensityUnit = "g/cm3" | "kg/m3" | "t/m3";
 export type SlumpUnit   = "mm" | "cm" | "in";
 
@@ -22,10 +22,27 @@ export const DEFAULT_UNITS: UnitPreferences = {
   length: "cm",
   area: "cm2",
   mass: "kg",
-  volume: "L",
+  volume: "cm3", // cube de l'unité de longueur par défaut (cm -> cm³)
   density: "g/cm3",
   slump: "mm",
 };
+
+/* ── Dérivation à partir d'une seule unité de longueur ──
+   L'opérateur ne choisit qu'UNE unité de mesure : l'aire est son carré et
+   le volume son cube (cm -> cm²/cm³, m -> m²/m³, po -> po²/po³...). Ni l'aire
+   ni le volume ne se choisissent séparément. */
+export const AREA_OF_LENGTH: Record<LengthUnit, AreaUnit> = {
+  cm: "cm2", mm: "mm2", m: "m2", in: "in2",
+};
+export const VOLUME_OF_LENGTH: Record<LengthUnit, VolumeUnit> = {
+  cm: "cm3", mm: "mm3", m: "m3", in: "in3",
+};
+export const LENGTH_UNIT_OPTIONS: readonly LengthUnit[] = ["cm", "mm", "m", "in"];
+
+/** Les trois préférences dérivées d'un seul choix de longueur. */
+export function unitsForLength(length: LengthUnit): Pick<UnitPreferences, "length" | "area" | "volume"> {
+  return { length, area: AREA_OF_LENGTH[length], volume: VOLUME_OF_LENGTH[length] };
+}
 
 /* ── Conversion factor maps ──
    Each map gives the multiplier FROM the display unit TO the store unit.
@@ -63,6 +80,7 @@ const VOLUME_FACTORS: Record<VolumeUnit, number> = {
   mL: 1e-6,
   m3: 1,
   cm3: 1e-6,
+  mm3: 1e-9,           // millimètre cube : (0.001 m)^3
   in3: 1.6387064e-5,   // pouce cube : (0.0254 m)^3
 };
 
@@ -120,7 +138,7 @@ export const fromStoreSlump = (v: Nullable, to: SlumpUnit): number | null   => s
 export const LENGTH_LABELS: Record<LengthUnit, string> = { cm: "cm", mm: "mm", m: "m", in: "po" };
 export const AREA_LABELS: Record<AreaUnit, string>     = { cm2: "cm\u00B2", mm2: "mm\u00B2", m2: "m\u00B2", in2: "po\u00B2" };
 export const MASS_LABELS: Record<MassUnit, string>     = { kg: "kg", g: "g", t: "t", lb: "lb" };
-export const VOLUME_LABELS: Record<VolumeUnit, string> = { L: "L", mL: "mL", m3: "m\u00B3", cm3: "cm\u00B3", in3: "po\u00B3" };
+export const VOLUME_LABELS: Record<VolumeUnit, string> = { L: "L", mL: "mL", m3: "m\u00B3", cm3: "cm\u00B3", mm3: "mm\u00B3", in3: "po\u00B3" };
 export const DENSITY_LABELS: Record<DensityUnit, string> = { "g/cm3": "g/cm\u00B3", "kg/m3": "kg/m\u00B3", "t/m3": "t/m\u00B3" };
 export const SLUMP_LABELS: Record<SlumpUnit, string>   = { mm: "mm", cm: "cm", in: "po" };
 
@@ -135,7 +153,7 @@ export const UNIT_CATEGORIES: {
   { key: "length",  label: "Longueur",       options: ["cm", "mm", "m", "in"],            labels: LENGTH_LABELS },
   { key: "area",    label: "Aire (section)",  options: ["cm2", "mm2", "m2", "in2"],        labels: AREA_LABELS },
   { key: "mass",    label: "Masse",           options: ["kg", "g", "t", "lb"],             labels: MASS_LABELS },
-  { key: "volume",  label: "Volume",          options: ["L", "mL", "m3", "cm3", "in3"],    labels: VOLUME_LABELS },
+  { key: "volume",  label: "Volume",          options: ["mm3", "cm3", "m3", "in3"],        labels: VOLUME_LABELS },
   { key: "density", label: "Masse volumique", options: ["g/cm3", "kg/m3", "t/m3"],         labels: DENSITY_LABELS },
   { key: "slump",   label: "Slump",           options: ["mm", "cm", "in"],                 labels: SLUMP_LABELS },
 ];

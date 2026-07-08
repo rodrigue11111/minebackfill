@@ -10,7 +10,8 @@ import {
   fromStoreArea, toStoreArea,
   fromStoreVolume, toStoreVolume,
   LENGTH_LABELS, AREA_LABELS, VOLUME_LABELS,
-  type VolumeUnit, type LengthUnit, type AreaUnit,
+  LENGTH_UNIT_OPTIONS, unitsForLength,
+  type VolumeUnit, type LengthUnit,
 } from "@/lib/units";
 
 const CONTAINER_TYPES = [
@@ -19,11 +20,6 @@ const CONTAINER_TYPES = [
   { value: "longueur_largeur_hauteur", label: "Longueur x largeur x hauteur" },
   { value: "volume", label: "Volume direct" },
 ] as const;
-
-// L'unité d'aire (section) suit l'unité de longueur choisie (cm -> cm², etc.),
-// pour que l'opérateur ne choisisse qu'une seule unité de mesure.
-const AREA_OF_LENGTH: Record<LengthUnit, AreaUnit> = { cm: "cm2", mm: "mm2", m: "m2", in: "in2" };
-const LENGTH_UNIT_OPTIONS = ["cm", "mm", "m", "in"] as const;
 
 const LABEL: React.CSSProperties = {
   display: "block",
@@ -39,6 +35,14 @@ export default function GeneralInfoPage() {
   const [testLoaded, setTestLoaded] = useState(false);
 
   useEffect(() => { loadUnits(); }, [loadUnits]);
+
+  // Le volume suit toujours le cube de l'unité de longueur choisie (m -> m³,
+  // cm -> cm³...). On garde donc units.volume synchronisé, y compris pour
+  // d'anciennes préférences enregistrées avec une unité de volume distincte.
+  useEffect(() => {
+    const want = unitsForLength(units.length as LengthUnit).volume;
+    if (units.volume !== want) setUnits({ volume: want });
+  }, [units.length, units.volume, setUnits]);
 
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
@@ -271,50 +275,25 @@ export default function GeneralInfoPage() {
               </h2>
             </div>
 
-            {/* Unités — choisies une seule fois, en tête. Elles restent fixées
-                quand on change de type de contenant (aucune remise à zéro).
-                Longueur -> dimensions ; volume -> saisie directe ET résultats. */}
+            {/* Unité de mesure — un seul choix pour tout le contenant. L'aire
+                (section) est son carré et le volume (saisie directe ET résultats)
+                son cube : aucune unité de volume à choisir séparément. */}
             <div style={{ marginBottom: 18, padding: "12px 14px", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", borderRadius: 8 }}>
-              <label style={LABEL}>Unités de mesure</label>
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
-                <div>
-                  <span style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "var(--primary)", marginBottom: 4 }}>
-                    Longueurs (dimensions)
-                  </span>
-                  <select
-                    className="field-input"
-                    style={{ width: 190, cursor: "pointer" }}
-                    value={units.length}
-                    onChange={(e) => {
-                      const L = e.target.value as LengthUnit;
-                      setUnits({ length: L, area: AREA_OF_LENGTH[L] });
-                    }}
-                  >
-                    {LENGTH_UNIT_OPTIONS.map((u) => (
-                      <option key={u} value={u}>{LENGTH_LABELS[u]}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <span style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "var(--primary)", marginBottom: 4 }}>
-                    Volume (saisie directe et résultats)
-                  </span>
-                  <select
-                    className="field-input"
-                    style={{ width: 190, cursor: "pointer" }}
-                    value={units.volume}
-                    onChange={(e) => setUnits({ volume: e.target.value as VolumeUnit })}
-                  >
-                    {(["L", "mL", "cm3", "m3", "in3"] as const).map((u) => (
-                      <option key={u} value={u}>{VOLUME_LABELS[u]}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <p style={{ fontSize: 11, color: "var(--primary)", marginTop: 8, opacity: 0.85 }}>
-                Choisissez vos unités une seule fois : elles restent fixées quand vous changez de type de
-                contenant. Les longueurs s&apos;appliquent aux dimensions (section en {areaLabel}) ; le
-                volume à la saisie directe et aux volumes des résultats.
+              <label style={LABEL}>Unité de mesure</label>
+              <select
+                className="field-input"
+                style={{ width: 220, cursor: "pointer" }}
+                value={units.length}
+                onChange={(e) => setUnits(unitsForLength(e.target.value as LengthUnit))}
+              >
+                {LENGTH_UNIT_OPTIONS.map((u) => (
+                  <option key={u} value={u}>{LENGTH_LABELS[u]}</option>
+                ))}
+              </select>
+              <p style={{ fontSize: 11, color: "var(--primary)", marginTop: 6, opacity: 0.85 }}>
+                Un seul choix pour tout le contenant : les dimensions en {lengthLabel}, la section en{" "}
+                {areaLabel}, et le volume — saisie directe comme résultats — automatiquement en{" "}
+                {VOLUME_LABELS[volumeUnit]}.
               </p>
             </div>
 
