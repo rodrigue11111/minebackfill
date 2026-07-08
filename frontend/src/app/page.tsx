@@ -271,33 +271,19 @@ export default function GeneralInfoPage() {
               </h2>
             </div>
 
-            {/* Unité de mesure — choisie en premier, unique pour le contenant :
-                unité de longueur pour les géométries dimensionnelles, unité de
-                volume pour le « volume direct ». */}
+            {/* Unités — choisies une seule fois, en tête. Elles restent fixées
+                quand on change de type de contenant (aucune remise à zéro).
+                Longueur -> dimensions ; volume -> saisie directe ET résultats. */}
             <div style={{ marginBottom: 18, padding: "12px 14px", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", borderRadius: 8 }}>
-              {general.container_type === "volume" ? (
-                <>
-                  <label style={LABEL}>Unité de volume</label>
+              <label style={LABEL}>Unités de mesure</label>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <div>
+                  <span style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "var(--primary)", marginBottom: 4 }}>
+                    Longueurs (dimensions)
+                  </span>
                   <select
                     className="field-input"
-                    style={{ width: 220, cursor: "pointer" }}
-                    value={units.volume}
-                    onChange={(e) => setUnits({ volume: e.target.value as VolumeUnit })}
-                  >
-                    {(["L", "mL", "cm3", "m3", "in3"] as const).map((u) => (
-                      <option key={u} value={u}>{VOLUME_LABELS[u]}</option>
-                    ))}
-                  </select>
-                  <p style={{ fontSize: 11, color: "var(--primary)", marginTop: 5, opacity: 0.85 }}>
-                    S&apos;applique au volume saisi et aux volumes des résultats.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <label style={LABEL}>Unité de mesure des dimensions</label>
-                  <select
-                    className="field-input"
-                    style={{ width: 220, cursor: "pointer" }}
+                    style={{ width: 190, cursor: "pointer" }}
                     value={units.length}
                     onChange={(e) => {
                       const L = e.target.value as LengthUnit;
@@ -308,11 +294,28 @@ export default function GeneralInfoPage() {
                       <option key={u} value={u}>{LENGTH_LABELS[u]}</option>
                     ))}
                   </select>
-                  <p style={{ fontSize: 11, color: "var(--primary)", marginTop: 5, opacity: 0.85 }}>
-                    S&apos;applique aux longueurs (rayon, hauteur, côtés) et à la section (en {areaLabel}).
-                  </p>
-                </>
-              )}
+                </div>
+                <div>
+                  <span style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "var(--primary)", marginBottom: 4 }}>
+                    Volume (saisie directe et résultats)
+                  </span>
+                  <select
+                    className="field-input"
+                    style={{ width: 190, cursor: "pointer" }}
+                    value={units.volume}
+                    onChange={(e) => setUnits({ volume: e.target.value as VolumeUnit })}
+                  >
+                    {(["L", "mL", "cm3", "m3", "in3"] as const).map((u) => (
+                      <option key={u} value={u}>{VOLUME_LABELS[u]}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: "var(--primary)", marginTop: 8, opacity: 0.85 }}>
+                Choisissez vos unités une seule fois : elles restent fixées quand vous changez de type de
+                contenant. Les longueurs s&apos;appliquent aux dimensions (section en {areaLabel}) ; le
+                volume à la saisie directe et aux volumes des résultats.
+              </p>
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
