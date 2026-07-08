@@ -53,6 +53,10 @@
 html,
 body {
   height: 100%;
+  /* Coquille d'application : le document ne défile jamais lui-même ;
+     chaque page gère son propre défilement interne (évite un double
+     défilement qui laissait apparaître une zone vide sous le contenu). */
+  overflow: hidden;
 }
 
 body {

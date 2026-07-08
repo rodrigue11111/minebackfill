@@ -247,8 +247,11 @@ function FormulaDetail({
             border: "1px solid var(--card-border)",
             borderRadius: 10,
             padding: "22px 16px",
-            textAlign: "center",
             overflowX: "auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
           }}
         >
           <KaTeX tex={formula.equationLatex} displayMode={true} />
