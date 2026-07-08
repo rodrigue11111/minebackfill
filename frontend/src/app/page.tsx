@@ -33,6 +33,11 @@ export default function GeneralInfoPage() {
   const router = useRouter();
   const { general, setGeneral, catalogue_liants, fillTestData, units, setUnits, loadUnits } = useStore();
   const [testLoaded, setTestLoaded] = useState(false);
+  // Texte exact en cours de saisie par champ de dimension. Tant qu'un champ
+  // est dans cette table, on affiche ce que l'utilisateur tape (sans re-passer
+  // par la conversion d'unité), ce qui évite le bruit d'arrondi du type
+  // 310 po -> 787,4 cm -> 309,9999... et laisse saisir les décimales.
+  const [draftNum, setDraftNum] = useState<Record<string, string>>({});
 
   useEffect(() => { loadUnits(); }, [loadUnits]);
 
@@ -81,6 +86,29 @@ export default function GeneralInfoPage() {
     } else {
       setGeneral({ [field]: Number(value) });
     }
+  };
+
+  // Valeur affichée dans un champ de dimension : le brouillon en cours s'il
+  // existe, sinon la valeur canonique du store nettoyée à 12 chiffres
+  // significatifs (efface le bruit de conversion sans perdre de précision utile).
+  const showNum = (field: string, canonical: number | null | undefined): string => {
+    if (field in draftNum) return draftNum[field];
+    if (canonical === null || canonical === undefined || Number.isNaN(canonical)) return "";
+    return String(Number(canonical.toPrecision(12)));
+  };
+
+  const editNum = (field: Parameters<typeof numChange>[0], raw: string) => {
+    setDraftNum((d) => ({ ...d, [field]: raw }));
+    numChange(field, raw);
+  };
+
+  const commitNum = (field: string) => {
+    setDraftNum((d) => {
+      if (!(field in d)) return d;
+      const next = { ...d };
+      delete next[field];
+      return next;
+    });
   };
 
   const fractionTotal =
@@ -363,11 +391,11 @@ export default function GeneralInfoPage() {
                 <>
                   <div>
                     <label style={LABEL}>Section ({areaLabel})</label>
-                    <input type="number" step="any" className="field-input" value={fromStoreArea(general.container_section, units.area) ?? ""} onChange={(e) => numChange("container_section", e.target.value)} placeholder="Ex. : 80.45" />
+                    <input type="text" inputMode="decimal" className="field-input" value={showNum("container_section", fromStoreArea(general.container_section, units.area))} onChange={(e) => editNum("container_section", e.target.value)} onBlur={() => commitNum("container_section")} placeholder="Ex. : 80.45" />
                   </div>
                   <div>
                     <label style={LABEL}>Hauteur ({lengthLabel})</label>
-                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_height, units.length) ?? ""} onChange={(e) => numChange("container_height", e.target.value)} placeholder="Ex. : 20.5" />
+                    <input type="text" inputMode="decimal" className="field-input" value={showNum("container_height", fromStoreLength(general.container_height, units.length))} onChange={(e) => editNum("container_height", e.target.value)} onBlur={() => commitNum("container_height")} placeholder="Ex. : 20.5" />
                   </div>
                 </>
               )}
@@ -375,11 +403,11 @@ export default function GeneralInfoPage() {
                 <>
                   <div>
                     <label style={LABEL}>Rayon ({lengthLabel})</label>
-                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_radius, units.length) ?? ""} onChange={(e) => numChange("container_radius", e.target.value)} placeholder="Ex. : 5.0625" />
+                    <input type="text" inputMode="decimal" className="field-input" value={showNum("container_radius", fromStoreLength(general.container_radius, units.length))} onChange={(e) => editNum("container_radius", e.target.value)} onBlur={() => commitNum("container_radius")} placeholder="Ex. : 5.0625" />
                   </div>
                   <div>
                     <label style={LABEL}>Hauteur ({lengthLabel})</label>
-                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_height, units.length) ?? ""} onChange={(e) => numChange("container_height", e.target.value)} placeholder="Ex. : 20.5" />
+                    <input type="text" inputMode="decimal" className="field-input" value={showNum("container_height", fromStoreLength(general.container_height, units.length))} onChange={(e) => editNum("container_height", e.target.value)} onBlur={() => commitNum("container_height")} placeholder="Ex. : 20.5" />
                   </div>
                 </>
               )}
@@ -387,15 +415,15 @@ export default function GeneralInfoPage() {
                 <>
                   <div>
                     <label style={LABEL}>Longueur ({lengthLabel})</label>
-                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_length, units.length) ?? ""} onChange={(e) => numChange("container_length", e.target.value)} />
+                    <input type="text" inputMode="decimal" className="field-input" value={showNum("container_length", fromStoreLength(general.container_length, units.length))} onChange={(e) => editNum("container_length", e.target.value)} onBlur={() => commitNum("container_length")} />
                   </div>
                   <div>
                     <label style={LABEL}>Largeur ({lengthLabel})</label>
-                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_width, units.length) ?? ""} onChange={(e) => numChange("container_width", e.target.value)} />
+                    <input type="text" inputMode="decimal" className="field-input" value={showNum("container_width", fromStoreLength(general.container_width, units.length))} onChange={(e) => editNum("container_width", e.target.value)} onBlur={() => commitNum("container_width")} />
                   </div>
                   <div>
                     <label style={LABEL}>Hauteur ({lengthLabel})</label>
-                    <input type="number" step="any" className="field-input" value={fromStoreLength(general.container_height, units.length) ?? ""} onChange={(e) => numChange("container_height", e.target.value)} />
+                    <input type="text" inputMode="decimal" className="field-input" value={showNum("container_height", fromStoreLength(general.container_height, units.length))} onChange={(e) => editNum("container_height", e.target.value)} onBlur={() => commitNum("container_height")} />
                   </div>
                 </>
               )}
@@ -403,11 +431,12 @@ export default function GeneralInfoPage() {
                 <div>
                   <label style={LABEL}>Volume du contenant ({VOLUME_LABELS[volumeUnit]})</label>
                   <input
-                    type="number"
-                    step="any"
+                    type="text"
+                    inputMode="decimal"
                     className="field-input"
-                    value={fromStoreVolume(general.container_volume_m3, volumeUnit) ?? ""}
-                    onChange={(e) => numChange("container_volume_m3", e.target.value)}
+                    value={showNum("container_volume_m3", fromStoreVolume(general.container_volume_m3, volumeUnit))}
+                    onChange={(e) => editNum("container_volume_m3", e.target.value)}
+                    onBlur={() => commitNum("container_volume_m3")}
                     placeholder="Ex. : 1.65"
                   />
                 </div>
