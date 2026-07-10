@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
+import { loadVersioned, persistVersioned } from "./persisted";
 
 // Version des solveurs : estampillée sur chaque résultat sauvegardé.
 // À incrémenter quand les formules changent (voir Issues.md).
@@ -312,8 +313,10 @@ interface AppState {
 
   constantes: ConstantesCalcul;
   setConstantes: (patch: Partial<ConstantesCalcul>) => void;
+  loadConstantes: () => void;
 
   catalogue_liants: LiantCatalogueItem[];
+  loadCatalogue: () => void;
   ajouterLiant: () => void;
   modifierLiant: (index: number, patch: Partial<LiantCatalogueItem>) => void;
   supprimerLiant: (index: number) => void;
@@ -416,6 +419,50 @@ const catalogueLiantsDefaut: LiantCatalogueItem[] = [
   { id: "liant_chaux", code: "CHAUX", nom: "Chaux", gs: 2.6 },
 ];
 
+const generalDefaut: GeneralInfo = {
+  binder_count: 2,
+  binder1_type: "CP10",
+  binder2_type: "SLAG",
+  binder3_type: null,
+};
+
+const constantesDefaut: ConstantesCalcul = {
+  masse_volumique_eau_kg_m3: 1000.0,
+  gravite_m_s2: 9.81,
+  facteur_petit_cone_vers_grand_cone: 2.335,
+  coefficient_modele_slump: 4.95e6,
+  constante_modele_slump: 235.5122,
+};
+
+/* ── Persistance versionnée des réglages (catalogue, constantes, projet) ──
+   Contrairement aux 4 clés historiques (résultats, unités, prix, journal),
+   ces réglages sont enveloppés dès l'origine par persisted.ts : ils pourront
+   être migrés proprement quand leur schéma évoluera (P2 : bibliothèques). */
+const CATALOGUE_KEY = "minebackfill_catalogue_liants";
+const CONSTANTES_KEY = "minebackfill_constantes";
+const GENERAL_KEY = "minebackfill_general";
+const SETTINGS_VERSION = 1;
+const identityMigration = (d: unknown) => d;
+
+function loadCatalogueFromStorage(): LiantCatalogueItem[] {
+  return loadVersioned(CATALOGUE_KEY, SETTINGS_VERSION, identityMigration, catalogueLiantsDefaut);
+}
+function persistCatalogue(items: LiantCatalogueItem[]) {
+  persistVersioned(CATALOGUE_KEY, SETTINGS_VERSION, items);
+}
+function loadConstantesFromStorage(): ConstantesCalcul {
+  return loadVersioned(CONSTANTES_KEY, SETTINGS_VERSION, identityMigration, constantesDefaut);
+}
+function persistConstantes(c: ConstantesCalcul) {
+  persistVersioned(CONSTANTES_KEY, SETTINGS_VERSION, c);
+}
+function loadGeneralFromStorage(): GeneralInfo {
+  return loadVersioned(GENERAL_KEY, SETTINGS_VERSION, identityMigration, generalDefaut);
+}
+function persistGeneral(g: GeneralInfo) {
+  persistVersioned(GENERAL_KEY, SETTINGS_VERSION, g);
+}
+
 export const useStore = create<AppState>((set, get) => ({
   // Par défaut on appelle l'API en relatif (/rpc, /rpg) via le proxy Next.js
   API: process.env.NEXT_PUBLIC_API_URL?.trim() || "",
@@ -425,39 +472,26 @@ export const useStore = create<AppState>((set, get) => ({
   setCategory: (c) => set({ category: c }),
   setMethod: (m) => set({ method: m }),
 
-  general: {
-    binder_count: 2,
-    binder1_type: "CP10",
-    binder2_type: "SLAG",
-    binder3_type: null,
-  },
+  general: generalDefaut,
   setGeneral: (patch) =>
-    set((state) => ({
-      general: {
-        ...state.general,
-        ...patch,
-      },
-    })),
-  loadGeneral: async () => {
-    return;
-  },
+    set((state) => {
+      const general = { ...state.general, ...patch };
+      persistGeneral(general);
+      return { general };
+    }),
+  loadGeneral: async () => set({ general: loadGeneralFromStorage() }),
 
-  constantes: {
-    masse_volumique_eau_kg_m3: 1000.0,
-    gravite_m_s2: 9.81,
-    facteur_petit_cone_vers_grand_cone: 2.335,
-    coefficient_modele_slump: 4.95e6,
-    constante_modele_slump: 235.5122,
-  },
+  constantes: constantesDefaut,
   setConstantes: (patch) =>
-    set((state) => ({
-      constantes: {
-        ...state.constantes,
-        ...patch,
-      },
-    })),
+    set((state) => {
+      const constantes = { ...state.constantes, ...patch };
+      persistConstantes(constantes);
+      return { constantes };
+    }),
+  loadConstantes: () => set({ constantes: loadConstantesFromStorage() }),
 
   catalogue_liants: catalogueLiantsDefaut,
+  loadCatalogue: () => set({ catalogue_liants: loadCatalogueFromStorage() }),
   ajouterLiant: () =>
     set((state) => {
       const index = state.catalogue_liants.length + 1;
@@ -467,7 +501,9 @@ export const useStore = create<AppState>((set, get) => ({
         nom: `Liant ${index}`,
         gs: 3.0,
       };
-      return { catalogue_liants: [...state.catalogue_liants, nouveau] };
+      const catalogue = [...state.catalogue_liants, nouveau];
+      persistCatalogue(catalogue);
+      return { catalogue_liants: catalogue };
     }),
   modifierLiant: (index, patch) =>
     set((state) => {
@@ -478,6 +514,7 @@ export const useStore = create<AppState>((set, get) => ({
       const nouveauCode = catalogue[index].code;
       const doitRenommer = ancienCode !== nouveauCode && !!nouveauCode;
 
+      persistCatalogue(catalogue);
       if (!doitRenommer) {
         return { catalogue_liants: catalogue };
       }
@@ -485,15 +522,14 @@ export const useStore = create<AppState>((set, get) => ({
       const renommer = (code?: string | null) =>
         code === ancienCode ? nouveauCode : code;
 
-      return {
-        catalogue_liants: catalogue,
-        general: {
-          ...state.general,
-          binder1_type: renommer(state.general.binder1_type),
-          binder2_type: renommer(state.general.binder2_type),
-          binder3_type: renommer(state.general.binder3_type),
-        },
+      const general = {
+        ...state.general,
+        binder1_type: renommer(state.general.binder1_type),
+        binder2_type: renommer(state.general.binder2_type),
+        binder3_type: renommer(state.general.binder3_type),
       };
+      persistGeneral(general);
+      return { catalogue_liants: catalogue, general };
     }),
   supprimerLiant: (index) =>
     set((state) => {
@@ -507,15 +543,15 @@ export const useStore = create<AppState>((set, get) => ({
       const nettoyerCode = (code?: string | null) =>
         code === codeSupprime ? codeFallback : code;
 
-      return {
-        catalogue_liants: catalogue,
-        general: {
-          ...state.general,
-          binder1_type: nettoyerCode(state.general.binder1_type),
-          binder2_type: nettoyerCode(state.general.binder2_type),
-          binder3_type: nettoyerCode(state.general.binder3_type),
-        },
+      const general = {
+        ...state.general,
+        binder1_type: nettoyerCode(state.general.binder1_type),
+        binder2_type: nettoyerCode(state.general.binder2_type),
+        binder3_type: nettoyerCode(state.general.binder3_type),
       };
+      persistCatalogue(catalogue);
+      persistGeneral(general);
+      return { catalogue_liants: catalogue, general };
     }),
 
   cw: {
@@ -810,8 +846,9 @@ export const useStore = create<AppState>((set, get) => ({
         { code: "CHAUX", price_per_kg: 0.08 },
       ];
       persistBinderPrices(testBinderPrices);
+      persistCatalogue(catalogue);
+      persistGeneral(newGeneral);
 
-      console.log("[fillTestData] Valeurs Intra 2017 chargées — Cw:", cwPct, "Gs:", gs, "w0:", w0, "Bw:", bwLevels[0]);
       return { general: newGeneral, catalogue_liants: catalogue, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb, industrie: newIndustrie, binderPrices: testBinderPrices };
     }),
 

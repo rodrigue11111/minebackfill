@@ -9,9 +9,15 @@ const CLES = {
   binder_prices: "minebackfill_binder_prices",
   production_log: "minebackfill_production_log",
   unit_prefs: "minebackfill_unit_prefs",
+  catalogue_liants: "minebackfill_catalogue_liants",
+  constantes: "minebackfill_constantes",
+  general: "minebackfill_general",
 } as const;
 
-const SCHEMA_VERSION = 1;
+// v2 : ajout du catalogue de liants, des constantes et des infos générales.
+// Une sauvegarde v1 (sans ces clés) reste importable — les clés absentes sont
+// simplement ignorées (voir importerDonnees).
+const SCHEMA_VERSION = 2;
 
 interface Backup {
   application: string;
@@ -57,7 +63,8 @@ export interface ResultatImport {
  * Importe un fichier de sauvegarde.
  * - listes avec id (résultats, journal) : fusion — les entrées importées
  *   s'ajoutent, les id déjà présents sont conservés tels quels ;
- * - prix des liants et unités : remplacés par le contenu du fichier.
+ * - réglages (prix, unités, catalogue de liants, constantes, projet) :
+ *   remplacés par le contenu du fichier.
  * Recharger les données dans le store après import (loadSavedResults etc.).
  */
 export async function importerDonnees(fichier: File): Promise<ResultatImport> {

@@ -9,7 +9,10 @@ import { useStore } from "@/lib/store";
  * le contenu localStorage (résultats, prix des liants, journal, unités).
  */
 export default function BackupButtons() {
-  const { loadSavedResults, loadBinderPrices, loadProductionLog, loadUnits } = useStore();
+  const {
+    loadSavedResults, loadBinderPrices, loadProductionLog, loadUnits,
+    loadCatalogue, loadConstantes, loadGeneral,
+  } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ ok: boolean; texte: string } | null>(null);
 
@@ -22,6 +25,9 @@ export default function BackupButtons() {
       loadBinderPrices();
       loadProductionLog();
       loadUnits();
+      loadCatalogue();
+      loadConstantes();
+      loadGeneral();
     }
     setTimeout(() => setMessage(null), 6000);
   };

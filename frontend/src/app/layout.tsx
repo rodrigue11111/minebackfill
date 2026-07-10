@@ -4,6 +4,7 @@ import "./globals.css";
 import "katex/dist/katex.min.css";
 import NavBar from "@/components/NavBar";
 import GlobalInputEnhancer from "@/components/GlobalInputEnhancer";
+import StoreHydrator from "@/components/StoreHydrator";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({
         style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
       >
         <GlobalInputEnhancer />
+        <StoreHydrator />
         <NavBar />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
           {children}
