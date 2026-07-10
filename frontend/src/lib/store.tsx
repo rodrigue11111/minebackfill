@@ -216,6 +216,9 @@ export interface SavedResult {
   inputs?: unknown;
   /** Version des solveurs qui a produit ces résultats. */
   solverVersion?: string;
+  /** Instantané des réglages au moment du calcul (reproductibilité exacte). */
+  catalogue_liants?: LiantCatalogueItem[];
+  constantes?: ConstantesCalcul;
 }
 
 /* ── localStorage helpers (SSR-safe) ── */
@@ -885,6 +888,8 @@ export const useStore = create<AppState>((set, get) => ({
       recipes: result.recipes,
       inputs: JSON.parse(JSON.stringify(inputs)),
       solverVersion: SOLVER_VERSION,
+      catalogue_liants: state.catalogue_liants.map((l) => ({ ...l })),
+      constantes: { ...state.constantes },
     };
     // Fusion avec le stockage (pas seulement l'état mémoire, qui peut ne pas
     // avoir été hydraté si l'utilisateur n'est jamais passé par Historique),
@@ -910,6 +915,22 @@ export const useStore = create<AppState>((set, get) => ({
       method: entry.method,
       general: { ...entry.general },
     };
+    // Restaurer et persister le contexte du résultat (reproductibilité) :
+    // constantes du snapshot, et liants manquants réinjectés au catalogue
+    // courant sans écraser les liants existants de l'utilisateur.
+    persistGeneral(entry.general);
+    if (entry.constantes) {
+      patch.constantes = { ...entry.constantes };
+      persistConstantes(entry.constantes);
+    }
+    if (entry.catalogue_liants?.length) {
+      const courant = [...state.catalogue_liants];
+      for (const l of entry.catalogue_liants) {
+        if (!courant.some((c) => c.code === l.code)) courant.push({ ...l });
+      }
+      patch.catalogue_liants = courant;
+      persistCatalogue(courant);
+    }
     const isRpg = entry.category === "RPG";
     const m = entry.method;
     if (isRpg) {
