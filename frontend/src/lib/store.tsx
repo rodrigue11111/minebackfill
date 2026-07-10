@@ -849,7 +849,11 @@ export const useStore = create<AppState>((set, get) => ({
       inputs: JSON.parse(JSON.stringify(inputs)),
       solverVersion: SOLVER_VERSION,
     };
-    const updated = [entry, ...state.savedResults];
+    // Fusion avec le stockage (pas seulement l'état mémoire, qui peut ne pas
+    // avoir été hydraté si l'utilisateur n'est jamais passé par Historique),
+    // en dédupliquant sur l'id pour ne pas écraser l'historique existant.
+    const stored = loadSavedFromStorage();
+    const updated = [entry, ...stored.filter((s) => s.id !== entry.id)];
     const persisted = persistSaved(updated);
     set({ savedResults: updated });
     return persisted;
@@ -885,8 +889,10 @@ export const useStore = create<AppState>((set, get) => ({
     return true;
   },
   deleteSavedResult: (id) =>
-    set((state) => {
-      const updated = state.savedResults.filter((s) => s.id !== id);
+    set(() => {
+      // Relire le stockage avant de filtrer, pour la même raison que
+      // saveCurrentResult : ne pas partir d'un état mémoire non hydraté.
+      const updated = loadSavedFromStorage().filter((s) => s.id !== id);
       persistSaved(updated);
       return { savedResults: updated };
     }),
