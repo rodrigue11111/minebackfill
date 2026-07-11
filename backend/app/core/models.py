@@ -15,6 +15,13 @@ from typing import List, Optional, Literal
 from pydantic import BaseModel, Field, confloat, conint, field_validator
 
 
+#: Nombre maximal de composants de liant combinables. Le cœur mathématique
+#: (Gs harmonique, répartition des masses) est N-aire ; cette borne reste un
+#: garde-fou de bon sens (une recette avec des dizaines de ciments serait une
+#: erreur de saisie, et l'UI dimensionne quelques champs).
+MAX_BINDER_COMPONENTS = 8
+
+
 # ======================================================================
 #  ENUMS
 # ======================================================================
@@ -121,23 +128,26 @@ class GeneralInfo(BaseModel):
         description="Volume du contenant en m³ (si type 'volume', saisi directement).",
     )
 
-    # ------------------ Composition du liant (1 à 3 ciments) ---------------
+    # --------------- Composition du liant (écho métadonnées) ---------------
+    # Champs indicatifs seulement : le système de liant réellement calculé est
+    # `binder_system` (N composants). binder_count/binderN_type ne sont qu'un
+    # écho des 3 premiers pour l'affichage ; le solveur ne les lit pas.
 
-    binder_count: Optional[conint(ge=1, le=3)] = Field(
+    binder_count: Optional[conint(ge=1, le=MAX_BINDER_COMPONENTS)] = Field(
         default=None,
-        description="Nombre de ciments dans le liant (1 à 3).",
+        description=f"Nombre de ciments dans le liant (1 à {MAX_BINDER_COMPONENTS}). Écho ; voir binder_system.",
     )
     binder1_type: Optional[str] = Field(
         default=None,
-        description="Type du ciment 1 (CP50, CP10, etc.).",
+        description="Type du ciment 1 (CP50, CP10, etc.). Écho des 3 premiers.",
     )
     binder2_type: Optional[str] = Field(
         default=None,
-        description="Type du ciment 2 (optionnel).",
+        description="Type du ciment 2 (optionnel). Écho.",
     )
     binder3_type: Optional[str] = Field(
         default=None,
-        description="Type du ciment 3 (optionnel).",
+        description="Type du ciment 3 (optionnel). Écho.",
     )
 
 
@@ -179,13 +189,6 @@ class BinderComponent(BaseModel):
             "La somme de toutes les fractions doit être égale à 1."
         ),
     )
-
-
-#: Nombre maximal de composants de liant combinables. Le cœur mathématique
-#: (Gs harmonique, répartition des masses) est N-aire ; cette borne reste un
-#: garde-fou de bon sens (une recette avec des dizaines de ciments serait une
-#: erreur de saisie, et l'UI dimensionne quelques champs).
-MAX_BINDER_COMPONENTS = 8
 
 
 class BinderSystem(BaseModel):
