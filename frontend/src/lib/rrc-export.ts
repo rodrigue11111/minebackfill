@@ -6,37 +6,12 @@ import type { UnitPreferences } from "@/lib/units";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { RrcRecipe } from "@/lib/types";
 import type { GeneralInfo } from "@/lib/store";
+import { RRC_ROWS } from "@/lib/report-schema";
 
 const fmtNum = (v: number | null | undefined, digits = 3): string => {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
   return v.toFixed(digits);
 };
-
-interface Ligne {
-  label: string;
-  get: (r: RrcRecipe) => number | null;
-  digits?: number;
-}
-
-function lignes(massLabel: string, toMass: (kg: number | null | undefined) => number | null): Ligne[] {
-  return [
-    { label: "Bw (liant/roches) (%)", get: (r) => r.bw_mass_pct ?? null, digits: 2 },
-    { label: "W/C du coulis", get: (r) => r.wc_ratio ?? null },
-    { label: "Teneur en eau w (%)", get: (r) => r.w_mass_pct ?? null },
-    { label: "Solides Cw (%)", get: (r) => r.solids_mass_pct ?? null },
-    { label: `Masse totale M_CRF (${massLabel})`, get: (r) => toMass(r.total_mass_kg) },
-    { label: "Volume CRF V_CRF (m3)", get: (r) => r.crf_volume_m3 ?? null, digits: 2 },
-    { label: `Roches steriles M_WR (${massLabel})`, get: (r) => toMass(r.waste_rock_mass_kg) },
-    { label: `Ciment M_c (${massLabel})`, get: (r) => toMass(r.cement_mass_kg) },
-    { label: `Eau M_w (${massLabel})`, get: (r) => toMass(r.water_mass_kg) },
-    { label: `Fluide (eau + SR) M* (${massLabel})`, get: (r) => toMass(r.fluid_mass_kg) },
-    { label: `Retardateur M_SR (${massLabel})`, get: (r) => toMass(r.retarder_mass_kg) },
-    { label: "Retardateur V_SR (L)", get: (r) => r.retarder_volume_l ?? null, digits: 2 },
-    { label: "Dosage retardateur D_m (% de Mc)", get: (r) => r.retarder_dosage_mass_pct ?? null },
-    { label: `Coulis M_c-slurry (${massLabel})`, get: (r) => toMass(r.slurry_mass_kg) },
-    { label: "Coulis V_c-slurry (m3)", get: (r) => r.slurry_volume_m3 ?? null },
-  ];
-}
 
 export async function exportRrcExcel(
   recipes: RrcRecipe[],
@@ -57,10 +32,11 @@ export async function exportRrcExcel(
 
   const header = ws.addRow(["Paramètre", ...recipes.map((_, i) => `Recette ${i + 1}`)]);
   header.font = { bold: true };
-  for (const l of lignes(massLabel, toMass)) {
-    ws.addRow([l.label, ...recipes.map((r) => {
-      const v = l.get(r);
-      return v === null ? "—" : parseFloat(v.toFixed(l.digits ?? 3));
+  // Lignes RRC : schéma unique partagé avec la vue écran (report-schema.ts).
+  for (const l of RRC_ROWS) {
+    ws.addRow([l.label(massLabel), ...recipes.map((r) => {
+      const v = l.getter(r, toMass);
+      return v === null ? "—" : parseFloat(v.toFixed(l.digits));
     })]);
   }
   ws.getColumn(1).width = 38;
