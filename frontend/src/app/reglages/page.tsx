@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, CATALOGUE_VERSION, CONSTANTES_VERSION, MATERIALS_VERSION } from "@/lib/store";
 import { UNIT_CATEGORIES, unitsForLength, type LengthUnit } from "@/lib/units";
 import type { LiantCatalogueItem } from "@/lib/store";
+import type { MaterialKind } from "@/lib/materials";
 import { CONVENTION_PACKS, packById } from "@/lib/conventions";
+import { getSupabase } from "@/lib/supabase";
+import { publierCatalogue, type CatalogueCloudId } from "@/lib/cloud";
 import { estOfficiel } from "@/lib/materials";
 import MaterialCatalogueCard from "@/components/MaterialCatalogueCard";
 import BackupButtons from "@/components/BackupButtons";
@@ -23,10 +26,36 @@ export default function ReglagesPage() {
     setUnits,
     loadUnits,
   } = useStore();
+  const session = useStore((s) => s.session);
+  const isProf = session?.role === "prof";
 
   useEffect(() => {
     loadUnits();
   }, [loadUnits]);
+
+  // Publication d'un catalogue officiel (enseignant). N'envoie que la couche
+  // « officielle » ; la couche perso reste locale à chaque utilisateur.
+  const publierMateriaux = async (kind: MaterialKind, id: CatalogueCloudId, version: number) => {
+    const sb = getSupabase();
+    if (!sb || !session) return;
+    const items = (useStore.getState()[`catalogue_${kind}` as const] as { origine?: string }[])
+      .filter((m) => m.origine === "officiel");
+    const { error } = await publierCatalogue(sb, id, { v: version, data: items }, session.userId);
+    window.alert(error ? `Publication impossible : ${error}` : "Catalogue publié en ligne.");
+  };
+  const publierLiants = async () => {
+    const sb = getSupabase();
+    if (!sb || !session) return;
+    const items = catalogue_liants.filter((l) => l.origine === "officiel");
+    const { error } = await publierCatalogue(sb, "liants", { v: CATALOGUE_VERSION, data: items }, session.userId);
+    window.alert(error ? `Publication impossible : ${error}` : "Catalogue de liants publié en ligne.");
+  };
+  const publierConstantes = async () => {
+    const sb = getSupabase();
+    if (!sb || !session) return;
+    const { error } = await publierCatalogue(sb, "constantes", { v: CONSTANTES_VERSION, data: constantes }, session.userId);
+    window.alert(error ? `Publication impossible : ${error}` : "Constantes publiées en ligne.");
+  };
 
   const codesDupliques = useMemo(() => {
     const map = new Map<string, number>();
@@ -78,6 +107,11 @@ export default function ReglagesPage() {
                   ? "Valeurs modifiées manuellement (hors preset)."
                   : "Applique un jeu de constantes et de règles d'essai. Voir Issues.md #4."}
               </span>
+              {isProf && (
+                <button type="button" className="btn-primary" style={{ fontSize: 12, marginLeft: "auto" }} onClick={publierConstantes}>
+                  Publier les constantes
+                </button>
+              )}
             </div>
           </div>
 
@@ -172,6 +206,11 @@ export default function ReglagesPage() {
               <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={ajouterLiant}>
                 + Ajouter un liant
               </button>
+              {isProf && (
+                <button type="button" className="btn-primary" style={{ fontSize: 12 }} onClick={publierLiants}>
+                  Publier en ligne
+                </button>
+              )}
             </div>
           </div>
 
@@ -179,7 +218,8 @@ export default function ReglagesPage() {
             {catalogue_liants.map((liant: LiantCatalogueItem, index: number) => {
               const code = String(liant.code ?? "");
               const duplique = code && codesDupliques.has(code);
-              const verrou = estOfficiel(liant);
+              // En mode enseignant, les liants officiels sont éditables.
+              const verrou = estOfficiel(liant) && !isProf;
               return (
                 <div
                   key={liant.id}
@@ -205,7 +245,7 @@ export default function ReglagesPage() {
                       onChange={(e) =>
                         modifierLiant(index, {
                           code: String(e.target.value || "").trim().toUpperCase(),
-                        })
+                        }, isProf)
                       }
                     />
                   </div>
@@ -217,7 +257,7 @@ export default function ReglagesPage() {
                       className="field-input"
                       value={liant.nom}
                       disabled={verrou}
-                      onChange={(e) => modifierLiant(index, { nom: e.target.value })}
+                      onChange={(e) => modifierLiant(index, { nom: e.target.value }, isProf)}
                     />
                   </div>
                   <div>
@@ -230,20 +270,21 @@ export default function ReglagesPage() {
                       className="field-input"
                       value={liant.gs}
                       disabled={verrou}
-                      onChange={(e) => modifierLiant(index, { gs: Number(e.target.value || 0) })}
+                      onChange={(e) => modifierLiant(index, { gs: Number(e.target.value || 0) }, isProf)}
                     />
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", paddingBottom: 2 }}>
-                    {verrou ? (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingBottom: 2 }}>
+                    {estOfficiel(liant) && (
                       <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--primary)", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
                         officiel
                       </span>
-                    ) : (
+                    )}
+                    {!verrou && (
                       <button
                         type="button"
                         className="btn-secondary"
                         style={{ fontSize: 12, padding: "6px 12px" }}
-                        onClick={() => supprimerLiant(index)}
+                        onClick={() => supprimerLiant(index, isProf)}
                         disabled={catalogue_liants.length <= 1}
                       >
                         Supprimer
@@ -276,6 +317,8 @@ export default function ReglagesPage() {
           kind="residus"
           title="Bibliothèque de résidus"
           sub="Résidus miniers réutilisables : sélectionnez-les dans les formulaires pour remplir Gs et w0."
+          adminMode={isProf}
+          onPublish={() => publierMateriaux("residus", "residus", MATERIALS_VERSION)}
           columns={[
             { key: "nom", label: "Nom", type: "text", flex: 2 },
             { key: "gs", label: "Gs", type: "number" },
@@ -287,6 +330,8 @@ export default function ReglagesPage() {
           kind="granulats"
           title="Bibliothèque de granulats"
           sub="Granulats pour le remblai en pâte granulaire (RPG)."
+          adminMode={isProf}
+          onPublish={() => publierMateriaux("granulats", "granulats", MATERIALS_VERSION)}
           columns={[
             { key: "nom", label: "Nom", type: "text", flex: 2 },
             { key: "gs", label: "Gs", type: "number" },
@@ -299,6 +344,8 @@ export default function ReglagesPage() {
           kind="retardateurs"
           title="Bibliothèque de retardateurs"
           sub="Retardateurs de prise pour le remblai rocheux cimenté (RRC)."
+          adminMode={isProf}
+          onPublish={() => publierMateriaux("retardateurs", "retardateurs", MATERIALS_VERSION)}
           columns={[
             { key: "nom", label: "Nom", type: "text", flex: 2 },
             { key: "densite_g_ml", label: "Densité (g/ml)", type: "number" },
