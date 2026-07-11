@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, trouverPrixLiant } from "@/lib/store";
 import { calculeUsine, facteurRemplacement, type UsineParams } from "@/lib/industrie_helpers";
 
 /**
@@ -49,7 +49,7 @@ function LigneResultat({ label, valeur, unite, bold, negatif }: {
 }
 
 export default function UsineCalculator() {
-  const { binderPrices, general } = useStore();
+  const { binderPrices, general, catalogue_liants } = useStore();
 
   const [params, setParams] = useState<UsineParams>({
     residus_humides_tph: 70,   // exemple du cours (Dia 83)
@@ -68,12 +68,14 @@ export default function UsineCalculator() {
 
   // Coût du liant : prix moyen pondéré du mélange configuré sur la page Informations
   const prixLiant = (() => {
-    const map = new Map(binderPrices.map((p) => [p.code, p.price_per_kg]));
     const parts: { frac: number; prix: number }[] = [];
     ([1, 2, 3] as const).forEach((n) => {
       const code = general[`binder${n}_type`];
       const frac = (general[`binder${n}_fraction_pct`] ?? 0) / 100;
-      if (code && frac > 0 && map.has(code)) parts.push({ frac, prix: map.get(code)! });
+      if (!code || frac <= 0) return;
+      const id = catalogue_liants.find((l) => l.code === code)?.id;
+      const entry = trouverPrixLiant(binderPrices, { id, code });
+      if (entry) parts.push({ frac, prix: entry.price_per_kg });
     });
     if (!parts.length) return null;
     const totalFrac = parts.reduce((a, p) => a + p.frac, 0) || 1;

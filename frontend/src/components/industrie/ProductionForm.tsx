@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, prixPourLiant } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
 import type { ResiduItem, GranulatItem } from "@/lib/materials";
 import { messageErreurApi } from "@/lib/api-error";
-import type { IndustrieCostResult, GeneralInfo, LiantCatalogueItem, BinderPrice } from "@/lib/store";
+import type { IndustrieCostResult, GeneralInfo, LiantCatalogueItem } from "@/lib/store";
 import {
   buildCwPayload,
   computeBinderCost,
@@ -78,8 +78,8 @@ export default function ProductionForm() {
   const isRpg = cat === "RPG";
 
   const getPrice = (code: string) => {
-    const p = binderPrices.find((bp: BinderPrice) => bp.code === code);
-    return p?.price_per_kg ?? 0;
+    const id = catalogue_liants.find((l: LiantCatalogueItem) => l.code === code)?.id;
+    return prixPourLiant(binderPrices, { id, code });
   };
 
   const bcount = general.binder_count ?? 1;

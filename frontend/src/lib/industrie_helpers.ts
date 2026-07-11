@@ -5,6 +5,7 @@ import type {
   BinderPrice,
   IndustrieState,
 } from "@/lib/store";
+import { prixPourLiant } from "@/lib/store";
 import type { Recipe } from "@/lib/types";
 import {
   construireSystemeLiant,
@@ -62,7 +63,6 @@ export function computeBinderCost(
 ): number {
   if (!recipe?.components) return 0;
 
-  const priceMap = new Map(binderPrices.map((p) => [p.code, p.price_per_kg]));
   let total = 0;
   const bcount = general.binder_count ?? 1;
 
@@ -70,8 +70,10 @@ export function computeBinderCost(
     const code = general[`binder${i}_type` as keyof GeneralInfo] as string | undefined;
     const massKey = `binder_c${i}_mass_kg` as keyof NonNullable<Recipe["components"]>;
     const mass = (recipe.components?.[massKey] as number | null | undefined) ?? 0;
-    const price = (code && priceMap.get(code)) || 0;
-    total += mass * price;
+    if (!code) continue;
+    // Correspondance par id (résolu via le catalogue) puis repli par code.
+    const id = catalogue.find((l) => l.code === code)?.id;
+    total += mass * prixPourLiant(binderPrices, { id, code });
   }
 
   return total;

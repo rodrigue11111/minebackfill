@@ -171,8 +171,25 @@ export type RpcCwResponse = MixResult;
 
 /* ── Industrie types ── */
 export interface BinderPrice {
+  /** Id du liant du catalogue (clé stable, résiste au renommage du code). */
+  id?: string;
   code: string;
   price_per_kg: number;
+}
+
+/** Prix d'un liant : correspondance par id d'abord, repli par code. */
+export function trouverPrixLiant(
+  prices: BinderPrice[],
+  liant: { id?: string; code?: string | null } | undefined,
+): BinderPrice | undefined {
+  if (!liant) return undefined;
+  return prices.find((p) => (!!p.id && !!liant.id && p.id === liant.id) || (!!liant.code && p.code === liant.code));
+}
+export function prixPourLiant(
+  prices: BinderPrice[],
+  liant: { id?: string; code?: string | null } | undefined,
+): number {
+  return trouverPrixLiant(prices, liant)?.price_per_kg ?? 0;
 }
 
 export interface IndustrieState {
@@ -1171,8 +1188,13 @@ export const useStore = create<AppState>((set, get) => ({
   binderPrices: [],
   setBinderPrice: (code, price_per_kg) =>
     set((state) => {
-      const existing = state.binderPrices.filter((p) => p.code !== code);
-      const updated = [...existing, { code, price_per_kg }];
+      // On enregistre l'id du liant en plus du code : le prix reste rattaché
+      // même si l'utilisateur renomme le code (plus de prix orphelin).
+      const id = state.catalogue_liants.find((l) => l.code === code)?.id;
+      const existing = state.binderPrices.filter(
+        (p) => !((id && p.id === id) || p.code === code),
+      );
+      const updated = [...existing, { id, code, price_per_kg }];
       persistBinderPrices(updated);
       return { binderPrices: updated };
     }),
