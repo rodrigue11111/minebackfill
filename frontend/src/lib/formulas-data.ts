@@ -951,7 +951,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["slump", "affaissement", "S_sup", "consistance", "Belem 2007", "cone Abrams"],
     contextSnippet:
-      "Modèle empirique (Belem, 2007; 2010; 2023) — affaissement standard cône Abrams 178 mm (7\").",
+      "Corrélation d'affaissement (Belem, 2007; 2010; 2023) qui estime le slump À PARTIR du Cw% — distincte du modèle prédictif Cw%↔slump (F103) utilisé par la méthode « Slump » du calculateur. Affaissement standard cône Abrams 178 mm (7\").",
     derivationLinks: {
       derivedFrom: ["F009"],
       derivesInto: ["F036"],
@@ -978,7 +978,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["slump", "affaissement", "P80", "grains fins", "Belem 2007"],
     contextSnippet:
-      "Borne inférieure dépendant du % passant 80 µm. Intervalle : S_inf ≤ S ≤ S_sup.",
+      "Borne inférieure dépendant du % passant 80 µm (corrélation d'affaissement, distincte du modèle prédictif F103). Intervalle : S_inf ≤ S ≤ S_sup.",
     derivationLinks: {
       derivedFrom: ["F035"],
       derivesInto: [],

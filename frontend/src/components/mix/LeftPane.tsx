@@ -232,7 +232,7 @@ export default function LeftPane() {
           </div>
         ) : (
           <p style={{ fontSize: 11.5, color: "var(--muted-foreground)", marginBottom: 10 }}>
-            Aucune information renseignee.
+            Aucune information renseignée.
           </p>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -262,7 +262,7 @@ export default function LeftPane() {
               transition: "all 0.2s",
             }}
           >
-            {testLoaded ? "Valeurs chargees !" : "Valeurs de test"}
+            {testLoaded ? "Valeurs chargées !" : "Valeurs de test"}
           </button>
           <Link
             href="/"
@@ -295,7 +295,7 @@ export default function LeftPane() {
               background: "#fff",
             }}
           >
-            Reglages
+            Réglages
           </Link>
         </div>
       </div>

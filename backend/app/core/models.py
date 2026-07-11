@@ -12,7 +12,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import List, Optional, Literal
 
-from pydantic import BaseModel, Field, confloat, conint
+from pydantic import BaseModel, Field, confloat, conint, field_validator
 
 
 # ======================================================================
@@ -188,6 +188,18 @@ class BinderSystem(BaseModel):
 
     components: List[BinderComponent]
 
+    @field_validator("components")
+    @classmethod
+    def _valider_nombre_composants(cls, v: List[BinderComponent]) -> List[BinderComponent]:
+        # Le solveur ne combine que 3 composants (Gs et répartition des masses) :
+        # au-delà, un 4e liant serait silencieusement ignoré. On rejette donc
+        # explicitement. Le passage à N composants est prévu ultérieurement.
+        if len(v) < 1:
+            raise ValueError("Au moins un composant de liant est requis.")
+        if len(v) > 3:
+            raise ValueError("Maximum 3 composants de liant supportés pour cette version.")
+        return v
+
     def validate_total_fraction(self) -> None:
         """
         Vérifie que la somme des 'mass_fraction' vaut ~1.
@@ -207,29 +219,29 @@ class BinderSystem(BaseModel):
 
 class SolverConstants(BaseModel):
     """
-    Constantes numeriques optionnelles pour le solveur.
-    Si non fournies, le backend utilise ses valeurs par defaut.
+    Constantes numériques optionnelles pour le solveur.
+    Si non fournies, le backend utilise ses valeurs par défaut.
     """
 
     water_density: confloat(gt=0) = Field(
         1000.0,
-        description="Masse volumique de l'eau (kg/m3).",
+        description="Masse volumique de l'eau (kg/m³).",
     )
     gravity: confloat(gt=0) = Field(
         9.81,
-        description="Acceleration de la gravite (m/s2).",
+        description="Accélération de la gravité (m/s²).",
     )
     slump_small_to_large_factor: confloat(gt=0) = Field(
         2.335,
-        description="Facteur de conversion du petit cone vers le grand cone.",
+        description="Facteur de conversion du petit cône vers le grand cône.",
     )
     slump_model_coeff: confloat(gt=0) = Field(
         4.95e6,
-        description="Coefficient du modele predictif du slump.",
+        description="Coefficient du modèle prédictif du slump.",
     )
-    slump_model_offset: float = Field(
+    slump_model_offset: confloat(gt=0) = Field(
         235.5122,
-        description="Constante additive du modele predictif du slump.",
+        description="Constante additive du modèle prédictif du slump.",
     )
 
 
@@ -271,11 +283,11 @@ class RpcCwInputs(BaseMixDesignInput):
     Entrées pour la méthode RPC – Dosage selon Cw%.
     """
 
-    solids_mass_pct: confloat(ge=0, le=100) = Field(
+    solids_mass_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="% massique de solides dans le remblai (Cw%).",
     )
-    saturation_pct: confloat(ge=0, le=100) = Field(
+    saturation_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="Degré de saturation S_r (%) du remblai.",
     )
@@ -315,7 +327,7 @@ class RpcWbInputs(BaseMixDesignInput):
       - si wc_ratio_recipes est fourni, on utilise ces valeurs imposées
     """
 
-    saturation_pct: confloat(ge=0, le=100) = Field(
+    saturation_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="Degré de saturation S_r (%) du remblai.",
     )
@@ -347,12 +359,12 @@ class RpcSlumpInputs(BaseMixDesignInput):
         "mini",
         description="Type de cône d'Abrams utilisé (mini ou grand).",
     )
-    slump_mm: confloat(ge=0) = Field(
+    slump_mm: confloat(gt=0) = Field(
         ...,
         description="Slump cible en mm (ex: 180 mm).",
     )
 
-    saturation_pct: confloat(ge=0, le=100) = Field(
+    saturation_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="Degré de saturation S_r (%) du remblai.",
     )
@@ -499,11 +511,11 @@ class RpgCwInputs(BaseMixDesignInput):
     aggregate_specific_gravity sont obligatoires.
     """
 
-    solids_mass_pct: confloat(ge=0, le=100) = Field(
+    solids_mass_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="% massique de solides dans le remblai (Cw%).",
     )
-    saturation_pct: confloat(ge=0, le=100) = Field(
+    saturation_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="Degré de saturation Sr (%).",
     )
@@ -526,7 +538,7 @@ class RpgWbInputs(BaseMixDesignInput):
     Entrées pour la méthode RPG — Rapport eau/ciment (W/C).
     """
 
-    saturation_pct: confloat(ge=0, le=100) = Field(
+    saturation_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="Degré de saturation Sr (%).",
     )

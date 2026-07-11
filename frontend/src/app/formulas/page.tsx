@@ -259,7 +259,7 @@ function FormulaDetail({
 
         {/* Copy buttons */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <CopyButton value={formula.equationLatex} label="📋 Copier LaTeX" />
+          <CopyButton value={formula.equationLatex} label="Copier LaTeX" />
           <CopyButton value={formula.equationPlainText} label="Copier texte brut" />
         </div>
 
@@ -395,7 +395,7 @@ function FormulaDetail({
                   lineHeight: 1.5,
                 }}
               >
-                💡 {formula.derivationLinks.derivationNote}
+                {formula.derivationLinks.derivationNote}
               </div>
             )}
 
@@ -1491,8 +1491,8 @@ export default function FormulaLibraryPage() {
           >
             {(
               [
-                { key: "search", label: "🔍 Rechercher" },
-                { key: "derive", label: "🧮 Que puis-je calculer ?" },
+                { key: "search", label: "Rechercher" },
+                { key: "derive", label: "Que puis-je calculer ?" },
               ] as const
             ).map(({ key, label }) => {
               const active = mode === key;
@@ -1637,7 +1637,12 @@ export default function FormulaLibraryPage() {
                   borderRadius: 12,
                 }}
               >
-                <div style={{ fontSize: 40, marginBottom: 14 }}>🔎</div>
+                <div style={{ marginBottom: 14, color: "var(--muted-foreground)" }} aria-hidden="true">
+                  <svg width="38" height="38" viewBox="0 0 24 24" fill="none">
+                    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+                    <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)" }}>
                   Aucune formule trouvée
                 </div>

@@ -4,8 +4,10 @@ import React, { useEffect, useRef } from "react";
 import { FORMULA_MAP, type Formula } from "@/lib/formulas-data";
 import type { Recipe } from "@/lib/types";
 
-/* ── Value substitution: map formula variable symbols to recipe fields ── */
-const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
+/* ── Value substitution: map formula variable symbols to recipe fields ──
+   Exporté pour un test d'invariant : chaque clé doit correspondre au `symbol`
+   d'au moins une formule (sinon la substitution est morte, cf. bug \rho_w). */
+export const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
   // Binder dosage
   "B_w": (r) => r.bw_mass_pct != null ? r.bw_mass_pct / 100 : null,
   "M_b": (r) => r.components?.binder_total_mass_kg ?? null,
@@ -57,8 +59,10 @@ const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
   // Densities
   "\\rho_h": (r) => r.bulk_density_kg_m3 ?? null,
   "\\rho_d": (r) => r.dry_density_kg_m3 ?? null,
-  "\rho_w": (r) => {
-    // rho_w = rho_d*(1+e)/Gs — reflète la constante réellement utilisée
+  "\\rho_w": (r) => {
+    // rho_w = rho_d*(1+e)/Gs — reflète la constante réellement utilisée.
+    // NB : la clé doit être "\\rho_w" (backslash échappé) pour correspondre au
+    // symbole des formules ; "\rho_w" valait \r + "ho_w" et ne matchait jamais.
     const rd = r.dry_density_kg_m3, e = r.void_ratio, gs = r.gs_backfill;
     return rd != null && e != null && gs ? (rd * (1 + e)) / gs : 1000;
   },

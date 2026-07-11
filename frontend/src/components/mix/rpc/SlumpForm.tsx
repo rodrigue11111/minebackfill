@@ -129,7 +129,7 @@ export default function SlumpForm() {
                   }}
                 >
                   <input type="radio" name="cone_type" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setSlump({ cone_type: t })} />
-                  {t === "mini" ? "🔺 Petit cône" : "🔺 Grand cône"}
+                  {t === "mini" ? "Petit cône" : "Grand cône"}
                 </label>
               );
             })}

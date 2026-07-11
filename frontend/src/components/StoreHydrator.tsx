@@ -38,5 +38,32 @@ export default function StoreHydrator() {
     loadProductionLog,
   ]);
 
+  // Synchronisation multi-onglets : l'événement `storage` ne se déclenche que
+  // dans les AUTRES onglets. Quand l'un écrit une clé, les autres ré-hydratent
+  // la clé concernée (sinon deux onglets ouverts s'écrasent mutuellement).
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      switch (e.key) {
+        case "minebackfill_saved_results": loadSavedResults(); break;
+        case "minebackfill_binder_prices": loadBinderPrices(); break;
+        case "minebackfill_production_log": loadProductionLog(); break;
+        case "minebackfill_unit_prefs": loadUnits(); break;
+        case "minebackfill_catalogue_liants": loadCatalogue(); break;
+        case "minebackfill_constantes": loadConstantes(); break;
+        case "minebackfill_general": void loadGeneral(); break;
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [
+    loadGeneral,
+    loadConstantes,
+    loadCatalogue,
+    loadUnits,
+    loadSavedResults,
+    loadBinderPrices,
+    loadProductionLog,
+  ]);
+
   return null;
 }

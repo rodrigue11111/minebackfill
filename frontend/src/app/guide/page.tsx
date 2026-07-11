@@ -479,7 +479,7 @@ export default function GuidePage() {
               "Type de cone : mini ou grand (facteur de conversion 2.335)",
               "Sr%, Bw%, systeme liant",
             ]}
-            formula="Cw = f(slump) via modèle prédictif : Cw = 4.95×10^6 / (slump - 235.5122)"
+            formula="Cw% = 4.95×10⁶·(1+Bw%) / ( slump·(1+Bw%)/Gs_résidu + 235.5122 )²   (slump au grand cône)"
           />
 
           <Method
@@ -623,7 +623,7 @@ export default function GuidePage() {
           <SectionTitle>7. Export Excel</SectionTitle>
           <Para>
             Le bouton <strong>Exporter Excel</strong> (barre verte en haut du panneau de résultats)
-            genere un fichier <code style={{ background: "#f1f5f9", padding: "1px 6px", borderRadius: 4, fontSize: 12.5 }}>.xlsx</code> directement dans le navigateur, sans connexion serveur.
+            génère un fichier <code style={{ background: "#f1f5f9", padding: "1px 6px", borderRadius: 4, fontSize: 12.5 }}>.xlsx</code> directement dans le navigateur, sans connexion serveur.
           </Para>
 
           <SubTitle>Contenu du fichier exporte</SubTitle>
