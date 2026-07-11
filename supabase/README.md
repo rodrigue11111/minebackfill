@@ -70,8 +70,29 @@ aujourd'hui (le lien « Compte » est masqué, aucun appel réseau).
 
 ## Vérification manuelle (checklist)
 
-Voir la checklist des 7 scénarios en fin de ce document une fois la couche
-implémentée : (1) sans env → app inchangée ; (2) inscription + sauvegarde
-visibles dans Table Editor ; (3) 2ᵉ navigateur → fusion ; (4) publication prof →
-réception étudiant ; (5) tentative d'`update` RLS refusée en console ; (6)
-suppression bilatérale ; (7) déconnexion → local intact.
+La CI est hermétique (aucune env Supabase → tous les chemins cloud sont morts,
+`pnpm build` prouve le mode 100 % local à chaque exécution). Les scénarios
+réseau ci-dessous se vérifient à la main contre un projet Supabase réel :
+
+1. **Sans env** → l'application est strictement identique à aujourd'hui (lien
+   « Compte » masqué, aucun appel réseau).
+2. **Inscription étudiant** → sauvegarder un résultat → il apparaît dans
+   *Table Editor → saved_results*.
+3. **Second navigateur** (autre session) → connexion → les résultats du premier
+   apparaissent (fusion), et inversement.
+4. **Publication enseignant** : éditer un liant officiel dans Réglages →
+   « Publier en ligne » → un étudiant recharge → catalogue à jour, ses entrées
+   perso intactes.
+5. **RLS** : un étudiant tente un `update` sur `official_catalogs` via la console
+   JS (`supabase.from('official_catalogs').update(...)`) → 0 ligne affectée.
+6. **Suppression** d'un résultat → disparu localement ET dans `saved_results`.
+7. **Déconnexion** → les données locales restent intactes (mode local intégral).
+
+Non testable en CI (auth réelle, effectivité des politiques RLS, délivrabilité
+email, pause du projet) : couvert par cette checklist.
+
+## Ce qui est testé automatiquement (vitest, sans réseau)
+
+- `supabase.test.ts` : sans env → `getSupabase()` renvoie `null`.
+- `cloud.test.ts` : `fusionnerResultats` (dédup par id, priorité locale, tri,
+  `aPousser`) et les fonctions à client injecté (faux client en mémoire).

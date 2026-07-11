@@ -98,6 +98,15 @@ Un champ de réponse renommé côté backend disparaît alors du type et casse l
 `pnpm typecheck` des consommateurs — c'est voulu (fini les lectures `undefined`
 silencieuses).
 
+### Synchronisation en ligne (optionnelle)
+
+MineBackfill fonctionne à 100 % en local (localStorage). Une couche Supabase
+**optionnelle** ajoute comptes étudiants, catalogues officiels publiés par
+l'enseignant et sauvegarde des résultats en ligne. Sans les variables
+`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`, l'application est
+inchangée. Mise en place et checklist : [`supabase/README.md`](supabase/README.md).
+Le backend FastAPI n'est pas concerné (sécurité = RLS Postgres).
+
 ## Notes de conventions
 
 - Convention de calcul : feuille « Intra 2017 » (`Ms = ρd·VT`) — voir `Issues.md` pour
