@@ -181,9 +181,16 @@ class BinderComponent(BaseModel):
     )
 
 
+#: Nombre maximal de composants de liant combinables. Le cœur mathématique
+#: (Gs harmonique, répartition des masses) est N-aire ; cette borne reste un
+#: garde-fou de bon sens (une recette avec des dizaines de ciments serait une
+#: erreur de saisie, et l'UI dimensionne quelques champs).
+MAX_BINDER_COMPONENTS = 8
+
+
 class BinderSystem(BaseModel):
     """
-    Système de liant contenant 1 à 3 composants (ciments).
+    Système de liant contenant 1 à MAX_BINDER_COMPONENTS composants (ciments).
     """
 
     components: List[BinderComponent]
@@ -191,13 +198,15 @@ class BinderSystem(BaseModel):
     @field_validator("components")
     @classmethod
     def _valider_nombre_composants(cls, v: List[BinderComponent]) -> List[BinderComponent]:
-        # Le solveur ne combine que 3 composants (Gs et répartition des masses) :
-        # au-delà, un 4e liant serait silencieusement ignoré. On rejette donc
-        # explicitement. Le passage à N composants est prévu ultérieurement.
+        # Le solveur combine désormais N composants (Gs harmonique et
+        # répartition des masses par boucle). On borne quand même le nombre :
+        # au-delà, c'est presque sûrement une erreur de saisie.
         if len(v) < 1:
             raise ValueError("Au moins un composant de liant est requis.")
-        if len(v) > 3:
-            raise ValueError("Maximum 3 composants de liant supportés pour cette version.")
+        if len(v) > MAX_BINDER_COMPONENTS:
+            raise ValueError(
+                f"Maximum {MAX_BINDER_COMPONENTS} composants de liant supportés."
+            )
         return v
 
     def validate_total_fraction(self) -> None:
@@ -453,6 +462,13 @@ class MixComponentMass(BaseModel):
     binder_c1_to_add_mass_kg: float = 0.0    # Mc1_ad [27a]
     binder_c2_to_add_mass_kg: float = 0.0    # Mc2_ad [27b]
     binder_c3_to_add_mass_kg: float = 0.0    # Mc3_ad [27c]
+
+    # N composants de liant (>= 3 possibles). ADDITIF : binder_c1/2/3_mass_kg
+    # ci-dessus restent renseignés pour les 3 premiers (compat des
+    # consommateurs et du localStorage existants). Ces listes portent TOUS les
+    # composants dans l'ordre du système de liant.
+    binder_masses_kg: List[float] = Field(default_factory=list)
+    binder_to_add_masses_kg: List[float] = Field(default_factory=list)
 
 
 class MixState(BaseModel):

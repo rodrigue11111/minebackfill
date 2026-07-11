@@ -19,6 +19,7 @@ from app.core.rpc_solver import (
     compute_container_volume_m3,
     effective_binder_specific_gravity,
     masse_volumique_S_liant_fonction,
+    masse_volumique_S_liant_nary,
     solve_rpc_cw,
     solve_rpc_slump,
 )
@@ -104,6 +105,53 @@ class TestGsLiant:
             BinderComponent(type="GU", specific_gravity=3.15, mass_fraction=0.5)])
         with pytest.raises(ValueError, match="fractions massiques"):
             bs.validate_total_fraction()
+
+    def test_nary_egale_ternaire(self):
+        # La variante N-aire reproduit la fonction historique a 3 composants.
+        comps = [
+            BinderComponent(type="A", specific_gravity=3.15, mass_fraction=0.2),
+            BinderComponent(type="B", specific_gravity=2.9, mass_fraction=0.7),
+            BinderComponent(type="C", specific_gravity=2.3, mass_fraction=0.1),
+        ]
+        attendu = masse_volumique_S_liant_fonction(20, 70, 10, 3.15, 2.9, 2.3)
+        _close("nary=ternaire", masse_volumique_S_liant_nary(comps), attendu)
+
+    def test_nary_cinq_composants(self):
+        # 5 liants : moyenne harmonique sur toute la liste (aucun ignore).
+        fr = [0.30, 0.25, 0.20, 0.15, 0.10]
+        gs = [3.15, 2.90, 2.30, 3.00, 2.75]
+        comps = [BinderComponent(type=f"L{i}", specific_gravity=gs[i],
+                                 mass_fraction=fr[i]) for i in range(5)]
+        attendu = 1.0 / sum(fr[i] / gs[i] for i in range(5))
+        _close("nary5", masse_volumique_S_liant_nary(comps), attendu)
+        # Coherence avec le Gs effectif valide (fractions sommant a 1).
+        bs = BinderSystem(components=comps)
+        _close("nary5=eff", masse_volumique_S_liant_nary(comps),
+               effective_binder_specific_gravity(bs))
+
+    def test_repartition_masses_cinq_composants(self):
+        # Les 5 masses de liant suivent les fractions et somment au total.
+        fr = [0.30, 0.25, 0.20, 0.15, 0.10]
+        gs = [3.15, 2.90, 2.30, 3.00, 2.75]
+        bs = BinderSystem(components=[
+            BinderComponent(type=f"L{i}", specific_gravity=gs[i], mass_fraction=fr[i])
+            for i in range(5)])
+        res = solve_rpc_cw(RpcCwInputs(
+            category="RPC",
+            general=GeneralInfo(container_type="volume", container_volume_m3=0.00165),
+            residue=ResidueProps(specific_gravity=3.0, moisture_mass_pct=25.0),
+            binder_system=bs, num_recipes=1, containers_per_recipe=1, safety_factor=1.0,
+            solids_mass_pct=70.0, saturation_pct=100.0, binder_mass_pct_recipes=[4.5]))
+        comp = res.recipes[0].components
+        masses = comp.binder_masses_kg
+        assert len(masses) == 5
+        mb = comp.binder_total_mass_kg
+        for i in range(5):
+            _close(f"c{i}", masses[i], mb * fr[i])
+        _close("somme", sum(masses), mb)
+        # Les 3 premiers restent renseignes dans les champs legacy (compat).
+        _close("c1_legacy", comp.binder_c1_mass_kg, masses[0])
+        _close("c3_legacy", comp.binder_c3_mass_kg, masses[2])
 
 
 # ======================================================================

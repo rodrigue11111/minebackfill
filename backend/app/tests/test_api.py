@@ -119,18 +119,42 @@ QUATRE_LIANTS = {"components": [
     {"type": "D", "specific_gravity": 2.7, "mass_fraction": 0.25},
 ]}
 
+# 9 composants : au-delà de MAX_BINDER_COMPONENTS (8) — rejet par le validator.
+NEUF_LIANTS = {"components": [
+    {"type": f"L{i}", "specific_gravity": 3.0, "mass_fraction": 1.0 / 9.0}
+    for i in range(9)
+]}
 
-def test_rpc_quatre_liants_rejetes_422():
-    # 4 composants : fractions valides (0.25*4=1) mais le 4e serait ignore.
+
+def test_rpc_quatre_liants_acceptes_200():
+    # 4 composants sont desormais supportes (coeur N-aire) : plus de rejet.
     r = client.post("/rpc/cw", json={**BASE, "category": "RPC",
                                      "solids_mass_pct": 70.0, "binder_system": QUATRE_LIANTS})
-    assert r.status_code == 422
+    assert r.status_code == 200
+    # Les 4 masses de liant sont presentes dans la liste N-aire.
+    masses = r.json()["recipes"][0]["components"]["binder_masses_kg"]
+    assert len(masses) == 4
 
 
-def test_rpg_quatre_liants_rejetes_422():
+def test_rpg_quatre_liants_acceptes_200():
     r = client.post("/rpg/cw", json={**BASE, "category": "RPG", "solids_mass_pct": 70.0,
                                      "aggregate_fraction_pct": 30.0, "aggregate_specific_gravity": 2.8,
                                      "binder_system": QUATRE_LIANTS})
+    assert r.status_code == 200
+    assert len(r.json()["recipes"][0]["components"]["binder_masses_kg"]) == 4
+
+
+def test_rpc_neuf_liants_rejetes_422():
+    # Au-dela de la borne (8) : erreur de saisie, rejet explicite.
+    r = client.post("/rpc/cw", json={**BASE, "category": "RPC",
+                                     "solids_mass_pct": 70.0, "binder_system": NEUF_LIANTS})
+    assert r.status_code == 422
+
+
+def test_rpg_neuf_liants_rejetes_422():
+    r = client.post("/rpg/cw", json={**BASE, "category": "RPG", "solids_mass_pct": 70.0,
+                                     "aggregate_fraction_pct": 30.0, "aggregate_specific_gravity": 2.8,
+                                     "binder_system": NEUF_LIANTS})
     assert r.status_code == 422
 
 
