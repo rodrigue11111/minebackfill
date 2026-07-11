@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
+import MaterialPresetSelect from "@/components/MaterialPresetSelect";
+import type { ResiduItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
@@ -114,6 +116,9 @@ export default function WbForm() {
       {/* ── Residue & saturation ── */}
       <CardSection title="Résidu & saturation">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
+          <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
+            onPick={(m) => { const r = m as ResiduItem; setWb({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }} />
+          <div />
           <Field label="Gs résidu" hint="Masse volumique spécifique des grains">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4" value={wb?.residue_sg ?? ""} onChange={(e) => setWb({ residue_sg: num(e.target.value) })} />
           </Field>
