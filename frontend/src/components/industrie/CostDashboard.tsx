@@ -6,6 +6,7 @@ import type { IndustrieCostResult } from "@/lib/store";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { ProductionLogEntry } from "@/lib/store";
 import dynamic from "next/dynamic";
+import { fmt } from "@/lib/format";
 
 const RechartsLineChart = dynamic(
   () => import("recharts").then((mod) => {
@@ -29,11 +30,6 @@ const RechartsLineChart = dynamic(
   }),
   { ssr: false, loading: () => <div style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 13 }}>Chargement du graphique...</div> }
 );
-
-const fmt = (v: number | undefined | null, digits = 2) => {
-  if (v === undefined || v === null || Number.isNaN(v)) return "\u2014";
-  return v.toFixed(digits);
-};
 
 const SECTION_BORDER = "#e2e8f0";
 
@@ -84,12 +80,12 @@ export default function CostDashboard() {
         </div>
         <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "14px 18px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Coût minimal</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: "#16a34a", marginTop: 4 }}>{fmt(cheapest.cost_per_m3)} $/m3</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#16a34a", marginTop: 4 }}>{fmt(cheapest.cost_per_m3, 2)} $/m3</div>
           <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>a Bw% = {fmt(cheapest.bw_pct, 1)} %</div>
         </div>
         <div style={{ background: "#fefce8", border: "1px solid #fde68a", borderRadius: 8, padding: "14px 18px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Economies potentielles</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: "#d97706", marginTop: 4 }}>{fmt(savings)} $/m3</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#d97706", marginTop: 4 }}>{fmt(savings, 2)} $/m3</div>
           <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>vs Bw% = {fmt(mostExpensive.bw_pct, 1)} %</div>
         </div>
       </div>

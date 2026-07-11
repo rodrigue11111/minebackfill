@@ -12,11 +12,8 @@ import {
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
 import { fromStoreSlump, toStoreSlump, SLUMP_LABELS } from "@/lib/units";
-
-const num = (v: string) => {
-  const x = parseFloat(String(v));
-  return Number.isFinite(x) ? x : 0;
-};
+import { num } from "@/lib/format";
+import { RECIPE_COLORS } from "@/lib/recipe-theme";
 
 const inputStyle: React.CSSProperties = {
   display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6, padding: "7px 11px", background: "#fff", fontSize: 13.5, outline: "none",
@@ -44,8 +41,6 @@ function CardSection({ title, children }: { title: string; children: React.React
     </div>
   );
 }
-
-const RECIPE_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626"];
 
 export default function SlumpForm() {
   const {

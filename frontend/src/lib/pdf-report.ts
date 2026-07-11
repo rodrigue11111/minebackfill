@@ -4,11 +4,8 @@ import type { Category, GeneralInfo } from "@/lib/store";
 import { methodLabel } from "@/lib/method-registry";
 import { REPORT_SECTIONS, rowsForSection, type ReportCtx } from "@/lib/report-schema";
 import { MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS } from "@/lib/units";
-
-const fmtNum = (v: number | null | undefined, digits = 3): string => {
-  if (v === null || v === undefined || Number.isNaN(v)) return "\u2014";
-  return v.toFixed(digits);
-};
+import { fmt } from "@/lib/format";
+import { EXPORT_FOOTER } from "@/lib/branding";
 
 /* ── Colour palette (RGB tuples) ── */
 const NAVY: [number, number, number] = [12, 30, 66];
@@ -63,7 +60,7 @@ export async function exportToPdf(
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(...TEXT_MUTED);
-      doc.text(`MineBackfill v1.0 — Module 1  |  ${new Date().toLocaleDateString("fr-CA")}`, marginL, pageH - 6);
+      doc.text(`${EXPORT_FOOTER}  |  ${new Date().toLocaleDateString("fr-CA")}`, marginL, pageH - 6);
       doc.text(`Page ${i}/${pages}`, pageW - marginR, pageH - 6, { align: "right" });
     }
   };
@@ -178,7 +175,7 @@ export async function exportToPdf(
     for (let i = 0; i < recipeCount; i++) {
       const v = getter(recipes[i]);
       const x = marginL + colW_label + colW_unit + colW_recipe * (i + 1) - 2;
-      doc.text(fmtNum(v, digits), x, y + 4, { align: "right" });
+      doc.text(fmt(v, digits), x, y + 4, { align: "right" });
     }
     // Light border
     doc.setDrawColor(241, 245, 249);

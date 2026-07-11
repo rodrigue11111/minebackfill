@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useStore, trouverPrixLiant } from "@/lib/store";
 import { calculeUsine, facteurRemplacement, type UsineParams } from "@/lib/industrie_helpers";
+import { fmt, num } from "@/lib/format";
 
 /**
  * Calculs à l'usine de remblai (cours, Dias 72-83) :
@@ -10,11 +11,6 @@ import { calculeUsine, facteurRemplacement, type UsineParams } from "@/lib/indus
  *  - facteurs de remplacement de Hassani & Bois 1992 (Dias 73-75).
  * Calculs purement locaux (aucun appel API).
  */
-
-const num = (v: string) => {
-  const x = parseFloat(v);
-  return Number.isFinite(x) ? x : 0;
-};
 
 const inputStyle: React.CSSProperties = {
   display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6,
@@ -30,9 +26,6 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
     </div>
   );
 }
-
-const fmt = (v: number | null | undefined, d = 2) =>
-  v === null || v === undefined || Number.isNaN(v) ? "—" : v.toFixed(d);
 
 function LigneResultat({ label, valeur, unite, bold, negatif }: {
   label: string; valeur: string; unite: string; bold?: boolean; negatif?: boolean;
@@ -120,13 +113,13 @@ export default function UsineCalculator() {
 
         <table className="result-table" style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8 }}>
           <tbody>
-            <LigneResultat label="Résidus secs M_rs" valeur={fmt(r.residus_secs_tph)} unite="t/h" />
-            <LigneResultat label="Eau contenue dans les résidus" valeur={fmt(r.eau_residus_tph)} unite="t/h" />
+            <LigneResultat label="Résidus secs M_rs" valeur={fmt(r.residus_secs_tph, 2)} unite="t/h" />
+            <LigneResultat label="Eau contenue dans les résidus" valeur={fmt(r.eau_residus_tph, 2)} unite="t/h" />
             <LigneResultat label="Liant M_b" valeur={fmt(r.liant_tph, 3)} unite="t/h" bold />
             <LigneResultat
               label={r.eau_a_ajouter_tph >= 0 ? "Eau à ajouter M_w-aj" : "Eau à retirer M_w-aj"}
-              valeur={fmt(r.eau_a_ajouter_tph)} unite="t/h" bold negatif={r.eau_a_ajouter_tph < 0} />
-            <LigneResultat label="Remblai produit (total)" valeur={fmt(r.remblai_total_tph)} unite="t/h" />
+              valeur={fmt(r.eau_a_ajouter_tph, 2)} unite="t/h" bold negatif={r.eau_a_ajouter_tph < 0} />
+            <LigneResultat label="Remblai produit (total)" valeur={fmt(r.remblai_total_tph, 2)} unite="t/h" />
             <LigneResultat label="Teneur en eau du remblai w" valeur={fmt(r.teneur_eau_remblai * 100, 2)} unite="%" />
           </tbody>
         </table>

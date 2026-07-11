@@ -11,13 +11,12 @@ import {
 import FormulaPopover from "@/components/mix/FormulaPopover";
 import { descriptorFor, methodLabel } from "@/lib/method-registry";
 import { REPORT_SECTIONS, rowsForSection, RRC_ROWS, type ReportCtx } from "@/lib/report-schema";
+import { RECIPE_HEX } from "@/lib/recipe-theme";
+import { fmt } from "@/lib/format";
+import { APP_NAME_VERSION, EXPORT_FOOTER } from "@/lib/branding";
 import type { MixResult, Recipe, RrcRecipe } from "@/lib/types";
 
 /* ── helpers ── */
-const fmt = (v: number | undefined | null, digits = 3) => {
-  if (v === undefined || v === null || Number.isNaN(v)) return "\u2014";
-  return v.toFixed(digits);
-};
 
 /* ── Neutral palette ── */
 const SECTION_BORDER = "#e2e8f0";
@@ -171,7 +170,7 @@ export async function exportToExcel(
   const { saveAs } = await import("file-saver");
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = "MineBackfill v1.0";
+  wb.creator = APP_NAME_VERSION;
   wb.created = new Date();
 
   const ws = wb.addWorksheet("Résultats", {
@@ -196,7 +195,6 @@ export async function exportToExcel(
   const BORDER_CLR = "D1D5DB";
   const GREY_BG = "F8FAFC";
   const WHITE = "FFFFFF";
-  const RECIPE_HEX = ["2563EB", "16A34A", "D97706", "DC2626"];
 
   const thinBorder = (color = BORDER_CLR) => ({ style: "thin" as const, color: { argb: color } });
 
@@ -342,7 +340,7 @@ export async function exportToExcel(
 
   /* ── Footer ── */
   ws.addRow([]);
-  const footerRow = ws.addRow(["Généré par MineBackfill v1.0 — Module 1"]);
+  const footerRow = ws.addRow([`Généré par ${EXPORT_FOOTER}`]);
   ws.mergeCells(footerRow.number, 1, footerRow.number, totalCols);
   footerRow.getCell(1).font = { name: "Calibri", size: 9, italic: true, color: { argb: "94A3B8" } };
 

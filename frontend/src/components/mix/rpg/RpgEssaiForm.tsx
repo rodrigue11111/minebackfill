@@ -11,11 +11,8 @@ import {
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
 import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
-
-const num = (v: string) => {
-  const x = parseFloat(String(v));
-  return Number.isFinite(x) ? x : 0;
-};
+import { num } from "@/lib/format";
+import { RECIPE_COLORS } from "@/lib/recipe-theme";
 
 const inputStyle: React.CSSProperties = {
   display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6,
@@ -45,8 +42,6 @@ function CardSection({ title, subtitle, children }: { title: string; subtitle?: 
     </div>
   );
 }
-
-const RECIPE_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626"];
 
 export default function RpgEssaiForm() {
   const {

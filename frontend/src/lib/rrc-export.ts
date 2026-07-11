@@ -7,11 +7,8 @@ import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { RrcRecipe } from "@/lib/types";
 import type { GeneralInfo } from "@/lib/store";
 import { RRC_ROWS } from "@/lib/report-schema";
-
-const fmtNum = (v: number | null | undefined, digits = 3): string => {
-  if (v === null || v === undefined || Number.isNaN(v)) return "—";
-  return v.toFixed(digits);
-};
+import { fmt as fmtNum } from "@/lib/format";
+import { APP_NAME } from "@/lib/branding";
 
 export async function exportRrcExcel(
   recipes: RrcRecipe[],
@@ -151,7 +148,7 @@ export async function exportRrcPdf(
 
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
-    doc.text(`MineBackfill — RRC/CRF  |  ${new Date().toLocaleDateString("fr-CA")}`, mL, pageH - 8);
+    doc.text(`${APP_NAME} — RRC/CRF  |  ${new Date().toLocaleDateString("fr-CA")}`, mL, pageH - 8);
   });
 
   doc.save(`MineBackfill_RRC_preparation_${new Date().toISOString().slice(0, 10)}.pdf`);

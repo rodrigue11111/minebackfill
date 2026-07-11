@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { APP_NAME } from "@/lib/branding";
 
 const NAV_LINKS = [
   { href: "/", label: "Informations", step: "01" },
@@ -76,7 +77,7 @@ export default function NavBar() {
               lineHeight: 1.1,
             }}
           >
-            MineBackfill
+            {APP_NAME}
           </div>
           <div
             style={{

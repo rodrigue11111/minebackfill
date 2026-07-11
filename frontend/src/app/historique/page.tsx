@@ -9,15 +9,11 @@ import type { Recipe } from "@/lib/types";
 import BackupButtons from "@/components/BackupButtons";
 
 import { methodLabel } from "@/lib/method-registry";
+import { fmt } from "@/lib/format";
 
 /** Nombre de recettes, RPC/RPG comme RRC (dont les recettes vivent dans `rrc`). */
 const nbRecettes = (sr: SavedResult) =>
   sr.category === "RRC" ? sr.rrc?.result.recipes.length ?? 0 : sr.recipes.length;
-
-const fmt = (v: number | undefined | null, digits = 3) => {
-  if (v === undefined || v === null || Number.isNaN(v)) return "\u2014";
-  return v.toFixed(digits);
-};
 
 export default function HistoriquePage() {
   const router = useRouter();
