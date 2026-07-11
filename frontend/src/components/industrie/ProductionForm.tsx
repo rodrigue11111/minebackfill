@@ -77,9 +77,9 @@ export default function ProductionForm() {
   const cat = industrie.category;
   const isRpg = cat === "RPG";
 
-  const getPrice = (code: string) => {
-    const id = catalogue_liants.find((l: LiantCatalogueItem) => l.code === code)?.id;
-    return prixPourLiant(binderPrices, { id, code });
+  const getPrice = (code: string, id?: string) => {
+    const idResolu = id ?? catalogue_liants.find((l: LiantCatalogueItem) => l.code === code)?.id;
+    return prixPourLiant(binderPrices, { id: idResolu, code });
   };
 
   const bcount = general.binder_count ?? 1;
@@ -313,19 +313,28 @@ export default function ProductionForm() {
           {[1, 2, 3].map((idx) => {
             if (idx > bcount) return null;
             const typeKey = `binder${idx}_type` as keyof GeneralInfo;
+            const idKey = `binder${idx}_id` as keyof GeneralInfo;
             const fracKey = `binder${idx}_fraction_pct` as keyof GeneralInfo;
             const code = (general[typeKey] as string | null) ?? "";
+            // Identité par id (repli code pour les anciens états).
+            const liantId =
+              (general[idKey] as string | null) ??
+              liantsValides.find((l: LiantCatalogueItem) => l.code === code)?.id ??
+              "";
             return (
               <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 100px 120px", gap: 10, alignItems: "end" }}>
                 <Field label={`Liant ${idx}`}>
                   <select
                     style={{ ...inputStyle, cursor: "pointer" }}
-                    value={code}
-                    onChange={(e) => setGeneral({ [typeKey]: e.target.value })}
+                    value={liantId}
+                    onChange={(e) => {
+                      const item = liantsValides.find((l: LiantCatalogueItem) => l.id === e.target.value);
+                      setGeneral({ [idKey]: item?.id ?? null, [typeKey]: item?.code ?? null });
+                    }}
                   >
                     <option value="">-- Choisir --</option>
                     {liantsValides.map((l: LiantCatalogueItem) => (
-                      <option key={l.code} value={l.code}>{l.nom} (Gs={l.gs})</option>
+                      <option key={l.id} value={l.id}>{l.nom} (Gs={l.gs})</option>
                     ))}
                   </select>
                 </Field>
@@ -335,7 +344,8 @@ export default function ProductionForm() {
                 </Field>
                 <Field label="Prix ($/kg)">
                   <input type="number" step="any" style={inputStyle} placeholder="ex : 0.15"
-                    value={code ? (getPrice(code) || "") : ""} onChange={(e) => { if (code) setBinderPrice(code, num(e.target.value)); }} />
+                    value={code ? (getPrice(code, liantId || undefined) || "") : ""}
+                    onChange={(e) => { if (code) setBinderPrice(code, num(e.target.value), liantId || undefined); }} />
                 </Field>
               </div>
             );

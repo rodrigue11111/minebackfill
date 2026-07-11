@@ -46,6 +46,13 @@ export interface GeneralInfo {
   binder2_type?: string | null;
   binder3_type?: string | null;
 
+  // Source de vérité de l'identité du liant : l'id du catalogue (stable).
+  // Le code (binderN_type) reste pour l'affichage, le payload backend et la
+  // rétro-compatibilité des anciennes sauvegardes (résolution de repli).
+  binder1_id?: string | null;
+  binder2_id?: string | null;
+  binder3_id?: string | null;
+
   binder1_fraction_pct?: number;
   binder2_fraction_pct?: number;
   binder3_fraction_pct?: number;
@@ -456,7 +463,7 @@ interface AppState {
   setIndustrie: (patch: Partial<IndustrieState>) => void;
 
   binderPrices: BinderPrice[];
-  setBinderPrice: (code: string, price_per_kg: number) => void;
+  setBinderPrice: (code: string, price_per_kg: number, liantId?: string) => void;
   loadBinderPrices: () => void;
 
   industrieResults: IndustrieCostResult[];
@@ -486,6 +493,9 @@ const generalDefaut: GeneralInfo = {
   binder1_type: "CP10",
   binder2_type: "SLAG",
   binder3_type: null,
+  binder1_id: "liant_cp10",
+  binder2_id: "liant_slag",
+  binder3_id: null,
 };
 
 const constantesDefaut: ConstantesCalcul = {
@@ -636,15 +646,18 @@ export const useStore = create<AppState>((set, get) => ({
         return { catalogue_liants: catalogue };
       }
 
-      const renommer = (code?: string | null) =>
-        code === ancienCode ? nouveauCode : code;
-
-      const general = {
-        ...state.general,
-        binder1_type: renommer(state.general.binder1_type),
-        binder2_type: renommer(state.general.binder2_type),
-        binder3_type: renommer(state.general.binder3_type),
-      };
+      // Un composant suit le renommage s'il pointe vers CE liant : par id
+      // (source de vérité) ou, à défaut d'id (anciens états), par code.
+      const idRenomme = catalogue[index].id;
+      const general = { ...state.general };
+      ([1, 2, 3] as const).forEach((n) => {
+        const id = general[`binder${n}_id`];
+        const vise = id ? id === idRenomme : general[`binder${n}_type`] === ancienCode;
+        if (vise) {
+          general[`binder${n}_type`] = nouveauCode;
+          general[`binder${n}_id`] = idRenomme;
+        }
+      });
       persistGeneral(general);
       return { catalogue_liants: catalogue, general };
     }),
@@ -654,19 +667,22 @@ export const useStore = create<AppState>((set, get) => ({
       if (index < 0 || index >= state.catalogue_liants.length) return {};
       if (estOfficiel(state.catalogue_liants[index])) return {}; // verrouillé
 
-      const codeSupprime = state.catalogue_liants[index].code;
+      const supprime = state.catalogue_liants[index];
       const catalogue = state.catalogue_liants.filter((_, i) => i !== index);
-      const codeFallback = catalogue[0]?.code ?? null;
+      const fallback = catalogue[0];
 
-      const nettoyerCode = (code?: string | null) =>
-        code === codeSupprime ? codeFallback : code;
-
-      const general = {
-        ...state.general,
-        binder1_type: nettoyerCode(state.general.binder1_type),
-        binder2_type: nettoyerCode(state.general.binder2_type),
-        binder3_type: nettoyerCode(state.general.binder3_type),
-      };
+      // Un composant pointe vers le liant supprimé s'il matche par id (source
+      // de vérité) ou, à défaut d'id (anciens états), par code.
+      const general = { ...state.general };
+      ([1, 2, 3] as const).forEach((n) => {
+        const id = general[`binder${n}_id`];
+        const code = general[`binder${n}_type`];
+        const vise = id ? id === supprime.id : code === supprime.code;
+        if (vise) {
+          general[`binder${n}_id`] = fallback?.id ?? null;
+          general[`binder${n}_type`] = fallback?.code ?? null;
+        }
+      });
       persistCatalogue(catalogue);
       persistGeneral(general);
       return { catalogue_liants: catalogue, general };
@@ -1011,6 +1027,11 @@ export const useStore = create<AppState>((set, get) => ({
         binder1_type: "GU",
         binder2_type: "GGBFS",
         binder3_type: null,
+        // Ids résolus depuis le catalogue (l'upsert peut avoir réutilisé une
+        // entrée existante de l'utilisateur portant déjà ce code).
+        binder1_id: catalogue.find((l) => l.code === "GU")?.id ?? null,
+        binder2_id: catalogue.find((l) => l.code === "GGBFS")?.id ?? null,
+        binder3_id: null,
         binder1_fraction_pct: 20,
         binder2_fraction_pct: 80,
         binder3_fraction_pct: 0,
@@ -1182,9 +1203,11 @@ export const useStore = create<AppState>((set, get) => ({
     if (entry.catalogue_liants?.length) {
       const courant = [...state.catalogue_liants];
       for (const l of entry.catalogue_liants) {
-        // Correspondance par code OU par id : un liant renommé depuis la
-        // sauvegarde ne doit pas être réinjecté en doublon d'id.
-        if (!courant.some((c) => c.code === l.code || c.id === l.id)) courant.push({ ...l });
+        // Injection par absence d'ID (source de vérité) : un code réutilisé
+        // par un AUTRE liant (Gs différent) n'empêche plus de réinjecter le
+        // liant exact du snapshot — la résolution du calcul se fait par id,
+        // donc le recalcul retrouve le bon Gs. Jamais de doublon d'id.
+        if (!courant.some((c) => c.id === l.id)) courant.push({ ...l });
       }
       patch.catalogue_liants = courant;
       persistCatalogue(courant);
@@ -1250,11 +1273,13 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ industrie: { ...state.industrie, ...patch } })),
 
   binderPrices: [],
-  setBinderPrice: (code, price_per_kg) =>
+  setBinderPrice: (code, price_per_kg, liantId) =>
     set((state) => {
       // On enregistre l'id du liant en plus du code : le prix reste rattaché
-      // même si l'utilisateur renomme le code (plus de prix orphelin).
-      const id = state.catalogue_liants.find((l) => l.code === code)?.id;
+      // même si l'utilisateur renomme le code (plus de prix orphelin). L'id
+      // explicite de l'appelant prime (codes dupliqués : find-par-code serait
+      // ambigu) ; sinon on résout via le catalogue.
+      const id = liantId ?? state.catalogue_liants.find((l) => l.code === code)?.id;
       // Entrée remplacée : même id, ou même code SANS id divergent. On ne
       // supprime jamais le prix rattaché par id à un AUTRE liant dont le code
       // périmé serait réutilisé.

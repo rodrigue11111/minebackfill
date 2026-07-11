@@ -26,13 +26,15 @@ Les solveurs reproduisent **cellule par cellule** le classeur de référence du 
 
 - `backend/app/tests/excel_twin.py` — réplique Python exacte de la feuille, validée sur
   38 valeurs du classeur (précision ~1e-15) ;
-- `backend/app/tests/` — **507 tests** : les tests d'or (tolérance 1e-9, cas
+- `backend/app/tests/` — **514 tests** : les tests d'or (tolérance 1e-9, cas
   canonique « Mélange 1 », grille de 144 combinaisons Cw, grille W/C avec invariant
   Mw = W/C × Mb, 13 scénarios d'essai-erreur), les tests d'or RRC/CRF, les tests
   unitaires du pipeline (identités algébriques sur grille aléatoire reproductible,
-  constantes personnalisées, géométrie du contenant, modèle de slump) et les tests
-  de contrat HTTP. Côté frontend : 71 tests Vitest (conversions d'unités, calculs
-  usine, grandeurs dérivées, w/Cw mesurés, constructeurs de payload).
+  constantes personnalisées, géométrie du contenant, modèle de slump), les tests
+  de contrat HTTP et les gardes-fous de validation (limite de 3 liants, entrées
+  hors domaine). Côté frontend : 116 tests Vitest (conversions d'unités, calculs
+  usine, grandeurs dérivées, w/Cw mesurés, constructeurs de payload, persistance
+  versionnée, bibliothèques de matériaux, prix des liants, invariants des formules).
 
 Le bouton **« Exemple Intra 2017 »** de la page Informations charge exactement les entrées du
 classeur : l'application affiche alors les mêmes valeurs que la feuille du professeur.
@@ -74,9 +76,9 @@ Tests :
 
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe -m pytest   # 507 tests (or + unitaires + contrat)
+.\.venv\Scripts\python.exe -m pytest   # tests d'or + unitaires + contrat
 cd ../frontend
-pnpm test                              # 71 tests Vitest
+pnpm test                              # tests Vitest
 ```
 
 ## Notes de conventions
