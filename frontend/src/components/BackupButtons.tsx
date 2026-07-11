@@ -11,7 +11,7 @@ import { useStore } from "@/lib/store";
 export default function BackupButtons() {
   const {
     loadSavedResults, loadBinderPrices, loadProductionLog, loadUnits,
-    loadCatalogue, loadConstantes, loadGeneral,
+    loadCatalogue, loadConstantes, loadGeneral, loadMaterials,
   } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ ok: boolean; texte: string } | null>(null);
@@ -28,6 +28,7 @@ export default function BackupButtons() {
       loadCatalogue();
       loadConstantes();
       loadGeneral();
+      loadMaterials();
     }
     setTimeout(() => setMessage(null), 6000);
   };

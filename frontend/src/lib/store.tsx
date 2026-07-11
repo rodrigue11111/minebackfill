@@ -4,6 +4,12 @@ import { create } from "zustand";
 import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
 import { loadVersioned, persistVersioned } from "./persisted";
+import {
+  type MaterialOrigine, type MaterialKind, type MaterialItem,
+  type ResiduItem, type GranulatItem, type RetardateurItem,
+  residusDefaut, granulatsDefaut, retardateursDefaut,
+  nouveauResidu, nouveauGranulat, nouveauRetardateur, estOfficiel,
+} from "./materials";
 
 // Version des solveurs : estampillée sur chaque résultat sauvegardé.
 // À incrémenter quand les formules changent (voir Issues.md).
@@ -58,6 +64,8 @@ export interface LiantCatalogueItem {
   code: string;
   nom: string;
   gs: number;
+  /** « officiel » = référence verrouillée ; absent/« perso » = modifiable. */
+  origine?: MaterialOrigine;
 }
 
 export interface CwState {
@@ -330,6 +338,17 @@ interface AppState {
   ajouterLiant: () => void;
   modifierLiant: (index: number, patch: Partial<LiantCatalogueItem>) => void;
   supprimerLiant: (index: number) => void;
+  restaurerLiantsOfficiels: () => void;
+
+  catalogue_residus: ResiduItem[];
+  catalogue_granulats: GranulatItem[];
+  catalogue_retardateurs: RetardateurItem[];
+  loadMaterials: () => void;
+  addMaterial: (kind: MaterialKind) => void;
+  updateMaterial: (kind: MaterialKind, index: number, patch: Partial<MaterialItem>) => void;
+  deleteMaterial: (kind: MaterialKind, index: number) => void;
+  restoreOfficialMaterials: (kind: MaterialKind) => void;
+  importMaterials: (kind: MaterialKind, items: MaterialItem[]) => void;
 
   cw: CwState;
   setCw: (patch: Partial<CwState>) => void;
@@ -422,12 +441,13 @@ const makeLiantId = () =>
   `liant_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 const catalogueLiantsDefaut: LiantCatalogueItem[] = [
-  { id: "liant_cp10", code: "CP10", nom: "Ciment CP10", gs: 3.1543 },
-  { id: "liant_cp50", code: "CP50", nom: "Ciment CP50", gs: 3.1887 },
-  { id: "liant_slag", code: "SLAG", nom: "Laitier", gs: 2.8426 },
-  { id: "liant_fly_ash", code: "FLY_ASH", nom: "Fly Ash", gs: 2.6114 },
-  { id: "liant_chaux", code: "CHAUX", nom: "Chaux", gs: 2.6 },
+  { id: "liant_cp10", code: "CP10", nom: "Ciment CP10", gs: 3.1543, origine: "officiel" },
+  { id: "liant_cp50", code: "CP50", nom: "Ciment CP50", gs: 3.1887, origine: "officiel" },
+  { id: "liant_slag", code: "SLAG", nom: "Laitier", gs: 2.8426, origine: "officiel" },
+  { id: "liant_fly_ash", code: "FLY_ASH", nom: "Fly Ash", gs: 2.6114, origine: "officiel" },
+  { id: "liant_chaux", code: "CHAUX", nom: "Chaux", gs: 2.6, origine: "officiel" },
 ];
+const CODES_LIANTS_OFFICIELS = new Set(catalogueLiantsDefaut.map((l) => l.code));
 
 const generalDefaut: GeneralInfo = {
   binder_count: 2,
@@ -449,16 +469,58 @@ const constantesDefaut: ConstantesCalcul = {
    ces réglages sont enveloppés dès l'origine par persisted.ts : ils pourront
    être migrés proprement quand leur schéma évoluera (P2 : bibliothèques). */
 const CATALOGUE_KEY = "minebackfill_catalogue_liants";
+const CATALOGUE_VERSION = 2; // v2 : ajout du champ `origine`
 const CONSTANTES_KEY = "minebackfill_constantes";
 const GENERAL_KEY = "minebackfill_general";
-const SETTINGS_VERSION = 1;
+const SETTINGS_VERSION = 1; // constantes + general
+const RESIDUS_KEY = "minebackfill_catalogue_residus";
+const GRANULATS_KEY = "minebackfill_catalogue_granulats";
+const RETARDATEURS_KEY = "minebackfill_catalogue_retardateurs";
+const MATERIALS_VERSION = 1;
 const identityMigration = (d: unknown) => d;
 
+// v0/v1 -> v2 : les liants sans `origine` reçoivent « officiel » pour les codes
+// par défaut du professeur, « perso » sinon.
+const migrationCatalogueLiants = (d: unknown): unknown => {
+  if (!Array.isArray(d)) return d;
+  return d.map((item) => {
+    const it = item as LiantCatalogueItem;
+    if (it.origine) return it;
+    return { ...it, origine: CODES_LIANTS_OFFICIELS.has(it.code) ? "officiel" : "perso" };
+  });
+};
+
 function loadCatalogueFromStorage(): LiantCatalogueItem[] {
-  return loadVersioned(CATALOGUE_KEY, SETTINGS_VERSION, identityMigration, catalogueLiantsDefaut);
+  return loadVersioned(CATALOGUE_KEY, CATALOGUE_VERSION, migrationCatalogueLiants, catalogueLiantsDefaut);
 }
 function persistCatalogue(items: LiantCatalogueItem[]) {
-  persistVersioned(CATALOGUE_KEY, SETTINGS_VERSION, items);
+  persistVersioned(CATALOGUE_KEY, CATALOGUE_VERSION, items);
+}
+
+function loadResidusFromStorage(): ResiduItem[] {
+  return loadVersioned(RESIDUS_KEY, MATERIALS_VERSION, identityMigration, residusDefaut);
+}
+function loadGranulatsFromStorage(): GranulatItem[] {
+  return loadVersioned(GRANULATS_KEY, MATERIALS_VERSION, identityMigration, granulatsDefaut);
+}
+function loadRetardateursFromStorage(): RetardateurItem[] {
+  return loadVersioned(RETARDATEURS_KEY, MATERIALS_VERSION, identityMigration, retardateursDefaut);
+}
+// Table de correspondance kind -> clé/défauts/fabrique, pour les actions génériques.
+const MATERIAL_CONFIG = {
+  residus: { key: RESIDUS_KEY, defauts: residusDefaut as MaterialItem[], neuf: (id: string) => nouveauResidu(id) as MaterialItem, load: loadResidusFromStorage as () => MaterialItem[] },
+  granulats: { key: GRANULATS_KEY, defauts: granulatsDefaut as MaterialItem[], neuf: (id: string) => nouveauGranulat(id) as MaterialItem, load: loadGranulatsFromStorage as () => MaterialItem[] },
+  retardateurs: { key: RETARDATEURS_KEY, defauts: retardateursDefaut as MaterialItem[], neuf: (id: string) => nouveauRetardateur(id) as MaterialItem, load: loadRetardateursFromStorage as () => MaterialItem[] },
+} as const;
+const SLICE_OF_KIND: Record<MaterialKind, "catalogue_residus" | "catalogue_granulats" | "catalogue_retardateurs"> = {
+  residus: "catalogue_residus",
+  granulats: "catalogue_granulats",
+  retardateurs: "catalogue_retardateurs",
+};
+const makeMaterialId = (kind: MaterialKind) =>
+  `${kind}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+function persistMaterials(kind: MaterialKind, items: MaterialItem[]) {
+  persistVersioned(MATERIAL_CONFIG[kind].key, MATERIALS_VERSION, items);
 }
 function loadConstantesFromStorage(): ConstantesCalcul {
   return loadVersioned(CONSTANTES_KEY, SETTINGS_VERSION, identityMigration, constantesDefaut);
@@ -518,6 +580,7 @@ export const useStore = create<AppState>((set, get) => ({
   modifierLiant: (index, patch) =>
     set((state) => {
       if (index < 0 || index >= state.catalogue_liants.length) return {};
+      if (estOfficiel(state.catalogue_liants[index])) return {}; // verrouillé
       const catalogue = [...state.catalogue_liants];
       const ancienCode = catalogue[index].code;
       catalogue[index] = { ...catalogue[index], ...patch };
@@ -545,6 +608,7 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => {
       if (state.catalogue_liants.length <= 1) return {};
       if (index < 0 || index >= state.catalogue_liants.length) return {};
+      if (estOfficiel(state.catalogue_liants[index])) return {}; // verrouillé
 
       const codeSupprime = state.catalogue_liants[index].code;
       const catalogue = state.catalogue_liants.filter((_, i) => i !== index);
@@ -562,6 +626,74 @@ export const useStore = create<AppState>((set, get) => ({
       persistCatalogue(catalogue);
       persistGeneral(general);
       return { catalogue_liants: catalogue, general };
+    }),
+  restaurerLiantsOfficiels: () =>
+    set((state) => {
+      const perso = state.catalogue_liants.filter((l) => l.origine !== "officiel");
+      const catalogue = [...catalogueLiantsDefaut.map((l) => ({ ...l })), ...perso];
+      persistCatalogue(catalogue);
+      return { catalogue_liants: catalogue };
+    }),
+
+  /* ── Bibliothèque de matériaux (résidus / granulats / retardateurs) ──
+     Actions génériques pilotées par `kind` pour éviter de tripler le CRUD.
+     Les entrées « officiel » sont verrouillées (modif/suppr refusées). */
+  catalogue_residus: residusDefaut,
+  catalogue_granulats: granulatsDefaut,
+  catalogue_retardateurs: retardateursDefaut,
+  loadMaterials: () =>
+    set({
+      catalogue_residus: loadResidusFromStorage(),
+      catalogue_granulats: loadGranulatsFromStorage(),
+      catalogue_retardateurs: loadRetardateursFromStorage(),
+    }),
+  addMaterial: (kind) =>
+    set((state) => {
+      const slice = SLICE_OF_KIND[kind];
+      const items = [...(state[slice] as MaterialItem[]), MATERIAL_CONFIG[kind].neuf(makeMaterialId(kind))];
+      persistMaterials(kind, items);
+      return { [slice]: items } as Partial<AppState>;
+    }),
+  updateMaterial: (kind, index, patch) =>
+    set((state) => {
+      const slice = SLICE_OF_KIND[kind];
+      const current = state[slice] as MaterialItem[];
+      if (index < 0 || index >= current.length) return {};
+      if (estOfficiel(current[index])) return {}; // verrouillé
+      const items = [...current];
+      items[index] = { ...items[index], ...patch } as MaterialItem;
+      persistMaterials(kind, items);
+      return { [slice]: items } as Partial<AppState>;
+    }),
+  deleteMaterial: (kind, index) =>
+    set((state) => {
+      const slice = SLICE_OF_KIND[kind];
+      const current = state[slice] as MaterialItem[];
+      if (index < 0 || index >= current.length) return {};
+      if (estOfficiel(current[index])) return {}; // verrouillé
+      const items = current.filter((_, i) => i !== index);
+      persistMaterials(kind, items);
+      return { [slice]: items } as Partial<AppState>;
+    }),
+  restoreOfficialMaterials: (kind) =>
+    set((state) => {
+      const slice = SLICE_OF_KIND[kind];
+      const perso = (state[slice] as MaterialItem[]).filter((m) => m.origine !== "officiel");
+      const items = [...MATERIAL_CONFIG[kind].defauts.map((m) => ({ ...m })), ...perso];
+      persistMaterials(kind, items);
+      return { [slice]: items } as Partial<AppState>;
+    }),
+  importMaterials: (kind, imported) =>
+    set((state) => {
+      const slice = SLICE_OF_KIND[kind];
+      const byId = new Map((state[slice] as MaterialItem[]).map((m) => [m.id, m] as const));
+      for (const raw of imported) {
+        // Import : toujours « perso », fusion par id.
+        byId.set(raw.id, { ...raw, origine: "perso" as MaterialOrigine });
+      }
+      const items = [...byId.values()];
+      persistMaterials(kind, items);
+      return { [slice]: items } as Partial<AppState>;
     }),
 
   cw: {

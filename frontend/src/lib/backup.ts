@@ -12,12 +12,16 @@ const CLES = {
   catalogue_liants: "minebackfill_catalogue_liants",
   constantes: "minebackfill_constantes",
   general: "minebackfill_general",
+  catalogue_residus: "minebackfill_catalogue_residus",
+  catalogue_granulats: "minebackfill_catalogue_granulats",
+  catalogue_retardateurs: "minebackfill_catalogue_retardateurs",
 } as const;
 
-// v2 : ajout du catalogue de liants, des constantes et des infos générales.
-// Une sauvegarde v1 (sans ces clés) reste importable — les clés absentes sont
-// simplement ignorées (voir importerDonnees).
-const SCHEMA_VERSION = 2;
+// v2 : catalogue de liants, constantes, infos générales.
+// v3 : bibliothèque de matériaux (résidus, granulats, retardateurs).
+// Une sauvegarde d'une version antérieure reste importable — les clés absentes
+// sont simplement ignorées (voir importerDonnees).
+const SCHEMA_VERSION = 3;
 
 interface Backup {
   application: string;
