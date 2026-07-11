@@ -73,6 +73,11 @@ Principe impose par l'utilisateur:
      valeur de base; "a ajouter" negatif = "a retirer" (pas de bornage a 0).
    - Tests d'or: `backend/app/tests/test_excel_golden.py` (oracle
      `excel_twin.py` — ne jamais l'editer pour faire passer un test).
+   - **Variante « en gramme » (Belem 2016)**: meme recette de base (Sr=100%),
+     mais la regle du liant en essai differe — le liant ajoute ne repond qu'au
+     **residu ajoute** (pas au granulat ajoute). Capturee en pack de convention
+     via le drapeau `essai_binder_rule` (defaut `solides_totaux` = Intra 2017 ;
+     `residu_ajoute` = gramme). Voir Issues.md #4 et l'oracle `excel_twin_gramme.py`.
 4. **A_m (agregat/co-mixing)**:
    - garde dans la logique (preparation futures methodes), ne pas supprimer
 5. **Champs de sortie**:

@@ -105,5 +105,8 @@ export function construireConstantesPayload(constantes: ConstantesCalcul) {
       constantes.facteur_petit_cone_vers_grand_cone,
     slump_model_coeff: constantes.coefficient_modele_slump,
     slump_model_offset: constantes.constante_modele_slump,
+    // Drapeaux de convention (pas pack_id, qui n'est pas un champ API).
+    essai_gs_convention: constantes.essai_gs_convention,
+    essai_binder_rule: constantes.essai_binder_rule,
   };
 }

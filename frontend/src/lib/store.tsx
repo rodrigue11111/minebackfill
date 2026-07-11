@@ -5,6 +5,7 @@ import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
 import { loadVersioned, persistVersioned } from "./persisted";
 import { descriptorFor } from "./method-registry";
+import { solverVersionActive } from "./conventions";
 import {
   type MaterialOrigine, type MaterialKind, type MaterialItem,
   type ResiduItem, type GranulatItem, type RetardateurItem,
@@ -118,13 +119,33 @@ export function patchBinders(binders: BinderRef[]): Partial<GeneralInfo> {
   };
 }
 
+export type EssaiGsConvention = "base" | "recalcule";
+export type EssaiBinderRule = "solides_totaux" | "residu_ajoute";
+export type ConventionPackId = "intra2017" | "gramme" | "personnalise";
+
 export interface ConstantesCalcul {
   masse_volumique_eau_kg_m3: number;
   gravite_m_s2: number;
   facteur_petit_cone_vers_grand_cone: number;
   coefficient_modele_slump: number;
   constante_modele_slump: number;
+  // Drapeaux de convention de calcul (défaut = feuille « Intra 2017 »).
+  essai_gs_convention: EssaiGsConvention;
+  essai_binder_rule: EssaiBinderRule;
+  // Pack de convention actif (preset UI ; « personnalise » = valeurs déviées).
+  // Non envoyé au backend — le payload porte les drapeaux explicites.
+  pack_id: ConventionPackId;
 }
+
+/** Clés numériques (assainies > 0) vs clés chaîne (liste blanche) des constantes. */
+const CONSTANTES_NUM_KEYS = [
+  "masse_volumique_eau_kg_m3", "gravite_m_s2",
+  "facteur_petit_cone_vers_grand_cone", "coefficient_modele_slump",
+  "constante_modele_slump",
+] as const;
+const ESSAI_GS_VALUES: EssaiGsConvention[] = ["base", "recalcule"];
+const ESSAI_BINDER_VALUES: EssaiBinderRule[] = ["solides_totaux", "residu_ajoute"];
+const PACK_ID_VALUES: ConventionPackId[] = ["intra2017", "gramme", "personnalise"];
 
 export interface LiantCatalogueItem {
   id: string;
@@ -564,6 +585,9 @@ const constantesDefaut: ConstantesCalcul = {
   facteur_petit_cone_vers_grand_cone: 2.335,
   coefficient_modele_slump: 4.95e6,
   constante_modele_slump: 235.5122,
+  essai_gs_convention: "base",
+  essai_binder_rule: "solides_totaux",
+  pack_id: "intra2017",
 };
 
 /* ── Persistance versionnée des réglages (catalogue, constantes, projet) ──
@@ -574,7 +598,12 @@ const CATALOGUE_KEY = "minebackfill_catalogue_liants";
 const CATALOGUE_VERSION = 2; // v2 : ajout du champ `origine`
 const CONSTANTES_KEY = "minebackfill_constantes";
 const GENERAL_KEY = "minebackfill_general";
-const SETTINGS_VERSION = 1; // constantes + general
+// Versions scindées (elles partageaient SETTINGS_VERSION) : les constantes
+// gagnent les drapeaux de convention (v2), general reste stable (v1). La
+// migration des constantes est implicite — loadConstantesFromStorage remplit
+// les défauts (intra2017) pour les clés absentes des anciennes sauvegardes.
+const CONSTANTES_VERSION = 2;
+const GENERAL_VERSION = 1;
 const RESIDUS_KEY = "minebackfill_catalogue_residus";
 const GRANULATS_KEY = "minebackfill_catalogue_granulats";
 const RETARDATEURS_KEY = "minebackfill_catalogue_retardateurs";
@@ -626,27 +655,34 @@ function persistMaterials(kind: MaterialKind, items: MaterialItem[]) {
 }
 function loadConstantesFromStorage(): ConstantesCalcul {
   const brut = loadVersioned<Partial<ConstantesCalcul>>(
-    CONSTANTES_KEY, SETTINGS_VERSION, identityMigration, constantesDefaut,
+    CONSTANTES_KEY, CONSTANTES_VERSION, identityMigration, constantesDefaut,
   );
-  // Assainissement : les 5 constantes sont physiquement strictement positives.
-  // Un champ vidé dans Réglages persiste 0 — au rechargement on retombe sur la
-  // valeur par défaut plutôt que de bloquer durablement tous les calculs (422).
-  // La fusion couvre aussi les clés absentes d'anciennes sauvegardes.
+  // Assainissement : les 5 constantes numériques sont physiquement strictement
+  // positives — un champ vidé dans Réglages persiste 0, au rechargement on
+  // retombe sur le défaut plutôt que de bloquer les calculs (422). Les 3
+  // drapeaux chaîne sont validés par liste blanche (une valeur inconnue ou
+  // absente d'une ancienne sauvegarde retombe sur le défaut « intra2017 »).
   const c: ConstantesCalcul = { ...constantesDefaut };
-  for (const k of Object.keys(constantesDefaut) as (keyof ConstantesCalcul)[]) {
+  for (const k of CONSTANTES_NUM_KEYS) {
     const v = brut?.[k];
     if (typeof v === "number" && Number.isFinite(v) && v > 0) c[k] = v;
   }
+  if (brut?.essai_gs_convention && ESSAI_GS_VALUES.includes(brut.essai_gs_convention))
+    c.essai_gs_convention = brut.essai_gs_convention;
+  if (brut?.essai_binder_rule && ESSAI_BINDER_VALUES.includes(brut.essai_binder_rule))
+    c.essai_binder_rule = brut.essai_binder_rule;
+  if (brut?.pack_id && PACK_ID_VALUES.includes(brut.pack_id))
+    c.pack_id = brut.pack_id;
   return c;
 }
 function persistConstantes(c: ConstantesCalcul) {
-  persistVersioned(CONSTANTES_KEY, SETTINGS_VERSION, c);
+  persistVersioned(CONSTANTES_KEY, CONSTANTES_VERSION, c);
 }
 function loadGeneralFromStorage(): GeneralInfo {
-  return loadVersioned(GENERAL_KEY, SETTINGS_VERSION, identityMigration, generalDefaut);
+  return loadVersioned(GENERAL_KEY, GENERAL_VERSION, identityMigration, generalDefaut);
 }
 function persistGeneral(g: GeneralInfo) {
-  persistVersioned(GENERAL_KEY, SETTINGS_VERSION, g);
+  persistVersioned(GENERAL_KEY, GENERAL_VERSION, g);
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -670,7 +706,13 @@ export const useStore = create<AppState>((set, get) => ({
   constantes: constantesDefaut,
   setConstantes: (patch) =>
     set((state) => {
-      const constantes = { ...state.constantes, ...patch };
+      // Une application de pack fournit `pack_id` explicitement. Toute autre
+      // édition (manuelle, d'un nombre ou d'un drapeau) dévie du preset et
+      // bascule donc sur « personnalise ».
+      const withPack = "pack_id" in patch
+        ? patch
+        : { ...patch, pack_id: "personnalise" as ConventionPackId };
+      const constantes = { ...state.constantes, ...withPack };
       persistConstantes(constantes);
       return { constantes };
     }),
@@ -1199,7 +1241,9 @@ export const useStore = create<AppState>((set, get) => ({
       savedAt: new Date().toISOString(),
       label,
       general: { ...state.general },
-      solverVersion: SOLVER_VERSION,
+      // Version estampillée selon le pack de convention actif (le snapshot
+      // `constantes` reste la vraie garantie de reproductibilité).
+      solverVersion: solverVersionActive(state.constantes),
       catalogue_liants: state.catalogue_liants.map((l) => ({ ...l })),
       constantes: { ...state.constantes },
       selectedMaterials: materiauxUtilises(),

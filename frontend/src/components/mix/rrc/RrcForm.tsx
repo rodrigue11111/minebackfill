@@ -8,6 +8,7 @@ import type { RetardateurItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import { num } from "@/lib/format";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
+import { construireConstantesPayload } from "@/lib/rpc_payload";
 
 /**
  * Formulaire RRC — Remblai Rocheux Cimenté (CRF).
@@ -67,13 +68,7 @@ export default function RrcForm() {
         cement_specific_gravity: rrc.cement_sg || 3.15,
         retarder_dosage_ml_per_100kg: rrc.retarder_d0 || 0,
         retarder_density_g_ml: rrc.retarder_density || 1.2,
-        constants: {
-          water_density: constantes.masse_volumique_eau_kg_m3,
-          gravity: constantes.gravite_m_s2,
-          slump_small_to_large_factor: constantes.facteur_petit_cone_vers_grand_cone,
-          slump_model_coeff: constantes.coefficient_modele_slump,
-          slump_model_offset: constantes.constante_modele_slump,
-        },
+        constants: construireConstantesPayload(constantes),
       };
       const res = await fetch(`${API}/rrc/dosage`, {
         method: "POST",

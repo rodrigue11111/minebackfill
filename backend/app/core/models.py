@@ -256,6 +256,27 @@ class SolverConstants(BaseModel):
         description="Constante additive du modèle prédictif du slump.",
     )
 
+    # --------------- Drapeaux de convention de calcul ---------------
+    # Défauts = convention « Intra 2017 » (comportement historique). Les autres
+    # valeurs capturent des variantes de feuilles du professeur (packs).
+    essai_gs_convention: Literal["base", "recalcule"] = Field(
+        "base",
+        description=(
+            "Essai-erreur : « base » fige les Gs de la recette de base (Intra "
+            "2017) ; « recalcule » les recalcule à partir de la composition "
+            "après ajouts."
+        ),
+    )
+    essai_binder_rule: Literal["solides_totaux", "residu_ajoute"] = Field(
+        "solides_totaux",
+        description=(
+            "Essai-erreur : « solides_totaux » maintient Bw sur tous les solides "
+            "ajoutés (résidu + granulat, Intra 2017) ; « residu_ajoute » applique "
+            "le liant ajouté au résidu ajouté seulement (feuille « gramme » "
+            "Belem 2016). Voir Issues.md #4."
+        ),
+    )
+
 
 class BaseMixDesignInput(BaseModel):
     """

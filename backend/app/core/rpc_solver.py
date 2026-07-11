@@ -75,33 +75,16 @@ from .models import (
 # Constants
 # ----------------------------------------------------------------------
 
-WATER_DENSITY = 1000.0  # kg/m3 (approx. 20 C)
-GRAVITY = 9.81          # m/s2
-SLUMP_SMALL_TO_LARGE_FACTOR = 2.335
-SLUMP_MODEL_COEFF = 4.95e6
-SLUMP_MODEL_OFFSET = 235.5122
-
-
 def _resolve_solver_constants(constants: Optional[SolverConstants]) -> dict:
     """
     Returns effective constants for calculations.
-    Keeps previous hardcoded defaults if no override is provided.
+
+    Source de vérité unique : les `Field(...)` de `SolverConstants` (models.py).
+    Un appel sans override utilise les défauts Pydantic ; les futurs champs
+    (drapeaux de convention) tombent automatiquement dans le dict. Les clés
+    sont les noms de champs — exactement ce qu'indexent les appelants.
     """
-    if constants is None:
-        return {
-            "water_density": WATER_DENSITY,
-            "gravity": GRAVITY,
-            "slump_small_to_large_factor": SLUMP_SMALL_TO_LARGE_FACTOR,
-            "slump_model_coeff": SLUMP_MODEL_COEFF,
-            "slump_model_offset": SLUMP_MODEL_OFFSET,
-        }
-    return {
-        "water_density": float(constants.water_density),
-        "gravity": float(constants.gravity),
-        "slump_small_to_large_factor": float(constants.slump_small_to_large_factor),
-        "slump_model_coeff": float(constants.slump_model_coeff),
-        "slump_model_offset": float(constants.slump_model_offset),
-    }
+    return (constants if constants is not None else SolverConstants()).model_dump()
 
 
 def _ensure_sequence_length(
@@ -590,6 +573,8 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
             delta_wet_residue=adj.added_wet_residue_mass,
             delta_water=adj.added_water_mass,
             water_density=water_density,
+            essai_gs_convention=constantes["essai_gs_convention"],
+            essai_binder_rule=constantes["essai_binder_rule"],
         )
 
         Mb_ad = eq.mb_ad
@@ -627,7 +612,7 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
             solids_mass_pct=eq.cw * 100.0,
             saturation_pct=eq.sr * 100.0,
             wc_ratio=eq.wc,
-            bw_mass_pct=base_state.bw_mass_pct,
+            bw_mass_pct=eq.bw * 100.0,
             bv_vol_pct=eq.bv * 100.0,
             cv_vol_pct=eq.cv * 100.0,
             w_mass_pct=eq.w * 100.0,

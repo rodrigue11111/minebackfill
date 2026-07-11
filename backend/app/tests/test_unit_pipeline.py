@@ -245,6 +245,28 @@ class TestApplyEssai:
         _close("Mg_tot", eq.mg_sec_tot, q.mg_sec + 400_000.0)
         _close("Mw_tot", eq.mw_tot, q.mw_total + 400_000.0 * 0.04)
 
+    def test_regle_liant_residu_ajoute_vs_solides_totaux(self):
+        """Drapeau essai_binder_rule : sur ajout de granulat, la règle
+        « gramme » (residu_ajoute) n'ajoute AUCUN liant, alors que la règle
+        Intra 2017 (solides_totaux, défaut) en ajoute Bw·delta_aggregate."""
+        q, args = _base(xg=0.30)
+        add = 400_000.0
+        # Défaut (solides_totaux) : le liant suit tous les solides ajoutés.
+        eq_intra = apply_essai_adjustments(**args, delta_aggregate=add)
+        _close("intra Mb_ad", eq_intra.mb_ad, 0.045 * add, tol=1e-6)
+        # Gramme (residu_ajoute) : granulat seul -> aucun liant ajouté.
+        eq_gramme = apply_essai_adjustments(**args, delta_aggregate=add,
+                                            essai_binder_rule="residu_ajoute")
+        _close("gramme Mb_ad", eq_gramme.mb_ad, 0.0, tol=1e-6)
+        _close("gramme Mb_tot=base", eq_gramme.mb_tot, q.mb, tol=1e-6)
+        # Les deux règles DIVERGENT bien (test discriminant).
+        assert abs(eq_intra.mb_ad - eq_gramme.mb_ad) > 1.0
+        # Sur ajout de RÉSIDU seul, les deux règles COÏNCIDENT.
+        eq_i = apply_essai_adjustments(**args, delta_dry_residue=add)
+        eq_g = apply_essai_adjustments(**args, delta_dry_residue=add,
+                                       essai_binder_rule="residu_ajoute")
+        _close("residu coincide", eq_i.mb_ad, eq_g.mb_ad, tol=1e-6)
+
     def test_convention_recalcule(self, monkeypatch):
         """Branche ESSAI_GS_CONVENTION='recalcule' : Gs recalculé avec le
         nouveau Xg, résultats auto-cohérents (e = w*Gs_new/Sr à saturation)."""

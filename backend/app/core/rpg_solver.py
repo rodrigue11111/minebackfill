@@ -519,6 +519,8 @@ def solve_rpg_essai(inputs: RpgEssaiInputs) -> MixDesignResult:
             delta_aggregate=adj.added_aggregate_mass,
             aggregate_w0_frac=adj.aggregate_moisture_mass_pct / 100.0,
             water_density=water_density,
+            essai_gs_convention=constantes["essai_gs_convention"],
+            essai_binder_rule=constantes["essai_binder_rule"],
         )
 
         Mb_ad = eq.mb_ad
@@ -556,7 +558,7 @@ def solve_rpg_essai(inputs: RpgEssaiInputs) -> MixDesignResult:
             solids_mass_pct=eq.cw * 100.0,
             saturation_pct=eq.sr * 100.0,
             wc_ratio=eq.wc,
-            bw_mass_pct=base_state.bw_mass_pct,
+            bw_mass_pct=eq.bw * 100.0,
             bv_vol_pct=eq.bv * 100.0,
             cv_vol_pct=eq.cv * 100.0,
             w_mass_pct=eq.w * 100.0,

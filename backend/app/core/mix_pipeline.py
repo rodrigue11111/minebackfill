@@ -28,6 +28,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+# Repli des appels DIRECTS au pipeline (tests unitaires qui monkeypatchent cet
+# attribut). Les solveurs, eux, passent la valeur résolue des constantes en
+# paramètre explicite (essai_gs_convention=...), ce qui ignore ce global.
 ESSAI_GS_CONVENTION = "base"  # "base" (fidèle Excel) | "recalcule" (rigoureux)
 
 
@@ -191,6 +194,7 @@ class EssaiQuantities:
     n: float
     cv: float
     theta: float
+    bw: float            # fraction massique de liant ATTEINTE  [D89]
     bv: float
     rho_d: float
     rho_h: float
@@ -229,7 +233,9 @@ def apply_essai_adjustments(*,
                             delta_water: float = 0.0,
                             delta_aggregate: float = 0.0,
                             aggregate_w0_frac: float = 0.0,
-                            water_density: float = 1000.0) -> EssaiQuantities:
+                            water_density: float = 1000.0,
+                            essai_gs_convention: str | None = None,
+                            essai_binder_rule: str = "solides_totaux") -> EssaiQuantities:
     """
     Applique des ajustements de masses à une recette de base et recalcule
     l'état final selon la feuille Intra 2017 :
@@ -259,9 +265,16 @@ def apply_essai_adjustments(*,
     mg_sec_tot = mg_sec_base + delta_aggregate
     solids_nb = mr_sec_tot + mg_sec_tot
 
-    # -- liant maintenu à Bw cible  [D65 / 25a-26] — SANS borne à 0
-    mb_tot = bw_target_frac * solids_nb
-    mb_ad = mb_tot - mb_base
+    # -- liant : deux conventions (défaut = Intra 2017, sans borne à 0)
+    if essai_binder_rule == "residu_ajoute":
+        # Feuille « gramme » [D65] : le liant AJOUTÉ ne répond qu'au RÉSIDU
+        # ajouté (pas au granulat, ni à l'eau). mb_tot = base + Bw·(résidu ajouté).
+        mb_ad = bw_target_frac * (delta_dry_residue + sec_from_wet)
+        mb_tot = mb_base + mb_ad
+    else:
+        # Intra 2017 : Bw maintenu sur TOUS les solides (résidu + granulat).
+        mb_tot = bw_target_frac * solids_nb
+        mb_ad = mb_tot - mb_base
 
     # -- eau totale  [29a]
     mw_tot = mw_base + delta_eau_tot
@@ -273,8 +286,11 @@ def apply_essai_adjustments(*,
              + delta_eau_tot / rho_w)
     vt_new = vt_base + v_add
 
-    # -- Gs selon la convention choisie
-    if ESSAI_GS_CONVENTION == "recalcule":
+    # -- Gs selon la convention choisie. None → lecture du global au moment de
+    # l'appel (repli des appels directs monkeypatchés) ; les solveurs passent
+    # la valeur résolue explicitement.
+    conv = essai_gs_convention if essai_gs_convention is not None else ESSAI_GS_CONVENTION
+    if conv == "recalcule":
         xg_new = mg_sec_tot / solids_nb if solids_nb > 0.0 else 0.0
         gs_nb_used = gs_nonbinder_eff(gs_r, xg_new, gs_g)
         gs_bkf_used = gs_backfill_eff(gs_r, xg_new, gs_g, bw_target_frac, gs_binder)
@@ -301,7 +317,11 @@ def apply_essai_adjustments(*,
 
     cv_aj = vs_new / vt_new if vt_new > 0.0 else 0.0        # [D82]
     theta_aj = vw_tot / vt_new if vt_new > 0.0 else 0.0     # [D80]
-    bv_aj = bw_target_frac * gs_nb_used / gs_binder if gs_binder > 0.0 else 0.0  # [D90]
+    # Bw ATTEINT (D89) : le liant réel sur les solides réels. Sous la règle
+    # « solides_totaux » (Intra 2017), il vaut exactement bw_target ; sous
+    # « residu_ajoute » (gramme), un ajout de granulat sans liant le dilue.
+    bw_aj = mb_tot / solids_nb if solids_nb > 0.0 else 0.0
+    bv_aj = bw_aj * gs_nb_used / gs_binder if gs_binder > 0.0 else 0.0  # [D90]
 
     rho_d_aj = gs_bkf_used * rho_w / (1.0 + e_aj) if e_aj > -1.0 else 0.0  # [D93]
     rho_h_aj = rho_d_aj * (1.0 + w_aj)                                     # [D91]
@@ -312,7 +332,7 @@ def apply_essai_adjustments(*,
     return EssaiQuantities(
         gs_backfill=gs_bkf_used, gs_nonbinder=gs_nb_used,
         w=w_aj, cw=cw_aj, wc=wc_aj,
-        e=e_aj, sr=sr_aj, n=n_aj, cv=cv_aj, theta=theta_aj, bv=bv_aj,
+        e=e_aj, sr=sr_aj, n=n_aj, cv=cv_aj, theta=theta_aj, bw=bw_aj, bv=bv_aj,
         rho_d=rho_d_aj, rho_h=rho_h_aj,
         ms_total=ms_tot, mr_sec_tot=mr_sec_tot, mg_sec_tot=mg_sec_tot,
         mb_tot=mb_tot, mb_ad=mb_ad, mw_tot=mw_tot,
