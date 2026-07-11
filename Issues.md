@@ -71,4 +71,49 @@ The app now follows the Intra 2017 sheet (confirmed reference).
 
 ---
 
-*Logged: 2026-03-03 · Updated: 2026-07-06*
+## Issue #4 — Convention « en gramme » (feuille TBelem 2016) : règle du liant en essai
+
+**Status:** DOCUMENTED (2026-07-11) — sera capturée en pack de convention (P4).
+
+**Classeur:** `Data/Feuille calculs remblais_TBelem_en gramme (1).xlsx`, feuille
+`Calculs ingredients (en gr)`. « Feuille de calcul des mélanges de remblai en
+pâte cimenté (RPC) + granulat concassé (RPCg) au laboratoire en fixant le %
+solide massique initial (Cw%) » — © Tikou Belem (2016). Extraction locale
+(openpyxl, hors requirements ; script jetable dans le scratchpad).
+
+**Recette de base : IDENTIQUE à Intra 2017.** Vérifié numériquement contre les
+valeurs cachées (Recette 1 : Cw = 0,73 ; Bw = 0,05 ; Gs_res = 3,0 ;
+GU20/Slag80 → Gs_liant = 2,946774… ; V_T = 2574,074 cm³) :
+- `D36` Gs_remblai `= (1+Bw)/((1/Gs_nb)+(Bw/Gs_liant))` → 2,997421875
+- `D39` Ms `= (Cw·V_T)·((Cw/Gs_bkf)+(1−Cw))^-1` → 3659,0419… (= ρ_d·V_T)
+- `D43` liant `= Bw·(Mr_sec+Mg_sec)` → 174,2400… ; `D44` eau → 1353,3442…
+La feuille fixe **Sr = 100 %** (`D40` ≈ 1, calculé). Donc la base se reproduit
+avec le solveur actuel à `saturation_pct = 100` — même convention `Ms = ρ_d·V_T`.
+
+**LA divergence — règle du liant en essai (`D65`).** Sur ajout d'ingrédients :
+- **Gramme** : `D65` (liant à ajouter) `= D60 · Bw` où `D60` = **résidu sec
+  ajouté seulement**. L'ajout de **granulat** (`D58`) ou d'**eau** (`D57`) n'ajoute
+  **aucun liant**. Liant total = `D43 + D65` (base + ajout résidu).
+- **Intra 2017 (pipeline actuel, `mix_pipeline.py:263`)** : `mb_tot = Bw ·
+  solids_nb` où `solids_nb = résidu_sec_total + granulat_sec_total` ; donc
+  `mb_ad = Bw · (résidu ajouté + granulat ajouté)`.
+
+Les deux règles **coïncident** tant qu'on n'ajoute pas de granulat en essai
+(scénario courant : ajout de résidu ou d'eau). Elles **divergent** dès qu'on
+ajoute du granulat : la feuille gramme n'y associe aucun liant, le pipeline si.
+
+**Modélisation (P4).** Drapeau `essai_binder_rule` ∈ {`solides_totaux` (défaut =
+Intra 2017), `residu_ajoute` (gramme)} dans `SolverConstants`, threadé dans
+`apply_essai_adjustments`. Défaut = comportement actuel → suite d'or inchangée.
+Le pack UI « gramme » applique le preset. Oracle : `excel_twin_gramme.py` +
+tests d'or discriminants (au moins un scénario « ajout granulat » où
+`|mb_ad(gramme) − mb_ad(intra)| > seuil`).
+
+**Aucun autre delta structurel relevé** (base recette, densités, volumes, W/C,
+Cv, e, Sr : mêmes formules qu'Intra 2017). Une 2ᵉ feuille du classeur,
+`Synthese calculs`, est une simple mise en page des résultats (pas de nouvelle
+formule métier).
+
+---
+
+*Logged: 2026-03-03 · Updated: 2026-07-11*
