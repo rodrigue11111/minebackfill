@@ -41,6 +41,7 @@ from .rpc_solver import (
     masse_volumique_S_liant_fonction,
     effective_binder_specific_gravity,
     _resolve_solver_constants,
+    _ensure_sequence_length,
 )
 from .mix_pipeline import (
     solve_recipe,
@@ -285,6 +286,17 @@ def solve_rpg_cw(payload: RpgCwInputs) -> MixDesignResult:
     """
     RPG — Dosage selon Cw%.
     """
+    # Mêmes validations d'entrée que le RPC (symétrie) : fractions de liant
+    # totalisant 100 % et liste de recettes assez longue — sinon on produisait
+    # des recettes dégénérées (Bw=0) sans erreur.
+    payload.binder_system.validate_total_fraction()
+    _ensure_sequence_length(
+        name="binder_mass_pct_recipes",
+        values=payload.binder_mass_pct_recipes,
+        num_recipes=payload.num_recipes,
+        required=True,
+    )
+
     consts = _resolve_solver_constants(payload.constants)
     rho_eau = consts["water_density"]
     gravity  = consts["gravity"]
@@ -351,6 +363,20 @@ def solve_rpg_wb(payload: RpgWbInputs) -> MixDesignResult:
     """
     RPG — Rapport eau/ciment (W/C).
     """
+    payload.binder_system.validate_total_fraction()
+    _ensure_sequence_length(
+        name="binder_mass_pct_recipes",
+        values=payload.binder_mass_pct_recipes,
+        num_recipes=payload.num_recipes,
+        required=True,
+    )
+    _ensure_sequence_length(
+        name="wc_ratio_recipes",
+        values=payload.wc_ratio_recipes,
+        num_recipes=payload.num_recipes,
+        required=True,
+    )
+
     consts = _resolve_solver_constants(payload.constants)
     rho_eau = consts["water_density"]
     gravity  = consts["gravity"]
@@ -439,6 +465,23 @@ def solve_rpg_essai(inputs: RpgEssaiInputs) -> MixDesignResult:
         w0_pct = float(base_inputs.residue.moisture_mass_pct)
     else:
         raise ValueError("base_method doit être CW ou WB")
+
+    # Validation d'entrée + cohérence du liant : la base et les ajustements
+    # utilisent deux systèmes de liant distincts (base_inputs.binder_system vs
+    # inputs.binder_system) ; ils doivent être identiques, sinon on calculerait
+    # sur deux liants différents sans erreur.
+    inputs.binder_system.validate_total_fraction()
+
+    def _signature_liant(bs: BinderSystem):
+        return [
+            (c.type, round(c.mass_fraction, 9), round(c.specific_gravity, 9))
+            for c in bs.components
+        ]
+
+    if _signature_liant(inputs.binder_system) != _signature_liant(base_inputs.binder_system):
+        raise ValueError(
+            "Le système de liant de l'essai doit être identique à celui de la formulation de base."
+        )
 
     constantes = _resolve_solver_constants(inputs.constants)
     water_density = constantes["water_density"]

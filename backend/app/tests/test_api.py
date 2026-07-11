@@ -110,3 +110,42 @@ def test_fractions_liant_invalides_renvoie_422():
                                      "solids_mass_pct": 70.0, "binder_system": mauvais})
     assert r.status_code == 422
     assert "fractions massiques" in r.json()["detail"].lower()
+
+
+QUATRE_LIANTS = {"components": [
+    {"type": "A", "specific_gravity": 3.15, "mass_fraction": 0.25},
+    {"type": "B", "specific_gravity": 2.9, "mass_fraction": 0.25},
+    {"type": "C", "specific_gravity": 2.8, "mass_fraction": 0.25},
+    {"type": "D", "specific_gravity": 2.7, "mass_fraction": 0.25},
+]}
+
+
+def test_rpc_quatre_liants_rejetes_422():
+    # 4 composants : fractions valides (0.25*4=1) mais le 4e serait ignore.
+    r = client.post("/rpc/cw", json={**BASE, "category": "RPC",
+                                     "solids_mass_pct": 70.0, "binder_system": QUATRE_LIANTS})
+    assert r.status_code == 422
+
+
+def test_rpg_quatre_liants_rejetes_422():
+    r = client.post("/rpg/cw", json={**BASE, "category": "RPG", "solids_mass_pct": 70.0,
+                                     "aggregate_fraction_pct": 30.0, "aggregate_specific_gravity": 2.8,
+                                     "binder_system": QUATRE_LIANTS})
+    assert r.status_code == 422
+
+
+def test_rpg_fractions_invalides_renvoie_422():
+    # Symetrie avec le RPC : le RPG validait silencieusement (Bw=0) auparavant.
+    mauvais = {"components": [{"type": "GU", "specific_gravity": 3.15, "mass_fraction": 0.5}]}
+    r = client.post("/rpg/cw", json={**BASE, "category": "RPG", "solids_mass_pct": 70.0,
+                                     "aggregate_fraction_pct": 30.0, "aggregate_specific_gravity": 2.8,
+                                     "binder_system": mauvais})
+    assert r.status_code == 422
+    assert "fractions massiques" in r.json()["detail"].lower()
+
+
+def test_rpg_liste_recettes_trop_courte_renvoie_422():
+    r = client.post("/rpg/cw", json={**BASE, "category": "RPG", "solids_mass_pct": 70.0,
+                                     "aggregate_fraction_pct": 30.0, "aggregate_specific_gravity": 2.8,
+                                     "num_recipes": 2, "binder_mass_pct_recipes": [4.5]})
+    assert r.status_code == 422

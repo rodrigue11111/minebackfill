@@ -12,7 +12,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import List, Optional, Literal
 
-from pydantic import BaseModel, Field, confloat, conint
+from pydantic import BaseModel, Field, confloat, conint, field_validator
 
 
 # ======================================================================
@@ -187,6 +187,18 @@ class BinderSystem(BaseModel):
     """
 
     components: List[BinderComponent]
+
+    @field_validator("components")
+    @classmethod
+    def _valider_nombre_composants(cls, v: List[BinderComponent]) -> List[BinderComponent]:
+        # Le solveur ne combine que 3 composants (Gs et répartition des masses) :
+        # au-delà, un 4e liant serait silencieusement ignoré. On rejette donc
+        # explicitement. Le passage à N composants est prévu ultérieurement.
+        if len(v) < 1:
+            raise ValueError("Au moins un composant de liant est requis.")
+        if len(v) > 3:
+            raise ValueError("Maximum 3 composants de liant supportés pour cette version.")
+        return v
 
     def validate_total_fraction(self) -> None:
         """
