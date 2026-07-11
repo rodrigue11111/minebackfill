@@ -28,6 +28,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+# Repli des appels DIRECTS au pipeline (tests unitaires qui monkeypatchent cet
+# attribut). Les solveurs, eux, passent la valeur résolue des constantes en
+# paramètre explicite (essai_gs_convention=...), ce qui ignore ce global.
 ESSAI_GS_CONVENTION = "base"  # "base" (fidèle Excel) | "recalcule" (rigoureux)
 
 
@@ -229,7 +232,9 @@ def apply_essai_adjustments(*,
                             delta_water: float = 0.0,
                             delta_aggregate: float = 0.0,
                             aggregate_w0_frac: float = 0.0,
-                            water_density: float = 1000.0) -> EssaiQuantities:
+                            water_density: float = 1000.0,
+                            essai_gs_convention: str | None = None,
+                            essai_binder_rule: str = "solides_totaux") -> EssaiQuantities:
     """
     Applique des ajustements de masses à une recette de base et recalcule
     l'état final selon la feuille Intra 2017 :
@@ -259,9 +264,16 @@ def apply_essai_adjustments(*,
     mg_sec_tot = mg_sec_base + delta_aggregate
     solids_nb = mr_sec_tot + mg_sec_tot
 
-    # -- liant maintenu à Bw cible  [D65 / 25a-26] — SANS borne à 0
-    mb_tot = bw_target_frac * solids_nb
-    mb_ad = mb_tot - mb_base
+    # -- liant : deux conventions (défaut = Intra 2017, sans borne à 0)
+    if essai_binder_rule == "residu_ajoute":
+        # Feuille « gramme » [D65] : le liant AJOUTÉ ne répond qu'au RÉSIDU
+        # ajouté (pas au granulat, ni à l'eau). mb_tot = base + Bw·(résidu ajouté).
+        mb_ad = bw_target_frac * (delta_dry_residue + sec_from_wet)
+        mb_tot = mb_base + mb_ad
+    else:
+        # Intra 2017 : Bw maintenu sur TOUS les solides (résidu + granulat).
+        mb_tot = bw_target_frac * solids_nb
+        mb_ad = mb_tot - mb_base
 
     # -- eau totale  [29a]
     mw_tot = mw_base + delta_eau_tot
@@ -273,8 +285,11 @@ def apply_essai_adjustments(*,
              + delta_eau_tot / rho_w)
     vt_new = vt_base + v_add
 
-    # -- Gs selon la convention choisie
-    if ESSAI_GS_CONVENTION == "recalcule":
+    # -- Gs selon la convention choisie. None → lecture du global au moment de
+    # l'appel (repli des appels directs monkeypatchés) ; les solveurs passent
+    # la valeur résolue explicitement.
+    conv = essai_gs_convention if essai_gs_convention is not None else ESSAI_GS_CONVENTION
+    if conv == "recalcule":
         xg_new = mg_sec_tot / solids_nb if solids_nb > 0.0 else 0.0
         gs_nb_used = gs_nonbinder_eff(gs_r, xg_new, gs_g)
         gs_bkf_used = gs_backfill_eff(gs_r, xg_new, gs_g, bw_target_frac, gs_binder)

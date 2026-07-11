@@ -573,6 +573,8 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
             delta_wet_residue=adj.added_wet_residue_mass,
             delta_water=adj.added_water_mass,
             water_density=water_density,
+            essai_gs_convention=constantes["essai_gs_convention"],
+            essai_binder_rule=constantes["essai_binder_rule"],
         )
 
         Mb_ad = eq.mb_ad
