@@ -2,14 +2,15 @@
 
 import { useState, useCallback } from "react";
 import { useStore } from "@/lib/store";
-import type { GeneralInfo, LiantCatalogueItem } from "@/lib/store";
+import type { Category, GeneralInfo, LiantCatalogueItem } from "@/lib/store";
 import {
   fromStoreMass, fromStoreVolume, fromStoreDensity,
   MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS,
   type UnitPreferences,
 } from "@/lib/units";
 import FormulaPopover from "@/components/mix/FormulaPopover";
-import type { Recipe, RrcRecipe } from "@/lib/types";
+import { descriptorFor, methodLabel } from "@/lib/method-registry";
+import type { MixResult, Recipe, RrcRecipe } from "@/lib/types";
 import {
   val, masseRejetSecTotaleKg, masseSolidesTotaleKg, masseRemblaiTotaleKg,
   masseEauDansResidusKg, volumeAirM3, cwCalculePct, cvCalculePct,
@@ -241,7 +242,7 @@ export async function exportToExcel(
 
   /* ── Subtitle ── */
   const subRow = ws.addRow([
-    `${category} — ${method === "dosage_cw" ? "Dosage Cw%" : method === "wb" ? "Rapport E/C" : method === "slump" ? "Slump" : "Essai-erreur"}  |  ${recipes.length} recette${recipes.length > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
+    `${category} — ${methodLabel(category as Category, method)}  |  ${recipes.length} recette${recipes.length > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
   ]);
   ws.mergeCells(subRow.number, 1, subRow.number, totalCols);
   subRow.height = 24;
@@ -628,7 +629,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
     setFormulaPopover({ formulaIds, recipe, anchorRect: rect });
   }, []);
   const store = useStore();
-  const { category, method, general, cw, wb, slump, essai, rpgCw, rpgWb, rpgEssai } = store;
+  const { category, method, general, cw, essai, rpgEssai } = store;
   const catalogue_liants: LiantCatalogueItem[] = store.catalogue_liants ?? [];
   const units: UnitPreferences = store.units ?? { length: "cm", area: "cm2", mass: "kg", volume: "L", density: "g/cm3", slump: "mm" };
   const massLabel = MASS_LABELS[units.mass] ?? "kg";
@@ -641,45 +642,24 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
     return catalogue_liants.find((l) => l.code === code)?.nom ?? `Ciment ${n}`;
   };
 
-  const cwResult = store.cwResult;
-  const wbResult = store.wbResult;
-  const slumpResult = store.slumpResult;
-  const essaiResult = store.essaiResult;
-  const rpgCwResult = store.rpgCwResult;
-  const rpgWbResult = store.rpgWbResult;
-  const rpgEssaiResult = store.rpgEssaiResult;
-
   const isRpg = category === "RPG";
   const isEssai = method === "essai";
 
-  const result = isRpg
-    ? method === "wb" ? rpgWbResult : method === "essai" ? rpgEssaiResult : rpgCwResult
-    : method === "wb"
-    ? wbResult
-    : method === "slump"
-    ? slumpResult
-    : method === "essai"
-    ? essaiResult
-    : cwResult;
+  // Tranches d'état/résultat de la méthode active — via le registre. Pour
+  // l'essai, la quantité désirée vient de l'état de la méthode de BASE.
+  const descriptor = descriptorFor(category, method);
+  const result = descriptor ? (store[descriptor.resultKey] as MixResult | null) : null;
 
   const allRecipes: Recipe[] = Array.isArray(result?.recipes) ? result.recipes : [];
   const recipes = allRecipes.filter(Boolean);
 
-  const desiredQty = isRpg
-    ? method === "wb"
-      ? rpgWb.desired_qty
-      : method === "essai"
-      ? (rpgEssai.base_method === "wb" ? rpgWb.desired_qty : rpgCw.desired_qty)
-      : rpgCw.desired_qty
-    : method === "wb"
-    ? wb.desired_qty
-    : method === "slump"
-    ? slump.desired_qty
-    : method === "essai"
-    ? essai.base_method === "dosage_cw"
-      ? cw.desired_qty
-      : wb.desired_qty
-    : cw.desired_qty;
+  const methodeQty = isEssai
+    ? (isRpg ? rpgEssai : essai).base_method
+    : method;
+  const dQty = descriptorFor(category, methodeQty);
+  const desiredQty =
+    (dQty ? (store[dQty.stateKey] as { desired_qty?: number }).desired_qty : undefined) ??
+    cw.desired_qty;
 
   /* ── RRC : vue dédiée (formules CRF, pas de MixState) ── */
   if (category === "RRC") {

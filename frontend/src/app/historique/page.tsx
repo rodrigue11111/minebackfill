@@ -8,13 +8,7 @@ import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
 import BackupButtons from "@/components/BackupButtons";
 
-const METHOD_LABELS: Record<string, string> = {
-  dosage_cw: "Cw%",
-  wb: "E/C",
-  slump: "Slump",
-  essai: "Essai-erreur",
-  rrc: "CRF",
-};
+import { methodLabel } from "@/lib/method-registry";
 
 /** Nombre de recettes, RPC/RPG comme RRC (dont les recettes vivent dans `rrc`). */
 const nbRecettes = (sr: SavedResult) =>
@@ -266,7 +260,7 @@ export default function HistoriquePage() {
                       {sr.category}
                     </span>
                     <span style={{ fontSize: 12, color: "#475569" }}>
-                      {METHOD_LABELS[sr.method] ?? sr.method}
+                      {methodLabel(sr.category, sr.method)}
                     </span>
                     <span style={{ fontSize: 12, color: "#475569" }}>
                       {nbRecettes(sr)} recette{nbRecettes(sr) > 1 ? "s" : ""}

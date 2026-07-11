@@ -1,6 +1,7 @@
 import type { UnitPreferences } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
-import type { GeneralInfo } from "@/lib/store";
+import type { Category, GeneralInfo } from "@/lib/store";
+import { methodLabel } from "@/lib/method-registry";
 import {
   val, masseRejetSecTotaleKg, masseSolidesTotaleKg, masseRemblaiTotaleKg,
   masseEauDansResidusKg, volumeAirM3, cwCalculePct, cvCalculePct,
@@ -58,10 +59,7 @@ export async function exportToPdf(
   const volLabel = VOLUME_LABELS[units.volume] ?? "L";
   const densLabel = DENSITY_LABELS[units.density] ?? "g/cm3";
 
-  const methodLabel = method === "dosage_cw" ? "Dosage Cw%"
-    : method === "wb" ? "Rapport E/C"
-    : method === "slump" ? "Slump"
-    : "Essai-erreur";
+  const libelleMethode = methodLabel(category as Category, method);
 
   let y = 10;
 
@@ -103,7 +101,7 @@ export async function exportToPdf(
   doc.setFont("helvetica", "italic");
   doc.setTextColor(200, 210, 240);
   doc.text(
-    `${category} — ${methodLabel}  |  ${recipeCount} recette${recipeCount > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
+    `${category} — ${libelleMethode}  |  ${recipeCount} recette${recipeCount > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
     marginL, 27,
   );
   y = 36;

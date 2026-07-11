@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
 import { loadVersioned, persistVersioned } from "./persisted";
+import { descriptorFor } from "./method-registry";
 import {
   type MaterialOrigine, type MaterialKind, type MaterialItem,
   type ResiduItem, type GranulatItem, type RetardateurItem,
@@ -1116,16 +1117,19 @@ export const useStore = create<AppState>((set, get) => ({
       const isRpg = state.category === "RPG";
       const m = state.method;
       // Valeurs de résidu/granulat effectivement envoyées au calcul (l'essai
-      // réutilise l'état de la méthode de base Cw ou E/C).
-      const vals = isRpg
-        ? m === "wb" ? state.rpgWb : m === "essai" ? (state.rpgEssai.base_method === "wb" ? state.rpgWb : state.rpgCw) : state.rpgCw
-        : m === "wb" ? state.wb : m === "slump" ? state.slump : m === "essai" ? (state.essai.base_method === "wb" ? state.wb : state.cw) : state.cw;
+      // réutilise l'état de la méthode de base Cw ou E/C) — via le registre.
+      const methodeEffective = m === "essai"
+        ? (isRpg ? state.rpgEssai : state.essai).base_method
+        : m;
+      const dVals = descriptorFor(state.category, methodeEffective);
+      const vals = state[dVals?.stateKey ?? (isRpg ? "rpgCw" : "cw")] as {
+        residue_sg: number; residue_w_pct: number; aggregate_sg?: number;
+      };
       const res = sm.residueId ? state.catalogue_residus.find((x) => x.id === sm.residueId) : undefined;
       if (res && res.gs === vals.residue_sg && res.w0_pct === vals.residue_w_pct) out.residueId = res.id;
       if (isRpg) {
         const agg = sm.aggregateId ? state.catalogue_granulats.find((x) => x.id === sm.aggregateId) : undefined;
-        const aggSg = (vals as RpgCwState | RpgWbState).aggregate_sg;
-        if (agg && agg.gs === aggSg) out.aggregateId = agg.id;
+        if (agg && agg.gs === vals.aggregate_sg) out.aggregateId = agg.id;
       }
       return out;
     };
@@ -1157,16 +1161,13 @@ export const useStore = create<AppState>((set, get) => ({
         },
       };
     } else {
-      const isRpg = state.category === "RPG";
-      const m = state.method;
-      const result = isRpg
-        ? m === "wb" ? state.rpgWbResult : m === "essai" ? state.rpgEssaiResult : state.rpgCwResult
-        : m === "wb" ? state.wbResult : m === "slump" ? state.slumpResult : m === "essai" ? state.essaiResult : state.cwResult;
+      // Tranches d'état/résultat de la méthode active — via le registre.
+      const d = descriptorFor(state.category, state.method);
+      if (!d) return false;
+      const result = state[d.resultKey] as MixResult | null;
       if (!result?.recipes?.length) return false;
       // Instantané des entrées du formulaire actif (pour « Recharger »)
-      const inputs = isRpg
-        ? m === "wb" ? state.rpgWb : m === "essai" ? state.rpgEssai : state.rpgCw
-        : m === "wb" ? state.wb : m === "slump" ? state.slump : m === "essai" ? state.essai : state.cw;
+      const inputs = state[d.stateKey];
       entry = {
         ...commun,
         category: state.category,
@@ -1230,17 +1231,13 @@ export const useStore = create<AppState>((set, get) => ({
       general: entry.general as Record<string, unknown>,
       recipes: entry.recipes,
     };
-    const isRpg = entry.category === "RPG";
-    const m = entry.method;
-    if (isRpg) {
-      if (m === "wb") { patch.rpgWbResult = result; if (entry.inputs) patch.rpgWb = entry.inputs as RpgWbState; }
-      else if (m === "essai") { patch.rpgEssaiResult = result; if (entry.inputs) patch.rpgEssai = entry.inputs as RpgEssaiState; }
-      else { patch.rpgCwResult = result; if (entry.inputs) patch.rpgCw = entry.inputs as RpgCwState; }
-    } else {
-      if (m === "wb") { patch.wbResult = result; if (entry.inputs) patch.wb = entry.inputs as WbState; }
-      else if (m === "slump") { patch.slumpResult = result; if (entry.inputs) patch.slump = entry.inputs as SlumpState; }
-      else if (m === "essai") { patch.essaiResult = result; if (entry.inputs) patch.essai = entry.inputs as EssaiInputsState; }
-      else { patch.cwResult = result; if (entry.inputs) patch.cw = entry.inputs as CwState; }
+    // Tranches de la méthode sauvegardée — via le registre (les vieilles
+    // entrées à méthode inconnue restaurent au moins catégorie/contexte).
+    const d = descriptorFor(entry.category, entry.method);
+    if (d) {
+      const p = patch as Record<string, unknown>;
+      p[d.resultKey] = result;
+      if (entry.inputs) p[d.stateKey] = entry.inputs;
     }
     set(patch);
     return true;
