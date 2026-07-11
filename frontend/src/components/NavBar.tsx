@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { APP_NAME } from "@/lib/branding";
+import { useStore } from "@/lib/store";
+import { cloudConfigure } from "@/lib/supabase";
+import { useHydrated } from "@/lib/use-hydrated";
 
 const NAV_LINKS = [
   { href: "/", label: "Informations", step: "01" },
@@ -16,6 +19,11 @@ const NAV_LINKS = [
 
 export default function NavBar() {
   const pathname = usePathname();
+  const session = useStore((s) => s.session);
+  // Anti-mismatch d'hydratation : le lien Compte et l'indicateur ne sont rendus
+  // qu'après l'hydratation client, et seulement si la synchronisation en ligne
+  // est configurée.
+  const afficherCompte = useHydrated() && cloudConfigure();
 
   return (
     <nav
@@ -178,6 +186,35 @@ export default function NavBar() {
       >
         MODULE 1
       </div>
+
+      {/* ── Compte (si synchronisation configurée) ── */}
+      {afficherCompte && (
+        <Link
+          href="/compte"
+          title={session ? `${session.email} (${session.role === "prof" ? "Enseignant" : "Étudiant"})` : "Se connecter"}
+          style={{
+            display: "flex", alignItems: "center", gap: 7, marginLeft: 12,
+            padding: "4px 10px 4px 6px", borderRadius: 999,
+            border: `1px solid ${pathname === "/compte" ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.15)"}`,
+            background: pathname === "/compte" ? "rgba(255,255,255,0.12)" : "transparent",
+            textDecoration: "none", flexShrink: 0,
+          }}
+        >
+          <span
+            style={{
+              width: 22, height: 22, borderRadius: "50%",
+              background: session ? (session.role === "prof" ? "#f59e0b" : "var(--primary)") : "rgba(255,255,255,0.2)",
+              color: "#fff", fontSize: 11, fontWeight: 700,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            {session ? (session.email?.[0]?.toUpperCase() ?? "?") : "•"}
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.8)", whiteSpace: "nowrap" }}>
+            {session ? (session.role === "prof" ? "Prof" : "Compte") : "Compte"}
+          </span>
+        </Link>
+      )}
     </nav>
   );
 }

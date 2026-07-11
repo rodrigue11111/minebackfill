@@ -6,6 +6,7 @@ import type { MixResult, Recipe, RrcResultat } from "./types";
 import { loadVersioned, persistVersioned } from "./persisted";
 import { descriptorFor } from "./method-registry";
 import { solverVersionActive } from "./conventions";
+import type { CloudSession } from "./supabase";
 import {
   type MaterialOrigine, type MaterialKind, type MaterialItem,
   type ResiduItem, type GranulatItem, type RetardateurItem,
@@ -452,19 +453,26 @@ interface AppState {
   catalogue_liants: LiantCatalogueItem[];
   loadCatalogue: () => void;
   ajouterLiant: () => void;
-  modifierLiant: (index: number, patch: Partial<LiantCatalogueItem>) => void;
-  supprimerLiant: (index: number) => void;
+  modifierLiant: (index: number, patch: Partial<LiantCatalogueItem>, admin?: boolean) => void;
+  supprimerLiant: (index: number, admin?: boolean) => void;
   restaurerLiantsOfficiels: () => void;
 
   catalogue_residus: ResiduItem[];
   catalogue_granulats: GranulatItem[];
   catalogue_retardateurs: RetardateurItem[];
   loadMaterials: () => void;
-  addMaterial: (kind: MaterialKind) => void;
-  updateMaterial: (kind: MaterialKind, index: number, patch: Partial<MaterialItem>) => void;
-  deleteMaterial: (kind: MaterialKind, index: number) => void;
+  addMaterial: (kind: MaterialKind, admin?: boolean) => void;
+  updateMaterial: (kind: MaterialKind, index: number, patch: Partial<MaterialItem>, admin?: boolean) => void;
+  deleteMaterial: (kind: MaterialKind, index: number, admin?: boolean) => void;
   restoreOfficialMaterials: (kind: MaterialKind) => void;
   importMaterials: (kind: MaterialKind, items: MaterialItem[]) => void;
+
+  // Cloud : remplace la couche OFFICIELLE d'un catalogue par celle publiée par
+  // l'enseignant (la couche perso locale est intégralement conservée).
+  hydraterLiantsOfficielsCloud: (officiels: LiantCatalogueItem[]) => void;
+  hydraterMateriauxOfficielsCloud: (kind: MaterialKind, officiels: MaterialItem[]) => void;
+  // Cloud : remplace l'historique local par la fusion locale+cloud déjà calculée.
+  remplacerResultats: (resultats: SavedResult[]) => void;
 
   // Traçabilité : id du matériau choisi via un préréglage (snapshoté par résultat).
   selectedMaterials: { residueId?: string; aggregateId?: string; retarderId?: string };
@@ -534,6 +542,11 @@ interface AppState {
   setUnits: (patch: Partial<UnitPreferences>) => void;
   loadUnits: () => void;
 
+  // Session cloud (Supabase). null = déconnecté ou synchronisation non
+  // configurée. Alimenté par CloudSync ; les actions locales n'en dépendent pas.
+  session: CloudSession | null;
+  setSession: (session: CloudSession | null) => void;
+
   savedResults: SavedResult[];
   saveCurrentResult: (label: string) => boolean;
   deleteSavedResult: (id: string) => void;
@@ -595,19 +608,19 @@ const constantesDefaut: ConstantesCalcul = {
    ces réglages sont enveloppés dès l'origine par persisted.ts : ils pourront
    être migrés proprement quand leur schéma évoluera (P2 : bibliothèques). */
 const CATALOGUE_KEY = "minebackfill_catalogue_liants";
-const CATALOGUE_VERSION = 2; // v2 : ajout du champ `origine`
+export const CATALOGUE_VERSION = 2; // v2 : ajout du champ `origine`
 const CONSTANTES_KEY = "minebackfill_constantes";
 const GENERAL_KEY = "minebackfill_general";
 // Versions scindées (elles partageaient SETTINGS_VERSION) : les constantes
 // gagnent les drapeaux de convention (v2), general reste stable (v1). La
 // migration des constantes est implicite — loadConstantesFromStorage remplit
 // les défauts (intra2017) pour les clés absentes des anciennes sauvegardes.
-const CONSTANTES_VERSION = 2;
+export const CONSTANTES_VERSION = 2;
 const GENERAL_VERSION = 1;
 const RESIDUS_KEY = "minebackfill_catalogue_residus";
 const GRANULATS_KEY = "minebackfill_catalogue_granulats";
 const RETARDATEURS_KEY = "minebackfill_catalogue_retardateurs";
-const MATERIALS_VERSION = 1;
+export const MATERIALS_VERSION = 1;
 const identityMigration = (d: unknown) => d;
 
 // v0/v1 -> v2 : les liants sans `origine` reçoivent « officiel » pour les codes
@@ -685,6 +698,29 @@ function persistGeneral(g: GeneralInfo) {
   persistVersioned(GENERAL_KEY, GENERAL_VERSION, g);
 }
 
+// Écritures cloud fire-and-forget : n'ont lieu que si une session existe ET que
+// le client Supabase est configuré. Toute erreur réseau est avalée (le
+// localStorage reste la vérité UI). Import paresseux pour ne pas coupler le
+// store au module cloud au chargement.
+function pousserResultatCloud(session: CloudSession | null, entry: SavedResult) {
+  if (!session) return;
+  Promise.all([import("./supabase"), import("./cloud")])
+    .then(([{ getSupabase }, { upsertResultatCloud }]) => {
+      const sb = getSupabase();
+      if (sb) return upsertResultatCloud(sb, session.userId, entry);
+    })
+    .catch(() => {});
+}
+function retirerResultatCloud(session: CloudSession | null, id: string) {
+  if (!session) return;
+  Promise.all([import("./supabase"), import("./cloud")])
+    .then(([{ getSupabase }, { supprimerResultatCloud }]) => {
+      const sb = getSupabase();
+      if (sb) return supprimerResultatCloud(sb, id);
+    })
+    .catch(() => {});
+}
+
 export const useStore = create<AppState>((set, get) => ({
   // Par défaut on appelle l'API en relatif (/rpc, /rpg) via le proxy Next.js
   API: process.env.NEXT_PUBLIC_API_URL?.trim() || "",
@@ -733,10 +769,10 @@ export const useStore = create<AppState>((set, get) => ({
       persistCatalogue(catalogue);
       return { catalogue_liants: catalogue };
     }),
-  modifierLiant: (index, patch) =>
+  modifierLiant: (index, patch, admin) =>
     set((state) => {
       if (index < 0 || index >= state.catalogue_liants.length) return {};
-      if (estOfficiel(state.catalogue_liants[index])) return {}; // verrouillé
+      if (estOfficiel(state.catalogue_liants[index]) && !admin) return {}; // verrouillé (sauf prof)
       const catalogue = [...state.catalogue_liants];
       const ancienCode = catalogue[index].code;
       catalogue[index] = { ...catalogue[index], ...patch };
@@ -763,11 +799,11 @@ export const useStore = create<AppState>((set, get) => ({
       persistGeneral(general);
       return { catalogue_liants: catalogue, general };
     }),
-  supprimerLiant: (index) =>
+  supprimerLiant: (index, admin) =>
     set((state) => {
       if (state.catalogue_liants.length <= 1) return {};
       if (index < 0 || index >= state.catalogue_liants.length) return {};
-      if (estOfficiel(state.catalogue_liants[index])) return {}; // verrouillé
+      if (estOfficiel(state.catalogue_liants[index]) && !admin) return {}; // verrouillé (sauf prof)
 
       const supprime = state.catalogue_liants[index];
       const catalogue = state.catalogue_liants.filter((_, i) => i !== index);
@@ -809,30 +845,34 @@ export const useStore = create<AppState>((set, get) => ({
       catalogue_granulats: loadGranulatsFromStorage(),
       catalogue_retardateurs: loadRetardateursFromStorage(),
     }),
-  addMaterial: (kind) =>
+  addMaterial: (kind, admin) =>
     set((state) => {
       const slice = SLICE_OF_KIND[kind];
-      const items = [...(state[slice] as MaterialItem[]), MATERIAL_CONFIG[kind].neuf(makeMaterialId(kind))];
+      const neuf = MATERIAL_CONFIG[kind].neuf(makeMaterialId(kind));
+      // En mode enseignant, la nouvelle entrée est « officielle » (destinée à
+      // être publiée) ; sinon « perso » (défaut de la fabrique).
+      const item = admin ? { ...neuf, origine: "officiel" as MaterialOrigine } : neuf;
+      const items = [...(state[slice] as MaterialItem[]), item];
       persistMaterials(kind, items);
       return { [slice]: items } as Partial<AppState>;
     }),
-  updateMaterial: (kind, index, patch) =>
+  updateMaterial: (kind, index, patch, admin) =>
     set((state) => {
       const slice = SLICE_OF_KIND[kind];
       const current = state[slice] as MaterialItem[];
       if (index < 0 || index >= current.length) return {};
-      if (estOfficiel(current[index])) return {}; // verrouillé
+      if (estOfficiel(current[index]) && !admin) return {}; // verrouillé (sauf prof)
       const items = [...current];
       items[index] = { ...items[index], ...patch } as MaterialItem;
       persistMaterials(kind, items);
       return { [slice]: items } as Partial<AppState>;
     }),
-  deleteMaterial: (kind, index) =>
+  deleteMaterial: (kind, index, admin) =>
     set((state) => {
       const slice = SLICE_OF_KIND[kind];
       const current = state[slice] as MaterialItem[];
       if (index < 0 || index >= current.length) return {};
-      if (estOfficiel(current[index])) return {}; // verrouillé
+      if (estOfficiel(current[index]) && !admin) return {}; // verrouillé (sauf prof)
       const items = current.filter((_, i) => i !== index);
       persistMaterials(kind, items);
       return { [slice]: items } as Partial<AppState>;
@@ -865,6 +905,29 @@ export const useStore = create<AppState>((set, get) => ({
       const items = [...byId.values()];
       persistMaterials(kind, items);
       return { [slice]: items } as Partial<AppState>;
+    }),
+
+  hydraterLiantsOfficielsCloud: (officiels) =>
+    set((state) => {
+      // Les officiels cloud remplacent la couche officielle locale (verrouillée,
+      // aucun travail utilisateur) ; la couche perso locale est conservée.
+      const perso = state.catalogue_liants.filter((l) => !estOfficiel(l));
+      const items = [...officiels.map((l) => ({ ...l, origine: "officiel" as MaterialOrigine })), ...perso];
+      persistCatalogue(items);
+      return { catalogue_liants: items };
+    }),
+  hydraterMateriauxOfficielsCloud: (kind, officiels) =>
+    set((state) => {
+      const slice = SLICE_OF_KIND[kind];
+      const perso = (state[slice] as MaterialItem[]).filter((m) => !estOfficiel(m));
+      const items = [...officiels.map((m) => ({ ...m, origine: "officiel" as MaterialOrigine })), ...perso];
+      persistMaterials(kind, items);
+      return { [slice]: items } as Partial<AppState>;
+    }),
+  remplacerResultats: (resultats) =>
+    set(() => {
+      persistSaved(resultats);
+      return { savedResults: resultats };
     }),
 
   selectedMaterials: {},
@@ -1196,6 +1259,9 @@ export const useStore = create<AppState>((set, get) => ({
     }),
   loadUnits: () => set({ units: loadUnitsFromStorage() }),
 
+  session: null,
+  setSession: (session) => set({ session }),
+
   savedResults: [],
   loadSavedResults: () => set({ savedResults: loadSavedFromStorage() }),
   saveCurrentResult: (label) => {
@@ -1286,6 +1352,9 @@ export const useStore = create<AppState>((set, get) => ({
     const updated = [entry, ...stored.filter((s) => s.id !== entry.id)];
     const persisted = persistSaved(updated);
     set({ savedResults: updated });
+    // Écriture cloud fire-and-forget (le localStorage reste la vérité UI ; un
+    // échec réseau est silencieux, jamais de perte).
+    pousserResultatCloud(state.session, entry);
     return persisted;
   },
   restoreSavedResult: (id) => {
@@ -1346,11 +1415,12 @@ export const useStore = create<AppState>((set, get) => ({
     return true;
   },
   deleteSavedResult: (id) =>
-    set(() => {
+    set((state) => {
       // Relire le stockage avant de filtrer, pour la même raison que
       // saveCurrentResult : ne pas partir d'un état mémoire non hydraté.
       const updated = loadSavedFromStorage().filter((s) => s.id !== id);
       persistSaved(updated);
+      retirerResultatCloud(state.session, id);
       return { savedResults: updated };
     }),
 

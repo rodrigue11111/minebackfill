@@ -24,11 +24,14 @@ const SLICE = {
  * rendu. Les entrées « officiel » sont en lecture seule (badge, champs
  * désactivés) ; l'utilisateur ajoute des entrées « perso » modifiables.
  */
-export default function MaterialCatalogueCard({ kind, title, sub, columns }: {
+export default function MaterialCatalogueCard({ kind, title, sub, columns, adminMode, onPublish }: {
   kind: MaterialKind;
   title: string;
   sub?: string;
   columns: MaterialColumn[];
+  /** Mode enseignant : déverrouille les entrées officielles + bouton Publier. */
+  adminMode?: boolean;
+  onPublish?: () => void;
 }) {
   const store = useStore();
   const items = store[SLICE[kind]] as MaterialItem[];
@@ -62,9 +65,14 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns }: {
           <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={() => store.restoreOfficialMaterials(kind)}>
             Restaurer valeurs officielles
           </button>
-          <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={() => store.addMaterial(kind)}>
+          <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={() => store.addMaterial(kind, adminMode)}>
             + Ajouter
           </button>
+          {adminMode && onPublish && (
+            <button type="button" className="btn-primary" style={{ fontSize: 12 }} onClick={onPublish}>
+              Publier en ligne
+            </button>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -80,7 +88,8 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns }: {
           largeur lisible au lieu d'écraser les champs. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowX: "auto" }}>
         {items.map((item, index) => {
-          const verrou = estOfficiel(item);
+          // En mode enseignant, les entrées officielles sont éditables.
+          const verrou = estOfficiel(item) && !adminMode;
           const rec = item as unknown as Record<string, unknown>;
           return (
             <div
@@ -104,18 +113,19 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns }: {
                     onChange={(e) =>
                       store.updateMaterial(kind, index, {
                         [col.key]: col.type === "number" ? Number(e.target.value || 0) : e.target.value,
-                      } as Partial<MaterialItem>)
+                      } as Partial<MaterialItem>, adminMode)
                     }
                   />
                 </div>
               ))}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingBottom: 2 }}>
-                {verrou ? (
+                {estOfficiel(item) && (
                   <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--primary)", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
                     officiel
                   </span>
-                ) : (
-                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: "6px 12px" }} onClick={() => store.deleteMaterial(kind, index)}>
+                )}
+                {!verrou && (
+                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: "6px 12px" }} onClick={() => store.deleteMaterial(kind, index, adminMode)}>
                     Supprimer
                   </button>
                 )}
