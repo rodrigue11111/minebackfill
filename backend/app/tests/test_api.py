@@ -149,3 +149,23 @@ def test_rpg_liste_recettes_trop_courte_renvoie_422():
                                      "aggregate_fraction_pct": 30.0, "aggregate_specific_gravity": 2.8,
                                      "num_recipes": 2, "binder_mass_pct_recipes": [4.5]})
     assert r.status_code == 422
+
+
+def test_saturation_zero_rejetee_422():
+    # Sr=0 donnait un indice des vides infini (clamp silencieux 1e-9).
+    r = client.post("/rpc/cw", json={**BASE, "category": "RPC",
+                                     "solids_mass_pct": 70.0, "saturation_pct": 0.0})
+    assert r.status_code == 422
+
+
+def test_slump_zero_rejete_422():
+    r = client.post("/rpc/slump", json={**BASE, "category": "RPC",
+                                        "cone_type": "mini", "slump_mm": 0.0})
+    assert r.status_code == 422
+
+
+def test_offset_slump_negatif_rejete_422():
+    r = client.post("/rpc/slump", json={**BASE, "category": "RPC",
+                                        "cone_type": "mini", "slump_mm": 180.0,
+                                        "constants": {"slump_model_offset": -1.0}})
+    assert r.status_code == 422

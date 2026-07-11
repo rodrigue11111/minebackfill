@@ -829,7 +829,13 @@ def _predict_cw_pct_from_slump(
     b = 1.0 + 0.01 * bw_mass_pct
     denom = slump_mm_grand_cone * b / gs_residue + model_offset
     if denom <= 0.0:
-        return 0.0
+        # Hors domaine du modèle empirique : erreur explicite plutôt qu'un
+        # Cw% = 0 silencieux (qui produirait une recette absurde). Avec les
+        # contraintes gt=0 sur le slump et l'offset, ce cas est très rare.
+        raise ValueError(
+            "Slump hors du domaine du modèle prédictif (dénominateur négatif) : "
+            "vérifiez le slump et les coefficients du modèle."
+        )
     return model_coeff * b / (denom * denom)
 
 

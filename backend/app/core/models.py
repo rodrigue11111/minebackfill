@@ -239,7 +239,7 @@ class SolverConstants(BaseModel):
         4.95e6,
         description="Coefficient du modele predictif du slump.",
     )
-    slump_model_offset: float = Field(
+    slump_model_offset: confloat(gt=0) = Field(
         235.5122,
         description="Constante additive du modele predictif du slump.",
     )
@@ -283,11 +283,11 @@ class RpcCwInputs(BaseMixDesignInput):
     Entrées pour la méthode RPC – Dosage selon Cw%.
     """
 
-    solids_mass_pct: confloat(ge=0, le=100) = Field(
+    solids_mass_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="% massique de solides dans le remblai (Cw%).",
     )
-    saturation_pct: confloat(ge=0, le=100) = Field(
+    saturation_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="Degré de saturation S_r (%) du remblai.",
     )
@@ -327,7 +327,7 @@ class RpcWbInputs(BaseMixDesignInput):
       - si wc_ratio_recipes est fourni, on utilise ces valeurs imposées
     """
 
-    saturation_pct: confloat(ge=0, le=100) = Field(
+    saturation_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="Degré de saturation S_r (%) du remblai.",
     )
@@ -359,12 +359,12 @@ class RpcSlumpInputs(BaseMixDesignInput):
         "mini",
         description="Type de cône d'Abrams utilisé (mini ou grand).",
     )
-    slump_mm: confloat(ge=0) = Field(
+    slump_mm: confloat(gt=0) = Field(
         ...,
         description="Slump cible en mm (ex: 180 mm).",
     )
 
-    saturation_pct: confloat(ge=0, le=100) = Field(
+    saturation_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="Degré de saturation S_r (%) du remblai.",
     )
@@ -511,11 +511,11 @@ class RpgCwInputs(BaseMixDesignInput):
     aggregate_specific_gravity sont obligatoires.
     """
 
-    solids_mass_pct: confloat(ge=0, le=100) = Field(
+    solids_mass_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="% massique de solides dans le remblai (Cw%).",
     )
-    saturation_pct: confloat(ge=0, le=100) = Field(
+    saturation_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="Degré de saturation Sr (%).",
     )
@@ -538,7 +538,7 @@ class RpgWbInputs(BaseMixDesignInput):
     Entrées pour la méthode RPG — Rapport eau/ciment (W/C).
     """
 
-    saturation_pct: confloat(ge=0, le=100) = Field(
+    saturation_pct: confloat(gt=0, le=100) = Field(
         ...,
         description="Degré de saturation Sr (%).",
     )
