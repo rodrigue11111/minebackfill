@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
+import MaterialPresetSelect from "@/components/MaterialPresetSelect";
+import type { ResiduItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
@@ -153,6 +155,12 @@ export default function CwForm() {
               onChange={(e) => setCw({ saturation_pct: num(e.target.value) })}
             />
           </Field>
+          <MaterialPresetSelect
+            kind="residus"
+            role="residueId"
+            label="Résidu (bibliothèque)"
+            onPick={(m) => { const r = m as ResiduItem; setCw({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
+          />
           <Field label="Gs résidu" hint="Masse volumique spécifique des grains">
             <input
               type="number"

@@ -234,6 +234,8 @@ export interface SavedResult {
   /** Instantané des réglages au moment du calcul (reproductibilité exacte). */
   catalogue_liants?: LiantCatalogueItem[];
   constantes?: ConstantesCalcul;
+  /** Ids des matériaux (préréglages) utilisés — traçabilité. */
+  selectedMaterials?: { residueId?: string; aggregateId?: string; retarderId?: string };
 }
 
 /* ── localStorage helpers (SSR-safe) ── */
@@ -349,6 +351,10 @@ interface AppState {
   deleteMaterial: (kind: MaterialKind, index: number) => void;
   restoreOfficialMaterials: (kind: MaterialKind) => void;
   importMaterials: (kind: MaterialKind, items: MaterialItem[]) => void;
+
+  // Traçabilité : id du matériau choisi via un préréglage (snapshoté par résultat).
+  selectedMaterials: { residueId?: string; aggregateId?: string; retarderId?: string };
+  setSelectedMaterial: (role: "residueId" | "aggregateId" | "retarderId", id: string | undefined) => void;
 
   cw: CwState;
   setCw: (patch: Partial<CwState>) => void;
@@ -696,6 +702,10 @@ export const useStore = create<AppState>((set, get) => ({
       return { [slice]: items } as Partial<AppState>;
     }),
 
+  selectedMaterials: {},
+  setSelectedMaterial: (role, id) =>
+    set((state) => ({ selectedMaterials: { ...state.selectedMaterials, [role]: id } })),
+
   cw: {
     solid_mass_pct: 0,
     saturation_pct: 0,
@@ -1029,6 +1039,7 @@ export const useStore = create<AppState>((set, get) => ({
       solverVersion: SOLVER_VERSION,
       catalogue_liants: state.catalogue_liants.map((l) => ({ ...l })),
       constantes: { ...state.constantes },
+      selectedMaterials: { ...state.selectedMaterials },
     };
 
     let entry: SavedResult;
@@ -1097,6 +1108,7 @@ export const useStore = create<AppState>((set, get) => ({
       patch.catalogue_liants = courant;
       persistCatalogue(courant);
     }
+    if (entry.selectedMaterials) patch.selectedMaterials = { ...entry.selectedMaterials };
 
     if (entry.category === "RRC") {
       if (entry.rrc) {

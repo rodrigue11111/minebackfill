@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
+import MaterialPresetSelect from "@/components/MaterialPresetSelect";
+import type { ResiduItem, GranulatItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
@@ -115,6 +117,13 @@ export default function RpgCwForm() {
       {/* ── Agrégat (PAF-specific) ── */}
       <CardSection title="Agrégat granulaire" subtitle="Paramètres spécifiques au RPG (PAF)">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
+          <MaterialPresetSelect
+            kind="granulats"
+            role="aggregateId"
+            label="Granulat (bibliothèque)"
+            onPick={(m) => { const g = m as GranulatItem; setRpgCw({ aggregate_sg: g.gs, aggregate_fraction_pct: g.fraction_defaut_pct ?? rpgCw.aggregate_fraction_pct }); }}
+          />
+          <div />
           <Field label="Gs agrégat" hint="Masse volumique spécifique de l'agrégat">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 2.65"
               value={rpgCw.aggregate_sg || ""}
@@ -131,6 +140,13 @@ export default function RpgCwForm() {
       {/* ── Résidu ── */}
       <CardSection title="Résidu">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
+          <MaterialPresetSelect
+            kind="residus"
+            role="residueId"
+            label="Résidu (bibliothèque)"
+            onPick={(m) => { const r = m as ResiduItem; setRpgCw({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
+          />
+          <div />
           <Field label="Gs résidu" hint="Masse volumique spécifique des grains">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4"
               value={rpgCw.residue_sg || ""}
