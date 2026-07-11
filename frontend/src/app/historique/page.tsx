@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useStore, SOLVER_VERSION, type SavedResult } from "@/lib/store";
+import { useStore, SOLVER_VERSION, type SavedResult, type RpcMethod } from "@/lib/store";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
 import BackupButtons from "@/components/BackupButtons";
@@ -13,7 +13,12 @@ const METHOD_LABELS: Record<string, string> = {
   wb: "E/C",
   slump: "Slump",
   essai: "Essai-erreur",
+  rrc: "CRF",
 };
+
+/** Nombre de recettes, RPC/RPG comme RRC (dont les recettes vivent dans `rrc`). */
+const nbRecettes = (sr: SavedResult) =>
+  sr.category === "RRC" ? sr.rrc?.result.recipes.length ?? 0 : sr.recipes.length;
 
 const fmt = (v: number | undefined | null, digits = 3) => {
   if (v === undefined || v === null || Number.isNaN(v)) return "\u2014";
@@ -31,16 +36,34 @@ export default function HistoriquePage() {
     if (restoreSavedResult(sr.id)) router.push("/mix");
   };
   const exporterExcel = async (sr: SavedResult) => {
+    if (sr.category === "RRC") {
+      if (!sr.rrc) return;
+      const { exportRrcExcel } = await import("@/lib/rrc-export");
+      exportRrcExcel(sr.rrc.result.recipes, sr.general, units);
+      return;
+    }
     const { exportToExcel } = await import("@/components/mix/ResultsPanel");
-    exportToExcel(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method, units);
+    exportToExcel(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method as RpcMethod, units);
   };
   const exporterPdf = async (sr: SavedResult) => {
+    if (sr.category === "RRC") {
+      if (!sr.rrc) return;
+      const { exportRrcPdf } = await import("@/lib/rrc-export");
+      exportRrcPdf(sr.rrc.result.recipes, sr.general, units);
+      return;
+    }
     const { exportToPdf } = await import("@/lib/pdf-report");
-    exportToPdf(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method, units);
+    exportToPdf(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method as RpcMethod, units);
   };
   const exporterFeuilleLabo = async (sr: SavedResult) => {
+    if (sr.category === "RRC") {
+      if (!sr.rrc) return;
+      const { exportRrcPdf } = await import("@/lib/rrc-export");
+      exportRrcPdf(sr.rrc.result.recipes, sr.general, units);
+      return;
+    }
     const { exportPreparationPdf } = await import("@/lib/preparation-sheet");
-    exportPreparationPdf(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method, units);
+    exportPreparationPdf(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method as RpcMethod, units);
   };
   const massLabel = MASS_LABELS[units?.mass as keyof typeof MASS_LABELS] ?? "kg";
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -229,7 +252,7 @@ export default function HistoriquePage() {
                       {METHOD_LABELS[sr.method] ?? sr.method}
                     </span>
                     <span style={{ fontSize: 12, color: "#475569" }}>
-                      {sr.recipes.length} recette{sr.recipes.length > 1 ? "s" : ""}
+                      {nbRecettes(sr)} recette{nbRecettes(sr) > 1 ? "s" : ""}
                     </span>
                     <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                       {dateStr} {timeStr}
@@ -347,7 +370,14 @@ export default function HistoriquePage() {
                         </div>
                       )}
 
-                      {/* Recipe summary table */}
+                      {/* Tableau récapitulatif RPC/RPG. Le RRC n'a pas de
+                          recettes MixState : on renvoie vers Recharger/Excel. */}
+                      {sr.category === "RRC" ? (
+                        <p style={{ fontSize: 12.5, color: "#64748b", margin: 0 }}>
+                          Résultat RRC / CRF ({nbRecettes(sr)} recette{nbRecettes(sr) > 1 ? "s" : ""}).
+                          Utilisez « Recharger dans Calculs » pour le détail complet, ou « Excel » / « Feuille labo » pour l&apos;export.
+                        </p>
+                      ) : (
                       <table className="result-table" style={{ background: "#fff" }}>
                         <thead>
                           <tr style={{ background: "#f8fafc" }}>
@@ -405,6 +435,7 @@ export default function HistoriquePage() {
                           ))}
                         </tbody>
                       </table>
+                      )}
                     </div>
                   )}
                 </div>

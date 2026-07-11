@@ -11,6 +11,10 @@ export const SOLVER_VERSION = "intra2017-1.0";
 
 export type Category = "RPC" | "RPG" | "RRC";
 export type RpcMethod = "dosage_cw" | "wb" | "slump" | "essai";
+// Méthode telle qu'enregistrée dans l'historique : les méthodes RPC/RPG plus
+// le cas RRC (le RRC n'a pas de sous-méthode, on l'étiquette « rrc »). On ne
+// pollue pas RpcMethod avec une valeur qui n'est pas une méthode RPC.
+export type SavedMethod = RpcMethod | "rrc";
 
 export interface GeneralInfo {
   operator_name?: string | null;
@@ -209,9 +213,12 @@ export interface SavedResult {
   savedAt: string;
   label: string;
   category: Category;
-  method: RpcMethod;
+  method: SavedMethod;
   general: GeneralInfo;
+  /** Recettes RPC/RPG. Vide pour un résultat RRC (voir `rrc`). */
   recipes: Recipe[];
+  /** Résultat RRC : entrées + sortie (types distincts des recettes RPC/RPG). */
+  rrc?: { inputs: RrcState; result: RrcResultat };
   /** Entrées du formulaire au moment du calcul — permet « Recharger ». */
   inputs?: unknown;
   /** Version des solveurs qui a produit ces résultats. */
@@ -868,29 +875,50 @@ export const useStore = create<AppState>((set, get) => ({
   loadSavedResults: () => set({ savedResults: loadSavedFromStorage() }),
   saveCurrentResult: (label) => {
     const state = get();
-    const isRpg = state.category === "RPG";
-    const m = state.method;
-    const result = isRpg
-      ? m === "wb" ? state.rpgWbResult : m === "essai" ? state.rpgEssaiResult : state.rpgCwResult
-      : m === "wb" ? state.wbResult : m === "slump" ? state.slumpResult : m === "essai" ? state.essaiResult : state.cwResult;
-    if (!result?.recipes?.length) return false;
-    // Instantané des entrées du formulaire actif (pour « Recharger »)
-    const inputs = isRpg
-      ? m === "wb" ? state.rpgWb : m === "essai" ? state.rpgEssai : state.rpgCw
-      : m === "wb" ? state.wb : m === "slump" ? state.slump : m === "essai" ? state.essai : state.cw;
-    const entry: SavedResult = {
+    // Champs communs à toutes les catégories (dont l'instantané de contexte).
+    const commun = {
       id: `sr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       savedAt: new Date().toISOString(),
       label,
-      category: state.category,
-      method: state.method,
       general: { ...state.general },
-      recipes: result.recipes,
-      inputs: JSON.parse(JSON.stringify(inputs)),
       solverVersion: SOLVER_VERSION,
       catalogue_liants: state.catalogue_liants.map((l) => ({ ...l })),
       constantes: { ...state.constantes },
     };
+
+    let entry: SavedResult;
+    if (state.category === "RRC") {
+      const result = state.rrcResult;
+      if (!result?.recipes?.length) return false;
+      entry = {
+        ...commun,
+        category: "RRC",
+        method: "rrc",
+        recipes: [],
+        rrc: {
+          inputs: JSON.parse(JSON.stringify(state.rrc)),
+          result: JSON.parse(JSON.stringify(result)),
+        },
+      };
+    } else {
+      const isRpg = state.category === "RPG";
+      const m = state.method;
+      const result = isRpg
+        ? m === "wb" ? state.rpgWbResult : m === "essai" ? state.rpgEssaiResult : state.rpgCwResult
+        : m === "wb" ? state.wbResult : m === "slump" ? state.slumpResult : m === "essai" ? state.essaiResult : state.cwResult;
+      if (!result?.recipes?.length) return false;
+      // Instantané des entrées du formulaire actif (pour « Recharger »)
+      const inputs = isRpg
+        ? m === "wb" ? state.rpgWb : m === "essai" ? state.rpgEssai : state.rpgCw
+        : m === "wb" ? state.wb : m === "slump" ? state.slump : m === "essai" ? state.essai : state.cw;
+      entry = {
+        ...commun,
+        category: state.category,
+        method: state.method,
+        recipes: result.recipes,
+        inputs: JSON.parse(JSON.stringify(inputs)),
+      };
+    }
     // Fusion avec le stockage (pas seulement l'état mémoire, qui peut ne pas
     // avoir été hydraté si l'utilisateur n'est jamais passé par Historique),
     // en dédupliquant sur l'id pour ne pas écraser l'historique existant.
@@ -904,15 +932,8 @@ export const useStore = create<AppState>((set, get) => ({
     const state = get();
     const entry = state.savedResults.find((s) => s.id === id);
     if (!entry) return false;
-    const result: MixResult = {
-      category: entry.category,
-      method: entry.method,
-      general: entry.general as Record<string, unknown>,
-      recipes: entry.recipes,
-    };
     const patch: Partial<AppState> = {
       category: entry.category,
-      method: entry.method,
       general: { ...entry.general },
     };
     // Restaurer et persister le contexte du résultat (reproductibilité) :
@@ -931,6 +952,23 @@ export const useStore = create<AppState>((set, get) => ({
       patch.catalogue_liants = courant;
       persistCatalogue(courant);
     }
+
+    if (entry.category === "RRC") {
+      if (entry.rrc) {
+        patch.rrc = entry.rrc.inputs;
+        patch.rrcResult = entry.rrc.result;
+      }
+      set(patch);
+      return true;
+    }
+
+    patch.method = entry.method as RpcMethod;
+    const result: MixResult = {
+      category: entry.category,
+      method: entry.method,
+      general: entry.general as Record<string, unknown>,
+      recipes: entry.recipes,
+    };
     const isRpg = entry.category === "RPG";
     const m = entry.method;
     if (isRpg) {
