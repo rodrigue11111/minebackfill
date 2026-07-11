@@ -6,6 +6,7 @@ import type { MixResult, Recipe, RrcResultat } from "./types";
 import { loadVersioned, persistVersioned } from "./persisted";
 import { descriptorFor } from "./method-registry";
 import { solverVersionActive } from "./conventions";
+import type { CloudSession } from "./supabase";
 import {
   type MaterialOrigine, type MaterialKind, type MaterialItem,
   type ResiduItem, type GranulatItem, type RetardateurItem,
@@ -533,6 +534,11 @@ interface AppState {
   units: UnitPreferences;
   setUnits: (patch: Partial<UnitPreferences>) => void;
   loadUnits: () => void;
+
+  // Session cloud (Supabase). null = déconnecté ou synchronisation non
+  // configurée. Alimenté par CloudSync ; les actions locales n'en dépendent pas.
+  session: CloudSession | null;
+  setSession: (session: CloudSession | null) => void;
 
   savedResults: SavedResult[];
   saveCurrentResult: (label: string) => boolean;
@@ -1195,6 +1201,9 @@ export const useStore = create<AppState>((set, get) => ({
       return { units: updated };
     }),
   loadUnits: () => set({ units: loadUnitsFromStorage() }),
+
+  session: null,
+  setSession: (session) => set({ session }),
 
   savedResults: [],
   loadSavedResults: () => set({ savedResults: loadSavedFromStorage() }),
