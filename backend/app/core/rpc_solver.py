@@ -612,7 +612,7 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
             solids_mass_pct=eq.cw * 100.0,
             saturation_pct=eq.sr * 100.0,
             wc_ratio=eq.wc,
-            bw_mass_pct=base_state.bw_mass_pct,
+            bw_mass_pct=eq.bw * 100.0,
             bv_vol_pct=eq.bv * 100.0,
             cv_vol_pct=eq.cv * 100.0,
             w_mass_pct=eq.w * 100.0,

@@ -194,6 +194,7 @@ class EssaiQuantities:
     n: float
     cv: float
     theta: float
+    bw: float            # fraction massique de liant ATTEINTE  [D89]
     bv: float
     rho_d: float
     rho_h: float
@@ -316,7 +317,11 @@ def apply_essai_adjustments(*,
 
     cv_aj = vs_new / vt_new if vt_new > 0.0 else 0.0        # [D82]
     theta_aj = vw_tot / vt_new if vt_new > 0.0 else 0.0     # [D80]
-    bv_aj = bw_target_frac * gs_nb_used / gs_binder if gs_binder > 0.0 else 0.0  # [D90]
+    # Bw ATTEINT (D89) : le liant réel sur les solides réels. Sous la règle
+    # « solides_totaux » (Intra 2017), il vaut exactement bw_target ; sous
+    # « residu_ajoute » (gramme), un ajout de granulat sans liant le dilue.
+    bw_aj = mb_tot / solids_nb if solids_nb > 0.0 else 0.0
+    bv_aj = bw_aj * gs_nb_used / gs_binder if gs_binder > 0.0 else 0.0  # [D90]
 
     rho_d_aj = gs_bkf_used * rho_w / (1.0 + e_aj) if e_aj > -1.0 else 0.0  # [D93]
     rho_h_aj = rho_d_aj * (1.0 + w_aj)                                     # [D91]
@@ -327,7 +332,7 @@ def apply_essai_adjustments(*,
     return EssaiQuantities(
         gs_backfill=gs_bkf_used, gs_nonbinder=gs_nb_used,
         w=w_aj, cw=cw_aj, wc=wc_aj,
-        e=e_aj, sr=sr_aj, n=n_aj, cv=cv_aj, theta=theta_aj, bv=bv_aj,
+        e=e_aj, sr=sr_aj, n=n_aj, cv=cv_aj, theta=theta_aj, bw=bw_aj, bv=bv_aj,
         rho_d=rho_d_aj, rho_h=rho_h_aj,
         ms_total=ms_tot, mr_sec_tot=mr_sec_tot, mg_sec_tot=mg_sec_tot,
         mb_tot=mb_tot, mb_ad=mb_ad, mw_tot=mw_tot,

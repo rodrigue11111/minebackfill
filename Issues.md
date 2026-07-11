@@ -109,10 +109,19 @@ Le pack UI « gramme » applique le preset. Oracle : `excel_twin_gramme.py` +
 tests d'or discriminants (au moins un scénario « ajout granulat » où
 `|mb_ad(gramme) − mb_ad(intra)| > seuil`).
 
-**Aucun autre delta structurel relevé** (base recette, densités, volumes, W/C,
-Cv, e, Sr : mêmes formules qu'Intra 2017). Une 2ᵉ feuille du classeur,
-`Synthese calculs`, est une simple mise en page des résultats (pas de nouvelle
-formule métier).
+**Aucun autre delta structurel relevé** (base recette, volumes, W/C, Cv, e, Sr :
+mêmes formules qu'Intra 2017). Une 2ᵉ feuille du classeur, `Synthese calculs`,
+est une simple mise en page des résultats (pas de nouvelle formule métier).
+
+**Nuance découverte à l'implémentation de l'oracle.** Sous la règle gramme, un
+ajout de granulat *sans liant* **dilue le Bw atteint** (`D89` = liant/solides
+< Bw cible). L'essai du solveur reporte désormais le **Bw ATTEINT**
+(`mb_tot/solides`, cellule `D89`) et non plus le Bw cible — strictement
+identique en Intra 2017 (le liant y suit tous les solides, donc atteint = cible),
+correct en gramme. La feuille gramme **s'arrête à `D90` (Bv) : aucune masse
+volumique** (`D91-D96`, propres à la feuille tonne) ; sous gramme, la densité de
+l'app suit la convention « base » (Gs figé) — non arbitrable par la feuille, donc
+non comparée à l'oracle gramme.
 
 ---
 
