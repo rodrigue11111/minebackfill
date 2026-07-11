@@ -179,7 +179,8 @@ export default function ProductionForm() {
       <CardSection title="Propriétés du résidu" subtitle="Paramètres reçus du laboratoire">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
           <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
-            onPick={(m) => { const r = m as ResiduItem; setIndustrie({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }} />
+            onPick={(m) => { const r = m as ResiduItem; setIndustrie({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
+            matches={(m) => { const r = m as ResiduItem; return r.gs === industrie.residue_sg && r.w0_pct === industrie.residue_w_pct; }} />
           <div />
           <Field label="Gs résidu">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4"
@@ -201,7 +202,8 @@ export default function ProductionForm() {
         {isRpg && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px 14px", marginTop: 10 }}>
             <MaterialPresetSelect kind="granulats" role="aggregateId" label="Granulat (bibliothèque)"
-              onPick={(m) => { const g = m as GranulatItem; setIndustrie({ aggregate_sg: g.gs, aggregate_w_pct: g.humidite_pct, aggregate_fraction_pct: g.fraction_defaut_pct ?? industrie.aggregate_fraction_pct }); }} />
+              onPick={(m) => { const g = m as GranulatItem; setIndustrie({ aggregate_sg: g.gs, aggregate_w_pct: g.humidite_pct, aggregate_fraction_pct: g.fraction_defaut_pct ?? industrie.aggregate_fraction_pct }); }}
+              matches={(m) => (m as GranulatItem).gs === industrie.aggregate_sg} />
             <div />
             <div />
             <Field label="Gs agrégat">

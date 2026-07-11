@@ -65,23 +65,44 @@ export function materialsVersCsv(kind: MaterialKind, items: MaterialItem[]): voi
 
 /* ── Import ── */
 
-function parseLigneCsv(ligne: string): string[] {
-  const cells: string[] = [];
+/**
+ * Découpe un texte CSV complet en lignes de cellules (séparateur point-virgule).
+ * Le parcours se fait caractère par caractère sur TOUT le texte : une cellule
+ * entre guillemets peut donc contenir des points-virgules ET des retours à la
+ * ligne sans être coupée.
+ */
+function parseCsv(texte: string): string[][] {
+  const lignes: string[][] = [];
+  let cells: string[] = [];
   let cur = "";
   let dansGuillemets = false;
-  for (let i = 0; i < ligne.length; i++) {
-    const ch = ligne[i];
+  const finLigne = () => {
+    cells.push(cur);
+    cur = "";
+    if (cells.some((c) => c.trim() !== "")) lignes.push(cells);
+    cells = [];
+  };
+  for (let i = 0; i < texte.length; i++) {
+    const ch = texte[i];
     if (dansGuillemets) {
-      if (ch === '"' && ligne[i + 1] === '"') { cur += '"'; i++; }
+      if (ch === '"' && texte[i + 1] === '"') { cur += '"'; i++; }
       else if (ch === '"') dansGuillemets = false;
       else cur += ch;
     } else if (ch === '"') dansGuillemets = true;
     else if (ch === ";") { cells.push(cur); cur = ""; }
-    else cur += ch;
+    else if (ch === "\n") finLigne();
+    else if (ch !== "\r") cur += ch;
   }
-  cells.push(cur);
-  return cells;
+  if (cur !== "" || cells.length > 0) finLigne();
+  return lignes;
 }
+
+/** Champ numérique « principal » exigé strictement positif par type. */
+const CHAMP_REQUIS: Record<MaterialKind, string> = {
+  residus: "gs",
+  granulats: "gs",
+  retardateurs: "densite_g_ml",
+};
 
 function construireItem(kind: MaterialKind, source: Record<string, unknown>, i: number): MaterialItem {
   const num = CHAMPS_NUM[kind];
@@ -92,11 +113,23 @@ function construireItem(kind: MaterialKind, source: Record<string, unknown>, i: 
   for (const champ of CHAMPS[kind]) {
     const brut = source[champ];
     if (num.has(champ)) {
-      const n = Number(brut);
+      // Virgule décimale acceptée (l'export CSV cible Excel FR).
+      const n = Number(String(brut ?? "").trim().replace(",", "."));
       out[champ] = Number.isFinite(n) ? n : 0;
     } else if (brut !== undefined && brut !== null && brut !== "") {
       out[champ] = String(brut);
     }
+  }
+  // Validation minimale : un nom et le champ physique principal > 0, sinon le
+  // matériau produirait des calculs silencieusement faux (Gs 0...).
+  if (!out.nom || String(out.nom).trim() === "") {
+    throw new Error(`Ligne ${i + 1} : le champ « nom » est requis.`);
+  }
+  const principal = out[CHAMP_REQUIS[kind]];
+  if (typeof principal !== "number" || principal <= 0) {
+    throw new Error(
+      `Ligne ${i + 1} (« ${String(out.nom)} ») : « ${CHAMP_REQUIS[kind]} » doit être un nombre strictement positif.`,
+    );
   }
   return out as unknown as MaterialItem;
 }
@@ -117,11 +150,10 @@ export async function materialsDepuisFichier(kind: MaterialKind, fichier: File):
   }
 
   // CSV
-  const lignes = texte.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim() !== "");
+  const lignes = parseCsv(texte.replace(/^﻿/, ""));
   if (lignes.length < 2) throw new Error("Fichier CSV vide ou sans données.");
-  const entetes = parseLigneCsv(lignes[0]).map((h) => h.trim());
-  return lignes.slice(1).map((ligne, i) => {
-    const cells = parseLigneCsv(ligne);
+  const entetes = lignes[0].map((h) => h.trim());
+  return lignes.slice(1).map((cells, i) => {
     const source: Record<string, unknown> = {};
     entetes.forEach((h, ci) => { source[h] = cells[ci]; });
     return construireItem(kind, source, i);

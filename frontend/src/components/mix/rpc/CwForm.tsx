@@ -160,6 +160,7 @@ export default function CwForm() {
             role="residueId"
             label="Résidu (bibliothèque)"
             onPick={(m) => { const r = m as ResiduItem; setCw({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
+            matches={(m) => { const r = m as ResiduItem; return r.gs === cw.residue_sg && r.w0_pct === cw.residue_w_pct; }}
           />
           <Field label="Gs résidu" hint="Masse volumique spécifique des grains">
             <input

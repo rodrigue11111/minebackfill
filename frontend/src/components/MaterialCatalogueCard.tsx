@@ -76,7 +76,9 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns }: {
       </div>
       {sub && <p style={{ color: "var(--muted-foreground)", fontSize: 12.5, margin: "0 0 12px" }}>{sub}</p>}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* Défilement horizontal sur écran étroit : les colonnes gardent une
+          largeur lisible au lieu d'écraser les champs. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowX: "auto" }}>
         {items.map((item, index) => {
           const verrou = estOfficiel(item);
           const rec = item as unknown as Record<string, unknown>;
@@ -87,6 +89,7 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns }: {
                 display: "grid", gridTemplateColumns: gridCols, gap: 8, alignItems: "end",
                 border: "1px solid var(--border)", borderRadius: 8, padding: 10,
                 background: verrou ? "#f8fafc" : "#fff",
+                minWidth: 120 * columns.length + 90,
               }}
             >
               {columns.map((col) => (

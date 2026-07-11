@@ -87,6 +87,19 @@ describe("store — persistance des réglages (P0.2)", () => {
     expect(useStore.getState().constantes.gravite_m_s2).toBe(9.9);
   });
 
+  it("une constante persistée à 0 (champ vidé) revient au défaut au rechargement", () => {
+    // Vider un champ dans Réglages persiste 0 ; sans assainissement, tous les
+    // calculs resteraient durablement en erreur (rho_eau = 0 -> 422).
+    useStore.getState().setConstantes({ masse_volumique_eau_kg_m3: 0 });
+    useStore.getState().loadConstantes();
+    expect(useStore.getState().constantes.masse_volumique_eau_kg_m3).toBe(1000.0);
+    // Les autres constantes valides ne sont pas touchées.
+    useStore.getState().setConstantes({ gravite_m_s2: 9.9, coefficient_modele_slump: 0 });
+    useStore.getState().loadConstantes();
+    expect(useStore.getState().constantes.gravite_m_s2).toBe(9.9);
+    expect(useStore.getState().constantes.coefficient_modele_slump).toBe(4.95e6);
+  });
+
   it("les infos générales survivent au rechargement", async () => {
     useStore.getState().setGeneral({ project_name: "Projet Test" });
     useStore.setState({ general: { ...useStore.getState().general, project_name: null } });

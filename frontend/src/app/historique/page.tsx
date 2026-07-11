@@ -38,7 +38,10 @@ export default function HistoriquePage() {
   // Avertit avant d'exporter un resultat calcule avec d'anciennes formules
   // (masses potentiellement incorrectes, cf. correctif (1+Bv)).
   const confirmerExportObsolete = (sr: SavedResult): boolean => {
-    if (sr.solverVersion && sr.solverVersion !== SOLVER_VERSION) {
+    // Un solverVersion absent = sauvegarde antérieure à l'estampillage (les
+    // plus anciennes, donc les plus suspectes) : on avertit aussi, comme le
+    // badge « anciennes formules » plus bas.
+    if (sr.solverVersion !== SOLVER_VERSION) {
       return window.confirm(
         "Ce résultat a été calculé avec une version antérieure des formules ; " +
         "ses masses peuvent être incorrectes. Exporter quand même ?",
@@ -349,11 +352,15 @@ export default function HistoriquePage() {
                           onClick={(e) => { e.stopPropagation(); exporterPdf(sr); }}>
                           PDF
                         </button>
-                        <button className="btn-secondary" style={{ padding: "6px 14px", fontSize: 12.5 }}
-                          onClick={(e) => { e.stopPropagation(); exporterFeuilleLabo(sr); }}>
-                          Feuille labo
-                        </button>
-                        {!sr.inputs && (
+                        {/* RRC : la feuille labo est le même PDF (rrc-export) — un seul bouton. */}
+                        {sr.category !== "RRC" && (
+                          <button className="btn-secondary" style={{ padding: "6px 14px", fontSize: 12.5 }}
+                            onClick={(e) => { e.stopPropagation(); exporterFeuilleLabo(sr); }}>
+                            Feuille labo
+                          </button>
+                        )}
+                        {/* Les entrées RRC portent leurs entrées dans `rrc`, pas `inputs`. */}
+                        {!sr.inputs && !sr.rrc && (
                           <span style={{ fontSize: 11.5, color: "#94a3b8", alignSelf: "center" }}>
                             (sauvegarde ancienne : rechargement des résultats seulement, sans les entrées)
                           </span>
