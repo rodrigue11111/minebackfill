@@ -453,12 +453,87 @@ export async function exportToExcel(
   saveAs(blob, filename);
 }
 
-function RrcResultatsView({ recipes, massLabel, toMass, general, units }: {
+/**
+ * Bouton « Sauvegarder » autonome (déclencheur + boîte de dialogue de nom).
+ * Utilisé par la vue RRC — la barre RPC/RPG a sa propre instance inline.
+ */
+function SaveResultControl({ onSave, placeholder }: {
+  onSave: (label: string) => boolean;
+  placeholder: string;
+}) {
+  const [show, setShow] = useState(false);
+  const [label, setLabel] = useState("");
+  const [outcome, setOutcome] = useState<"ok" | "erreur" | null>(null);
+  const doSave = () => setOutcome(onSave(label.trim() || placeholder) ? "ok" : "erreur");
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        className="btn-secondary"
+        style={{ padding: "6px 14px", fontSize: 12.5 }}
+        onClick={() => { setShow(true); setLabel(""); setOutcome(null); }}
+      >
+        Sauvegarder
+      </button>
+      {show && (
+        <div
+          style={{
+            position: "absolute", top: "calc(100% + 6px)", left: 0, width: 280,
+            background: "#fff", border: `1px solid ${SECTION_BORDER}`, borderRadius: 8,
+            padding: 14, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 20,
+          }}
+        >
+          {outcome ? (
+            <div style={{ textAlign: "center", padding: "8px 0" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: outcome === "ok" ? HEADER_TEXT : "#dc2626", marginBottom: 4 }}>
+                {outcome === "ok"
+                  ? "Sauvegarde effectuée"
+                  : "Sauvegarde locale impossible (stockage plein ou bloqué) — exportez vos données depuis Réglages."}
+              </div>
+              <button type="button" onClick={() => setShow(false)} style={{ fontSize: 12, color: "#64748b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                Fermer
+              </button>
+            </div>
+          ) : (
+            <>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: HEADER_TEXT, marginBottom: 6 }}>
+                Nom de la sauvegarde
+              </label>
+              <input
+                type="text"
+                className="field-input"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder={placeholder}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") doSave();
+                  if (e.key === "Escape") setShow(false);
+                }}
+              />
+              <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                <button type="button" onClick={doSave} className="btn-primary" style={{ flex: 1, justifyContent: "center", padding: "7px 12px", fontSize: 12 }}>
+                  Enregistrer
+                </button>
+                <button type="button" onClick={() => setShow(false)} className="btn-secondary" style={{ padding: "7px 12px", fontSize: 12 }}>
+                  Annuler
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RrcResultatsView({ recipes, massLabel, toMass, general, units, onSave }: {
   recipes: RrcRecipe[];
   massLabel: string;
   toMass: (kg: number | null | undefined) => number | null;
   general: GeneralInfo;
   units: UnitPreferences;
+  onSave: (label: string) => boolean;
 }) {
   const n = recipes.length;
   const rows: { label: string; get: (r: RrcRecipe) => number | null | undefined; digits?: number; bold?: boolean }[] = [
@@ -509,7 +584,11 @@ function RrcResultatsView({ recipes, massLabel, toMass, general, units }: {
           </tbody>
         </table>
       </div>
-      <div style={{ display: "flex", gap: 8, padding: "0 2px" }}>
+      <div style={{ display: "flex", gap: 8, padding: "0 2px", alignItems: "flex-start" }}>
+        <SaveResultControl
+          onSave={onSave}
+          placeholder={`RRC — ${new Date().toLocaleDateString("fr-CA")}`}
+        />
         <button className="btn-secondary" style={{ padding: "6px 14px", fontSize: 12.5 }}
           onClick={async () => {
             const { exportRrcExcel } = await import("@/lib/rrc-export");
@@ -622,6 +701,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         toMass={(kg) => fromStoreMass(kg, units.mass)}
         general={general}
         units={units}
+        onSave={(lbl) => store.saveCurrentResult(lbl)}
       />
     );
   }

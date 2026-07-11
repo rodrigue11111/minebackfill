@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
+import { loadVersioned, persistVersioned } from "./persisted";
 
 // Version des solveurs : estampillée sur chaque résultat sauvegardé.
 // À incrémenter quand les formules changent (voir Issues.md).
@@ -10,6 +11,10 @@ export const SOLVER_VERSION = "intra2017-1.0";
 
 export type Category = "RPC" | "RPG" | "RRC";
 export type RpcMethod = "dosage_cw" | "wb" | "slump" | "essai";
+// Méthode telle qu'enregistrée dans l'historique : les méthodes RPC/RPG plus
+// le cas RRC (le RRC n'a pas de sous-méthode, on l'étiquette « rrc »). On ne
+// pollue pas RpcMethod avec une valeur qui n'est pas une méthode RPC.
+export type SavedMethod = RpcMethod | "rrc";
 
 export interface GeneralInfo {
   operator_name?: string | null;
@@ -208,13 +213,19 @@ export interface SavedResult {
   savedAt: string;
   label: string;
   category: Category;
-  method: RpcMethod;
+  method: SavedMethod;
   general: GeneralInfo;
+  /** Recettes RPC/RPG. Vide pour un résultat RRC (voir `rrc`). */
   recipes: Recipe[];
+  /** Résultat RRC : entrées + sortie (types distincts des recettes RPC/RPG). */
+  rrc?: { inputs: RrcState; result: RrcResultat };
   /** Entrées du formulaire au moment du calcul — permet « Recharger ». */
   inputs?: unknown;
   /** Version des solveurs qui a produit ces résultats. */
   solverVersion?: string;
+  /** Instantané des réglages au moment du calcul (reproductibilité exacte). */
+  catalogue_liants?: LiantCatalogueItem[];
+  constantes?: ConstantesCalcul;
 }
 
 /* ── localStorage helpers (SSR-safe) ── */
@@ -312,8 +323,10 @@ interface AppState {
 
   constantes: ConstantesCalcul;
   setConstantes: (patch: Partial<ConstantesCalcul>) => void;
+  loadConstantes: () => void;
 
   catalogue_liants: LiantCatalogueItem[];
+  loadCatalogue: () => void;
   ajouterLiant: () => void;
   modifierLiant: (index: number, patch: Partial<LiantCatalogueItem>) => void;
   supprimerLiant: (index: number) => void;
@@ -416,6 +429,50 @@ const catalogueLiantsDefaut: LiantCatalogueItem[] = [
   { id: "liant_chaux", code: "CHAUX", nom: "Chaux", gs: 2.6 },
 ];
 
+const generalDefaut: GeneralInfo = {
+  binder_count: 2,
+  binder1_type: "CP10",
+  binder2_type: "SLAG",
+  binder3_type: null,
+};
+
+const constantesDefaut: ConstantesCalcul = {
+  masse_volumique_eau_kg_m3: 1000.0,
+  gravite_m_s2: 9.81,
+  facteur_petit_cone_vers_grand_cone: 2.335,
+  coefficient_modele_slump: 4.95e6,
+  constante_modele_slump: 235.5122,
+};
+
+/* ── Persistance versionnée des réglages (catalogue, constantes, projet) ──
+   Contrairement aux 4 clés historiques (résultats, unités, prix, journal),
+   ces réglages sont enveloppés dès l'origine par persisted.ts : ils pourront
+   être migrés proprement quand leur schéma évoluera (P2 : bibliothèques). */
+const CATALOGUE_KEY = "minebackfill_catalogue_liants";
+const CONSTANTES_KEY = "minebackfill_constantes";
+const GENERAL_KEY = "minebackfill_general";
+const SETTINGS_VERSION = 1;
+const identityMigration = (d: unknown) => d;
+
+function loadCatalogueFromStorage(): LiantCatalogueItem[] {
+  return loadVersioned(CATALOGUE_KEY, SETTINGS_VERSION, identityMigration, catalogueLiantsDefaut);
+}
+function persistCatalogue(items: LiantCatalogueItem[]) {
+  persistVersioned(CATALOGUE_KEY, SETTINGS_VERSION, items);
+}
+function loadConstantesFromStorage(): ConstantesCalcul {
+  return loadVersioned(CONSTANTES_KEY, SETTINGS_VERSION, identityMigration, constantesDefaut);
+}
+function persistConstantes(c: ConstantesCalcul) {
+  persistVersioned(CONSTANTES_KEY, SETTINGS_VERSION, c);
+}
+function loadGeneralFromStorage(): GeneralInfo {
+  return loadVersioned(GENERAL_KEY, SETTINGS_VERSION, identityMigration, generalDefaut);
+}
+function persistGeneral(g: GeneralInfo) {
+  persistVersioned(GENERAL_KEY, SETTINGS_VERSION, g);
+}
+
 export const useStore = create<AppState>((set, get) => ({
   // Par défaut on appelle l'API en relatif (/rpc, /rpg) via le proxy Next.js
   API: process.env.NEXT_PUBLIC_API_URL?.trim() || "",
@@ -425,39 +482,26 @@ export const useStore = create<AppState>((set, get) => ({
   setCategory: (c) => set({ category: c }),
   setMethod: (m) => set({ method: m }),
 
-  general: {
-    binder_count: 2,
-    binder1_type: "CP10",
-    binder2_type: "SLAG",
-    binder3_type: null,
-  },
+  general: generalDefaut,
   setGeneral: (patch) =>
-    set((state) => ({
-      general: {
-        ...state.general,
-        ...patch,
-      },
-    })),
-  loadGeneral: async () => {
-    return;
-  },
+    set((state) => {
+      const general = { ...state.general, ...patch };
+      persistGeneral(general);
+      return { general };
+    }),
+  loadGeneral: async () => set({ general: loadGeneralFromStorage() }),
 
-  constantes: {
-    masse_volumique_eau_kg_m3: 1000.0,
-    gravite_m_s2: 9.81,
-    facteur_petit_cone_vers_grand_cone: 2.335,
-    coefficient_modele_slump: 4.95e6,
-    constante_modele_slump: 235.5122,
-  },
+  constantes: constantesDefaut,
   setConstantes: (patch) =>
-    set((state) => ({
-      constantes: {
-        ...state.constantes,
-        ...patch,
-      },
-    })),
+    set((state) => {
+      const constantes = { ...state.constantes, ...patch };
+      persistConstantes(constantes);
+      return { constantes };
+    }),
+  loadConstantes: () => set({ constantes: loadConstantesFromStorage() }),
 
   catalogue_liants: catalogueLiantsDefaut,
+  loadCatalogue: () => set({ catalogue_liants: loadCatalogueFromStorage() }),
   ajouterLiant: () =>
     set((state) => {
       const index = state.catalogue_liants.length + 1;
@@ -467,7 +511,9 @@ export const useStore = create<AppState>((set, get) => ({
         nom: `Liant ${index}`,
         gs: 3.0,
       };
-      return { catalogue_liants: [...state.catalogue_liants, nouveau] };
+      const catalogue = [...state.catalogue_liants, nouveau];
+      persistCatalogue(catalogue);
+      return { catalogue_liants: catalogue };
     }),
   modifierLiant: (index, patch) =>
     set((state) => {
@@ -478,6 +524,7 @@ export const useStore = create<AppState>((set, get) => ({
       const nouveauCode = catalogue[index].code;
       const doitRenommer = ancienCode !== nouveauCode && !!nouveauCode;
 
+      persistCatalogue(catalogue);
       if (!doitRenommer) {
         return { catalogue_liants: catalogue };
       }
@@ -485,15 +532,14 @@ export const useStore = create<AppState>((set, get) => ({
       const renommer = (code?: string | null) =>
         code === ancienCode ? nouveauCode : code;
 
-      return {
-        catalogue_liants: catalogue,
-        general: {
-          ...state.general,
-          binder1_type: renommer(state.general.binder1_type),
-          binder2_type: renommer(state.general.binder2_type),
-          binder3_type: renommer(state.general.binder3_type),
-        },
+      const general = {
+        ...state.general,
+        binder1_type: renommer(state.general.binder1_type),
+        binder2_type: renommer(state.general.binder2_type),
+        binder3_type: renommer(state.general.binder3_type),
       };
+      persistGeneral(general);
+      return { catalogue_liants: catalogue, general };
     }),
   supprimerLiant: (index) =>
     set((state) => {
@@ -507,15 +553,15 @@ export const useStore = create<AppState>((set, get) => ({
       const nettoyerCode = (code?: string | null) =>
         code === codeSupprime ? codeFallback : code;
 
-      return {
-        catalogue_liants: catalogue,
-        general: {
-          ...state.general,
-          binder1_type: nettoyerCode(state.general.binder1_type),
-          binder2_type: nettoyerCode(state.general.binder2_type),
-          binder3_type: nettoyerCode(state.general.binder3_type),
-        },
+      const general = {
+        ...state.general,
+        binder1_type: nettoyerCode(state.general.binder1_type),
+        binder2_type: nettoyerCode(state.general.binder2_type),
+        binder3_type: nettoyerCode(state.general.binder3_type),
       };
+      persistCatalogue(catalogue);
+      persistGeneral(general);
+      return { catalogue_liants: catalogue, general };
     }),
 
   cw: {
@@ -809,10 +855,24 @@ export const useStore = create<AppState>((set, get) => ({
         { code: "FLY_ASH", price_per_kg: 0.06 },
         { code: "CHAUX", price_per_kg: 0.08 },
       ];
-      persistBinderPrices(testBinderPrices);
+      persistCatalogue(catalogue);
+      persistGeneral(newGeneral);
 
-      console.log("[fillTestData] Valeurs Intra 2017 chargées — Cw:", cwPct, "Gs:", gs, "w0:", w0, "Bw:", bwLevels[0]);
-      return { general: newGeneral, catalogue_liants: catalogue, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb, industrie: newIndustrie, binderPrices: testBinderPrices };
+      // Prix de démonstration : NON persistés — les prix enregistrés de
+      // l'utilisateur restent intacts. On demande confirmation avant de les
+      // remplacer À L'ÉCRAN si des prix personnalisés différents existent déjà.
+      const prixEnregistres = loadBinderPricesFromStorage();
+      const memesPrix = JSON.stringify(prixEnregistres) === JSON.stringify(testBinderPrices);
+      let binderPrices = testBinderPrices;
+      if (prixEnregistres.length > 0 && !memesPrix && typeof window !== "undefined") {
+        const ok = window.confirm(
+          "Charger les prix de liants de la démonstration ? Vos prix affichés seront remplacés " +
+          "(vos prix enregistrés ne sont pas modifiés).",
+        );
+        if (!ok) binderPrices = state.binderPrices;
+      }
+
+      return { general: newGeneral, catalogue_liants: catalogue, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb, industrie: newIndustrie, binderPrices };
     }),
 
   units: DEFAULT_UNITS,
@@ -828,28 +888,55 @@ export const useStore = create<AppState>((set, get) => ({
   loadSavedResults: () => set({ savedResults: loadSavedFromStorage() }),
   saveCurrentResult: (label) => {
     const state = get();
-    const isRpg = state.category === "RPG";
-    const m = state.method;
-    const result = isRpg
-      ? m === "wb" ? state.rpgWbResult : m === "essai" ? state.rpgEssaiResult : state.rpgCwResult
-      : m === "wb" ? state.wbResult : m === "slump" ? state.slumpResult : m === "essai" ? state.essaiResult : state.cwResult;
-    if (!result?.recipes?.length) return false;
-    // Instantané des entrées du formulaire actif (pour « Recharger »)
-    const inputs = isRpg
-      ? m === "wb" ? state.rpgWb : m === "essai" ? state.rpgEssai : state.rpgCw
-      : m === "wb" ? state.wb : m === "slump" ? state.slump : m === "essai" ? state.essai : state.cw;
-    const entry: SavedResult = {
+    // Champs communs à toutes les catégories (dont l'instantané de contexte).
+    const commun = {
       id: `sr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       savedAt: new Date().toISOString(),
       label,
-      category: state.category,
-      method: state.method,
       general: { ...state.general },
-      recipes: result.recipes,
-      inputs: JSON.parse(JSON.stringify(inputs)),
       solverVersion: SOLVER_VERSION,
+      catalogue_liants: state.catalogue_liants.map((l) => ({ ...l })),
+      constantes: { ...state.constantes },
     };
-    const updated = [entry, ...state.savedResults];
+
+    let entry: SavedResult;
+    if (state.category === "RRC") {
+      const result = state.rrcResult;
+      if (!result?.recipes?.length) return false;
+      entry = {
+        ...commun,
+        category: "RRC",
+        method: "rrc",
+        recipes: [],
+        rrc: {
+          inputs: JSON.parse(JSON.stringify(state.rrc)),
+          result: JSON.parse(JSON.stringify(result)),
+        },
+      };
+    } else {
+      const isRpg = state.category === "RPG";
+      const m = state.method;
+      const result = isRpg
+        ? m === "wb" ? state.rpgWbResult : m === "essai" ? state.rpgEssaiResult : state.rpgCwResult
+        : m === "wb" ? state.wbResult : m === "slump" ? state.slumpResult : m === "essai" ? state.essaiResult : state.cwResult;
+      if (!result?.recipes?.length) return false;
+      // Instantané des entrées du formulaire actif (pour « Recharger »)
+      const inputs = isRpg
+        ? m === "wb" ? state.rpgWb : m === "essai" ? state.rpgEssai : state.rpgCw
+        : m === "wb" ? state.wb : m === "slump" ? state.slump : m === "essai" ? state.essai : state.cw;
+      entry = {
+        ...commun,
+        category: state.category,
+        method: state.method,
+        recipes: result.recipes,
+        inputs: JSON.parse(JSON.stringify(inputs)),
+      };
+    }
+    // Fusion avec le stockage (pas seulement l'état mémoire, qui peut ne pas
+    // avoir été hydraté si l'utilisateur n'est jamais passé par Historique),
+    // en dédupliquant sur l'id pour ne pas écraser l'historique existant.
+    const stored = loadSavedFromStorage();
+    const updated = [entry, ...stored.filter((s) => s.id !== entry.id)];
     const persisted = persistSaved(updated);
     set({ savedResults: updated });
     return persisted;
@@ -858,16 +945,42 @@ export const useStore = create<AppState>((set, get) => ({
     const state = get();
     const entry = state.savedResults.find((s) => s.id === id);
     if (!entry) return false;
+    const patch: Partial<AppState> = {
+      category: entry.category,
+      general: { ...entry.general },
+    };
+    // Restaurer et persister le contexte du résultat (reproductibilité) :
+    // constantes du snapshot, et liants manquants réinjectés au catalogue
+    // courant sans écraser les liants existants de l'utilisateur.
+    persistGeneral(entry.general);
+    if (entry.constantes) {
+      patch.constantes = { ...entry.constantes };
+      persistConstantes(entry.constantes);
+    }
+    if (entry.catalogue_liants?.length) {
+      const courant = [...state.catalogue_liants];
+      for (const l of entry.catalogue_liants) {
+        if (!courant.some((c) => c.code === l.code)) courant.push({ ...l });
+      }
+      patch.catalogue_liants = courant;
+      persistCatalogue(courant);
+    }
+
+    if (entry.category === "RRC") {
+      if (entry.rrc) {
+        patch.rrc = entry.rrc.inputs;
+        patch.rrcResult = entry.rrc.result;
+      }
+      set(patch);
+      return true;
+    }
+
+    patch.method = entry.method as RpcMethod;
     const result: MixResult = {
       category: entry.category,
       method: entry.method,
       general: entry.general as Record<string, unknown>,
       recipes: entry.recipes,
-    };
-    const patch: Partial<AppState> = {
-      category: entry.category,
-      method: entry.method,
-      general: { ...entry.general },
     };
     const isRpg = entry.category === "RPG";
     const m = entry.method;
@@ -885,8 +998,10 @@ export const useStore = create<AppState>((set, get) => ({
     return true;
   },
   deleteSavedResult: (id) =>
-    set((state) => {
-      const updated = state.savedResults.filter((s) => s.id !== id);
+    set(() => {
+      // Relire le stockage avant de filtrer, pour la même raison que
+      // saveCurrentResult : ne pas partir d'un état mémoire non hydraté.
+      const updated = loadSavedFromStorage().filter((s) => s.id !== id);
       persistSaved(updated);
       return { savedResults: updated };
     }),
