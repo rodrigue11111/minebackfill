@@ -7,7 +7,7 @@ on:
 
 jobs:
   backend:
-    name: Backend — 215 tests d'or (Excel Intra 2017)
+    name: Backend — tests d'or (Excel Intra 2017)
     runs-on: ubuntu-latest
     defaults:
       run:

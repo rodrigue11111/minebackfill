@@ -35,7 +35,19 @@ export default function HistoriquePage() {
   const recharger = (sr: SavedResult) => {
     if (restoreSavedResult(sr.id)) router.push("/mix");
   };
+  // Avertit avant d'exporter un resultat calcule avec d'anciennes formules
+  // (masses potentiellement incorrectes, cf. correctif (1+Bv)).
+  const confirmerExportObsolete = (sr: SavedResult): boolean => {
+    if (sr.solverVersion && sr.solverVersion !== SOLVER_VERSION) {
+      return window.confirm(
+        "Ce résultat a été calculé avec une version antérieure des formules ; " +
+        "ses masses peuvent être incorrectes. Exporter quand même ?",
+      );
+    }
+    return true;
+  };
   const exporterExcel = async (sr: SavedResult) => {
+    if (!confirmerExportObsolete(sr)) return;
     if (sr.category === "RRC") {
       if (!sr.rrc) return;
       const { exportRrcExcel } = await import("@/lib/rrc-export");
@@ -46,6 +58,7 @@ export default function HistoriquePage() {
     exportToExcel(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method as RpcMethod, units);
   };
   const exporterPdf = async (sr: SavedResult) => {
+    if (!confirmerExportObsolete(sr)) return;
     if (sr.category === "RRC") {
       if (!sr.rrc) return;
       const { exportRrcPdf } = await import("@/lib/rrc-export");
@@ -56,6 +69,7 @@ export default function HistoriquePage() {
     exportToPdf(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method as RpcMethod, units);
   };
   const exporterFeuilleLabo = async (sr: SavedResult) => {
+    if (!confirmerExportObsolete(sr)) return;
     if (sr.category === "RRC") {
       if (!sr.rrc) return;
       const { exportRrcPdf } = await import("@/lib/rrc-export");
