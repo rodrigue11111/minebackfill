@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import { useStore } from "@/lib/store";
-import type { GeneralInfo, LiantCatalogueItem } from "@/lib/store";
+import { useStore, lireBinders, patchBinders, MAX_BINDERS } from "@/lib/store";
+import type { BinderRef, LiantCatalogueItem } from "@/lib/store";
 import {
   fromStoreLength, toStoreLength,
   fromStoreArea, toStoreArea,
@@ -111,13 +111,24 @@ export default function GeneralInfoPage() {
     });
   };
 
-  const fractionTotal =
-    (general.binder1_fraction_pct ?? 0) +
-    (general.binder2_fraction_pct ?? 0) +
-    (general.binder3_fraction_pct ?? 0);
+  // Composants du liant (liste N-aire, repli legacy via lireBinders).
+  const binders = lireBinders(general);
+  const fractionTotal = binders.reduce((s, b) => s + (b.fraction_pct ?? 0), 0);
 
   const fractionOk = Math.abs(fractionTotal - 100) < 0.01;
   const liantsValides = catalogue_liants.filter((l: LiantCatalogueItem) => String(l.code ?? "").trim() !== "");
+
+  const setBinders = (next: BinderRef[]) => setGeneral(patchBinders(next));
+  const updateBinder = (i: number, patch: Partial<BinderRef>) =>
+    setBinders(binders.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  const addBinder = () => setBinders([...binders, { id: null, code: null, fraction_pct: undefined }]);
+  const removeBinder = (i: number) => setBinders(binders.filter((_, j) => j !== i));
+  // Fraction d'un composant : brouillon de saisie (évite le clignotement des
+  // décimales) keyé par index, comme les dimensions.
+  const editBinderFrac = (i: number, raw: string) => {
+    setDraftNum((d) => ({ ...d, [`binder_frac_${i}`]: raw }));
+    updateBinder(i, { fraction_pct: raw === "" ? undefined : Number(raw) });
+  };
 
   return (
     <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
@@ -484,58 +495,13 @@ export default function GeneralInfoPage() {
               </h2>
             </div>
 
-            <div style={{ marginBottom: 18 }}>
-              <p style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 10 }}>
-                Nombre de composants du liant
-              </p>
-              <div style={{ display: "flex", gap: 8 }}>
-                {[1, 2, 3].map((n) => {
-                  const active = general.binder_count === n;
-                  return (
-                    <label
-                      key={n}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: 44,
-                        height: 38,
-                        borderRadius: 7,
-                        border: `2px solid ${active ? "var(--primary)" : "var(--border)"}`,
-                        background: active ? "var(--primary)" : "#fff",
-                        cursor: "pointer",
-                        fontWeight: 700,
-                        fontSize: 15,
-                        color: active ? "#fff" : "#374151",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="binder_count"
-                        value={n}
-                        checked={active}
-                        onChange={() => setGeneral({ binder_count: n as 1 | 2 | 3 })}
-                        style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
-                      />
-                      {n}
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[1, 2, 3].map((idx) => {
-                if (idx > (general.binder_count ?? 1)) return null;
-                const typeKey = `binder${idx}_type` as keyof GeneralInfo;
-                const idKey = `binder${idx}_id` as keyof GeneralInfo;
-                const fracKey = `binder${idx}_fraction_pct` as keyof GeneralInfo;
+              {binders.map((b, idx) => {
                 // Sélection par id (identité stable) ; repli par code pour les
                 // états enregistrés avant l'introduction des binderN_id.
                 const selectedLiantId =
-                  (general[idKey] as string | null) ??
-                  liantsValides.find((l: LiantCatalogueItem) => l.code === general[typeKey])?.id ??
+                  b.id ??
+                  liantsValides.find((l: LiantCatalogueItem) => l.code === b.code)?.id ??
                   "";
                 return (
                   <div
@@ -549,15 +515,41 @@ export default function GeneralInfoPage() {
                   >
                     <div
                       style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "var(--primary)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
                         marginBottom: 10,
                       }}
                     >
-                      Composant {idx}
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "var(--primary)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                        }}
+                      >
+                        Composant {idx + 1}
+                      </div>
+                      {binders.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeBinder(idx)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            color: "var(--muted-foreground)",
+                            cursor: "pointer",
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            padding: "2px 6px",
+                          }}
+                          aria-label={`Retirer le composant ${idx + 1}`}
+                        >
+                          Retirer
+                        </button>
+                      )}
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
                       <div>
@@ -567,7 +559,7 @@ export default function GeneralInfoPage() {
                           value={selectedLiantId}
                           onChange={(e) => {
                             const item = liantsValides.find((l: LiantCatalogueItem) => l.id === e.target.value);
-                            setGeneral({ [idKey]: item?.id ?? null, [typeKey]: item?.code ?? null });
+                            updateBinder(idx, { id: item?.id ?? null, code: item?.code ?? null });
                           }}
                         >
                           <option value="">Sélectionner...</option>
@@ -586,18 +578,39 @@ export default function GeneralInfoPage() {
                           min={0}
                           max={100}
                           className="field-input"
-                          value={general[fracKey] ?? ""}
-                          onChange={(e) => numChange(fracKey as "binder1_fraction_pct", e.target.value)}
-                          placeholder={`Ex. : ${idx === 1 ? 60 : 40}`}
+                          value={showNum(`binder_frac_${idx}`, b.fraction_pct)}
+                          onChange={(e) => editBinderFrac(idx, e.target.value)}
+                          onBlur={() => commitNum(`binder_frac_${idx}`)}
+                          placeholder={`Ex. : ${idx === 0 ? 60 : 40}`}
                         />
                       </div>
                     </div>
                   </div>
                 );
               })}
+
+              {binders.length < MAX_BINDERS && (
+                <button
+                  type="button"
+                  onClick={addBinder}
+                  style={{
+                    alignSelf: "flex-start",
+                    border: "1.5px dashed var(--primary-mid)",
+                    background: "transparent",
+                    color: "var(--primary)",
+                    borderRadius: 8,
+                    padding: "8px 14px",
+                    cursor: "pointer",
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  + Ajouter un composant
+                </button>
+              )}
             </div>
 
-            {(general.binder_count ?? 1) >= 2 && (
+            {binders.length >= 2 && (
               <div
                 style={{
                   marginTop: 12,

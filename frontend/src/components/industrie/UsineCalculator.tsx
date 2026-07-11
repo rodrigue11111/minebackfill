@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useStore, trouverPrixLiant } from "@/lib/store";
+import { useStore, trouverPrixLiant, lireBinders } from "@/lib/store";
 import { calculeUsine, facteurRemplacement, type UsineParams } from "@/lib/industrie_helpers";
 import { fmt, num } from "@/lib/format";
 
@@ -59,17 +59,18 @@ export default function UsineCalculator() {
 
   const r = calculeUsine(params);
 
-  // Coût du liant : prix moyen pondéré du mélange configuré sur la page Informations
+  // Coût du liant : prix moyen pondéré du mélange configuré sur la page
+  // Informations (liste N-aire des composants).
   const prixLiant = (() => {
     const parts: { frac: number; prix: number }[] = [];
-    ([1, 2, 3] as const).forEach((n) => {
-      const code = general[`binder${n}_type`];
-      const frac = (general[`binder${n}_fraction_pct`] ?? 0) / 100;
-      if (!code || frac <= 0) return;
-      const id = general[`binder${n}_id`] ?? catalogue_liants.find((l) => l.code === code)?.id;
+    for (const b of lireBinders(general)) {
+      const code = b.code ?? undefined;
+      const frac = (b.fraction_pct ?? 0) / 100;
+      if (!code || frac <= 0) continue;
+      const id = b.id ?? catalogue_liants.find((l) => l.code === code)?.id;
       const entry = trouverPrixLiant(binderPrices, { id, code });
       if (entry) parts.push({ frac, prix: entry.price_per_kg });
-    });
+    }
     if (!parts.length) return null;
     const totalFrac = parts.reduce((a, p) => a + p.frac, 0) || 1;
     return parts.reduce((a, p) => a + (p.frac / totalFrac) * p.prix, 0); // $/kg

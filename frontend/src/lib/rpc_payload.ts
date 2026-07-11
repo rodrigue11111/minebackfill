@@ -1,4 +1,5 @@
-﻿import type {
+﻿import { lireBinders } from "@/lib/store";
+import type {
   ConstantesCalcul,
   GeneralInfo,
   LiantCatalogueItem,
@@ -38,20 +39,16 @@ export function construireSystemeLiant(
   general: GeneralInfo,
   catalogue: LiantCatalogueItem[]
 ) {
-  const f1 = Number(general.binder1_fraction_pct ?? 0);
-  const f2 = Number(general.binder2_fraction_pct ?? 0);
-  const f3 = Number(general.binder3_fraction_pct ?? 0);
-
-  const brut: { fracPct: number; type: string; id?: string | null }[] = [];
-  if (general.binder1_type && f1 > 0) {
-    brut.push({ fracPct: f1, type: general.binder1_type, id: general.binder1_id });
-  }
-  if (general.binder2_type && f2 > 0) {
-    brut.push({ fracPct: f2, type: general.binder2_type, id: general.binder2_id });
-  }
-  if (general.binder3_type && f3 > 0) {
-    brut.push({ fracPct: f3, type: general.binder3_type, id: general.binder3_id });
-  }
+  // Itère la liste N-aire des composants (repli legacy binder1/2/3 via
+  // lireBinders pour les anciennes sauvegardes).
+  const brut = lireBinders(general)
+    .map((b) => ({
+      fracPct: Number(b.fraction_pct ?? 0),
+      type: b.code ?? null,
+      id: b.id ?? null,
+    }))
+    .filter((b): b is { fracPct: number; type: string; id: string | null } =>
+      !!b.type && b.fracPct > 0);
 
   if (brut.length === 0) {
     const typeFallback = general.binder1_type ?? catalogue[0]?.code ?? "CP50";

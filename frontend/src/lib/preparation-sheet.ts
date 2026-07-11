@@ -5,9 +5,22 @@
 
 import type { UnitPreferences } from "@/lib/units";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
-import type { Recipe } from "@/lib/types";
+import type { Recipe, RecipeComponents } from "@/lib/types";
 import type { Category, GeneralInfo } from "@/lib/store";
+import { lireBinders } from "@/lib/store";
 import { methodLabel } from "@/lib/method-registry";
+
+// Masse du composant n (1-indexé) : liste N-aire, repli legacy c1/2/3.
+const masseComposantN = (c: RecipeComponents | null | undefined, i: number): number | null | undefined => {
+  const liste = c?.binder_masses_kg;
+  if (liste && liste.length > i) return liste[i];
+  return [c?.binder_c1_mass_kg, c?.binder_c2_mass_kg, c?.binder_c3_mass_kg][i];
+};
+const masseAjoutComposantN = (c: RecipeComponents | null | undefined, i: number): number | null | undefined => {
+  const liste = c?.binder_to_add_masses_kg;
+  if (liste && liste.length > i) return liste[i];
+  return [c?.binder_c1_to_add_mass_kg, c?.binder_c2_to_add_mass_kg, c?.binder_c3_to_add_mass_kg][i];
+};
 import { fmt as fmtNum } from "@/lib/format";
 import { APP_NAME } from "@/lib/branding";
 
@@ -31,7 +44,7 @@ const CONTENANT_LABELS: Record<string, string> = {
 export async function exportPreparationPdf(
   recipes: Recipe[],
   general: GeneralInfo,
-  binderName: (n: 1 | 2 | 3) => string,
+  binderName: (n: number) => string,
   category: string,
   method: string,
   units: UnitPreferences,
@@ -45,7 +58,7 @@ export async function exportPreparationPdf(
   const mR = 14;
   const contentW = pageW - mL - mR;
 
-  const bcount = general.binder_count ?? 1;
+  const bcount = lireBinders(general).length;
   const isEssai = method === "essai";
   const isRpg = category === "RPG";
   const massLabel = MASS_LABELS[units.mass] ?? "kg";
@@ -114,9 +127,8 @@ export async function exportPreparationPdf(
     rows.push([`Résidu humide Mr-hum (${massLabel})`, masse(r.components?.residue_wet_mass_kg)]);
     if (isRpg || val(r.components?.aggregate_dry_mass_kg) > 0)
       rows.push([`Granulat sec Ma (${massLabel})`, masse(r.components?.aggregate_dry_mass_kg)]);
-    rows.push([`${binderName(1)} (${massLabel})`, masse(r.components?.binder_c1_mass_kg)]);
-    if (bcount >= 2) rows.push([`${binderName(2)} (${massLabel})`, masse(r.components?.binder_c2_mass_kg)]);
-    if (bcount >= 3) rows.push([`${binderName(3)} (${massLabel})`, masse(r.components?.binder_c3_mass_kg)]);
+    for (let i = 0; i < bcount; i++)
+      rows.push([`${binderName(i + 1)} (${massLabel})`, masse(masseComposantN(r.components, i))]);
     rows.push([`Eau à ajouter/retirer Mw-aj (${massLabel})`, masse(r.components?.water_to_add_mass_kg)]);
 
     const drawTable = (title: string, tableRows: [string, string][]) => {
@@ -167,9 +179,8 @@ export async function exportPreparationPdf(
     if (isEssai) {
       const adj: [string, string][] = [];
       adj.push([`Liant à ajouter/retirer Mb-ad (${massLabel})`, masse(r.components?.binder_to_add_mass_kg)]);
-      adj.push([`${binderName(1)} à ajouter/retirer (${massLabel})`, masse(r.components?.binder_c1_to_add_mass_kg)]);
-      if (bcount >= 2) adj.push([`${binderName(2)} à ajouter/retirer (${massLabel})`, masse(r.components?.binder_c2_to_add_mass_kg)]);
-      if (bcount >= 3) adj.push([`${binderName(3)} à ajouter/retirer (${massLabel})`, masse(r.components?.binder_c3_to_add_mass_kg)]);
+      for (let i = 0; i < bcount; i++)
+        adj.push([`${binderName(i + 1)} à ajouter/retirer (${massLabel})`, masse(masseAjoutComposantN(r.components, i))]);
       drawTable("AJUSTEMENTS EN COURS DE MÉLANGE (valeur négative = à retirer)", adj);
     }
 

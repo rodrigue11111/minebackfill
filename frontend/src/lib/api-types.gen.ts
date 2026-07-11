@@ -225,7 +225,7 @@ export interface components {
         };
         /**
          * BinderSystem
-         * @description Système de liant contenant 1 à 3 composants (ciments).
+         * @description Système de liant contenant 1 à MAX_BINDER_COMPONENTS composants (ciments).
          */
         BinderSystem: {
             /** Components */
@@ -298,22 +298,22 @@ export interface components {
             container_volume_m3?: number | null;
             /**
              * Binder Count
-             * @description Nombre de ciments dans le liant (1 à 3).
+             * @description Nombre de ciments dans le liant (1 à 8). Écho ; voir binder_system.
              */
             binder_count?: number | null;
             /**
              * Binder1 Type
-             * @description Type du ciment 1 (CP50, CP10, etc.).
+             * @description Type du ciment 1 (CP50, CP10, etc.). Écho des 3 premiers.
              */
             binder1_type?: string | null;
             /**
              * Binder2 Type
-             * @description Type du ciment 2 (optionnel).
+             * @description Type du ciment 2 (optionnel). Écho.
              */
             binder2_type?: string | null;
             /**
              * Binder3 Type
-             * @description Type du ciment 3 (optionnel).
+             * @description Type du ciment 3 (optionnel). Écho.
              */
             binder3_type?: string | null;
         };
@@ -381,6 +381,10 @@ export interface components {
              * @default 0
              */
             binder_c3_to_add_mass_kg: number;
+            /** Binder Masses Kg */
+            binder_masses_kg?: number[];
+            /** Binder To Add Masses Kg */
+            binder_to_add_masses_kg?: number[];
         };
         /**
          * MixDesignResult

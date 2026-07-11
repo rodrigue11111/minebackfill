@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, lireBinders } from "@/lib/store";
 import type { Category, GeneralInfo, LiantCatalogueItem } from "@/lib/store";
 import {
   fromStoreMass,
@@ -161,7 +161,7 @@ function DataRow({
 export async function exportToExcel(
   recipes: Recipe[],
   general: GeneralInfo,
-  binderName: (n: 1 | 2 | 3) => string,
+  binderName: (n: number) => string,
   category: string,
   method: string,
   units: UnitPreferences,
@@ -248,7 +248,7 @@ export async function exportToExcel(
   ws.addRow([]); // spacer
 
   /* ── Data-row helper ── */
-  const bcount = general.binder_count ?? 1;
+  const bcount = lireBinders(general).length;
   const isEssai = method === "essai";
   const isRpg = category === "RPG";
   const massLabel = MASS_LABELS[units.mass] ?? "kg";
@@ -528,10 +528,16 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
   const volLabel = VOLUME_LABELS[units.volume] ?? "L";
   const densLabel = DENSITY_LABELS[units.density] ?? "g/cm3";
 
-  const binderName = (n: 1 | 2 | 3): string => {
-    const code = general[`binder${n}_type`];
-    if (!code) return `Ciment ${n}`;
-    return catalogue_liants.find((l) => l.code === code)?.nom ?? `Ciment ${n}`;
+  // Nom du composant n (1-indexé), pour un nombre N quelconque : lit la liste
+  // N-aire des liants (repli legacy binder1/2/3 via lireBinders).
+  const bindersGeneral = lireBinders(general);
+  const binderName = (n: number): string => {
+    const ref = bindersGeneral[n - 1];
+    if (!ref?.code && !ref?.id) return `Ciment ${n}`;
+    const item =
+      (ref.id ? catalogue_liants.find((l) => l.id === ref.id) : undefined) ??
+      catalogue_liants.find((l) => l.code === ref.code);
+    return item?.nom ?? ref.code ?? `Ciment ${n}`;
   };
 
   const isRpg = category === "RPG";
@@ -540,7 +546,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
   // Contexte du schéma de rapport (partagé écran/Excel/PDF).
   const reportCtx: ReportCtx = {
     units, massLabel, volLabel, densLabel, binderName,
-    isEssai, isRpg, bcount: general.binder_count ?? 1,
+    isEssai, isRpg, bcount: bindersGeneral.length,
   };
 
   // Tranches d'état/résultat de la méthode active — via le registre. Pour

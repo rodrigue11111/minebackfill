@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  REPORT_ROWS, REPORT_SECTIONS, rowsForSection, RRC_ROWS,
+  REPORT_ROWS, REPORT_SECTIONS, rowsForSection, RRC_ROWS, MAX_BINDER_ROWS,
   type ReportCtx,
 } from "./report-schema";
 import type { RrcRecipe } from "./types";
@@ -69,12 +69,22 @@ describe("report-schema — gating (when)", () => {
     expect(essai.some((l) => l.includes("Mc1-ad"))).toBe(true);
   });
 
-  it("le nombre de lignes par-ciment suit bcount", () => {
+  it("le nombre de lignes par-ciment suit bcount (jusqu'à N)", () => {
     const mc = (bcount: number) =>
-      rowsForSection(1, ctx({ bcount })).filter((r) => /Mc\d$/.test(r.label(ctx({ bcount })))).length;
+      rowsForSection(1, ctx({ bcount })).filter((r) => /Mc\d+$/.test(r.label(ctx({ bcount })))).length;
     expect(mc(1)).toBe(1);
     expect(mc(2)).toBe(2);
     expect(mc(3)).toBe(3);
+    expect(mc(5)).toBe(5);              // au-delà de 3 (N-aire)
+    expect(mc(MAX_BINDER_ROWS)).toBe(MAX_BINDER_ROWS);
+  });
+
+  it("les lignes par-ciment lisent la liste N-aire binder_masses_kg", () => {
+    const row5 = rowsForSection(1, ctx({ bcount: 5 })).find((r) => r.label(ctx({ bcount: 5 })) === "Ciment 5 Mc5");
+    expect(row5).toBeDefined();
+    const recette = { components: { binder_masses_kg: [10, 20, 30, 40, 55] } } as unknown as Parameters<NonNullable<typeof row5>["getter"]>[0];
+    // Le getter convertit en unité d'affichage (kg -> kg ici) : 55.
+    expect(row5!.getter(recette, ctx({ bcount: 5 }))).toBeCloseTo(55, 6);
   });
 
   it("le libellé Bw% bascule sur « cible » en essai", () => {
@@ -103,8 +113,10 @@ describe("report-schema — parité écran = Excel = PDF", () => {
   it("toutes les lignes de REPORT_ROWS sont atteignables via une section", () => {
     const viaSection = REPORT_SECTIONS.flatMap((s) =>
       // union de tous les contextes : une ligne gated doit apparaître dans au
-      // moins une combinaison.
-      [ctx(), ctx({ isEssai: true }), ctx({ isRpg: true, isEssai: true, bcount: 3 })]
+      // moins une combinaison. bcount = MAX_BINDER_ROWS pour atteindre toutes
+      // les lignes par-composant générées.
+      [ctx(), ctx({ isEssai: true }),
+       ctx({ isRpg: true, isEssai: true, bcount: MAX_BINDER_ROWS })]
         .flatMap((c) => rowsForSection(s.id, c)),
     );
     for (const row of REPORT_ROWS) {
