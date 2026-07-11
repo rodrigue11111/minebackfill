@@ -855,11 +855,24 @@ export const useStore = create<AppState>((set, get) => ({
         { code: "FLY_ASH", price_per_kg: 0.06 },
         { code: "CHAUX", price_per_kg: 0.08 },
       ];
-      persistBinderPrices(testBinderPrices);
       persistCatalogue(catalogue);
       persistGeneral(newGeneral);
 
-      return { general: newGeneral, catalogue_liants: catalogue, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb, industrie: newIndustrie, binderPrices: testBinderPrices };
+      // Prix de démonstration : NON persistés — les prix enregistrés de
+      // l'utilisateur restent intacts. On demande confirmation avant de les
+      // remplacer À L'ÉCRAN si des prix personnalisés différents existent déjà.
+      const prixEnregistres = loadBinderPricesFromStorage();
+      const memesPrix = JSON.stringify(prixEnregistres) === JSON.stringify(testBinderPrices);
+      let binderPrices = testBinderPrices;
+      if (prixEnregistres.length > 0 && !memesPrix && typeof window !== "undefined") {
+        const ok = window.confirm(
+          "Charger les prix de liants de la démonstration ? Vos prix affichés seront remplacés " +
+          "(vos prix enregistrés ne sont pas modifiés).",
+        );
+        if (!ok) binderPrices = state.binderPrices;
+      }
+
+      return { general: newGeneral, catalogue_liants: catalogue, cw: newCw, wb: newWb, slump: newSlump, rpgCw: newRpgCw, rpgWb: newRpgWb, industrie: newIndustrie, binderPrices };
     }),
 
   units: DEFAULT_UNITS,

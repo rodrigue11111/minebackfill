@@ -58,8 +58,10 @@ export default function IndustriePage() {
               type="button"
               onClick={() => {
                 try {
+                  // fillTestData place les prix de démo directement dans l'état
+                  // (sans les persister) : ne pas recharger depuis le stockage,
+                  // cela effacerait les prix de démonstration.
                   fillTestData();
-                  loadBinderPrices();
                   setTestLoaded(true);
                   setTimeout(() => setTestLoaded(false), 2000);
                 } catch (e) {
