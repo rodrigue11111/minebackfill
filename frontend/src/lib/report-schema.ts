@@ -10,7 +10,7 @@
 // Le RRC (RrcRecipe, forme distincte) a sa propre liste RRC_ROWS, consommée
 // par la vue écran et les exports RRC.
 
-import type { Recipe, RrcRecipe } from "./types";
+import type { Recipe, RecipeComponents, RrcRecipe } from "./types";
 import type { UnitPreferences } from "./units";
 import { fromStoreMass, fromStoreVolume, fromStoreDensity } from "./units";
 import {
@@ -26,10 +26,28 @@ export interface ReportCtx {
   massLabel: string;
   volLabel: string;
   densLabel: string;
-  binderName: (n: 1 | 2 | 3) => string;
+  /** Nom du composant de liant n (1-indexé), pour un nombre N quelconque. */
+  binderName: (n: number) => string;
   isEssai: boolean;
   isRpg: boolean;
   bcount: number;
+}
+
+/** Nombre maximal de composants de liant affichés (aligné sur le backend). */
+export const MAX_BINDER_ROWS = 8;
+
+/** Masse du composant n (1-indexé) : liste N-aire, repli legacy c1/2/3. */
+function masseComposant(c: RecipeComponents | null | undefined, i: number): number | null | undefined {
+  const liste = c?.binder_masses_kg;
+  if (liste && liste.length > i) return liste[i];
+  return [c?.binder_c1_mass_kg, c?.binder_c2_mass_kg, c?.binder_c3_mass_kg][i];
+}
+
+/** Masse « à ajouter » du composant n (essai) : liste N-aire, repli legacy. */
+function masseAjoutComposant(c: RecipeComponents | null | undefined, i: number): number | null | undefined {
+  const liste = c?.binder_to_add_masses_kg;
+  if (liste && liste.length > i) return liste[i];
+  return [c?.binder_c1_to_add_mass_kg, c?.binder_c2_to_add_mass_kg, c?.binder_c3_to_add_mass_kg][i];
 }
 
 export type ReportSectionId = 1 | 2 | 3 | 4 | 5 | 6;
@@ -77,13 +95,25 @@ export const REPORT_ROWS: ReportRow[] = [
   { section: 1, label: cst("Résidu humide Mr-hum"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_wet_mass_kg, c.units.mass), digits: 3 },
   { section: 1, label: cst("Eau totale Mw"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_total_mass_kg, c.units.mass), digits: 3 },
   { section: 1, label: cst("Eau à ajouter/retirer Mw-aj"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_to_add_mass_kg, c.units.mass), digits: 3 },
-  { section: 1, label: (c) => `${c.binderName(1)} Mc1`, unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_c1_mass_kg, c.units.mass), digits: 3, when: (c) => c.bcount >= 1 },
-  { section: 1, label: (c) => `${c.binderName(2)} Mc2`, unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_c2_mass_kg, c.units.mass), digits: 3, when: (c) => c.bcount >= 2 },
-  { section: 1, label: (c) => `${c.binderName(3)} Mc3`, unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_c3_mass_kg, c.units.mass), digits: 3, when: (c) => c.bcount >= 3 },
+  // Masses par composant de liant (N composants) — générées par index.
+  ...Array.from({ length: MAX_BINDER_ROWS }, (_, i): ReportRow => ({
+    section: 1,
+    label: (c) => `${c.binderName(i + 1)} Mc${i + 1}`,
+    unit: masse,
+    getter: (r, c) => fromStoreMass(masseComposant(r.components, i), c.units.mass),
+    digits: 3,
+    when: (c) => c.bcount >= i + 1,
+  })),
   { section: 1, label: cst("Liant à ajouter/retirer Mb-ad"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_to_add_mass_kg, c.units.mass), digits: 3, when: (c) => c.isEssai },
-  { section: 1, label: (c) => `${c.binderName(1)} à ajouter/retirer Mc1-ad`, unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, c.units.mass), digits: 3, when: (c) => c.isEssai },
-  { section: 1, label: (c) => `${c.binderName(2)} à ajouter/retirer Mc2-ad`, unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, c.units.mass), digits: 3, when: (c) => c.isEssai && c.bcount >= 2 },
-  { section: 1, label: (c) => `${c.binderName(3)} à ajouter/retirer Mc3-ad`, unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, c.units.mass), digits: 3, when: (c) => c.isEssai && c.bcount >= 3 },
+  // Masses « à ajouter » par composant (essai) — générées par index.
+  ...Array.from({ length: MAX_BINDER_ROWS }, (_, i): ReportRow => ({
+    section: 1,
+    label: (c) => `${c.binderName(i + 1)} à ajouter/retirer Mc${i + 1}-ad`,
+    unit: masse,
+    getter: (r, c) => fromStoreMass(masseAjoutComposant(r.components, i), c.units.mass),
+    digits: 3,
+    when: (c) => c.isEssai && c.bcount >= i + 1,
+  })),
 
   /* ── 2. Paramètres géotechniques ── */
   { section: 2, label: cst("Liant Bw%"), unit: cst("%"), getter: (r) => r.bw_mass_pct, digits: 2, bold: true, formulaIds: ["F016"] },

@@ -42,14 +42,21 @@ export interface GeneralInfo {
   container_width?: number | null;
   container_volume_m3?: number | null;   // volume saisi directement (store: m³)
 
-  binder_count?: 1 | 2 | 3 | null;
+  binder_count?: number | null;
+
+  // Source de vérité N-aire : la liste ordonnée des composants du liant.
+  // Additif : binderN_type/id/fraction_pct ci-dessous restent renseignés en
+  // miroir des 3 premiers (payload backend écho, anciennes sauvegardes,
+  // consommateurs legacy). Utiliser lireBinders()/patchBinders() plutôt que
+  // ces champs directement.
+  binders?: BinderRef[];
+
   binder1_type?: string | null;
   binder2_type?: string | null;
   binder3_type?: string | null;
 
-  // Source de vérité de l'identité du liant : l'id du catalogue (stable).
-  // Le code (binderN_type) reste pour l'affichage, le payload backend et la
-  // rétro-compatibilité des anciennes sauvegardes (résolution de repli).
+  // Identité du liant : l'id du catalogue (stable). Le code (binderN_type)
+  // reste pour l'affichage, le payload backend et la rétro-compatibilité.
   binder1_id?: string | null;
   binder2_id?: string | null;
   binder3_id?: string | null;
@@ -57,6 +64,58 @@ export interface GeneralInfo {
   binder1_fraction_pct?: number;
   binder2_fraction_pct?: number;
   binder3_fraction_pct?: number;
+}
+
+/** Un composant du système de liant (identité par id, repli par code). */
+export interface BinderRef {
+  id?: string | null;
+  code?: string | null;
+  fraction_pct?: number;
+}
+
+/** Nombre maximal de composants de liant (aligné sur le backend). */
+export const MAX_BINDERS = 8;
+
+/**
+ * Liste ordonnée des composants du liant. Source de vérité = `general.binders` ;
+ * pour les anciennes sauvegardes (avant la liste), reconstruit depuis
+ * binder1/2/3_* selon binder_count.
+ */
+export function lireBinders(general: GeneralInfo): BinderRef[] {
+  if (general.binders && general.binders.length > 0) return general.binders;
+  const legacy: BinderRef[] = [
+    { id: general.binder1_id, code: general.binder1_type, fraction_pct: general.binder1_fraction_pct },
+    { id: general.binder2_id, code: general.binder2_type, fraction_pct: general.binder2_fraction_pct },
+    { id: general.binder3_id, code: general.binder3_type, fraction_pct: general.binder3_fraction_pct },
+  ];
+  // Nombre de composants : binder_count s'il est fixé, sinon le nombre de
+  // composants legacy renseignés (un code) — au minimum 1, au plus 3 (le
+  // schéma legacy n'a que binder1/2/3).
+  const n = general.binder_count ?? Math.max(1, legacy.filter((b) => b.code).length);
+  return legacy.slice(0, Math.min(Math.max(n, 1), 3));
+}
+
+/**
+ * Patch de `general` à partir d'une nouvelle liste de composants : met à jour
+ * `binders` + `binder_count`, et maintient le miroir legacy des 3 premiers
+ * (les indices absents sont remis à null pour ne pas laisser de résidu).
+ */
+export function patchBinders(binders: BinderRef[]): Partial<GeneralInfo> {
+  const b = binders.slice(0, MAX_BINDERS);
+  const at = (i: number) => b[i] ?? { id: null, code: null, fraction_pct: undefined };
+  return {
+    binders: b,
+    binder_count: b.length,
+    binder1_id: at(0).id ?? null,
+    binder1_type: at(0).code ?? null,
+    binder1_fraction_pct: at(0).fraction_pct,
+    binder2_id: at(1).id ?? null,
+    binder2_type: at(1).code ?? null,
+    binder2_fraction_pct: at(1).fraction_pct,
+    binder3_id: at(2).id ?? null,
+    binder3_type: at(2).code ?? null,
+    binder3_fraction_pct: at(2).fraction_pct,
+  };
 }
 
 export interface ConstantesCalcul {

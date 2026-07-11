@@ -38,7 +38,7 @@ from .models import (
 )
 from .rpc_solver import (
     compute_container_volume_m3,
-    masse_volumique_S_liant_fonction,
+    masse_volumique_S_liant_nary,
     effective_binder_specific_gravity,
     _resolve_solver_constants,
     _ensure_sequence_length,
@@ -182,10 +182,9 @@ def _solve_single_rpg_cw_recipe(
         water_density=water_density,
     )
 
+    binder_masses = [q.mb * c.mass_fraction for c in binder_system.components]
     def binder_split(idx: int) -> float:
-        if idx >= len(binder_system.components):
-            return 0.0
-        return q.mb * binder_system.components[idx].mass_fraction
+        return binder_masses[idx] if idx < len(binder_masses) else 0.0
 
     components = MixComponentMass(
         residue_dry_mass_kg   = q.mr_sec,
@@ -195,6 +194,7 @@ def _solve_single_rpg_cw_recipe(
         binder_c1_mass_kg     = binder_split(0),
         binder_c2_mass_kg     = binder_split(1),
         binder_c3_mass_kg     = binder_split(2),
+        binder_masses_kg      = binder_masses,
         water_total_mass_kg   = q.mw_total,
         water_to_add_mass_kg  = q.mw_to_add,
     )
@@ -316,14 +316,7 @@ def solve_rpg_cw(payload: RpgCwInputs) -> MixDesignResult:
     # Binder Gs (harmonic mean of components)
     bs = payload.binder_system
     comps = bs.components
-    f1_pct = comps[0].mass_fraction * 100.0 if len(comps) > 0 else 0.0
-    f2_pct = comps[1].mass_fraction * 100.0 if len(comps) > 1 else 0.0
-    f3_pct = comps[2].mass_fraction * 100.0 if len(comps) > 2 else 0.0
-    gs1 = comps[0].specific_gravity if len(comps) > 0 else 1.0
-    gs2 = comps[1].specific_gravity if len(comps) > 1 else 1.0
-    gs3 = comps[2].specific_gravity if len(comps) > 2 else 1.0
-
-    Gs_liant = masse_volumique_S_liant_fonction(f1_pct, f2_pct, f3_pct, gs1, gs2, gs3)
+    Gs_liant = masse_volumique_S_liant_nary(comps)
     if Gs_liant <= 0:
         Gs_liant = effective_binder_specific_gravity(bs)
 
@@ -392,14 +385,7 @@ def solve_rpg_wb(payload: RpgWbInputs) -> MixDesignResult:
 
     bs = payload.binder_system
     comps = bs.components
-    f1_pct = comps[0].mass_fraction * 100.0 if len(comps) > 0 else 0.0
-    f2_pct = comps[1].mass_fraction * 100.0 if len(comps) > 1 else 0.0
-    f3_pct = comps[2].mass_fraction * 100.0 if len(comps) > 2 else 0.0
-    gs1 = comps[0].specific_gravity if len(comps) > 0 else 1.0
-    gs2 = comps[1].specific_gravity if len(comps) > 1 else 1.0
-    gs3 = comps[2].specific_gravity if len(comps) > 2 else 1.0
-
-    Gs_liant = masse_volumique_S_liant_fonction(f1_pct, f2_pct, f3_pct, gs1, gs2, gs3)
+    Gs_liant = masse_volumique_S_liant_nary(comps)
     if Gs_liant <= 0:
         Gs_liant = effective_binder_specific_gravity(bs)
 
@@ -493,13 +479,7 @@ def solve_rpg_essai(inputs: RpgEssaiInputs) -> MixDesignResult:
     # Binder Gs (harmonic mean of components)
     bs = inputs.binder_system
     comps = bs.components
-    f1_pct = comps[0].mass_fraction * 100.0 if len(comps) > 0 else 0.0
-    f2_pct = comps[1].mass_fraction * 100.0 if len(comps) > 1 else 0.0
-    f3_pct = comps[2].mass_fraction * 100.0 if len(comps) > 2 else 0.0
-    gs1 = comps[0].specific_gravity if len(comps) > 0 else 1.0
-    gs2 = comps[1].specific_gravity if len(comps) > 1 else 1.0
-    gs3 = comps[2].specific_gravity if len(comps) > 2 else 1.0
-    Gs_liant = masse_volumique_S_liant_fonction(f1_pct, f2_pct, f3_pct, gs1, gs2, gs3)
+    Gs_liant = masse_volumique_S_liant_nary(comps)
     if Gs_liant <= 0:
         Gs_liant = effective_binder_specific_gravity(bs)
 
@@ -542,12 +522,15 @@ def solve_rpg_essai(inputs: RpgEssaiInputs) -> MixDesignResult:
         )
 
         Mb_ad = eq.mb_ad
-        Mc1_ad = Mb_ad * (fractions[0] if len(fractions) >= 1 else 0.0)
-        Mc2_ad = Mb_ad * (fractions[1] if len(fractions) >= 2 else 0.0)
-        Mc3_ad = Mb_ad * (fractions[2] if len(fractions) >= 3 else 0.0)
-        Mc1_tot = eq.mb_tot * (fractions[0] if len(fractions) >= 1 else 0.0)
-        Mc2_tot = eq.mb_tot * (fractions[1] if len(fractions) >= 2 else 0.0)
-        Mc3_tot = eq.mb_tot * (fractions[2] if len(fractions) >= 3 else 0.0)
+        # Répartition sur N composants (à ajouter et total).
+        add_masses = [Mb_ad * f for f in fractions]
+        tot_masses = [eq.mb_tot * f for f in fractions]
+        Mc1_ad = add_masses[0] if len(add_masses) >= 1 else 0.0
+        Mc2_ad = add_masses[1] if len(add_masses) >= 2 else 0.0
+        Mc3_ad = add_masses[2] if len(add_masses) >= 3 else 0.0
+        Mc1_tot = tot_masses[0] if len(tot_masses) >= 1 else 0.0
+        Mc2_tot = tot_masses[1] if len(tot_masses) >= 2 else 0.0
+        Mc3_tot = tot_masses[2] if len(tot_masses) >= 3 else 0.0
 
         comp = MixComponentMass(
             residue_dry_mass_kg=eq.mr_sec_tot,
@@ -557,12 +540,14 @@ def solve_rpg_essai(inputs: RpgEssaiInputs) -> MixDesignResult:
             binder_c1_mass_kg=Mc1_tot,
             binder_c2_mass_kg=Mc2_tot,
             binder_c3_mass_kg=Mc3_tot,
+            binder_masses_kg=tot_masses,
             water_total_mass_kg=eq.mw_tot,
             water_to_add_mass_kg=eq.mw_to_add,
             binder_to_add_mass_kg=Mb_ad,
             binder_c1_to_add_mass_kg=Mc1_ad,
             binder_c2_to_add_mass_kg=Mc2_ad,
             binder_c3_to_add_mass_kg=Mc3_ad,
+            binder_to_add_masses_kg=add_masses,
         )
 
         recipes.append(MixState(

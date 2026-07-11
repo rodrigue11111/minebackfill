@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useStore, SOLVER_VERSION, type SavedResult, type RpcMethod } from "@/lib/store";
+import { useStore, SOLVER_VERSION, lireBinders, type SavedResult, type RpcMethod } from "@/lib/store";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
 import BackupButtons from "@/components/BackupButtons";
@@ -19,8 +19,8 @@ export default function HistoriquePage() {
   const router = useRouter();
   const { savedResults, loadSavedResults, deleteSavedResult, restoreSavedResult, units, loadUnits } = useStore();
 
-  const binderNameFor = (sr: SavedResult) => (n: 1 | 2 | 3): string =>
-    ((sr.general as Record<string, unknown>)[`binder${n}_type`] as string) || `Ciment ${n}`;
+  const binderNameFor = (sr: SavedResult) => (n: number): string =>
+    lireBinders(sr.general)[n - 1]?.code || `Ciment ${n}`;
 
   const recharger = (sr: SavedResult) => {
     if (restoreSavedResult(sr.id)) router.push("/mix");

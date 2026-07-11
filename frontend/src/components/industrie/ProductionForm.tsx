@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { useStore, prixPourLiant } from "@/lib/store";
+import { useStore, prixPourLiant, lireBinders, patchBinders, MAX_BINDERS } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
 import type { ResiduItem, GranulatItem } from "@/lib/materials";
 import { messageErreurApi } from "@/lib/api-error";
-import type { IndustrieCostResult, GeneralInfo, LiantCatalogueItem } from "@/lib/store";
+import type { IndustrieCostResult, BinderRef, LiantCatalogueItem } from "@/lib/store";
 import {
   buildCwPayload,
   computeBinderCost,
@@ -78,23 +78,18 @@ export default function ProductionForm() {
     return prixPourLiant(binderPrices, { id: idResolu, code });
   };
 
-  const bcount = general.binder_count ?? 1;
   const liantsValides = catalogue_liants.filter((l: LiantCatalogueItem) => String(l.code ?? "").trim() !== "");
 
-  const activeBinders: { code: string; nom: string }[] = [];
-  for (let i = 1; i <= bcount; i++) {
-    const code = general[`binder${i}_type` as keyof GeneralInfo] as string | null;
-    if (code) {
-      const item = catalogue_liants.find((l: LiantCatalogueItem) => l.code === code);
-      activeBinders.push({ code, nom: item?.nom ?? code });
-    }
-  }
-
-  const fractionTotal =
-    (general.binder1_fraction_pct ?? 0) +
-    (general.binder2_fraction_pct ?? 0) +
-    (general.binder3_fraction_pct ?? 0);
+  // Composants du liant (liste N-aire, repli legacy via lireBinders).
+  const binders = lireBinders(general);
+  const fractionTotal = binders.reduce((s, b) => s + (b.fraction_pct ?? 0), 0);
   const fractionOk = Math.abs(fractionTotal - 100) < 0.01;
+
+  const setBinders = (next: BinderRef[]) => setGeneral(patchBinders(next));
+  const updateBinder = (i: number, patch: Partial<BinderRef>) =>
+    setBinders(binders.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  const addBinder = () => setBinders([...binders, { id: null, code: null, fraction_pct: undefined }]);
+  const removeBinder = (i: number) => setBinders(binders.filter((_, j) => j !== i));
 
   async function handleCompute() {
     try {
@@ -278,54 +273,28 @@ export default function ProductionForm() {
         {/* Binder count */}
         <div>
           <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-            Nombre de liants
+            Composants du liant
           </label>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[1, 2, 3].map((n) => {
-              const active = bcount === n;
-              return (
-                <label
-                  key={n}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    width: 42, height: 34, borderRadius: 6,
-                    border: `1.5px solid ${active ? "#2563eb" : "#e2e8f0"}`,
-                    background: active ? "#eff6ff" : "#fff", cursor: "pointer",
-                    fontWeight: 700, fontSize: 13.5, color: active ? "#2563eb" : "#374151",
-                    transition: "all 0.13s",
-                  }}
-                >
-                  <input type="radio" name="ind_binder_count" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active}
-                    onChange={() => setGeneral({ binder_count: n as 1 | 2 | 3 })} />
-                  {n}
-                </label>
-              );
-            })}
-          </div>
         </div>
 
-        {/* Binder rows: type + fraction + price */}
+        {/* Binder rows: type + fraction + price (liste dynamique) */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[1, 2, 3].map((idx) => {
-            if (idx > bcount) return null;
-            const typeKey = `binder${idx}_type` as keyof GeneralInfo;
-            const idKey = `binder${idx}_id` as keyof GeneralInfo;
-            const fracKey = `binder${idx}_fraction_pct` as keyof GeneralInfo;
-            const code = (general[typeKey] as string | null) ?? "";
+          {binders.map((b, idx) => {
+            const code = b.code ?? "";
             // Identité par id (repli code pour les anciens états).
             const liantId =
-              (general[idKey] as string | null) ??
+              b.id ??
               liantsValides.find((l: LiantCatalogueItem) => l.code === code)?.id ??
               "";
             return (
-              <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 100px 120px", gap: 10, alignItems: "end" }}>
-                <Field label={`Liant ${idx}`}>
+              <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 90px 110px auto", gap: 10, alignItems: "end" }}>
+                <Field label={`Liant ${idx + 1}`}>
                   <select
                     style={{ ...inputStyle, cursor: "pointer" }}
                     value={liantId}
                     onChange={(e) => {
                       const item = liantsValides.find((l: LiantCatalogueItem) => l.id === e.target.value);
-                      setGeneral({ [idKey]: item?.id ?? null, [typeKey]: item?.code ?? null });
+                      updateBinder(idx, { id: item?.id ?? null, code: item?.code ?? null });
                     }}
                   >
                     <option value="">-- Choisir --</option>
@@ -336,20 +305,33 @@ export default function ProductionForm() {
                 </Field>
                 <Field label="Fraction (%)">
                   <input type="number" step="any" style={{ ...inputStyle, textAlign: "center" }}
-                    value={general[fracKey] ?? ""} onChange={(e) => setGeneral({ [fracKey]: num(e.target.value) })} />
+                    value={b.fraction_pct ?? ""} onChange={(e) => updateBinder(idx, { fraction_pct: e.target.value === "" ? undefined : num(e.target.value) })} />
                 </Field>
                 <Field label="Prix ($/kg)">
                   <input type="number" step="any" style={inputStyle} placeholder="ex : 0.15"
                     value={code ? (getPrice(code, liantId || undefined) || "") : ""}
                     onChange={(e) => { if (code) setBinderPrice(code, num(e.target.value), liantId || undefined); }} />
                 </Field>
+                {binders.length > 1 && (
+                  <button type="button" onClick={() => removeBinder(idx)}
+                    style={{ border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", fontSize: 12, fontWeight: 600, padding: "0 4px 8px" }}
+                    aria-label={`Retirer le liant ${idx + 1}`}>
+                    Retirer
+                  </button>
+                )}
               </div>
             );
           })}
+          {binders.length < MAX_BINDERS && (
+            <button type="button" onClick={addBinder}
+              style={{ alignSelf: "flex-start", border: "1.5px dashed #93c5fd", background: "transparent", color: "#2563eb", borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+              + Ajouter un liant
+            </button>
+          )}
         </div>
 
         {/* Fraction total indicator */}
-        {bcount >= 2 && (
+        {binders.length >= 2 && (
           <div style={{
             fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 6,
             background: fractionOk ? "#f0fdf4" : "#fef2f2",

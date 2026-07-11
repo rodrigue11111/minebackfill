@@ -199,11 +199,28 @@ def masse_volumique_S_liant_fonction(
     f1_pct: float, f2_pct: float, f3_pct: float, gs1: float, gs2: float, gs3: float
 ) -> float:
     """
-    Formule harmonique (C#) pour le Gs du liant :
+    Formule harmonique (C#) pour le Gs du liant, 3 composants :
         Gs_liant = 1 / (0.01*f1/gs1 + 0.01*f2/gs2 + 0.01*f3/gs3)
-    Les fractions sont données en pourcentage (0–100).
+    Les fractions sont données en pourcentage (0–100). Conservée pour la
+    rétro-compatibilité (tests) ; le solveur utilise la variante N-aire.
     """
     denom = 0.01 * f1_pct / gs1 + 0.01 * f2_pct / gs2 + 0.01 * f3_pct / gs3
+    return 1.0 / denom if denom > 0 else 0.0
+
+
+def masse_volumique_S_liant_nary(components) -> float:
+    """
+    Gs harmonique du liant sur N composants (fractions massiques 0–1) :
+        Gs_liant = 1 / sum_i (mass_fraction_i / Gs_i)
+    Équivalent N-aire de masse_volumique_S_liant_fonction (pour ≤3 composants
+    sommant à 1, résultat identique). Ne valide PAS la somme des fractions —
+    comme la fonction historique, contrairement à effective_binder_specific_gravity.
+    """
+    denom = sum(
+        c.mass_fraction / c.specific_gravity
+        for c in components
+        if c.specific_gravity > 0
+    )
     return 1.0 / denom if denom > 0 else 0.0
 
 
@@ -304,14 +321,7 @@ def _solve_single_cw_recipe(
     # Specific gravities: binder and backfill
     # ------------------------------------------------------------------
     comps = binder_system.components
-    f1_pct = comps[0].mass_fraction * 100.0 if len(comps) >= 1 else 0.0
-    f2_pct = comps[1].mass_fraction * 100.0 if len(comps) >= 2 else 0.0
-    f3_pct = comps[2].mass_fraction * 100.0 if len(comps) >= 3 else 0.0
-    gs1 = comps[0].specific_gravity if len(comps) >= 1 else 3.15
-    gs2 = comps[1].specific_gravity if len(comps) >= 2 else gs1
-    gs3 = comps[2].specific_gravity if len(comps) >= 3 else gs1
-
-    Gs_binder = masse_volumique_S_liant_fonction(f1_pct, f2_pct, f3_pct, gs1, gs2, gs3)
+    Gs_binder = masse_volumique_S_liant_nary(comps)
     if Gs_binder <= 0:
         Gs_binder = effective_binder_specific_gravity(binder_system)
 
@@ -366,18 +376,11 @@ def _solve_single_cw_recipe(
     log("M_water_to_add_kg", M_water_to_add)
     log("wc_ratio", wc_ratio)
 
-    # Split binder mass among components 1-3
-    c1_mass = 0.0
-    c2_mass = 0.0
-    c3_mass = 0.0
-    if binder_system.components:
-        fractions = [c.mass_fraction for c in binder_system.components]
-        if len(fractions) >= 1:
-            c1_mass = M_binder * fractions[0]
-        if len(fractions) >= 2:
-            c2_mass = M_binder * fractions[1]
-        if len(fractions) >= 3:
-            c3_mass = M_binder * fractions[2]
+    # Répartition de la masse de liant sur N composants (ordre du système).
+    binder_masses = [M_binder * c.mass_fraction for c in binder_system.components]
+    c1_mass = binder_masses[0] if len(binder_masses) >= 1 else 0.0
+    c2_mass = binder_masses[1] if len(binder_masses) >= 2 else 0.0
+    c3_mass = binder_masses[2] if len(binder_masses) >= 3 else 0.0
 
     log("binder_c1_mass_kg", c1_mass)
     log("binder_c2_mass_kg", c2_mass)
@@ -391,6 +394,7 @@ def _solve_single_cw_recipe(
         binder_c1_mass_kg=c1_mass,
         binder_c2_mass_kg=c2_mass,
         binder_c3_mass_kg=c3_mass,
+        binder_masses_kg=binder_masses,
         water_total_mass_kg=M_water_total,
         water_to_add_mass_kg=M_water_to_add,
     )
@@ -589,12 +593,15 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
         )
 
         Mb_ad = eq.mb_ad
-        Mc1_ad = Mb_ad * (fractions[0] if len(fractions) >= 1 else 0.0)
-        Mc2_ad = Mb_ad * (fractions[1] if len(fractions) >= 2 else 0.0)
-        Mc3_ad = Mb_ad * (fractions[2] if len(fractions) >= 3 else 0.0)
-        Mc1_tot = eq.mb_tot * (fractions[0] if len(fractions) >= 1 else 0.0)
-        Mc2_tot = eq.mb_tot * (fractions[1] if len(fractions) >= 2 else 0.0)
-        Mc3_tot = eq.mb_tot * (fractions[2] if len(fractions) >= 3 else 0.0)
+        # Répartition sur N composants (à ajouter et total).
+        add_masses = [Mb_ad * f for f in fractions]
+        tot_masses = [eq.mb_tot * f for f in fractions]
+        Mc1_ad = add_masses[0] if len(add_masses) >= 1 else 0.0
+        Mc2_ad = add_masses[1] if len(add_masses) >= 2 else 0.0
+        Mc3_ad = add_masses[2] if len(add_masses) >= 3 else 0.0
+        Mc1_tot = tot_masses[0] if len(tot_masses) >= 1 else 0.0
+        Mc2_tot = tot_masses[1] if len(tot_masses) >= 2 else 0.0
+        Mc3_tot = tot_masses[2] if len(tot_masses) >= 3 else 0.0
 
         comp = MixComponentMass(
             residue_dry_mass_kg=eq.mr_sec_tot,
@@ -604,12 +611,14 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
             binder_c1_mass_kg=Mc1_tot,
             binder_c2_mass_kg=Mc2_tot,
             binder_c3_mass_kg=Mc3_tot,
+            binder_masses_kg=tot_masses,
             water_total_mass_kg=eq.mw_tot,
             water_to_add_mass_kg=eq.mw_to_add,
             binder_to_add_mass_kg=Mb_ad,
             binder_c1_to_add_mass_kg=Mc1_ad,
             binder_c2_to_add_mass_kg=Mc2_ad,
             binder_c3_to_add_mass_kg=Mc3_ad,
+            binder_to_add_masses_kg=add_masses,
         )
 
         recipes.append(MixState(
@@ -721,13 +730,15 @@ def _solve_single_wb_recipe(
     gamma_h = rho_h * gravity / 1000.0
     gamma_d = rho_d * gravity / 1000.0
 
+    binder_masses = [M_binder * c.mass_fraction for c in binder_system.components]
     components = MixComponentMass(
         residue_dry_mass_kg=M_r_sec,
         residue_wet_mass_kg=M_r_hum,
         binder_total_mass_kg=M_binder,
-        binder_c1_mass_kg=M_binder * (binder_system.components[0].mass_fraction if binder_system.components else 0.0),
-        binder_c2_mass_kg=M_binder * (binder_system.components[1].mass_fraction if len(binder_system.components) > 1 else 0.0),
-        binder_c3_mass_kg=M_binder * (binder_system.components[2].mass_fraction if len(binder_system.components) > 2 else 0.0),
+        binder_c1_mass_kg=binder_masses[0] if len(binder_masses) >= 1 else 0.0,
+        binder_c2_mass_kg=binder_masses[1] if len(binder_masses) >= 2 else 0.0,
+        binder_c3_mass_kg=binder_masses[2] if len(binder_masses) >= 3 else 0.0,
+        binder_masses_kg=binder_masses,
         water_total_mass_kg=M_water_total,
         water_to_add_mass_kg=M_water_to_add,
     )

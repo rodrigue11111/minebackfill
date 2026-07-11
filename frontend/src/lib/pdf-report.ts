@@ -3,6 +3,7 @@ import type { Recipe } from "@/lib/types";
 import type { Category, GeneralInfo } from "@/lib/store";
 import { methodLabel } from "@/lib/method-registry";
 import { REPORT_SECTIONS, rowsForSection, type ReportCtx } from "@/lib/report-schema";
+import { lireBinders } from "@/lib/store";
 import { MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS } from "@/lib/units";
 import { fmt } from "@/lib/format";
 import { EXPORT_FOOTER } from "@/lib/branding";
@@ -27,7 +28,7 @@ const TEXT_MUTED: [number, number, number] = [100, 116, 139];
 export async function exportToPdf(
   recipes: Recipe[],
   general: GeneralInfo,
-  binderName: (n: 1 | 2 | 3) => string,
+  binderName: (n: number) => string,
   category: string,
   method: string,
   units: UnitPreferences,
@@ -42,7 +43,7 @@ export async function exportToPdf(
   const contentW = pageW - marginL - marginR;
 
   const recipeCount = recipes.length;
-  const bcount = general.binder_count ?? 1;
+  const bcount = lireBinders(general).length;
   const isEssai = method === "essai";
   const isRpg = category === "RPG";
   const massLabel = MASS_LABELS[units.mass] ?? "kg";
