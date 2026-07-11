@@ -4,19 +4,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useStore, type Category, type RpcMethod } from "@/lib/store";
-
-const CATEGORIES: { id: Category; label: string; desc: string; disabled?: boolean }[] = [
-  { id: "RPC", label: "RPC", desc: "Remblai en pâte cimenté" },
-  { id: "RPG", label: "RPG", desc: "Remblai pâte granulaire" },
-  { id: "RRC", label: "RRC", desc: "Remblai rocheux cimenté" },
-];
-
-const METHODS: { id: RpcMethod; label: string; desc: string; rpcOnly?: boolean }[] = [
-  { id: "dosage_cw", label: "Dosage Cw (%)", desc: "% solide massique fixe" },
-  { id: "wb", label: "Rapport E/C", desc: "Rapport eau / ciment" },
-  { id: "slump", label: "Ajustement slump", desc: "Correction par affaissement", rpcOnly: true },
-  { id: "essai", label: "Essai-erreur", desc: "Ajustements manuels" },
-];
+import { CATEGORY_INFO, methodsFor } from "@/lib/method-registry";
 
 const SECTION_LABEL: React.CSSProperties = {
   fontSize: 10,
@@ -38,12 +26,12 @@ export default function LeftPane() {
 
   const handleCategoryClick = (c: Category) => {
     setCategory(c);
-    if (c === "RPG") setMethod("dosage_cw");
+    // Si la méthode courante n'existe pas pour la nouvelle catégorie
+    // (ex. slump en RPG), on retombe sur la première disponible.
+    if (!methodsFor(c).some((d) => d.method === method)) setMethod("dosage_cw");
   };
 
-  const availableMethods =
-    category === "RRC" ? [] :
-    category === "RPG" ? METHODS.filter((m) => !m.rpcOnly) : METHODS;
+  const availableMethods = methodsFor(category);
 
   return (
     <div
@@ -63,14 +51,13 @@ export default function LeftPane() {
         <div style={{ marginBottom: 22 }}>
           <p style={SECTION_LABEL}>Catégorie</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {CATEGORIES.map((cat) => {
+            {CATEGORY_INFO.map((cat) => {
               const active = category === cat.id;
               return (
                 <button
                   key={cat.id}
                   type="button"
-                  disabled={cat.disabled}
-                  onClick={() => !cat.disabled && handleCategoryClick(cat.id)}
+                  onClick={() => handleCategoryClick(cat.id)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -79,14 +66,13 @@ export default function LeftPane() {
                     borderRadius: 7,
                     border: active ? "1.5px solid var(--primary)" : "1.5px solid transparent",
                     background: active ? "var(--primary-light)" : "transparent",
-                    cursor: cat.disabled ? "not-allowed" : "pointer",
+                    cursor: "pointer",
                     textAlign: "left",
-                    opacity: cat.disabled ? 0.4 : 1,
                     transition: "all 0.13s",
                     width: "100%",
                   }}
                   onMouseEnter={(e) => {
-                    if (!active && !cat.disabled)
+                    if (!active)
                       (e.currentTarget as HTMLButtonElement).style.background = "var(--primary-light)";
                   }}
                   onMouseLeave={(e) => {
@@ -139,12 +125,12 @@ export default function LeftPane() {
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {availableMethods.map((m) => {
-              const active = method === m.id;
+              const active = method === m.method;
               return (
                 <button
-                  key={m.id}
+                  key={m.method}
                   type="button"
-                  onClick={() => setMethod(m.id)}
+                  onClick={() => setMethod(m.method as RpcMethod)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -186,10 +172,10 @@ export default function LeftPane() {
                         color: active ? "var(--primary)" : "#374151",
                       }}
                     >
-                      {m.label}
+                      {m.labels.long}
                     </span>
                     <span style={{ display: "block", fontSize: 10.5, color: "var(--muted-foreground)", marginTop: 1 }}>
-                      {m.desc}
+                      {m.description}
                     </span>
                   </span>
                 </button>

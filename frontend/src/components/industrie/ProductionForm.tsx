@@ -13,11 +13,7 @@ import {
   computeCostPerM3,
   computeCostPerTonne,
 } from "@/lib/industrie_helpers";
-
-const num = (v: string) => {
-  const x = parseFloat(String(v));
-  return Number.isFinite(x) ? x : 0;
-};
+import { num } from "@/lib/format";
 
 const inputStyle: React.CSSProperties = {
   display: "block",

@@ -6,7 +6,10 @@
 import type { UnitPreferences } from "@/lib/units";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
-import type { GeneralInfo } from "@/lib/store";
+import type { Category, GeneralInfo } from "@/lib/store";
+import { methodLabel } from "@/lib/method-registry";
+import { fmt as fmtNum } from "@/lib/format";
+import { APP_NAME } from "@/lib/branding";
 
 const NAVY: [number, number, number] = [12, 30, 66];
 const WHITE: [number, number, number] = [255, 255, 255];
@@ -17,11 +20,6 @@ const BG_ROW: [number, number, number] = [248, 250, 252];
 
 const val = (x: number | null | undefined) =>
   x === undefined || x === null || Number.isNaN(x) ? 0 : x;
-
-const fmtNum = (v: number | null | undefined, digits = 3): string => {
-  if (v === null || v === undefined || Number.isNaN(v)) return "—";
-  return v.toFixed(digits);
-};
 
 const CONTENANT_LABELS: Record<string, string> = {
   section_hauteur: "Section + hauteur",
@@ -51,10 +49,7 @@ export async function exportPreparationPdf(
   const isEssai = method === "essai";
   const isRpg = category === "RPG";
   const massLabel = MASS_LABELS[units.mass] ?? "kg";
-  const methodLabel = method === "dosage_cw" ? "Dosage Cw%"
-    : method === "wb" ? "Rapport E/C"
-    : method === "slump" ? "Slump"
-    : "Essai-erreur";
+  const libelleMethode = methodLabel(category as Category, method);
 
   const masse = (kg: number | null | undefined) => fmtNum(fromStoreMass(val(kg), units.mass));
 
@@ -88,7 +83,7 @@ export async function exportPreparationPdf(
     doc.setFont("helvetica", "italic");
     doc.setTextColor(200, 210, 240);
     doc.text(
-      `${category} — ${methodLabel}  |  Recette ${idx + 1} / ${recipes.length}  |  Bw = ${fmtNum(r.bw_mass_pct, 2)} %`,
+      `${category} — ${libelleMethode}  |  Recette ${idx + 1} / ${recipes.length}  |  Bw = ${fmtNum(r.bw_mass_pct, 2)} %`,
       mL, 23.5,
     );
     y = 33;
@@ -219,7 +214,7 @@ export async function exportPreparationPdf(
     // ── Pied de page ──
     doc.setFontSize(8);
     doc.setTextColor(...TEXT_MUTED);
-    doc.text(`MineBackfill — feuille de préparation  |  ${new Date().toLocaleDateString("fr-CA")}`, mL, pageH - 8);
+    doc.text(`${APP_NAME} — feuille de préparation  |  ${new Date().toLocaleDateString("fr-CA")}`, mL, pageH - 8);
     doc.text(`Recette ${idx + 1}/${recipes.length}`, pageW - mR, pageH - 8, { align: "right" });
   });
 

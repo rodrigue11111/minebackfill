@@ -5,6 +5,7 @@ import "katex/dist/katex.min.css";
 import NavBar from "@/components/NavBar";
 import GlobalInputEnhancer from "@/components/GlobalInputEnhancer";
 import StoreHydrator from "@/components/StoreHydrator";
+import { APP_NAME, APP_NAME_VERSION, MODULE_ID, MODULE_LABEL } from "@/lib/branding";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MineBackfill — Outil de dimensionnement",
+  title: `${APP_NAME} — Outil de dimensionnement`,
   description: "Outil de calcul des mélanges de remblai cimenté en pâte",
 };
 
@@ -41,9 +42,9 @@ export default function RootLayout({
         {/* ── Desktop status bar ── */}
         <footer className="status-bar">
           <span className="status-bar-dot" />
-          <span>MineBackfill v1.0</span>
+          <span>{APP_NAME_VERSION}</span>
           <span className="status-bar-sep" />
-          <span>Module 1 — Dimensionnement des mélanges</span>
+          <span>{MODULE_ID} — {MODULE_LABEL}</span>
           <span style={{ marginLeft: "auto" }}>Desktop</span>
         </footer>
       </body>

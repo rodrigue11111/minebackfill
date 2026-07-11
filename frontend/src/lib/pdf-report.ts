@@ -1,20 +1,11 @@
 import type { UnitPreferences } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
-import type { GeneralInfo } from "@/lib/store";
-import {
-  val, masseRejetSecTotaleKg, masseSolidesTotaleKg, masseRemblaiTotaleKg,
-  masseEauDansResidusKg, volumeAirM3, cwCalculePct, cvCalculePct,
-  rhoSolideKgM3, gammaSolideKNM3,
-} from "@/lib/derived";
-import {
-  fromStoreMass, fromStoreVolume, fromStoreDensity,
-  MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS,
-} from "@/lib/units";
-
-const fmtNum = (v: number | null | undefined, digits = 3): string => {
-  if (v === null || v === undefined || Number.isNaN(v)) return "\u2014";
-  return v.toFixed(digits);
-};
+import type { Category, GeneralInfo } from "@/lib/store";
+import { methodLabel } from "@/lib/method-registry";
+import { REPORT_SECTIONS, rowsForSection, type ReportCtx } from "@/lib/report-schema";
+import { MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS } from "@/lib/units";
+import { fmt } from "@/lib/format";
+import { EXPORT_FOOTER } from "@/lib/branding";
 
 /* ── Colour palette (RGB tuples) ── */
 const NAVY: [number, number, number] = [12, 30, 66];
@@ -58,10 +49,7 @@ export async function exportToPdf(
   const volLabel = VOLUME_LABELS[units.volume] ?? "L";
   const densLabel = DENSITY_LABELS[units.density] ?? "g/cm3";
 
-  const methodLabel = method === "dosage_cw" ? "Dosage Cw%"
-    : method === "wb" ? "Rapport E/C"
-    : method === "slump" ? "Slump"
-    : "Essai-erreur";
+  const libelleMethode = methodLabel(category as Category, method);
 
   let y = 10;
 
@@ -72,7 +60,7 @@ export async function exportToPdf(
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(...TEXT_MUTED);
-      doc.text(`MineBackfill v1.0 — Module 1  |  ${new Date().toLocaleDateString("fr-CA")}`, marginL, pageH - 6);
+      doc.text(`${EXPORT_FOOTER}  |  ${new Date().toLocaleDateString("fr-CA")}`, marginL, pageH - 6);
       doc.text(`Page ${i}/${pages}`, pageW - marginR, pageH - 6, { align: "right" });
     }
   };
@@ -103,7 +91,7 @@ export async function exportToPdf(
   doc.setFont("helvetica", "italic");
   doc.setTextColor(200, 210, 240);
   doc.text(
-    `${category} — ${methodLabel}  |  ${recipeCount} recette${recipeCount > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
+    `${category} — ${libelleMethode}  |  ${recipeCount} recette${recipeCount > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
     marginL, 27,
   );
   y = 36;
@@ -187,7 +175,7 @@ export async function exportToPdf(
     for (let i = 0; i < recipeCount; i++) {
       const v = getter(recipes[i]);
       const x = marginL + colW_label + colW_unit + colW_recipe * (i + 1) - 2;
-      doc.text(fmtNum(v, digits), x, y + 4, { align: "right" });
+      doc.text(fmt(v, digits), x, y + 4, { align: "right" });
     }
     // Light border
     doc.setDrawColor(241, 245, 249);
@@ -197,98 +185,29 @@ export async function exportToPdf(
     rowIdx++;
   };
 
-  /* ════════════════════════════
-     SECTION 1: DONNEES DU MELANGE
-     ════════════════════════════ */
-  drawSectionHeader("DONNÉES DU MÉLANGE", PRIMARY_LIGHT, PRIMARY_TXT);
-  drawColumnHeaders();
-  rowIdx = 0;
-  drawDataRow(isEssai ? "Bw% cible" : "Liant Bw%", "%", (r) => r.bw_mass_pct, 2, true);
-  drawDataRow("Liant Bv%", "% vol.", (r) => r.bv_vol_pct, 2);
-  drawDataRow(isEssai ? "Résidu sec (tot.)" : "Résidu sec Mr", massLabel, (r) => fromStoreMass(r.components?.residue_dry_mass_kg, units.mass), 3, true);
-  if (isRpg) drawDataRow("Agrégat sec Ma", massLabel, (r) => fromStoreMass(r.components?.aggregate_dry_mass_kg, units.mass), 3, true);
-  drawDataRow(isEssai ? "Liant (tot.)" : "Liant Mb", massLabel, (r) => fromStoreMass(r.components?.binder_total_mass_kg, units.mass), 3, true);
-  drawDataRow("Résidu humide Mr-hum", massLabel, (r) => fromStoreMass(r.components?.residue_wet_mass_kg, units.mass));
-  drawDataRow("Eau totale Mw", massLabel, (r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass));
-  drawDataRow("Eau à ajouter/retirer Mw-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass));
-  if (bcount >= 1) drawDataRow(`${binderName(1)} Mc1`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_mass_kg, units.mass));
-  if (bcount >= 2) drawDataRow(`${binderName(2)} Mc2`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_mass_kg, units.mass));
-  if (bcount >= 3) drawDataRow(`${binderName(3)} Mc3`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_mass_kg, units.mass));
-  if (isEssai) {
-    drawDataRow("Liant à ajouter/retirer Mb-ad", massLabel, (r) => fromStoreMass(r.components?.binder_to_add_mass_kg, units.mass));
-    drawDataRow(`${binderName(1)} à ajouter/retirer`, massLabel, (r) => fromStoreMass(r.components?.binder_c1_to_add_mass_kg, units.mass));
-    if (bcount >= 2) drawDataRow(`${binderName(2)} à ajouter/retirer`, massLabel, (r) => fromStoreMass(r.components?.binder_c2_to_add_mass_kg, units.mass));
-    if (bcount >= 3) drawDataRow(`${binderName(3)} à ajouter/retirer`, massLabel, (r) => fromStoreMass(r.components?.binder_c3_to_add_mass_kg, units.mass));
-  }
-  y += 4;
-
-  /* ── Section 2: Geotechnical ── */
-  drawSectionHeader("PARAMÈTRES GÉOTECHNIQUES", GREEN_HDR, GREEN_TXT);
-  drawColumnHeaders();
-  rowIdx = 0;
-  drawDataRow("Liant Bw%", "%", (r) => r.bw_mass_pct, 2, true);
-  drawDataRow("Solides Cw%", "% mass.", (r) => r.solids_mass_pct, 2);
-  drawDataRow("Solides Cv%", "% vol.", (r) => r.cv_vol_pct, 2);
-  drawDataRow("Teneur en eau w", "%", (r) => r.w_mass_pct, 2);
-  drawDataRow("Rapport E/C", "", (r) => r.wc_ratio, 3);
-  drawDataRow("Saturation Sr", "%", (r) => r.saturation_pct, 1);
-  if (isRpg) {
-    drawDataRow("Granulat massique Am", "%", (r) => r.aggregate_mass_pct, 2);
-    drawDataRow("Granulat vol. / résidus", "% vol.", (r) => r.aggregate_vol_pct_of_residue, 2);
-    drawDataRow("Granulat vol. / remblai", "% vol.", (r) => r.aggregate_vol_pct_of_backfill, 2);
-  }
-  y += 4;
-
-  /* ── Section 3: Densities ── */
-  drawSectionHeader("MASSES VOLUMIQUES", PURPLE_HDR, PURPLE_TXT);
-  drawColumnHeaders();
-  rowIdx = 0;
-  drawDataRow("Masse vol. humide rho_h", densLabel, (r) => fromStoreDensity(r.bulk_density_kg_m3, units.density), 4, true);
-  drawDataRow("Masse vol. sèche rho_d", densLabel, (r) => fromStoreDensity(r.dry_density_kg_m3, units.density), 4, true);
-  drawDataRow("Poids vol. humide gamma_h", "kN/m3", (r) => r.bulk_unit_weight_kN_m3, 2);
-  drawDataRow("Poids vol. sec gamma_d", "kN/m3", (r) => r.dry_unit_weight_kN_m3, 2);
-  drawDataRow("Masse vol. solide rho_s", densLabel, (r) => fromStoreDensity(rhoSolideKgM3(r), units.density), 4);
-  drawDataRow("Poids vol. solide gamma_s", "kN/m3", (r) => gammaSolideKNM3(r), 2);
-  y += 4;
-
-  /* ── Section 4: Void indices ── */
-  drawSectionHeader("INDICES DES VIDES & STRUCTURE", AMBER_HDR, AMBER_TXT);
-  drawColumnHeaders();
-  rowIdx = 0;
-  drawDataRow("Indice des vides e", "", (r) => r.void_ratio, 5, true);
-  drawDataRow("Porosité n", "", (r) => r.porosity, 5);
-  drawDataRow("Teneur eau vol. theta", "%", (r) => r.theta_pct, 2);
-  drawDataRow("Gs remblai", "", (r) => r.gs_backfill, 5);
-  drawDataRow("Gs liant", "", (r) => r.gs_binder, 4);
-  y += 4;
-
-  /* ── Section 5: Volumes ── */
-  drawSectionHeader("VOLUMES", CYAN_HDR, CYAN_TXT);
-  drawColumnHeaders();
-  rowIdx = 0;
-  drawDataRow("Volume moule V_moule", volLabel, (r) => fromStoreVolume(r.container_volume_m3, units.volume), 4);
-  drawDataRow("Volume total V_T", volLabel, (r) => fromStoreVolume(r.total_backfill_volume_m3, units.volume), 4, true);
-  drawDataRow("Volume solide V_s", volLabel, (r) => fromStoreVolume(r.solid_volume_m3, units.volume), 4);
-  drawDataRow("Volume vides V_v", volLabel, (r) => fromStoreVolume(r.void_volume_m3, units.volume), 4);
-  drawDataRow("Volume résidu V_r", volLabel, (r) => fromStoreVolume(r.residue_volume_m3, units.volume), 4);
-  drawDataRow("Volume liant V_b", volLabel, (r) => fromStoreVolume(r.binder_volume_m3, units.volume), 4);
-  drawDataRow("Volume eau V_w", volLabel, (r) => fromStoreVolume(r.water_volume_m3, units.volume), 4);
-  if (isRpg) drawDataRow("Volume granulat V_g", volLabel, (r) => fromStoreVolume(r.aggregate_volume_m3, units.volume), 4);
-  y += 4;
-
-  /* ── Section 6: Complete results ── */
-  drawSectionHeader("RÉSULTATS COMPLETS", PRIMARY_LIGHT, PRIMARY_TXT);
-  drawColumnHeaders();
-  rowIdx = 0;
-  drawDataRow("Masse rejet sec totale M_r_sec_tot", massLabel, (r) => fromStoreMass(masseRejetSecTotaleKg(r), units.mass), 4, true);
-  drawDataRow("Masse solides totale M_s", massLabel, (r) => fromStoreMass(masseSolidesTotaleKg(r), units.mass), 4, true);
-  drawDataRow("Masse eau totale M_w", massLabel, (r) => fromStoreMass(r.components?.water_total_mass_kg, units.mass), 4);
-  drawDataRow("Masse remblai totale M_t", massLabel, (r) => fromStoreMass(masseRemblaiTotaleKg(r), units.mass), 4);
-  drawDataRow("Eau dans résidu M_w-res", massLabel, (r) => fromStoreMass(masseEauDansResidusKg(r), units.mass), 4);
-  drawDataRow("Eau à ajouter/retirer M_w-aj", massLabel, (r) => fromStoreMass(r.components?.water_to_add_mass_kg, units.mass), 4);
-  drawDataRow("Volume air V_air", volLabel, (r) => fromStoreVolume(volumeAirM3(r), units.volume), 4);
-  drawDataRow("Cw calcule (depuis masses)", "%", (r) => cwCalculePct(r), 4);
-  drawDataRow("Cv calcule (depuis volumes)", "%", (r) => cvCalculePct(r), 4);
+  /* ── Sections 1-6 : générées depuis le schéma de rapport unique ── */
+  const ctx: ReportCtx = {
+    units, massLabel, volLabel, densLabel, binderName,
+    isEssai, isRpg, bcount,
+  };
+  const SECTION_COLORS: Record<number, [[number, number, number], [number, number, number]]> = {
+    1: [PRIMARY_LIGHT, PRIMARY_TXT],
+    2: [GREEN_HDR, GREEN_TXT],
+    3: [PURPLE_HDR, PURPLE_TXT],
+    4: [AMBER_HDR, AMBER_TXT],
+    5: [CYAN_HDR, CYAN_TXT],
+    6: [PRIMARY_LIGHT, PRIMARY_TXT],
+  };
+  REPORT_SECTIONS.forEach((section, si) => {
+    if (si > 0) y += 4;
+    const [bg, txt] = SECTION_COLORS[section.id];
+    drawSectionHeader(section.title(ctx).toUpperCase(), bg, txt);
+    drawColumnHeaders();
+    rowIdx = 0;
+    for (const row of rowsForSection(section.id, ctx)) {
+      drawDataRow(row.label(ctx), row.unit(ctx), (r) => row.getter(r, ctx), row.digits, row.bold);
+    }
+  });
 
   /* ── Footer ── */
   addFooter();

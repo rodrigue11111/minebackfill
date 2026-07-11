@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { calculeMesures, type MesureLabo } from "@/lib/mesures";
+import { fmt } from "@/lib/format";
+import { RECIPE_COLORS } from "@/lib/recipe-theme";
 
 /**
  * Bloc « Paramètres mesurés au laboratoire » de la feuille Intra 2017
@@ -15,8 +17,6 @@ import { calculeMesures, type MesureLabo } from "@/lib/mesures";
  * Calcul purement local (aucun appel API). Les masses sont en grammes,
  * comme sur la feuille.
  */
-
-const RECIPE_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626"];
 
 const inputStyle: React.CSSProperties = {
   display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6,
@@ -41,9 +41,6 @@ const num = (v: string): number | undefined => {
   const x = parseFloat(v);
   return Number.isFinite(x) ? x : undefined;
 };
-
-const fmt = (v: number | null | undefined, d = 2) =>
-  v === null || v === undefined || Number.isNaN(v) ? "—" : v.toFixed(d);
 
 function Ecart({ mesure, calcule }: { mesure: number | null; calcule: number | null | undefined }) {
   if (mesure === null || calcule === null || calcule === undefined) return null;
@@ -122,12 +119,12 @@ export default function MesuresLabo({
               {(w !== null || cw !== null) && (
                 <div style={{ marginTop: 10, fontSize: 12.5, color: "#374151", display: "flex", gap: 24, flexWrap: "wrap" }}>
                   <span>
-                    <strong>w mesuré : {fmt(w)} %</strong>
-                    {calc ? <> — calculé : {fmt(calc.w_mass_pct)} %<Ecart mesure={w} calcule={calc.w_mass_pct} /></> : null}
+                    <strong>w mesuré : {fmt(w, 2)} %</strong>
+                    {calc ? <> — calculé : {fmt(calc.w_mass_pct, 2)} %<Ecart mesure={w} calcule={calc.w_mass_pct} /></> : null}
                   </span>
                   <span>
-                    <strong>Cw mesuré : {fmt(cw)} %</strong>
-                    {calc ? <> — calculé : {fmt(calc.solids_mass_pct)} %<Ecart mesure={cw} calcule={calc.solids_mass_pct} /></> : null}
+                    <strong>Cw mesuré : {fmt(cw, 2)} %</strong>
+                    {calc ? <> — calculé : {fmt(calc.solids_mass_pct, 2)} %<Ecart mesure={cw} calcule={calc.solids_mass_pct} /></> : null}
                   </span>
                 </div>
               )}

@@ -11,11 +11,8 @@ import {
   construireGeneralPayload,
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
-
-const num = (v: string) => {
-  const x = parseFloat(String(v));
-  return Number.isFinite(x) ? x : 0;
-};
+import { num } from "@/lib/format";
+import { RECIPE_COLORS } from "@/lib/recipe-theme";
 
 const inputStyle: React.CSSProperties = {
   display: "block",
@@ -52,8 +49,6 @@ function CardSection({ title, children }: { title: string; children: React.React
     </div>
   );
 }
-
-const RECIPE_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626"];
 
 export default function WbForm() {
   const {

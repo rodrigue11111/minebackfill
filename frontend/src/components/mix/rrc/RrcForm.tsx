@@ -6,6 +6,8 @@ import ErrorBox from "@/components/ErrorBox";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
 import type { RetardateurItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
+import { num } from "@/lib/format";
+import { RECIPE_COLORS } from "@/lib/recipe-theme";
 
 /**
  * Formulaire RRC — Remblai Rocheux Cimenté (CRF).
@@ -13,17 +15,10 @@ import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
  * stériles) et W/C du coulis (fluide = eau + retardateur de prise).
  */
 
-const num = (v: string) => {
-  const x = parseFloat(v);
-  return Number.isFinite(x) ? x : 0;
-};
-
 const inputStyle: React.CSSProperties = {
   display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6,
   padding: "7px 11px", background: "#fff", fontSize: 13.5, outline: "none",
 };
-
-const RECIPE_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626"];
 
 function CardSection({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (

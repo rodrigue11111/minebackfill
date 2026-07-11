@@ -14,12 +14,19 @@ import RpgCwForm from "@/src/components/mix/rpg/RpgCwForm";
 import RpgWbForm from "@/src/components/mix/rpg/RpgWbForm";
 import RpgEssaiForm from "@/src/components/mix/rpg/RpgEssaiForm";
 import RrcForm from "@/src/components/mix/rrc/RrcForm";
+import { descriptorFor, methodLabel, type MethodStateKey } from "@/lib/method-registry";
 
-const METHOD_LABELS: Record<string, string> = {
-  dosage_cw: "Dosage selon Cw (%)",
-  wb: "Rapport eau/ciment (W/C)",
-  slump: "Ajustement pour slump",
-  essai: "Méthode essai-erreur",
+// Rendu des formulaires : la seule connaissance locale est « quelle tranche
+// d'état correspond à quel composant » — tout le reste vient du registre.
+const FORM_BY_STATE_KEY: Record<MethodStateKey, React.ComponentType> = {
+  cw: CwForm,
+  wb: WbForm,
+  slump: SlumpForm,
+  essai: EssaiForm,
+  rpgCw: RpgCwForm,
+  rpgWb: RpgWbForm,
+  rpgEssai: RpgEssaiForm,
+  rrc: RrcForm,
 };
 
 const RESULTS_MIN = 280;
@@ -72,11 +79,10 @@ export default function MixPage() {
   };
 
   const renderForm = () => {
-    if (category === "RRC") {
-      return <RrcForm />;
-    }
+    const d = descriptorFor(category, method);
 
-    if (category === "RPG" && method === "slump") {
+    // Combinaison inexistante (ex. slump en RPG) : message dédié.
+    if (!d && category === "RPG" && method === "slump") {
       return (
         <div
           style={{
@@ -96,42 +102,27 @@ export default function MixPage() {
       );
     }
 
-    if (category === "RPG") {
-      switch (method) {
-        case "dosage_cw": return <RpgCwForm />;
-        case "wb":        return <RpgWbForm />;
-        case "essai":     return <RpgEssaiForm />;
-        default:          return null;
-      }
+    if (!d) {
+      return (
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            padding: "40px 24px",
+            textAlign: "center",
+            color: "var(--muted-foreground)",
+          }}
+        >
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#374151" }}>
+            Sélectionnez une catégorie et une méthode dans le panneau de gauche.
+          </p>
+        </div>
+      );
     }
 
-    switch (method) {
-      case "dosage_cw":
-        return <CwForm />;
-      case "wb":
-        return <WbForm />;
-      case "slump":
-        return category === "RPC" ? <SlumpForm /> : null;
-      case "essai":
-        return category === "RPC" ? <EssaiForm /> : null;
-      default:
-        return (
-          <div
-            style={{
-              background: "#fff",
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              padding: "40px 24px",
-              textAlign: "center",
-              color: "var(--muted-foreground)",
-            }}
-          >
-            <p style={{ fontSize: 14, fontWeight: 500, color: "#374151" }}>
-              Sélectionnez une catégorie et une méthode dans le panneau de gauche.
-            </p>
-          </div>
-        );
-    }
+    const Form = FORM_BY_STATE_KEY[d.stateKey];
+    return <Form />;
   };
 
   return (
@@ -203,7 +194,7 @@ export default function MixPage() {
             {/* Method breadcrumb */}
             <div style={{ marginBottom: 18 }}>
               <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                {category || "—"} · {category === "RRC" ? "Dosage Bw et W/C (CRF)" : METHOD_LABELS[method] || "Sélectionner une méthode"}
+                {category || "—"} · {methodLabel(category, method, "long") !== method ? methodLabel(category, method, "long") : "Sélectionner une méthode"}
               </div>
               {category === "RPG" && (
                 <div

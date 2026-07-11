@@ -11,11 +11,7 @@ import {
   construireGeneralPayload,
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
-
-const num = (v: string) => {
-  const x = parseFloat(String(v));
-  return Number.isFinite(x) ? x : 0;
-};
+import { num } from "@/lib/format";
 
 /* ── Shared style tokens ── */
 const inputStyle: React.CSSProperties = {

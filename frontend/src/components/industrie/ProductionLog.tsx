@@ -3,11 +3,7 @@
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
 import type { IndustrieCostResult, ProductionLogEntry } from "@/lib/store";
-
-const fmt = (v: number | undefined | null, digits = 2) => {
-  if (v === undefined || v === null || Number.isNaN(v)) return "\u2014";
-  return v.toFixed(digits);
-};
+import { fmt } from "@/lib/format";
 
 const SECTION_BORDER = "#e2e8f0";
 
@@ -104,7 +100,7 @@ export default function ProductionLog() {
                       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Bw% retenu</label>
                       <select className="field-input" value={saveBw ?? ""} onChange={(e) => setSaveBw(parseFloat(e.target.value))}>
                         {results.map((r) => (
-                          <option key={r.bw_pct} value={r.bw_pct}>{r.bw_pct}% — {fmt(r.cost_per_m3)} $/m3</option>
+                          <option key={r.bw_pct} value={r.bw_pct}>{r.bw_pct}% — {fmt(r.cost_per_m3, 2)} $/m3</option>
                         ))}
                       </select>
                     </div>
@@ -176,7 +172,7 @@ export default function ProductionLog() {
                   <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{entry.date}</span>
                   <span style={{ fontSize: 11.5, fontWeight: 700, color: "#374151", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 4, padding: "2px 8px", textAlign: "center" }}>{entry.category}</span>
                   <span style={{ fontSize: 13, fontWeight: 600, color: "#2563eb" }}>{fmt(entry.bw_pct, 1)}%</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#16a34a" }}>{fmt(entry.cost_per_m3)} $/m3</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#16a34a" }}>{fmt(entry.cost_per_m3, 2)} $/m3</span>
                   <span style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.notes || "\u2014"}</span>
                   <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                     <button
@@ -210,7 +206,7 @@ export default function ProductionLog() {
                       <span><span style={{ color: "#94a3b8" }}>w0 : </span>{fmt(entry.residue_w_pct, 1)}%</span>
                       {entry.aggregate_sg ? <span><span style={{ color: "#94a3b8" }}>Gs agrégat : </span>{fmt(entry.aggregate_sg, 3)}</span> : null}
                       {entry.aggregate_fraction_pct ? <span><span style={{ color: "#94a3b8" }}>A_m : </span>{fmt(entry.aggregate_fraction_pct, 1)}%</span> : null}
-                      <span><span style={{ color: "#94a3b8" }}>Coût/t : </span>{fmt(entry.cost_per_tonne)} $/t</span>
+                      <span><span style={{ color: "#94a3b8" }}>Coût/t : </span>{fmt(entry.cost_per_tonne, 2)} $/t</span>
                     </div>
                     <table className="result-table" style={{ background: "#fff" }}>
                       <thead>

@@ -8,22 +8,12 @@ import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
 import BackupButtons from "@/components/BackupButtons";
 
-const METHOD_LABELS: Record<string, string> = {
-  dosage_cw: "Cw%",
-  wb: "E/C",
-  slump: "Slump",
-  essai: "Essai-erreur",
-  rrc: "CRF",
-};
+import { methodLabel } from "@/lib/method-registry";
+import { fmt } from "@/lib/format";
 
 /** Nombre de recettes, RPC/RPG comme RRC (dont les recettes vivent dans `rrc`). */
 const nbRecettes = (sr: SavedResult) =>
   sr.category === "RRC" ? sr.rrc?.result.recipes.length ?? 0 : sr.recipes.length;
-
-const fmt = (v: number | undefined | null, digits = 3) => {
-  if (v === undefined || v === null || Number.isNaN(v)) return "\u2014";
-  return v.toFixed(digits);
-};
 
 export default function HistoriquePage() {
   const router = useRouter();
@@ -266,7 +256,7 @@ export default function HistoriquePage() {
                       {sr.category}
                     </span>
                     <span style={{ fontSize: 12, color: "#475569" }}>
-                      {METHOD_LABELS[sr.method] ?? sr.method}
+                      {methodLabel(sr.category, sr.method)}
                     </span>
                     <span style={{ fontSize: 12, color: "#475569" }}>
                       {nbRecettes(sr)} recette{nbRecettes(sr) > 1 ? "s" : ""}

@@ -81,6 +81,23 @@ cd ../frontend
 pnpm test                              # tests Vitest
 ```
 
+### Types de l'API (générés depuis l'OpenAPI)
+
+`frontend/src/lib/api-types.gen.ts` est **généré** depuis le schéma OpenAPI du
+backend ; `types.ts` en dérive `Recipe`/`RecipeComponents`/`RrcRecipe`. Le
+fichier généré est commité (la CI ne le régénère pas — pas de réseau). Après un
+changement des modèles de réponse Pydantic, régénérer avec le backend en marche :
+
+```powershell
+# backend démarré sur http://127.0.0.1:8000
+cd frontend
+pnpm gen:api
+```
+
+Un champ de réponse renommé côté backend disparaît alors du type et casse le
+`pnpm typecheck` des consommateurs — c'est voulu (fini les lectures `undefined`
+silencieuses).
+
 ## Notes de conventions
 
 - Convention de calcul : feuille « Intra 2017 » (`Ms = ρd·VT`) — voir `Issues.md` pour
