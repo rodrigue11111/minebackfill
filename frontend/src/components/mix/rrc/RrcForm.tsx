@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
+import MaterialPresetSelect from "@/components/MaterialPresetSelect";
+import type { RetardateurItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 
 /**
@@ -157,6 +159,14 @@ export default function RrcForm() {
       {/* ── Coulis & retardateur ── */}
       <CardSection title="Coulis cimentaire et retardateur de prise"
         subtitle="Le fluide du coulis = eau + retardateur ; dosage D0 recommandé : 50 à 260 ml/100 kg de ciment">
+        <div style={{ maxWidth: 320, marginBottom: 14 }}>
+          <MaterialPresetSelect
+            kind="retardateurs"
+            role="retarderId"
+            label="Retardateur (bibliothèque)"
+            onPick={(m) => { const r = m as RetardateurItem; setRrc({ retarder_density: r.densite_g_ml, retarder_d0: r.dosage_d0_ml_100kg ?? rrc.retarder_d0 }); }}
+          />
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px 16px" }}>
           <Field label="Gs du ciment" hint="Pour le volume du coulis">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.15"

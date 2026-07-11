@@ -14,6 +14,7 @@ export default function StoreHydrator() {
     loadGeneral,
     loadConstantes,
     loadCatalogue,
+    loadMaterials,
     loadUnits,
     loadSavedResults,
     loadBinderPrices,
@@ -24,6 +25,7 @@ export default function StoreHydrator() {
     loadGeneral();
     loadConstantes();
     loadCatalogue();
+    loadMaterials();
     loadUnits();
     loadSavedResults();
     loadBinderPrices();
@@ -32,6 +34,7 @@ export default function StoreHydrator() {
     loadGeneral,
     loadConstantes,
     loadCatalogue,
+    loadMaterials,
     loadUnits,
     loadSavedResults,
     loadBinderPrices,
@@ -51,6 +54,9 @@ export default function StoreHydrator() {
         case "minebackfill_catalogue_liants": loadCatalogue(); break;
         case "minebackfill_constantes": loadConstantes(); break;
         case "minebackfill_general": void loadGeneral(); break;
+        case "minebackfill_catalogue_residus":
+        case "minebackfill_catalogue_granulats":
+        case "minebackfill_catalogue_retardateurs": loadMaterials(); break;
       }
     };
     window.addEventListener("storage", onStorage);
@@ -59,6 +65,7 @@ export default function StoreHydrator() {
     loadGeneral,
     loadConstantes,
     loadCatalogue,
+    loadMaterials,
     loadUnits,
     loadSavedResults,
     loadBinderPrices,

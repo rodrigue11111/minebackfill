@@ -5,6 +5,8 @@ import { useEffect, useMemo } from "react";
 import { useStore } from "@/lib/store";
 import { UNIT_CATEGORIES, unitsForLength, type LengthUnit } from "@/lib/units";
 import type { LiantCatalogueItem } from "@/lib/store";
+import { estOfficiel } from "@/lib/materials";
+import MaterialCatalogueCard from "@/components/MaterialCatalogueCard";
 import BackupButtons from "@/components/BackupButtons";
 
 export default function ReglagesPage() {
@@ -15,6 +17,7 @@ export default function ReglagesPage() {
     ajouterLiant,
     modifierLiant,
     supprimerLiant,
+    restaurerLiantsOfficiels,
     units,
     setUnits,
     loadUnits,
@@ -131,21 +134,27 @@ export default function ReglagesPage() {
         <div className="form-card" style={{ marginTop: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Catalogue des liants</h2>
-            <button type="button" className="btn-secondary" onClick={ajouterLiant}>
-              + Ajouter un liant
-            </button>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={restaurerLiantsOfficiels}>
+                Restaurer valeurs officielles
+              </button>
+              <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={ajouterLiant}>
+                + Ajouter un liant
+              </button>
+            </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {catalogue_liants.map((liant: LiantCatalogueItem, index: number) => {
               const code = String(liant.code ?? "");
               const duplique = code && codesDupliques.has(code);
+              const verrou = estOfficiel(liant);
               return (
                 <div
                   key={liant.id}
                   style={{
                     border: `1px solid ${duplique ? "#fecaca" : "var(--border)"}`,
-                    background: duplique ? "#fef2f2" : "#fff",
+                    background: duplique ? "#fef2f2" : verrou ? "#f8fafc" : "#fff",
                     borderRadius: 8,
                     padding: 10,
                     display: "grid",
@@ -161,6 +170,7 @@ export default function ReglagesPage() {
                     <input
                       className="field-input"
                       value={liant.code}
+                      disabled={verrou}
                       onChange={(e) =>
                         modifierLiant(index, {
                           code: String(e.target.value || "").trim().toUpperCase(),
@@ -175,6 +185,7 @@ export default function ReglagesPage() {
                     <input
                       className="field-input"
                       value={liant.nom}
+                      disabled={verrou}
                       onChange={(e) => modifierLiant(index, { nom: e.target.value })}
                     />
                   </div>
@@ -187,17 +198,27 @@ export default function ReglagesPage() {
                       step="any"
                       className="field-input"
                       value={liant.gs}
+                      disabled={verrou}
                       onChange={(e) => modifierLiant(index, { gs: Number(e.target.value || 0) })}
                     />
                   </div>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => supprimerLiant(index)}
-                    disabled={catalogue_liants.length <= 1}
-                  >
-                    Supprimer
-                  </button>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", paddingBottom: 2 }}>
+                    {verrou ? (
+                      <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--primary)", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
+                        officiel
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ fontSize: 12, padding: "6px 12px" }}
+                        onClick={() => supprimerLiant(index)}
+                        disabled={catalogue_liants.length <= 1}
+                      >
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -218,6 +239,41 @@ export default function ReglagesPage() {
             </Link>
           </div>
         </div>
+
+        {/* ── Bibliothèques de matériaux ── */}
+        <MaterialCatalogueCard
+          kind="residus"
+          title="Bibliothèque de résidus"
+          sub="Résidus miniers réutilisables : sélectionnez-les dans les formulaires pour remplir Gs et w0."
+          columns={[
+            { key: "nom", label: "Nom", type: "text", flex: 2 },
+            { key: "gs", label: "Gs", type: "number" },
+            { key: "w0_pct", label: "w0 (%)", type: "number" },
+            { key: "provenance", label: "Provenance", type: "text", flex: 1.5 },
+          ]}
+        />
+        <MaterialCatalogueCard
+          kind="granulats"
+          title="Bibliothèque de granulats"
+          sub="Granulats pour le remblai en pâte granulaire (RPG)."
+          columns={[
+            { key: "nom", label: "Nom", type: "text", flex: 2 },
+            { key: "gs", label: "Gs", type: "number" },
+            { key: "humidite_pct", label: "Humidité (%)", type: "number" },
+            { key: "fraction_defaut_pct", label: "Xg défaut (%)", type: "number" },
+            { key: "provenance", label: "Provenance", type: "text", flex: 1.5 },
+          ]}
+        />
+        <MaterialCatalogueCard
+          kind="retardateurs"
+          title="Bibliothèque de retardateurs"
+          sub="Retardateurs de prise pour le remblai rocheux cimenté (RRC)."
+          columns={[
+            { key: "nom", label: "Nom", type: "text", flex: 2 },
+            { key: "densite_g_ml", label: "Densité (g/ml)", type: "number" },
+            { key: "dosage_d0_ml_100kg", label: "Dosage D0 (ml/100 kg)", type: "number" },
+          ]}
+        />
 
         {/* ── Unit preferences ── */}
         <div className="form-card" style={{ marginTop: 20 }}>
