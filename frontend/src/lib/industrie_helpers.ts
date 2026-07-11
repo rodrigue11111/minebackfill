@@ -71,8 +71,10 @@ export function computeBinderCost(
     const massKey = `binder_c${i}_mass_kg` as keyof NonNullable<Recipe["components"]>;
     const mass = (recipe.components?.[massKey] as number | null | undefined) ?? 0;
     if (!code) continue;
-    // Correspondance par id (résolu via le catalogue) puis repli par code.
-    const id = catalogue.find((l) => l.code === code)?.id;
+    // Identité par id : celui du composant (binderN_id) prime ; repli par
+    // résolution catalogue pour les anciens états, puis par code.
+    const idExplicite = general[`binder${i}_id` as keyof GeneralInfo] as string | null | undefined;
+    const id = idExplicite ?? catalogue.find((l) => l.code === code)?.id;
     total += mass * prixPourLiant(binderPrices, { id, code });
   }
 

@@ -529,7 +529,14 @@ export default function GeneralInfoPage() {
               {[1, 2, 3].map((idx) => {
                 if (idx > (general.binder_count ?? 1)) return null;
                 const typeKey = `binder${idx}_type` as keyof GeneralInfo;
+                const idKey = `binder${idx}_id` as keyof GeneralInfo;
                 const fracKey = `binder${idx}_fraction_pct` as keyof GeneralInfo;
+                // Sélection par id (identité stable) ; repli par code pour les
+                // états enregistrés avant l'introduction des binderN_id.
+                const selectedLiantId =
+                  (general[idKey] as string | null) ??
+                  liantsValides.find((l: LiantCatalogueItem) => l.code === general[typeKey])?.id ??
+                  "";
                 return (
                   <div
                     key={idx}
@@ -557,12 +564,15 @@ export default function GeneralInfoPage() {
                         <label style={{ ...LABEL, color: "#374151" }}>Type de liant</label>
                         <select
                           className="field-input"
-                          value={general[typeKey] ?? ""}
-                          onChange={(e) => setGeneral({ [typeKey]: e.target.value || null })}
+                          value={selectedLiantId}
+                          onChange={(e) => {
+                            const item = liantsValides.find((l: LiantCatalogueItem) => l.id === e.target.value);
+                            setGeneral({ [idKey]: item?.id ?? null, [typeKey]: item?.code ?? null });
+                          }}
                         >
                           <option value="">Sélectionner...</option>
                           {liantsValides.map((liant: LiantCatalogueItem) => (
-                            <option key={liant.id} value={liant.code}>
+                            <option key={liant.id} value={liant.id}>
                               {liant.nom} ({liant.code}) — Gs {Number(liant.gs).toFixed(4)}
                             </option>
                           ))}

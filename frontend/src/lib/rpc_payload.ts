@@ -6,19 +6,30 @@
 
 export const gsParDefaut = 3.15;
 
+/**
+ * Résolution d'un liant du catalogue : par id d'abord (identité stable —
+ * deux liants peuvent porter le même code), repli par code pour les
+ * anciennes sauvegardes qui n'ont pas d'id.
+ */
 export function trouverLiant(
   code: string | null | undefined,
-  catalogue: LiantCatalogueItem[]
+  catalogue: LiantCatalogueItem[],
+  id?: string | null,
 ): LiantCatalogueItem | undefined {
+  if (id) {
+    const parId = catalogue.find((item) => item.id === id);
+    if (parId) return parId;
+  }
   if (!code) return undefined;
   return catalogue.find((item) => item.code === code);
 }
 
 export function gsLiant(
   code: string | null | undefined,
-  catalogue: LiantCatalogueItem[]
+  catalogue: LiantCatalogueItem[],
+  id?: string | null,
 ): number {
-  const liant = trouverLiant(code, catalogue);
+  const liant = trouverLiant(code, catalogue, id);
   if (!liant || !Number.isFinite(liant.gs) || liant.gs <= 0) return gsParDefaut;
   return liant.gs;
 }
@@ -31,15 +42,15 @@ export function construireSystemeLiant(
   const f2 = Number(general.binder2_fraction_pct ?? 0);
   const f3 = Number(general.binder3_fraction_pct ?? 0);
 
-  const brut: { fracPct: number; type: string }[] = [];
+  const brut: { fracPct: number; type: string; id?: string | null }[] = [];
   if (general.binder1_type && f1 > 0) {
-    brut.push({ fracPct: f1, type: general.binder1_type });
+    brut.push({ fracPct: f1, type: general.binder1_type, id: general.binder1_id });
   }
   if (general.binder2_type && f2 > 0) {
-    brut.push({ fracPct: f2, type: general.binder2_type });
+    brut.push({ fracPct: f2, type: general.binder2_type, id: general.binder2_id });
   }
   if (general.binder3_type && f3 > 0) {
-    brut.push({ fracPct: f3, type: general.binder3_type });
+    brut.push({ fracPct: f3, type: general.binder3_type, id: general.binder3_id });
   }
 
   if (brut.length === 0) {
@@ -48,7 +59,7 @@ export function construireSystemeLiant(
       components: [
         {
           type: typeFallback,
-          specific_gravity: gsLiant(typeFallback, catalogue),
+          specific_gravity: gsLiant(typeFallback, catalogue, general.binder1_id),
           mass_fraction: 1.0,
         },
       ],
@@ -60,7 +71,7 @@ export function construireSystemeLiant(
   return {
     components: brut.map((item) => ({
       type: item.type,
-      specific_gravity: gsLiant(item.type, catalogue),
+      specific_gravity: gsLiant(item.type, catalogue, item.id),
       mass_fraction: item.fracPct / totalFrac,
     })),
   };

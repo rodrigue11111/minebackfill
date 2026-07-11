@@ -73,7 +73,7 @@ export default function UsineCalculator() {
       const code = general[`binder${n}_type`];
       const frac = (general[`binder${n}_fraction_pct`] ?? 0) / 100;
       if (!code || frac <= 0) return;
-      const id = catalogue_liants.find((l) => l.code === code)?.id;
+      const id = general[`binder${n}_id`] ?? catalogue_liants.find((l) => l.code === code)?.id;
       const entry = trouverPrixLiant(binderPrices, { id, code });
       if (entry) parts.push({ frac, prix: entry.price_per_kg });
     });

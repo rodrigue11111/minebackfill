@@ -49,6 +49,27 @@ describe("construireSystemeLiant", () => {
     expect(gsLiant("INTROUVABLE", CATALOGUE)).toBe(gsParDefaut);
     expect(gsLiant(null, CATALOGUE)).toBe(gsParDefaut);
   });
+
+  it("codes dupliqués : l'id départage et donne le bon Gs (revue : identité par id)", () => {
+    // Deux liants portent le même code « GU » avec des Gs différents : le
+    // binder1_id doit résoudre vers le second, pas vers le premier trouvé.
+    const catalogueDuplique: LiantCatalogueItem[] = [
+      { id: "l1", code: "GU", nom: "GU ancien", gs: 3.15 },
+      { id: "l9", code: "GU", nom: "GU nouveau", gs: 2.75 },
+    ];
+    const g: GeneralInfo = {
+      binder1_type: "GU", binder1_id: "l9", binder1_fraction_pct: 100,
+    };
+    const sys = construireSystemeLiant(g, catalogueDuplique);
+    expect(sys.components[0].specific_gravity).toBeCloseTo(2.75, 12);
+    // Sans id (ancien état) : repli par code -> premier trouvé (comportement
+    // historique conservé).
+    const gLegacy: GeneralInfo = { binder1_type: "GU", binder1_fraction_pct: 100 };
+    expect(construireSystemeLiant(gLegacy, catalogueDuplique).components[0].specific_gravity).toBeCloseTo(3.15, 12);
+    // Id absent du catalogue (liant supprimé) : repli par code, pas d'échec.
+    const gOrphelin: GeneralInfo = { binder1_type: "GU", binder1_id: "disparu", binder1_fraction_pct: 100 };
+    expect(construireSystemeLiant(gOrphelin, catalogueDuplique).components[0].specific_gravity).toBeCloseTo(3.15, 12);
+  });
 });
 
 describe("messageErreurApi", () => {
