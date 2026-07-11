@@ -479,7 +479,7 @@ export default function GuidePage() {
               "Type de cone : mini ou grand (facteur de conversion 2.335)",
               "Sr%, Bw%, systeme liant",
             ]}
-            formula="Cw = f(slump) via modèle prédictif : Cw = 4.95×10^6 / (slump - 235.5122)"
+            formula="Cw% = 4.95×10⁶·(1+Bw%) / ( slump·(1+Bw%)/Gs_résidu + 235.5122 )²   (slump au grand cône)"
           />
 
           <Method
