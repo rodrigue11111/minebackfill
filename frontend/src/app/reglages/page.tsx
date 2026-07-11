@@ -5,6 +5,7 @@ import { useEffect, useMemo } from "react";
 import { useStore } from "@/lib/store";
 import { UNIT_CATEGORIES, unitsForLength, type LengthUnit } from "@/lib/units";
 import type { LiantCatalogueItem } from "@/lib/store";
+import { CONVENTION_PACKS, packById } from "@/lib/conventions";
 import { estOfficiel } from "@/lib/materials";
 import MaterialCatalogueCard from "@/components/MaterialCatalogueCard";
 import BackupButtons from "@/components/BackupButtons";
@@ -49,6 +50,36 @@ export default function ReglagesPage() {
           <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 16 }}>
             Ces valeurs sont globales et sont utilisées dans les méthodes Cw%, E/C, Slump et essai-erreur.
           </p>
+
+          {/* ── Pack de convention de calcul ── */}
+          <div style={{ marginBottom: 18, padding: "12px 14px", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", borderRadius: 8 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+              Convention de calcul
+            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <select
+                className="field-input"
+                style={{ maxWidth: 320 }}
+                value={constantes.pack_id}
+                onChange={(e) => {
+                  const pack = packById(e.target.value as typeof constantes.pack_id);
+                  if (pack) setConstantes(pack.constantes);
+                }}
+              >
+                {CONVENTION_PACKS.map((p) => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
+                {constantes.pack_id === "personnalise" && (
+                  <option value="personnalise">Personnalisé</option>
+                )}
+              </select>
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                {constantes.pack_id === "personnalise"
+                  ? "Valeurs modifiées manuellement (hors preset)."
+                  : "Applique un jeu de constantes et de règles d'essai. Voir Issues.md #4."}
+              </span>
+            </div>
+          </div>
 
           <div
             style={{

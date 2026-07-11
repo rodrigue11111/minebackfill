@@ -123,6 +123,9 @@ describe("construireConstantesPayload — correspondance des clés API", () => {
       facteur_petit_cone_vers_grand_cone: 2.5,
       coefficient_modele_slump: 5e6,
       constante_modele_slump: 240,
+      essai_gs_convention: "recalcule",
+      essai_binder_rule: "residu_ajoute",
+      pack_id: "personnalise",
     };
     expect(construireConstantesPayload(c)).toEqual({
       water_density: 998.2,
@@ -130,6 +133,10 @@ describe("construireConstantesPayload — correspondance des clés API", () => {
       slump_small_to_large_factor: 2.5,
       slump_model_coeff: 5e6,
       slump_model_offset: 240,
+      essai_gs_convention: "recalcule",
+      essai_binder_rule: "residu_ajoute",
     });
+    // pack_id n'est PAS envoyé au backend.
+    expect("pack_id" in construireConstantesPayload(c)).toBe(false);
   });
 });

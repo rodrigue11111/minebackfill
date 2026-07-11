@@ -200,6 +200,23 @@ class TestSlump:
         _close("Cw custom", r.solids_mass_pct, 5.0e6 * b / denom ** 2)
 
 
+class TestConstantesDefauts:
+    def test_defauts_solverconstants_intra2017(self):
+        """Épingle les défauts de SolverConstants = pack « intra2017 » du
+        frontend (conventions.ts). Une dérive d'un côté casse ce test ET son
+        homologue vitest — garde-fou de cohérence des deux côtés."""
+        d = SolverConstants().model_dump()
+        assert d == {
+            "water_density": 1000.0,
+            "gravity": 9.81,
+            "slump_small_to_large_factor": 2.335,
+            "slump_model_coeff": 4.95e6,
+            "slump_model_offset": 235.5122,
+            "essai_gs_convention": "base",
+            "essai_binder_rule": "solides_totaux",
+        }
+
+
 # ======================================================================
 #  Constantes physiques personnalisées (rho_eau, g)
 # ======================================================================

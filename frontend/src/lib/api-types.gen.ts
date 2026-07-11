@@ -1095,6 +1095,20 @@ export interface components {
              * @default 235.5122
              */
             slump_model_offset: number;
+            /**
+             * Essai Gs Convention
+             * @description Essai-erreur : « base » fige les Gs de la recette de base (Intra 2017) ; « recalcule » les recalcule à partir de la composition après ajouts.
+             * @default base
+             * @enum {string}
+             */
+            essai_gs_convention: "base" | "recalcule";
+            /**
+             * Essai Binder Rule
+             * @description Essai-erreur : « solides_totaux » maintient Bw sur tous les solides ajoutés (résidu + granulat, Intra 2017) ; « residu_ajoute » applique le liant ajouté au résidu ajouté seulement (feuille « gramme » Belem 2016). Voir Issues.md #4.
+             * @default solides_totaux
+             * @enum {string}
+             */
+            essai_binder_rule: "solides_totaux" | "residu_ajoute";
         };
         /** ValidationError */
         ValidationError: {
