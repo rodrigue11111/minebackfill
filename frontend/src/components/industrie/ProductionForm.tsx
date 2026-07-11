@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
+import MaterialPresetSelect from "@/components/MaterialPresetSelect";
+import type { ResiduItem, GranulatItem } from "@/lib/materials";
 import { messageErreurApi } from "@/lib/api-error";
 import type { IndustrieCostResult, GeneralInfo, LiantCatalogueItem, BinderPrice } from "@/lib/store";
 import {
@@ -176,6 +178,9 @@ export default function ProductionForm() {
       {/* Residue */}
       <CardSection title="Propriétés du résidu" subtitle="Paramètres reçus du laboratoire">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
+          <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
+            onPick={(m) => { const r = m as ResiduItem; setIndustrie({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }} />
+          <div />
           <Field label="Gs résidu">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4"
               value={industrie.residue_sg || ""} onChange={(e) => setIndustrie({ residue_sg: num(e.target.value) })} />
@@ -195,6 +200,10 @@ export default function ProductionForm() {
         </div>
         {isRpg && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px 14px", marginTop: 10 }}>
+            <MaterialPresetSelect kind="granulats" role="aggregateId" label="Granulat (bibliothèque)"
+              onPick={(m) => { const g = m as GranulatItem; setIndustrie({ aggregate_sg: g.gs, aggregate_w_pct: g.humidite_pct, aggregate_fraction_pct: g.fraction_defaut_pct ?? industrie.aggregate_fraction_pct }); }} />
+            <div />
+            <div />
             <Field label="Gs agrégat">
               <input type="number" step="any" style={inputStyle} placeholder="ex : 2.7"
                 value={industrie.aggregate_sg || ""} onChange={(e) => setIndustrie({ aggregate_sg: num(e.target.value) })} />
