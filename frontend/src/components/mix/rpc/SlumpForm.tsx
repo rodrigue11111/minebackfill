@@ -151,7 +151,8 @@ export default function SlumpForm() {
       <CardSection title="Résidu">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
           <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
-            onPick={(m) => { const r = m as ResiduItem; setSlump({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }} />
+            onPick={(m) => { const r = m as ResiduItem; setSlump({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
+            matches={(m) => { const r = m as ResiduItem; return r.gs === slump.residue_sg && r.w0_pct === slump.residue_w_pct; }} />
           <div />
           <Field label="Gs résidu">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4" value={slump.residue_sg ?? ""} onChange={(e) => setSlump({ residue_sg: num(e.target.value) })} />

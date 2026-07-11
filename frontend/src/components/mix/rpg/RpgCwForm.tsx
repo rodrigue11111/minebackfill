@@ -122,6 +122,7 @@ export default function RpgCwForm() {
             role="aggregateId"
             label="Granulat (bibliothèque)"
             onPick={(m) => { const g = m as GranulatItem; setRpgCw({ aggregate_sg: g.gs, aggregate_fraction_pct: g.fraction_defaut_pct ?? rpgCw.aggregate_fraction_pct }); }}
+            matches={(m) => (m as GranulatItem).gs === rpgCw.aggregate_sg}
           />
           <div />
           <Field label="Gs agrégat" hint="Masse volumique spécifique de l'agrégat">
@@ -145,6 +146,7 @@ export default function RpgCwForm() {
             role="residueId"
             label="Résidu (bibliothèque)"
             onPick={(m) => { const r = m as ResiduItem; setRpgCw({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
+            matches={(m) => { const r = m as ResiduItem; return r.gs === rpgCw.residue_sg && r.w0_pct === rpgCw.residue_w_pct; }}
           />
           <div />
           <Field label="Gs résidu" hint="Masse volumique spécifique des grains">

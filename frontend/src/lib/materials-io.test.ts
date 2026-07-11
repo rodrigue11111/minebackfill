@@ -49,4 +49,36 @@ describe("materials-io — import", () => {
     await expect(materialsDepuisFichier("residus", fauxFichier("bad.json", "{pas json")))
       .rejects.toThrow();
   });
+
+  it("virgule decimale (Excel FR) acceptee : 3,05 -> 3.05", async () => {
+    const csv = "nom;gs;w0_pct;provenance;notes\nRes FR;3,05;31,5789;;";
+    const items = await materialsDepuisFichier("residus", fauxFichier("r.csv", csv));
+    const r = items[0] as unknown as Record<string, unknown>;
+    expect(r.gs).toBe(3.05);
+    expect(r.w0_pct).toBe(31.5789);
+  });
+
+  it("cellule entre guillemets contenant un retour a la ligne : pas d'item fantome", async () => {
+    const csv = 'nom;gs;w0_pct;provenance;notes\n"Res multi";3;10;A;"ligne 1\nligne 2"\nRes B;2.9;5;B;x';
+    const items = await materialsDepuisFichier("residus", fauxFichier("r.csv", csv));
+    expect(items.length).toBe(2);
+    const r0 = items[0] as unknown as Record<string, unknown>;
+    expect(r0.notes).toBe("ligne 1\nligne 2");
+    expect((items[1] as unknown as Record<string, unknown>).nom).toBe("Res B");
+  });
+
+  it("champ physique principal manquant ou nul -> erreur avec numero de ligne", async () => {
+    const csv = "nom;gs;w0_pct;provenance;notes\nSans Gs;;10;;";
+    await expect(materialsDepuisFichier("residus", fauxFichier("r.csv", csv)))
+      .rejects.toThrow(/Ligne 1/);
+    const json = JSON.stringify([{ nom: "Ret sans densite" }]);
+    await expect(materialsDepuisFichier("retardateurs", fauxFichier("x.json", json)))
+      .rejects.toThrow(/densite_g_ml/);
+  });
+
+  it("nom manquant -> erreur", async () => {
+    const csv = "nom;gs;w0_pct;provenance;notes\n;3;10;;";
+    await expect(materialsDepuisFichier("residus", fauxFichier("r.csv", csv)))
+      .rejects.toThrow(/nom/);
+  });
 });

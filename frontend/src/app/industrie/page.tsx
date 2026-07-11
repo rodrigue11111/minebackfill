@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useStore } from "@/lib/store";
 import ProductionForm from "@/components/industrie/ProductionForm";
 import CostDashboard from "@/components/industrie/CostDashboard";
@@ -17,15 +17,12 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export default function IndustriePage() {
-  const { general, fillTestData, loadBinderPrices, loadProductionLog, loadUnits } = useStore();
+  const { general, fillTestData } = useStore();
   const [activeTab, setActiveTab] = useState<Tab>("params");
   const [testLoaded, setTestLoaded] = useState(false);
-
-  useEffect(() => {
-    loadBinderPrices();
-    loadProductionLog();
-    loadUnits();
-  }, [loadBinderPrices, loadProductionLog, loadUnits]);
+  // Pas de ré-hydratation au montage : StoreHydrator (layout) l'a déjà faite,
+  // et recharger ici écraserait les prix de démonstration chargés en mémoire
+  // par fillTestData depuis une autre page.
 
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "var(--background)" }}>

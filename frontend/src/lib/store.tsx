@@ -177,13 +177,22 @@ export interface BinderPrice {
   price_per_kg: number;
 }
 
-/** Prix d'un liant : correspondance par id d'abord, repli par code. */
+/** Prix d'un liant : correspondance par id d'abord, repli par code.
+    Deux passes distinctes : une entrée qui matche par code plus tôt dans le
+    tableau ne doit jamais battre une correspondance par id plus loin. Et si
+    le liant a un id, le repli code ignore les entrées portant un AUTRE id
+    (code périmé d'un autre liant renommé). */
 export function trouverPrixLiant(
   prices: BinderPrice[],
   liant: { id?: string; code?: string | null } | undefined,
 ): BinderPrice | undefined {
   if (!liant) return undefined;
-  return prices.find((p) => (!!p.id && !!liant.id && p.id === liant.id) || (!!liant.code && p.code === liant.code));
+  if (liant.id) {
+    const parId = prices.find((p) => !!p.id && p.id === liant.id);
+    if (parId) return parId;
+    return liant.code ? prices.find((p) => !p.id && p.code === liant.code) : undefined;
+  }
+  return liant.code ? prices.find((p) => p.code === liant.code) : undefined;
 }
 export function prixPourLiant(
   prices: BinderPrice[],
@@ -546,7 +555,19 @@ function persistMaterials(kind: MaterialKind, items: MaterialItem[]) {
   persistVersioned(MATERIAL_CONFIG[kind].key, MATERIALS_VERSION, items);
 }
 function loadConstantesFromStorage(): ConstantesCalcul {
-  return loadVersioned(CONSTANTES_KEY, SETTINGS_VERSION, identityMigration, constantesDefaut);
+  const brut = loadVersioned<Partial<ConstantesCalcul>>(
+    CONSTANTES_KEY, SETTINGS_VERSION, identityMigration, constantesDefaut,
+  );
+  // Assainissement : les 5 constantes sont physiquement strictement positives.
+  // Un champ vidé dans Réglages persiste 0 — au rechargement on retombe sur la
+  // valeur par défaut plutôt que de bloquer durablement tous les calculs (422).
+  // La fusion couvre aussi les clés absentes d'anciennes sauvegardes.
+  const c: ConstantesCalcul = { ...constantesDefaut };
+  for (const k of Object.keys(constantesDefaut) as (keyof ConstantesCalcul)[]) {
+    const v = brut?.[k];
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) c[k] = v;
+  }
+  return c;
 }
 function persistConstantes(c: ConstantesCalcul) {
   persistVersioned(CONSTANTES_KEY, SETTINGS_VERSION, c);
@@ -701,7 +722,12 @@ export const useStore = create<AppState>((set, get) => ({
   restoreOfficialMaterials: (kind) =>
     set((state) => {
       const slice = SLICE_OF_KIND[kind];
-      const perso = (state[slice] as MaterialItem[]).filter((m) => m.origine !== "officiel");
+      // Une entrée perso portant l'id d'un officiel (données héritées d'avant
+      // le verrou d'import) est re-clée : jamais deux items avec le même id.
+      const idsOfficiels = new Set(MATERIAL_CONFIG[kind].defauts.map((m) => m.id));
+      const perso = (state[slice] as MaterialItem[])
+        .filter((m) => m.origine !== "officiel")
+        .map((m) => (idsOfficiels.has(m.id) ? { ...m, id: makeMaterialId(kind) } : m));
       const items = [...MATERIAL_CONFIG[kind].defauts.map((m) => ({ ...m })), ...perso];
       persistMaterials(kind, items);
       return { [slice]: items } as Partial<AppState>;
@@ -711,8 +737,12 @@ export const useStore = create<AppState>((set, get) => ({
       const slice = SLICE_OF_KIND[kind];
       const byId = new Map((state[slice] as MaterialItem[]).map((m) => [m.id, m] as const));
       for (const raw of imported) {
-        // Import : toujours « perso », fusion par id.
-        byId.set(raw.id, { ...raw, origine: "perso" as MaterialOrigine });
+        // Import : toujours « perso », fusion par id — SAUF si l'id entrant
+        // désigne une entrée officielle : le verrou tient aussi à l'import,
+        // l'item importé est re-clé et ajouté à côté (l'officiel reste intact).
+        const existant = raw.id ? byId.get(raw.id) : undefined;
+        const id = !raw.id || (existant && estOfficiel(existant)) ? makeMaterialId(kind) : raw.id;
+        byId.set(id, { ...raw, id, origine: "perso" as MaterialOrigine });
       }
       const items = [...byId.values()];
       persistMaterials(kind, items);
@@ -1047,6 +1077,38 @@ export const useStore = create<AppState>((set, get) => ({
   loadSavedResults: () => set({ savedResults: loadSavedFromStorage() }),
   saveCurrentResult: (label) => {
     const state = get();
+
+    // Traçabilité honnête : on ne snapshote un id de matériau QUE si les
+    // valeurs réellement utilisées par le calcul correspondent encore au
+    // matériau référencé (sinon l'id mentirait — préréglage choisi puis
+    // valeurs modifiées à la main, ou sélection faite dans un autre onglet).
+    const materiauxUtilises = (): SavedResult["selectedMaterials"] => {
+      const sm = state.selectedMaterials;
+      const out: NonNullable<SavedResult["selectedMaterials"]> = {};
+      if (state.category === "RRC") {
+        const ret = sm.retarderId
+          ? state.catalogue_retardateurs.find((m) => m.id === sm.retarderId)
+          : undefined;
+        if (ret && ret.densite_g_ml === state.rrc.retarder_density) out.retarderId = ret.id;
+        return out;
+      }
+      const isRpg = state.category === "RPG";
+      const m = state.method;
+      // Valeurs de résidu/granulat effectivement envoyées au calcul (l'essai
+      // réutilise l'état de la méthode de base Cw ou E/C).
+      const vals = isRpg
+        ? m === "wb" ? state.rpgWb : m === "essai" ? (state.rpgEssai.base_method === "wb" ? state.rpgWb : state.rpgCw) : state.rpgCw
+        : m === "wb" ? state.wb : m === "slump" ? state.slump : m === "essai" ? (state.essai.base_method === "wb" ? state.wb : state.cw) : state.cw;
+      const res = sm.residueId ? state.catalogue_residus.find((x) => x.id === sm.residueId) : undefined;
+      if (res && res.gs === vals.residue_sg && res.w0_pct === vals.residue_w_pct) out.residueId = res.id;
+      if (isRpg) {
+        const agg = sm.aggregateId ? state.catalogue_granulats.find((x) => x.id === sm.aggregateId) : undefined;
+        const aggSg = (vals as RpgCwState | RpgWbState).aggregate_sg;
+        if (agg && agg.gs === aggSg) out.aggregateId = agg.id;
+      }
+      return out;
+    };
+
     // Champs communs à toutes les catégories (dont l'instantané de contexte).
     const commun = {
       id: `sr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -1056,7 +1118,7 @@ export const useStore = create<AppState>((set, get) => ({
       solverVersion: SOLVER_VERSION,
       catalogue_liants: state.catalogue_liants.map((l) => ({ ...l })),
       constantes: { ...state.constantes },
-      selectedMaterials: { ...state.selectedMaterials },
+      selectedMaterials: materiauxUtilises(),
     };
 
     let entry: SavedResult;
@@ -1120,7 +1182,9 @@ export const useStore = create<AppState>((set, get) => ({
     if (entry.catalogue_liants?.length) {
       const courant = [...state.catalogue_liants];
       for (const l of entry.catalogue_liants) {
-        if (!courant.some((c) => c.code === l.code)) courant.push({ ...l });
+        // Correspondance par code OU par id : un liant renommé depuis la
+        // sauvegarde ne doit pas être réinjecté en doublon d'id.
+        if (!courant.some((c) => c.code === l.code || c.id === l.id)) courant.push({ ...l });
       }
       patch.catalogue_liants = courant;
       persistCatalogue(courant);
@@ -1191,12 +1255,20 @@ export const useStore = create<AppState>((set, get) => ({
       // On enregistre l'id du liant en plus du code : le prix reste rattaché
       // même si l'utilisateur renomme le code (plus de prix orphelin).
       const id = state.catalogue_liants.find((l) => l.code === code)?.id;
-      const existing = state.binderPrices.filter(
-        (p) => !((id && p.id === id) || p.code === code),
-      );
-      const updated = [...existing, { id, code, price_per_kg }];
-      persistBinderPrices(updated);
-      return { binderPrices: updated };
+      // Entrée remplacée : même id, ou même code SANS id divergent. On ne
+      // supprime jamais le prix rattaché par id à un AUTRE liant dont le code
+      // périmé serait réutilisé.
+      const remplace = (p: BinderPrice) =>
+        id ? p.id === id || (p.code === code && !p.id) : p.code === code;
+      const nouvelle = { id, code, price_per_kg };
+      // La liste mémoire peut contenir des prix de démonstration (fillTestData,
+      // non persistés) : on fusionne le changement dans la liste DU STOCKAGE,
+      // jamais la liste mémoire entière — sinon la première modification de
+      // prix écraserait les prix enregistrés de l'utilisateur avec la démo.
+      const stored = [...loadBinderPricesFromStorage().filter((p) => !remplace(p)), nouvelle];
+      persistBinderPrices(stored);
+      const memoire = [...state.binderPrices.filter((p) => !remplace(p)), nouvelle];
+      return { binderPrices: memoire };
     }),
   loadBinderPrices: () => set({ binderPrices: loadBinderPricesFromStorage() }),
 

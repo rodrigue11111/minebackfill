@@ -165,6 +165,7 @@ export default function RrcForm() {
             role="retarderId"
             label="Retardateur (bibliothèque)"
             onPick={(m) => { const r = m as RetardateurItem; setRrc({ retarder_density: r.densite_g_ml, retarder_d0: r.dosage_d0_ml_100kg ?? rrc.retarder_d0 }); }}
+            matches={(m) => (m as RetardateurItem).densite_g_ml === rrc.retarder_density}
           />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px 16px" }}>

@@ -60,6 +60,43 @@ describe("store — bibliothèque de matériaux", () => {
     expect(imported?.origine).toBe("perso");
   });
 
+  it("l'import ne deverrouille pas un officiel : collision d'id re-clee (bug revue #1)", () => {
+    const officiel = s().catalogue_residus[0]; // res_casa_berardi
+    s().importMaterials("residus", [
+      { id: officiel.id, nom: "Imposteur", gs: 2.5, w0_pct: 1, origine: "perso" } as ResiduItem,
+    ]);
+    const items = s().catalogue_residus;
+    // L'officiel est intact.
+    const off = items.find((m) => m.id === officiel.id);
+    expect(off?.nom).toBe(officiel.nom);
+    expect(off?.gs).toBe(officiel.gs);
+    expect(off?.origine).toBe("officiel");
+    // L'item importe existe a cote, re-clee en perso.
+    const imposteur = items.find((m) => m.nom === "Imposteur");
+    expect(imposteur).toBeDefined();
+    expect(imposteur!.id).not.toBe(officiel.id);
+    expect(imposteur!.origine).toBe("perso");
+    // Aucun doublon d'id.
+    const ids = items.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("restaurer les officiels ne cree pas de doublons d'id avec un imposteur herite", () => {
+    // Donnees heritees d'avant le verrou : une perso portant un id officiel.
+    const officiel = s().catalogue_residus[0];
+    useStore.setState({
+      catalogue_residus: [
+        { ...officiel, nom: "Imposteur herite", gs: 2.4, origine: "perso" },
+      ],
+    });
+    s().restoreOfficialMaterials("residus");
+    const items = s().catalogue_residus;
+    const ids = items.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length); // pas de doublon
+    expect(items.find((m) => m.id === officiel.id)?.origine).toBe("officiel");
+    expect(items.some((m) => m.nom === "Imposteur herite")).toBe(true); // conserve, re-clee
+  });
+
   it("restaurer les officiels conserve les entrées perso", () => {
     s().addMaterial("residus");
     const persoAvant = s().catalogue_residus.filter((m) => m.origine === "perso").length;
