@@ -31,17 +31,11 @@ from .test_excel_golden import (
 )
 
 
-# La feuille gramme s'arrête à D90 (Bv) : elle ne définit PAS de masses
-# volumiques (D91-D96, propres à la feuille tonne). Sous drapeau gramme, quand
-# un ajout de granulat dilue le Bw atteint, la densité de l'app suit la
-# convention « base » (Gs figé) — un choix documenté, non arbitrable par la
-# feuille. On exclut donc ces champs de la comparaison à l'oracle gramme.
-_HORS_FEUILLE_GRAMME = {"rho_h_f", "rho_d_f", "rho_s_f"}
-
-
+# Les densités finales (D91-D96) SONT dans la feuille gramme, avec le Gs final
+# au Bw ATTEINT (D95 via D89) — le pipeline suit désormais la même formule, la
+# comparaison est donc complète (aucune exclusion).
 def _pairs_gramme(st, tw):
-    return [(n, o, r) for (n, o, r) in _essai_pairs(st, tw)
-            if n not in _HORS_FEUILLE_GRAMME]
+    return _essai_pairs(st, tw)
 
 
 def _twin(mod, Cw, Bw, Xg, adj):

@@ -27,8 +27,13 @@ export default function LeftPane() {
   const handleCategoryClick = (c: Category) => {
     setCategory(c);
     // Si la méthode courante n'existe pas pour la nouvelle catégorie
-    // (ex. slump en RPG), on retombe sur la première disponible.
-    if (!methodsFor(c).some((d) => d.method === method)) setMethod("dosage_cw");
+    // (ex. slump en RPG), on retombe sur la première disponible. RRC n'a pas
+    // de liste de méthodes (formulaire unique) : on NE réinitialise pas, pour
+    // qu'un aller-retour RPC -> RRC -> RPC retrouve la méthode et ses résultats.
+    const methodes = methodsFor(c);
+    if (methodes.length > 0 && !methodes.some((d) => d.method === method)) {
+      setMethod("dosage_cw");
+    }
   };
 
   const availableMethods = methodsFor(category);

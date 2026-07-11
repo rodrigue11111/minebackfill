@@ -58,7 +58,28 @@ export function packById(id: ConventionPackId): ConventionPack | undefined {
   return CONVENTION_PACKS.find((p) => p.id === id);
 }
 
-/** Version du solveur estampillée sur un résultat, selon le pack actif. */
+/**
+ * Version du solveur estampillée sur un résultat, selon le pack actif. En
+ * « personnalise », le préfixe suit la FAMILLE de convention réellement active
+ * (règle du liant) — pas systématiquement intra2017.
+ */
 export function solverVersionActive(constantes: ConstantesCalcul): string {
-  return packById(constantes.pack_id)?.solverVersion ?? "intra2017-1.0-personnalise";
+  const pack = packById(constantes.pack_id);
+  if (pack) return pack.solverVersion;
+  const famille = constantes.essai_binder_rule === "residu_ajoute" ? "gramme" : "intra2017";
+  return `${packById(famille)!.solverVersion}-personnalise`;
+}
+
+/**
+ * Vrai si cette version d'estampille correspond aux formules ACTUELLES : un
+ * pack connu, ou sa variante « -personnalise ». Sert au badge « anciennes
+ * formules » de l'Historique — un résultat gramme ou personnalisé fraîchement
+ * calculé n'est PAS obsolète.
+ */
+export function estVersionCourante(version: string | undefined): boolean {
+  if (!version) return false;
+  const base = version.endsWith("-personnalise")
+    ? version.slice(0, -"-personnalise".length)
+    : version;
+  return CONVENTION_PACKS.some((p) => p.solverVersion === base);
 }

@@ -146,3 +146,92 @@ describe("store — RRC sauvegardable/restaurable (P0.4)", () => {
     expect(useStore.getState().rrcResult?.recipes.length).toBe(1);
   });
 });
+
+describe("store — constantes pré-P4 complétées (revue P3-P5)", () => {
+  it("restaurer un snapshot pré-P4 (sans drapeaux) complète pack/drapeaux", () => {
+    seedResultatRpc();
+    expect(useStore.getState().saveCurrentResult("avec drapeaux")).toBe(true);
+    const entry = useStore.getState().savedResults[0];
+    // Simule un snapshot d'AVANT P4 : seulement les 5 nombres (défauts).
+    const ancien = {
+      ...entry,
+      id: "sr_ancien_prep4",
+      constantes: {
+        masse_volumique_eau_kg_m3: 1000.0,
+        gravite_m_s2: 9.81,
+        facteur_petit_cone_vers_grand_cone: 2.335,
+        coefficient_modele_slump: 4.95e6,
+        constante_modele_slump: 235.5122,
+      },
+    } as unknown as (typeof entry);
+    useStore.setState({ savedResults: [ancien, entry] });
+
+    expect(useStore.getState().restoreSavedResult("sr_ancien_prep4")).toBe(true);
+    const c = useStore.getState().constantes;
+    // Drapeaux complétés aux défauts intra2017, pack DÉTECTÉ (valeurs = pack).
+    expect(c.essai_gs_convention).toBe("base");
+    expect(c.essai_binder_rule).toBe("solides_totaux");
+    expect(c.pack_id).toBe("intra2017");
+  });
+
+  it("un snapshot pré-P4 PERSONNALISÉ est détecté « personnalise », pas « intra2017 »", () => {
+    seedResultatRpc();
+    expect(useStore.getState().saveCurrentResult("x")).toBe(true);
+    const entry = useStore.getState().savedResults[0];
+    const ancien = {
+      ...entry,
+      id: "sr_ancien_custom",
+      constantes: {
+        masse_volumique_eau_kg_m3: 998.2, // personnalisé
+        gravite_m_s2: 9.79,
+        facteur_petit_cone_vers_grand_cone: 2.335,
+        coefficient_modele_slump: 4.95e6,
+        constante_modele_slump: 235.5122,
+      },
+    } as unknown as (typeof entry);
+    useStore.setState({ savedResults: [ancien] });
+
+    expect(useStore.getState().restoreSavedResult("sr_ancien_custom")).toBe(true);
+    const c = useStore.getState().constantes;
+    expect(c.masse_volumique_eau_kg_m3).toBe(998.2); // valeurs du snapshot gardées
+    expect(c.pack_id).toBe("personnalise");          // pas de fausse étiquette
+  });
+
+  it("chargement v1 (pré-P4) avec nombres personnalisés -> pack « personnalise »", () => {
+    // Écrit une enveloppe v1 telle qu'avant P4 (5 nombres seulement, custom).
+    localStorage.setItem("minebackfill_constantes", JSON.stringify({
+      v: 1,
+      data: {
+        masse_volumique_eau_kg_m3: 1000.0,
+        gravite_m_s2: 9.5, // personnalisé
+        facteur_petit_cone_vers_grand_cone: 2.335,
+        coefficient_modele_slump: 4.95e6,
+        constante_modele_slump: 235.5122,
+      },
+    }));
+    useStore.getState().loadConstantes();
+    const c = useStore.getState().constantes;
+    expect(c.gravite_m_s2).toBe(9.5);
+    expect(c.pack_id).toBe("personnalise");
+  });
+});
+
+describe("store — détection de pack dans setConstantes (revue P4)", () => {
+  it("éditer un nombre puis revenir à la valeur du pack ne colle pas « personnalise »", () => {
+    // Part du pack intra2017 (défauts).
+    useStore.getState().loadConstantes();
+    expect(useStore.getState().constantes.pack_id).toBe("intra2017");
+    // Dévie…
+    useStore.getState().setConstantes({ gravite_m_s2: 9.79 });
+    expect(useStore.getState().constantes.pack_id).toBe("personnalise");
+    // …puis revient exactement à la valeur du pack : re-détecté.
+    useStore.getState().setConstantes({ gravite_m_s2: 9.81 });
+    expect(useStore.getState().constantes.pack_id).toBe("intra2017");
+  });
+
+  it("retaper la même valeur (édition sans effet) conserve l'étiquette du pack", () => {
+    useStore.getState().loadConstantes();
+    useStore.getState().setConstantes({ gravite_m_s2: 9.81 }); // no-op
+    expect(useStore.getState().constantes.pack_id).toBe("intra2017");
+  });
+});

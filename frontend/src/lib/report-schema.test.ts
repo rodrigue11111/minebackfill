@@ -87,10 +87,10 @@ describe("report-schema — gating (when)", () => {
     expect(row5!.getter(recette, ctx({ bcount: 5 }))).toBeCloseTo(55, 6);
   });
 
-  it("le libellé Bw% bascule sur « cible » en essai", () => {
+  it("le libellé Bw% bascule sur « atteint » en essai (D89, pas la cible)", () => {
     const bw = REPORT_ROWS.find((r) => r.section === 1 && r.formulaIds?.includes("F016"))!;
     expect(bw.label(ctx())).toBe("Liant Bw%");
-    expect(bw.label(ctx({ isEssai: true }))).toBe("Bw% cible");
+    expect(bw.label(ctx({ isEssai: true }))).toBe("Bw% atteint");
   });
 });
 

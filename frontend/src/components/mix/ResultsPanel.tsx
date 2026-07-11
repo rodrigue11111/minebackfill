@@ -521,7 +521,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
     setFormulaPopover({ formulaIds, recipe, anchorRect: rect });
   }, []);
   const store = useStore();
-  const { category, method, general, cw, essai, rpgEssai } = store;
+  const { category, method, general, essai, rpgEssai } = store;
   const catalogue_liants: LiantCatalogueItem[] = store.catalogue_liants ?? [];
   const units: UnitPreferences = store.units ?? { length: "cm", area: "cm2", mass: "kg", volume: "L", density: "g/cm3", slump: "mm" };
   const massLabel = MASS_LABELS[units.mass] ?? "kg";
@@ -561,9 +561,11 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
     ? (isRpg ? rpgEssai : essai).base_method
     : method;
   const dQty = descriptorFor(category, methodeQty);
-  const desiredQty =
-    (dQty ? (store[dQty.stateKey] as { desired_qty?: number }).desired_qty : undefined) ??
-    cw.desired_qty;
+  // Pas de repli inter-tranches : une quantité absente masque la puce « Qté »
+  // (comportement historique) plutôt que d'afficher celle d'une autre méthode.
+  const desiredQty = dQty
+    ? (store[dQty.stateKey] as { desired_qty?: number }).desired_qty
+    : undefined;
 
   /* ── RRC : vue dédiée (formules CRF, pas de MixState) ── */
   if (category === "RRC") {

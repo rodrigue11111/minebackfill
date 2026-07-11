@@ -65,6 +65,11 @@ export async function exportPreparationPdf(
   const libelleMethode = methodLabel(category as Category, method);
 
   const masse = (kg: number | null | undefined) => fmtNum(fromStoreMass(val(kg), units.mass));
+  // Variante pour les masses PAR COMPOSANT : une donnée absente (vieux résultat
+  // restauré avec moins de composants qu'aujourd'hui) s'affiche « — », pas un
+  // « 0 » qui ressemblerait à une masse à peser.
+  const masseOuTiret = (kg: number | null | undefined) =>
+    kg == null ? fmtNum(null) : masse(kg);
 
   const contenant = () => {
     const t = general.container_type as string | null;
@@ -128,7 +133,7 @@ export async function exportPreparationPdf(
     if (isRpg || val(r.components?.aggregate_dry_mass_kg) > 0)
       rows.push([`Granulat sec Ma (${massLabel})`, masse(r.components?.aggregate_dry_mass_kg)]);
     for (let i = 0; i < bcount; i++)
-      rows.push([`${binderName(i + 1)} (${massLabel})`, masse(masseComposantN(r.components, i))]);
+      rows.push([`${binderName(i + 1)} (${massLabel})`, masseOuTiret(masseComposantN(r.components, i))]);
     rows.push([`Eau à ajouter/retirer Mw-aj (${massLabel})`, masse(r.components?.water_to_add_mass_kg)]);
 
     const drawTable = (title: string, tableRows: [string, string][]) => {
@@ -180,7 +185,7 @@ export async function exportPreparationPdf(
       const adj: [string, string][] = [];
       adj.push([`Liant à ajouter/retirer Mb-ad (${massLabel})`, masse(r.components?.binder_to_add_mass_kg)]);
       for (let i = 0; i < bcount; i++)
-        adj.push([`${binderName(i + 1)} à ajouter/retirer (${massLabel})`, masse(masseAjoutComposantN(r.components, i))]);
+        adj.push([`${binderName(i + 1)} à ajouter/retirer (${massLabel})`, masseOuTiret(masseAjoutComposantN(r.components, i))]);
       drawTable("AJUSTEMENTS EN COURS DE MÉLANGE (valeur négative = à retirer)", adj);
     }
 

@@ -39,8 +39,8 @@ describe("fusionnerResultats — fusion pure", () => {
   });
 });
 
-// Faux client Supabase minimal (chaînage from().select()...) pour tester les
-// fonctions à client injecté sans réseau.
+// Faux client Supabase minimal (chaînage from().select().order().limit()...)
+// pour tester les fonctions à client injecté sans réseau.
 function fauxClient(reponses: Record<string, unknown>): SupabaseClient {
   return {
     from(table: string) {
@@ -48,7 +48,8 @@ function fauxClient(reponses: Record<string, unknown>): SupabaseClient {
         _table: table,
         select() { return chain; },
         eq() { return chain; },
-        order() { return Promise.resolve(reponses[`${table}.list`] ?? { data: [], error: null }); },
+        order() { return chain; },
+        limit() { return Promise.resolve(reponses[`${table}.list`] ?? { data: [], error: null }); },
         maybeSingle() { return Promise.resolve(reponses[`${table}.single`] ?? { data: null, error: null }); },
         upsert(row: unknown) { reponses[`${table}.upserted`] = row; return Promise.resolve({ error: null }); },
       };
@@ -58,10 +59,15 @@ function fauxClient(reponses: Record<string, unknown>): SupabaseClient {
 }
 
 describe("fonctions cloud à client injecté", () => {
-  it("listerResultatsCloud extrait les payloads", async () => {
-    const sb = fauxClient({ "saved_results.list": { data: [{ payload: sr("x", "1") }, { payload: sr("y", "2") }], error: null } });
+  it("listerResultatsCloud extrait les payloads et estampille ownerId", async () => {
+    const sb = fauxClient({ "saved_results.list": { data: [
+      { payload: sr("x", "1"), user_id: "u1" },
+      { payload: sr("y", "2"), user_id: "u2" },
+    ], error: null } });
     const res = await listerResultatsCloud(sb);
     expect(res.map((r) => r.id)).toEqual(["x", "y"]);
+    // Anti-réattribution : le propriétaire cloud voyage avec le résultat.
+    expect(res.map((r) => r.ownerId)).toEqual(["u1", "u2"]);
   });
 
   it("listerResultatsCloud renvoie [] en cas d'erreur", async () => {

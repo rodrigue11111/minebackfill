@@ -5,7 +5,7 @@ import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
 import { loadVersioned, persistVersioned } from "./persisted";
 import { descriptorFor } from "./method-registry";
-import { solverVersionActive } from "./conventions";
+import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
 import {
   type MaterialOrigine, type MaterialKind, type MaterialItem,
@@ -14,7 +14,9 @@ import {
   nouveauResidu, nouveauGranulat, nouveauRetardateur, estOfficiel,
 } from "./materials";
 
-// Version des solveurs : estampillée sur chaque résultat sauvegardé.
+// Version de référence des formules (pack par défaut). L'estampille réelle de
+// chaque résultat sauvegardé vient de solverVersionActive(constantes) — elle
+// suit le pack de convention actif (« gramme-1.0 », « ...-personnalise »).
 // À incrémenter quand les formules changent (voir Issues.md).
 export const SOLVER_VERSION = "intra2017-1.0";
 
@@ -351,6 +353,13 @@ export interface SavedResult {
   constantes?: ConstantesCalcul;
   /** Ids des matériaux (préréglages) utilisés — traçabilité. */
   selectedMaterials?: { residueId?: string; aggregateId?: string; retarderId?: string };
+  /**
+   * Propriétaire cloud (auth.users.id) : estampillé à la sauvegarde quand une
+   * session existe, et sur les résultats reçus du cloud à la fusion. Empêche
+   * de pousser sous SON compte le résultat d'un autre (navigateur partagé,
+   * import de sauvegarde, revue du prof). Absent = résultat local anonyme.
+   */
+  ownerId?: string;
 }
 
 /* ── localStorage helpers (SSR-safe) ── */
@@ -666,15 +675,17 @@ const makeMaterialId = (kind: MaterialKind) =>
 function persistMaterials(kind: MaterialKind, items: MaterialItem[]) {
   persistVersioned(MATERIAL_CONFIG[kind].key, MATERIALS_VERSION, items);
 }
-function loadConstantesFromStorage(): ConstantesCalcul {
-  const brut = loadVersioned<Partial<ConstantesCalcul>>(
-    CONSTANTES_KEY, CONSTANTES_VERSION, identityMigration, constantesDefaut,
-  );
-  // Assainissement : les 5 constantes numériques sont physiquement strictement
-  // positives — un champ vidé dans Réglages persiste 0, au rechargement on
-  // retombe sur le défaut plutôt que de bloquer les calculs (422). Les 3
-  // drapeaux chaîne sont validés par liste blanche (une valeur inconnue ou
-  // absente d'une ancienne sauvegarde retombe sur le défaut « intra2017 »).
+/**
+ * Complète/assainit un objet constantes partiel (ancienne sauvegarde, snapshot
+ * pré-P4, champ vidé) en un ConstantesCalcul valide :
+ * - les 5 nombres doivent être finis et > 0, sinon défaut (un champ vidé dans
+ *   Réglages persiste 0 — on ne bloque pas durablement les calculs en 422) ;
+ * - les 2 drapeaux sont validés par liste blanche (absents = « intra2017 ») ;
+ * - `pack_id` absent (données pré-P4) n'est PAS présumé : on le DÉTECTE en
+ *   comparant aux packs connus — des valeurs personnalisées d'avant P4 donnent
+ *   « personnalise », pas une fausse étiquette « intra2017 ».
+ */
+function completerConstantes(brut: Partial<ConstantesCalcul> | null | undefined): ConstantesCalcul {
   const c: ConstantesCalcul = { ...constantesDefaut };
   for (const k of CONSTANTES_NUM_KEYS) {
     const v = brut?.[k];
@@ -684,9 +695,28 @@ function loadConstantesFromStorage(): ConstantesCalcul {
     c.essai_gs_convention = brut.essai_gs_convention;
   if (brut?.essai_binder_rule && ESSAI_BINDER_VALUES.includes(brut.essai_binder_rule))
     c.essai_binder_rule = brut.essai_binder_rule;
-  if (brut?.pack_id && PACK_ID_VALUES.includes(brut.pack_id))
+  if (brut?.pack_id && PACK_ID_VALUES.includes(brut.pack_id)) {
     c.pack_id = brut.pack_id;
+  } else {
+    c.pack_id = detecterPackId(c);
+  }
   return c;
+}
+
+/** Pack dont les valeurs (5 nombres + 2 drapeaux) correspondent exactement. */
+function detecterPackId(c: ConstantesCalcul): ConventionPackId {
+  const detecte = CONVENTION_PACKS.find((p) =>
+    CONSTANTES_NUM_KEYS.every((k) => p.constantes[k] === c[k]) &&
+    p.constantes.essai_gs_convention === c.essai_gs_convention &&
+    p.constantes.essai_binder_rule === c.essai_binder_rule);
+  return detecte ? detecte.id : "personnalise";
+}
+
+function loadConstantesFromStorage(): ConstantesCalcul {
+  const brut = loadVersioned<Partial<ConstantesCalcul>>(
+    CONSTANTES_KEY, CONSTANTES_VERSION, identityMigration, constantesDefaut,
+  );
+  return completerConstantes(brut);
 }
 function persistConstantes(c: ConstantesCalcul) {
   persistVersioned(CONSTANTES_KEY, CONSTANTES_VERSION, c);
@@ -696,6 +726,30 @@ function loadGeneralFromStorage(): GeneralInfo {
 }
 function persistGeneral(g: GeneralInfo) {
   persistVersioned(GENERAL_KEY, GENERAL_VERSION, g);
+}
+
+/**
+ * Valide et migre l'enveloppe {v,data} d'un catalogue de liants publiée en
+ * ligne. Renvoie null si l'enveloppe est inutilisable : version future
+ * (publieur plus récent que ce client), données non-tableau/malformées, ou
+ * tableau vide (une publication vide est presque sûrement une erreur — on ne
+ * vide pas la couche officielle des étudiants pour ça).
+ */
+export function migrerCatalogueLiantsCloud(env: { v: number; data: unknown } | null | undefined): LiantCatalogueItem[] | null {
+  if (!env || typeof env.v !== "number" || env.v > CATALOGUE_VERSION) return null;
+  const data = env.v < CATALOGUE_VERSION ? migrationCatalogueLiants(env.data) : env.data;
+  if (!Array.isArray(data) || data.length === 0) return null;
+  if (!data.every((i) => i && typeof (i as { id?: unknown }).id === "string")) return null;
+  return data as LiantCatalogueItem[];
+}
+
+/** Équivalent pour les bibliothèques de matériaux (v1, migration identité). */
+export function migrerMateriauxCloud(env: { v: number; data: unknown } | null | undefined): MaterialItem[] | null {
+  if (!env || typeof env.v !== "number" || env.v > MATERIALS_VERSION) return null;
+  const data = env.data;
+  if (!Array.isArray(data) || data.length === 0) return null;
+  if (!data.every((i) => i && typeof (i as { id?: unknown }).id === "string")) return null;
+  return data as MaterialItem[];
 }
 
 // Écritures cloud fire-and-forget : n'ont lieu que si une session existe ET que
@@ -743,12 +797,13 @@ export const useStore = create<AppState>((set, get) => ({
   setConstantes: (patch) =>
     set((state) => {
       // Une application de pack fournit `pack_id` explicitement. Toute autre
-      // édition (manuelle, d'un nombre ou d'un drapeau) dévie du preset et
-      // bascule donc sur « personnalise ».
-      const withPack = "pack_id" in patch
-        ? patch
-        : { ...patch, pack_id: "personnalise" as ConventionPackId };
-      const constantes = { ...state.constantes, ...withPack };
+      // édition passe par la DÉTECTION : si les valeurs résultantes égalent
+      // exactement un pack, on garde son étiquette (retaper « 9,81 » ne rend
+      // pas le jeu « personnalisé ») ; sinon « personnalise ».
+      const fusion = { ...state.constantes, ...patch };
+      const constantes = "pack_id" in patch
+        ? fusion
+        : { ...fusion, pack_id: detecterPackId(fusion) };
       persistConstantes(constantes);
       return { constantes };
     }),
@@ -785,17 +840,16 @@ export const useStore = create<AppState>((set, get) => ({
       }
 
       // Un composant suit le renommage s'il pointe vers CE liant : par id
-      // (source de vérité) ou, à défaut d'id (anciens états), par code.
+      // (source de vérité) ou, à défaut d'id (anciens états), par code. La
+      // cascade passe par la liste N-aire (lireBinders) puis patchBinders,
+      // qui maintient aussi le miroir legacy binder1/2/3 — l'ancien forEach
+      // [1,2,3] ne touchait pas `general.binders[]`, laissant un code périmé.
       const idRenomme = catalogue[index].id;
-      const general = { ...state.general };
-      ([1, 2, 3] as const).forEach((n) => {
-        const id = general[`binder${n}_id`];
-        const vise = id ? id === idRenomme : general[`binder${n}_type`] === ancienCode;
-        if (vise) {
-          general[`binder${n}_type`] = nouveauCode;
-          general[`binder${n}_id`] = idRenomme;
-        }
+      const bindersMaj = lireBinders(state.general).map((b) => {
+        const vise = b.id ? b.id === idRenomme : b.code === ancienCode;
+        return vise ? { ...b, id: idRenomme, code: nouveauCode } : b;
       });
+      const general = { ...state.general, ...patchBinders(bindersMaj) };
       persistGeneral(general);
       return { catalogue_liants: catalogue, general };
     }),
@@ -810,17 +864,15 @@ export const useStore = create<AppState>((set, get) => ({
       const fallback = catalogue[0];
 
       // Un composant pointe vers le liant supprimé s'il matche par id (source
-      // de vérité) ou, à défaut d'id (anciens états), par code.
-      const general = { ...state.general };
-      ([1, 2, 3] as const).forEach((n) => {
-        const id = general[`binder${n}_id`];
-        const code = general[`binder${n}_type`];
-        const vise = id ? id === supprime.id : code === supprime.code;
-        if (vise) {
-          general[`binder${n}_id`] = fallback?.id ?? null;
-          general[`binder${n}_type`] = fallback?.code ?? null;
-        }
+      // de vérité) ou, à défaut d'id (anciens états), par code. Cascade via la
+      // liste N-aire + patchBinders (miroir legacy maintenu) — sinon le
+      // composant garderait une référence pendante et le calcul retomberait
+      // silencieusement sur Gs par défaut (3.15).
+      const bindersMaj = lireBinders(state.general).map((b) => {
+        const vise = b.id ? b.id === supprime.id : b.code === supprime.code;
+        return vise ? { ...b, id: fallback?.id ?? null, code: fallback?.code ?? null } : b;
       });
+      const general = { ...state.general, ...patchBinders(bindersMaj) };
       persistCatalogue(catalogue);
       persistGeneral(general);
       return { catalogue_liants: catalogue, general };
@@ -1310,6 +1362,8 @@ export const useStore = create<AppState>((set, get) => ({
       // Version estampillée selon le pack de convention actif (le snapshot
       // `constantes` reste la vraie garantie de reproductibilité).
       solverVersion: solverVersionActive(state.constantes),
+      // Propriétaire cloud si connecté (anti-réattribution à la fusion).
+      ownerId: state.session?.userId,
       catalogue_liants: state.catalogue_liants.map((l) => ({ ...l })),
       constantes: { ...state.constantes },
       selectedMaterials: materiauxUtilises(),
@@ -1370,8 +1424,12 @@ export const useStore = create<AppState>((set, get) => ({
     // courant sans écraser les liants existants de l'utilisateur.
     persistGeneral(entry.general);
     if (entry.constantes) {
-      patch.constantes = { ...entry.constantes };
-      persistConstantes(entry.constantes);
+      // Les snapshots pré-P4 n'ont pas les drapeaux de convention : on les
+      // complète (défauts intra2017 + détection du pack) — sans quoi le
+      // sélecteur de pack et l'estampillage verraient des champs undefined.
+      const completes = completerConstantes(entry.constantes);
+      patch.constantes = completes;
+      persistConstantes(completes);
     }
     if (entry.catalogue_liants?.length) {
       const courant = [...state.catalogue_liants];
@@ -1418,9 +1476,16 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => {
       // Relire le stockage avant de filtrer, pour la même raison que
       // saveCurrentResult : ne pas partir d'un état mémoire non hydraté.
-      const updated = loadSavedFromStorage().filter((s) => s.id !== id);
+      const stored = loadSavedFromStorage();
+      const cible = stored.find((s) => s.id === id);
+      const updated = stored.filter((s) => s.id !== id);
       persistSaved(updated);
-      retirerResultatCloud(state.session, id);
+      // Suppression cloud seulement pour SES résultats : celle d'un résultat
+      // étranger (revue du prof) serait de toute façon refusée par la RLS, et
+      // il réapparaîtra à la prochaine fusion (documenté, pas de tombstones).
+      if (!cible?.ownerId || cible.ownerId === state.session?.userId) {
+        retirerResultatCloud(state.session, id);
+      }
       return { savedResults: updated };
     }),
 

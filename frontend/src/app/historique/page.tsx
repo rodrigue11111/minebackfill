@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useStore, SOLVER_VERSION, lireBinders, type SavedResult, type RpcMethod } from "@/lib/store";
+import { useStore, lireBinders, type SavedResult, type RpcMethod } from "@/lib/store";
+import { estVersionCourante } from "@/lib/conventions";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
 import BackupButtons from "@/components/BackupButtons";
@@ -30,8 +31,10 @@ export default function HistoriquePage() {
   const confirmerExportObsolete = (sr: SavedResult): boolean => {
     // Un solverVersion absent = sauvegarde antérieure à l'estampillage (les
     // plus anciennes, donc les plus suspectes) : on avertit aussi, comme le
-    // badge « anciennes formules » plus bas.
-    if (sr.solverVersion !== SOLVER_VERSION) {
+    // badge « anciennes formules » plus bas. Les estampilles des packs
+    // ACTUELS (« intra2017-1.0 », « gramme-1.0 », variantes -personnalise)
+    // sont toutes légitimes — un résultat gramme frais n'est pas obsolète.
+    if (!estVersionCourante(sr.solverVersion)) {
       return window.confirm(
         "Ce résultat a été calculé avec une version antérieure des formules ; " +
         "ses masses peuvent être incorrectes. Exporter quand même ?",
@@ -232,7 +235,7 @@ export default function HistoriquePage() {
                   >
                     <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sr.label}</span>
-                      {sr.solverVersion !== SOLVER_VERSION && (
+                      {!estVersionCourante(sr.solverVersion) && (
                         <span
                           title="Résultat calculé avec une version antérieure des formules (avant l'alignement sur la feuille Intra 2017). Rechargez et relancez le calcul pour des valeurs à jour."
                           style={{ fontSize: 10, fontWeight: 700, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap", flexShrink: 0 }}
