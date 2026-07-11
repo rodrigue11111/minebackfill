@@ -5,7 +5,7 @@ import type {
   BinderPrice,
   IndustrieState,
 } from "@/lib/store";
-import { prixPourLiant } from "@/lib/store";
+import { prixPourLiant, lireBinders } from "@/lib/store";
 import type { Recipe } from "@/lib/types";
 import {
   construireSystemeLiant,
@@ -63,20 +63,27 @@ export function computeBinderCost(
 ): number {
   if (!recipe?.components) return 0;
 
-  let total = 0;
-  const bcount = general.binder_count ?? 1;
+  // Masse du composant i (0-indexé) : liste N-aire de la recette, repli sur
+  // les champs legacy c1/2/3 pour les anciens résultats sauvegardés.
+  const comp = recipe.components;
+  const masseComposant = (i: number): number => {
+    const liste = comp.binder_masses_kg;
+    if (liste && liste.length > i) return liste[i] ?? 0;
+    const legacy = [comp.binder_c1_mass_kg, comp.binder_c2_mass_kg, comp.binder_c3_mass_kg][i];
+    return legacy ?? 0;
+  };
 
-  for (let i = 1; i <= bcount; i++) {
-    const code = general[`binder${i}_type` as keyof GeneralInfo] as string | undefined;
-    const massKey = `binder_c${i}_mass_kg` as keyof NonNullable<Recipe["components"]>;
-    const mass = (recipe.components?.[massKey] as number | null | undefined) ?? 0;
-    if (!code) continue;
-    // Identité par id : celui du composant (binderN_id) prime ; repli par
-    // résolution catalogue pour les anciens états, puis par code.
-    const idExplicite = general[`binder${i}_id` as keyof GeneralInfo] as string | null | undefined;
-    const id = idExplicite ?? catalogue.find((l) => l.code === code)?.id;
-    total += mass * prixPourLiant(binderPrices, { id, code });
-  }
+  // Itère TOUS les composants du liant (liste N-aire, repli trio legacy) — le
+  // trio figé d'avant ignorait silencieusement les composants 4+.
+  let total = 0;
+  lireBinders(general).forEach((b, i) => {
+    const code = b.code ?? undefined;
+    if (!code) return;
+    // Identité par id : celui du composant prime ; repli par résolution
+    // catalogue pour les anciens états, puis par code.
+    const id = b.id ?? catalogue.find((l) => l.code === code)?.id;
+    total += masseComposant(i) * prixPourLiant(binderPrices, { id, code });
+  });
 
   return total;
 }

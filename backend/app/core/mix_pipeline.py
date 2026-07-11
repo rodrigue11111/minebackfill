@@ -184,7 +184,9 @@ def solve_recipe(*,
 @dataclass(frozen=True)
 class EssaiQuantities:
     """État d'une recette après ajustements. Masses kg, volumes m3."""
-    gs_backfill: float   # Gs utilisé pour e/Sr/rho (selon ESSAI_GS_CONVENTION)
+    gs_backfill: float   # Gs du remblai FINAL au Bw atteint (feuille D95) ;
+                         # e/Sr utilisent en interne le Gs de la convention
+                         # essai_gs_convention (base figée ou recalculée, D86/D87)
     gs_nonbinder: float
     w: float
     cw: float
@@ -323,14 +325,24 @@ def apply_essai_adjustments(*,
     bw_aj = mb_tot / solids_nb if solids_nb > 0.0 else 0.0
     bv_aj = bw_aj * gs_nb_used / gs_binder if gs_binder > 0.0 else 0.0  # [D90]
 
-    rho_d_aj = gs_bkf_used * rho_w / (1.0 + e_aj) if e_aj > -1.0 else 0.0  # [D93]
+    # Gs du remblai FINAL au Bw ATTEINT (les DEUX feuilles : D95 = (1+D89)/
+    # (1/D34 + D89/D35)). e et Sr, eux, restent sur le Gs de BASE (D86/D87
+    # utilisent D36) — comme ci-dessus. Sous Intra 2017 bw_aj == Bw cible et
+    # gs_s_aj == gs_backfill_base (au ulp près) ; sous la règle « gramme »,
+    # un ajout de granulat dilue le Bw et les densités suivent la feuille.
+    gs_s_aj = (
+        (1.0 + bw_aj) / (1.0 / gs_nb_used + bw_aj / gs_binder)
+        if gs_nb_used > 0.0 and gs_binder > 0.0 else gs_bkf_used
+    )
+
+    rho_d_aj = gs_s_aj * rho_w / (1.0 + e_aj) if e_aj > -1.0 else 0.0      # [D93]
     rho_h_aj = rho_d_aj * (1.0 + w_aj)                                     # [D91]
 
     mr_hum_tot = mr_sec_tot * (1.0 + w0_frac)
     mw_to_add = mw_tot - w0_frac * mr_sec_tot   # négatif possible = retirer
 
     return EssaiQuantities(
-        gs_backfill=gs_bkf_used, gs_nonbinder=gs_nb_used,
+        gs_backfill=gs_s_aj, gs_nonbinder=gs_nb_used,
         w=w_aj, cw=cw_aj, wc=wc_aj,
         e=e_aj, sr=sr_aj, n=n_aj, cv=cv_aj, theta=theta_aj, bw=bw_aj, bv=bv_aj,
         rho_d=rho_d_aj, rho_h=rho_h_aj,

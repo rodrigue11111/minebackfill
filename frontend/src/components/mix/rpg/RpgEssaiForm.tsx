@@ -166,7 +166,9 @@ export default function RpgEssaiForm() {
       {/* ── Info banner ── */}
       <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#15803d" }}>
         <strong>RPG — Essai-erreur (PAF) :</strong> réutilise les données de la méthode RPG de base (Cw% ou E/C).
-        L&apos;ajout d&apos;agrégat modifie A_m et recalcule Gs_PAF. Le liant est ajusté pour maintenir le Bw% cible.
+        L&apos;ajout d&apos;agrégat modifie A_m. Le liant ajouté suit la convention active :
+        Bw% maintenu sur tous les solides ajoutés (Intra 2017), ou liant sur le résidu ajouté
+        seulement (feuille « gramme » — un ajout de granulat dilue alors le Bw atteint).
       </div>
 
       {/* ── Base method choice ── */}

@@ -215,3 +215,23 @@ describe("store — constantes pré-P4 complétées (revue P3-P5)", () => {
     expect(c.pack_id).toBe("personnalise");
   });
 });
+
+describe("store — détection de pack dans setConstantes (revue P4)", () => {
+  it("éditer un nombre puis revenir à la valeur du pack ne colle pas « personnalise »", () => {
+    // Part du pack intra2017 (défauts).
+    useStore.getState().loadConstantes();
+    expect(useStore.getState().constantes.pack_id).toBe("intra2017");
+    // Dévie…
+    useStore.getState().setConstantes({ gravite_m_s2: 9.79 });
+    expect(useStore.getState().constantes.pack_id).toBe("personnalise");
+    // …puis revient exactement à la valeur du pack : re-détecté.
+    useStore.getState().setConstantes({ gravite_m_s2: 9.81 });
+    expect(useStore.getState().constantes.pack_id).toBe("intra2017");
+  });
+
+  it("retaper la même valeur (édition sans effet) conserve l'étiquette du pack", () => {
+    useStore.getState().loadConstantes();
+    useStore.getState().setConstantes({ gravite_m_s2: 9.81 }); // no-op
+    expect(useStore.getState().constantes.pack_id).toBe("intra2017");
+  });
+});

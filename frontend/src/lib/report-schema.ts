@@ -87,7 +87,9 @@ const densite = (c: ReportCtx) => c.densLabel;
 
 export const REPORT_ROWS: ReportRow[] = [
   /* ── 1. Données du mélange ── */
-  { section: 1, label: (c) => (c.isEssai ? "Bw% cible" : "Liant Bw%"), unit: cst("%"), getter: (r) => r.bw_mass_pct, digits: 2, bold: true, formulaIds: ["F016"] },
+  // En essai, bw_mass_pct est le Bw ATTEINT (D89) : égal à la cible sous
+  // Intra 2017, dilué par un ajout de granulat sous la règle « gramme ».
+  { section: 1, label: (c) => (c.isEssai ? "Bw% atteint" : "Liant Bw%"), unit: cst("%"), getter: (r) => r.bw_mass_pct, digits: 2, bold: true, formulaIds: ["F016"] },
   { section: 1, label: cst("Liant Bv%"), unit: cst("% vol."), getter: (r) => r.bv_vol_pct, digits: 2, formulaIds: ["F022"] },
   { section: 1, label: (c) => (c.isEssai ? "Résidu sec (tot.)" : "Résidu sec Mr"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_dry_mass_kg, c.units.mass), digits: 3, bold: true },
   { section: 1, label: cst("Agrégat sec Ma"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.aggregate_dry_mass_kg, c.units.mass), digits: 3, bold: true, when: (c) => c.isRpg },

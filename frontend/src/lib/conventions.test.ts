@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONVENTION_PACKS, packById, solverVersionActive } from "./conventions";
+import { CONVENTION_PACKS, packById, solverVersionActive, estVersionCourante } from "./conventions";
 import type { ConstantesCalcul } from "./store";
 
 // Épingle le contenu des packs. Une dérive (côté frontend ou backend) doit
@@ -36,12 +36,30 @@ describe("conventions — packs", () => {
     }
   });
 
-  it("solverVersionActive suit le pack, sinon « personnalise »", () => {
+  it("solverVersionActive suit le pack, sinon « personnalise » avec la FAMILLE réelle", () => {
     const base = packById("intra2017")!.constantes;
     expect(solverVersionActive(base)).toBe("intra2017-1.0");
     expect(solverVersionActive(packById("gramme")!.constantes)).toBe("gramme-1.0");
     const perso: ConstantesCalcul = { ...base, pack_id: "personnalise" };
     expect(solverVersionActive(perso)).toBe("intra2017-1.0-personnalise");
+    // Déviation partie du pack GRAMME (règle du liant conservée) : le préfixe
+    // suit la famille active, pas systématiquement intra2017.
+    const persoGramme: ConstantesCalcul = {
+      ...packById("gramme")!.constantes, gravite_m_s2: 9.79, pack_id: "personnalise",
+    };
+    expect(solverVersionActive(persoGramme)).toBe("gramme-1.0-personnalise");
+  });
+
+  it("estVersionCourante : packs actuels et -personnalise légitimes, le reste obsolète", () => {
+    // Un résultat gramme ou personnalisé FRAIS n'est pas « anciennes formules ».
+    expect(estVersionCourante("intra2017-1.0")).toBe(true);
+    expect(estVersionCourante("gramme-1.0")).toBe(true);
+    expect(estVersionCourante("intra2017-1.0-personnalise")).toBe(true);
+    expect(estVersionCourante("gramme-1.0-personnalise")).toBe(true);
+    // Vraies anciennes sauvegardes : absentes ou versions inconnues.
+    expect(estVersionCourante(undefined)).toBe(false);
+    expect(estVersionCourante("modele-c1b-2005")).toBe(false);
+    expect(estVersionCourante("intra2016-0.9")).toBe(false);
   });
 
   it("les deux packs sont exposés", () => {

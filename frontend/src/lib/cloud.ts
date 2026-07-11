@@ -66,12 +66,20 @@ export async function publierCatalogue(
   return { error: error?.message ?? null };
 }
 
-/** Liste les résultats visibles (les siens ; tous pour le prof, via RLS). */
+/**
+ * Liste les résultats visibles (les siens ; tous pour le prof, via RLS).
+ * Chaque résultat est estampillé `ownerId` (colonne user_id) : la fusion peut
+ * alors distinguer les résultats d'autrui (jamais re-poussés sous son compte).
+ * Limite explicite : PostgREST tronque à 1000 lignes par défaut.
+ */
 export async function listerResultatsCloud(sb: SupabaseClient): Promise<SavedResult[]> {
   const { data, error } = await sb
-    .from("saved_results").select("payload").order("created_at", { ascending: false });
+    .from("saved_results").select("payload, user_id")
+    .order("created_at", { ascending: false })
+    .limit(5000);
   if (error || !data) return [];
-  return (data as { payload: SavedResult }[]).map((row) => row.payload);
+  return (data as { payload: SavedResult; user_id: string }[])
+    .map((row) => ({ ...row.payload, ownerId: row.user_id }));
 }
 
 /** Envoie (upsert) un résultat. Silencieux : le localStorage reste la vérité. */

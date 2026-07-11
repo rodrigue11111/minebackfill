@@ -84,8 +84,9 @@ def run(Gs_r, Gs_g, w0, Cw, Bw, Xg, FS, binders, V_cont, nb=1.0,
     D88 = D86 / (1.0 + D86)                                     # n final
     D89 = (D43 + D65) / (D41 + D42 + D58 + D60)                 # Bw final
     D90 = D89 * (D34 / D35)                                     # Bv final
-    # rho/gamma (D91..D96) : absents de la feuille gramme mais calculables via
-    # les mêmes formules qu'Intra 2017 (utiles au golden test, non épinglés).
+    # rho/gamma D91..D96 : PRÉSENTS dans la feuille gramme, mêmes formules
+    # qu'Intra 2017 — le Gs final utilise le Bw ATTEINT (D89), donc sous la
+    # règle gramme un ajout de granulat fait dévier les densités du Gs de base.
     D95 = (1.0 + D89) / (1.0 / D34 + D89 / D35)                 # rho_s final
     D93 = D95 / (1.0 + D86)                                     # rho_d final
     D91 = D93 * (1.0 + D79)                                     # rho_h final
@@ -134,6 +135,8 @@ CACHED = {
     "Srf": 0.9999999999999996, "nf": 0.5257596651083662,
     "Bwf": 0.05, "Bvf": 0.05090311986863712,
     "Xg_m_f": 0.0, "Xg_v_res_f": 0.0, "Xg_v_remb_f": 0.0,
+    # Densité finale D91 — présente dans la feuille (valeur cachée du classeur).
+    "rho_hf": 1.9472580189198747,
 }
 
 

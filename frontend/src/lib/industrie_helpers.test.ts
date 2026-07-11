@@ -75,6 +75,40 @@ describe("coûts industrie", () => {
   it("prix manquant -> composant compté à zéro (pas de NaN)", () => {
     expect(computeBinderCost(recipe, [prices[0]], [], general)).toBeCloseTo(100 * 0.2, 9);
   });
+  it("N liants (5 composants) : TOUS comptés via binders[] + binder_masses_kg", () => {
+    // Régression revue P3-P5 : l'ancien trio figé ignorait les composants 4+.
+    const recette5 = {
+      total_backfill_volume_m3: 10,
+      components: {
+        binder_total_mass_kg: 500,
+        // legacy c1..c3 présents mais la liste N-aire fait foi
+        binder_c1_mass_kg: 100, binder_c2_mass_kg: 100, binder_c3_mass_kg: 100,
+        binder_masses_kg: [100, 100, 100, 100, 100],
+      },
+    };
+    const general5 = {
+      binder_count: 5,
+      binders: [
+        { code: "A", fraction_pct: 20 }, { code: "B", fraction_pct: 20 },
+        { code: "C", fraction_pct: 20 }, { code: "D", fraction_pct: 20 },
+        { code: "E", fraction_pct: 20 },
+      ],
+    };
+    const prix5 = [
+      { code: "A", price_per_kg: 0.1 }, { code: "B", price_per_kg: 0.1 },
+      { code: "C", price_per_kg: 0.1 }, { code: "D", price_per_kg: 0.1 },
+      { code: "E", price_per_kg: 0.1 },
+    ];
+    // 5 x 100 kg x 0.1 $/kg = 50 $ (le trio legacy n'en donnait que 30).
+    expect(computeBinderCost(recette5, prix5, [], general5)).toBeCloseTo(50, 9);
+  });
+  it("vieux résultat sans liste N-aire : repli sur les champs legacy c1..c3", () => {
+    const general3 = {
+      binder_count: 2,
+      binders: [{ code: "GU", fraction_pct: 25 }, { code: "GGBFS", fraction_pct: 75 }],
+    };
+    expect(computeBinderCost(recipe, prices, [], general3)).toBeCloseTo(100 * 0.2 + 300 * 0.1, 9);
+  });
   it("computeCostPerM3", () => {
     expect(computeCostPerM3(recipe, 50)).toBeCloseTo(5, 9);
   });

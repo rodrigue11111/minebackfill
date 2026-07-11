@@ -62,11 +62,29 @@ aujourd'hui (le lien « Compte » est masqué, aucun appel réseau).
 
 - **Pas de tombstones de suppression** : supprimer un résultat hors-ligne peut
   le voir réapparaître à la fusion suivante (le localStorage reste la vérité UI,
-  donc jamais de perte de données).
+  donc jamais de perte de données). Cas particulier : quand l'**enseignant**
+  supprime de son Historique le résultat d'un étudiant, la suppression est
+  locale seulement (la RLS interdit de toucher aux lignes d'autrui) — il
+  réapparaîtra à la synchronisation suivante.
 - **`production_log` (journal industrie) n'est pas synchronisé** : valeur cloud
   faible ; la mécanique `saved_results` se généralisera si le besoin se confirme.
 - La couche cloud est **local-first** : toute écriture réussit d'abord en
   localStorage ; l'échec réseau est silencieux (jamais bloquant).
+
+## Garde-fous de synchronisation
+
+- **L'enseignant est la source des catalogues officiels** : chez lui, la
+  synchronisation ne ré-applique PAS la copie cloud (ses modifications locales
+  non encore publiées sont préservées, y compris au rafraîchissement de jeton
+  ~1 h) ; « Publier » reste le seul canal de diffusion.
+- **Publications invalides ignorées** : une ligne de catalogue vide, malformée
+  ou écrite par une version PLUS RÉCENTE de l'application n'est pas appliquée
+  par les clients (validation + migration par version de l'enveloppe `{v,data}`).
+- **Anti-réattribution** : chaque résultat porte son propriétaire (`ownerId`) ;
+  un résultat appartenant à quelqu'un d'autre (navigateur partagé, import de
+  sauvegarde, revue de l'enseignant) n'est jamais poussé sous le compte courant.
+- **Lecture bornée à 5 000 résultats** par synchronisation (PostgREST tronque
+  silencieusement à 1 000 sans limite explicite).
 
 ## Vérification manuelle (checklist)
 
