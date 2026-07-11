@@ -83,7 +83,7 @@ export default function ReglagesPage() {
             </div>
             <div>
               <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                Facteur petit cone vers grand cone
+                Facteur petit cône vers grand cône
               </label>
               <input
                 type="number"
@@ -222,7 +222,7 @@ export default function ReglagesPage() {
         {/* ── Unit preferences ── */}
         <div className="form-card" style={{ marginTop: 20 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 6px" }}>
-            Unites de mesure
+            Unités de mesure
           </h2>
           <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 16 }}>
             Choisissez les unités d&apos;affichage pour les entrées et les résultats. L&apos;aire et le

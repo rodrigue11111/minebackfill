@@ -77,7 +77,7 @@ export default function IndustriePage() {
                 transition: "all 0.2s", whiteSpace: "nowrap",
               }}
             >
-              {testLoaded ? "Valeurs chargees" : "Valeurs de test"}
+              {testLoaded ? "Valeurs chargées" : "Valeurs de test"}
             </button>
           </div>
         </div>

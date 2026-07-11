@@ -623,7 +623,7 @@ export default function GuidePage() {
           <SectionTitle>7. Export Excel</SectionTitle>
           <Para>
             Le bouton <strong>Exporter Excel</strong> (barre verte en haut du panneau de résultats)
-            genere un fichier <code style={{ background: "#f1f5f9", padding: "1px 6px", borderRadius: 4, fontSize: 12.5 }}>.xlsx</code> directement dans le navigateur, sans connexion serveur.
+            génère un fichier <code style={{ background: "#f1f5f9", padding: "1px 6px", borderRadius: 4, fontSize: 12.5 }}>.xlsx</code> directement dans le navigateur, sans connexion serveur.
           </Para>
 
           <SubTitle>Contenu du fichier exporte</SubTitle>

@@ -219,29 +219,29 @@ class BinderSystem(BaseModel):
 
 class SolverConstants(BaseModel):
     """
-    Constantes numeriques optionnelles pour le solveur.
-    Si non fournies, le backend utilise ses valeurs par defaut.
+    Constantes numériques optionnelles pour le solveur.
+    Si non fournies, le backend utilise ses valeurs par défaut.
     """
 
     water_density: confloat(gt=0) = Field(
         1000.0,
-        description="Masse volumique de l'eau (kg/m3).",
+        description="Masse volumique de l'eau (kg/m³).",
     )
     gravity: confloat(gt=0) = Field(
         9.81,
-        description="Acceleration de la gravite (m/s2).",
+        description="Accélération de la gravité (m/s²).",
     )
     slump_small_to_large_factor: confloat(gt=0) = Field(
         2.335,
-        description="Facteur de conversion du petit cone vers le grand cone.",
+        description="Facteur de conversion du petit cône vers le grand cône.",
     )
     slump_model_coeff: confloat(gt=0) = Field(
         4.95e6,
-        description="Coefficient du modele predictif du slump.",
+        description="Coefficient du modèle prédictif du slump.",
     )
     slump_model_offset: confloat(gt=0) = Field(
         235.5122,
-        description="Constante additive du modele predictif du slump.",
+        description="Constante additive du modèle prédictif du slump.",
     )
 
 

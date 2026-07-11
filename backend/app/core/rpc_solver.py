@@ -15,24 +15,24 @@ The logic is aligned with the C#/Excel "Modèle C1" sheet:
        e0 = (w% / 100) * Gs_bkf / Sr
        n  = e0 / (1 + e0)
 5) Densities:
-       Ï_d = Gs_bkf * Ïw / (1 + e0)
-       Ï_h = Ï_d * (1 + w)
-6) Cv = Ï_d / Ï_s_bkf = 1 / (1 + e0)
+       ρ_d = Gs_bkf * ρw / (1 + e0)
+       ρ_h = ρ_d * (1 + w)
+6) Cv = ρ_d / ρ_s_bkf = 1 / (1 + e0)
 7) Geometry:
        V_T = V_moule * N_c * FS
        V_s = Cv * V_T
        V_v = V_T - V_s
 8) Volumetric binder ratio:
-       Bv = 0.01 * Bw% * Ï_s_residu / Ï_s_liant
+       Bv = 0.01 * Bw% * ρ_s_residu / ρ_s_liant
    C# convention (as provided): Vr = Vs
        Vr = V_s
        Vb = Bv * Vr
        Vw = 0.01 * Sr% * V_v
 9) Masses:
-       M_r_sec = Ï_s_residu * Vr
+       M_r_sec = ρ_s_residu * Vr
        M_r_hum = M_r_sec * (1 + w0%)
-       M_b     = Ï_s_liant * Vb
-       M_w_tot = Ï_w * Vw
+       M_b     = ρ_s_liant * Vb
+       M_w_tot = ρ_w * Vw
        M_w_res = M_r_hum - M_r_sec = 0.01*w0%*M_r_sec
        M_w_add = M_w_tot - M_w_res
        w/c     = M_w_tot / M_b
@@ -843,8 +843,8 @@ def solve_rpc_slump(inputs: RpcSlumpInputs) -> MixDesignResult:
     """
     Ajustement pour slump :
       1) Convertit le slump en grand cône si besoin (mini -> grand : x2.335)
-      2) PrAcdict Cw% par recette avec la formule ci-dessus
-      3) RAcutilise le solveur Cw sur chaque recette (mA"mes masses/volumes que Cw)
+      2) Prédit Cw% par recette avec la formule ci-dessus
+      3) Réutilise le solveur Cw sur chaque recette (mêmes masses/volumes que Cw)
     """
     inputs.binder_system.validate_total_fraction()
     _ensure_sequence_length(
