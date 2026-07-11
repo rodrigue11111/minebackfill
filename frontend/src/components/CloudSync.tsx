@@ -53,6 +53,11 @@ export default function CloudSync() {
       // 3) Résultats : fusion locale+cloud, puis pousser les manquants.
       const cloud = await listerResultatsCloud(sb);
       if (annule) return;
+      // Défensif : re-hydrate depuis localStorage juste avant la fusion. Le
+      // StoreHydrator l'a normalement déjà fait (montage synchrone avant tout
+      // callback réseau), mais la fusion ÉCRASE le stockage local — on ne
+      // prend aucun risque d'ordre d'initialisation (perte de données sinon).
+      useStore.getState().loadSavedResults();
       const locaux = useStore.getState().savedResults;
       const { fusionnes, aPousser } = fusionnerResultats(locaux, cloud);
       useStore.getState().remplacerResultats(fusionnes);

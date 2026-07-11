@@ -5,7 +5,7 @@ import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
 import { loadVersioned, persistVersioned } from "./persisted";
 import { descriptorFor } from "./method-registry";
-import { solverVersionActive } from "./conventions";
+import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
 import {
   type MaterialOrigine, type MaterialKind, type MaterialItem,
@@ -666,15 +666,17 @@ const makeMaterialId = (kind: MaterialKind) =>
 function persistMaterials(kind: MaterialKind, items: MaterialItem[]) {
   persistVersioned(MATERIAL_CONFIG[kind].key, MATERIALS_VERSION, items);
 }
-function loadConstantesFromStorage(): ConstantesCalcul {
-  const brut = loadVersioned<Partial<ConstantesCalcul>>(
-    CONSTANTES_KEY, CONSTANTES_VERSION, identityMigration, constantesDefaut,
-  );
-  // Assainissement : les 5 constantes numériques sont physiquement strictement
-  // positives — un champ vidé dans Réglages persiste 0, au rechargement on
-  // retombe sur le défaut plutôt que de bloquer les calculs (422). Les 3
-  // drapeaux chaîne sont validés par liste blanche (une valeur inconnue ou
-  // absente d'une ancienne sauvegarde retombe sur le défaut « intra2017 »).
+/**
+ * Complète/assainit un objet constantes partiel (ancienne sauvegarde, snapshot
+ * pré-P4, champ vidé) en un ConstantesCalcul valide :
+ * - les 5 nombres doivent être finis et > 0, sinon défaut (un champ vidé dans
+ *   Réglages persiste 0 — on ne bloque pas durablement les calculs en 422) ;
+ * - les 2 drapeaux sont validés par liste blanche (absents = « intra2017 ») ;
+ * - `pack_id` absent (données pré-P4) n'est PAS présumé : on le DÉTECTE en
+ *   comparant aux packs connus — des valeurs personnalisées d'avant P4 donnent
+ *   « personnalise », pas une fausse étiquette « intra2017 ».
+ */
+function completerConstantes(brut: Partial<ConstantesCalcul> | null | undefined): ConstantesCalcul {
   const c: ConstantesCalcul = { ...constantesDefaut };
   for (const k of CONSTANTES_NUM_KEYS) {
     const v = brut?.[k];
@@ -684,9 +686,23 @@ function loadConstantesFromStorage(): ConstantesCalcul {
     c.essai_gs_convention = brut.essai_gs_convention;
   if (brut?.essai_binder_rule && ESSAI_BINDER_VALUES.includes(brut.essai_binder_rule))
     c.essai_binder_rule = brut.essai_binder_rule;
-  if (brut?.pack_id && PACK_ID_VALUES.includes(brut.pack_id))
+  if (brut?.pack_id && PACK_ID_VALUES.includes(brut.pack_id)) {
     c.pack_id = brut.pack_id;
+  } else {
+    const detecte = CONVENTION_PACKS.find((p) =>
+      CONSTANTES_NUM_KEYS.every((k) => p.constantes[k] === c[k]) &&
+      p.constantes.essai_gs_convention === c.essai_gs_convention &&
+      p.constantes.essai_binder_rule === c.essai_binder_rule);
+    c.pack_id = detecte ? detecte.id : "personnalise";
+  }
   return c;
+}
+
+function loadConstantesFromStorage(): ConstantesCalcul {
+  const brut = loadVersioned<Partial<ConstantesCalcul>>(
+    CONSTANTES_KEY, CONSTANTES_VERSION, identityMigration, constantesDefaut,
+  );
+  return completerConstantes(brut);
 }
 function persistConstantes(c: ConstantesCalcul) {
   persistVersioned(CONSTANTES_KEY, CONSTANTES_VERSION, c);
@@ -1370,8 +1386,12 @@ export const useStore = create<AppState>((set, get) => ({
     // courant sans écraser les liants existants de l'utilisateur.
     persistGeneral(entry.general);
     if (entry.constantes) {
-      patch.constantes = { ...entry.constantes };
-      persistConstantes(entry.constantes);
+      // Les snapshots pré-P4 n'ont pas les drapeaux de convention : on les
+      // complète (défauts intra2017 + détection du pack) — sans quoi le
+      // sélecteur de pack et l'estampillage verraient des champs undefined.
+      const completes = completerConstantes(entry.constantes);
+      patch.constantes = completes;
+      persistConstantes(completes);
     }
     if (entry.catalogue_liants?.length) {
       const courant = [...state.catalogue_liants];
