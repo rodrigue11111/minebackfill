@@ -467,6 +467,13 @@ interface AppState {
   restoreOfficialMaterials: (kind: MaterialKind) => void;
   importMaterials: (kind: MaterialKind, items: MaterialItem[]) => void;
 
+  // Cloud : remplace la couche OFFICIELLE d'un catalogue par celle publiée par
+  // l'enseignant (la couche perso locale est intégralement conservée).
+  hydraterLiantsOfficielsCloud: (officiels: LiantCatalogueItem[]) => void;
+  hydraterMateriauxOfficielsCloud: (kind: MaterialKind, officiels: MaterialItem[]) => void;
+  // Cloud : remplace l'historique local par la fusion locale+cloud déjà calculée.
+  remplacerResultats: (resultats: SavedResult[]) => void;
+
   // Traçabilité : id du matériau choisi via un préréglage (snapshoté par résultat).
   selectedMaterials: { residueId?: string; aggregateId?: string; retarderId?: string };
   setSelectedMaterial: (role: "residueId" | "aggregateId" | "retarderId", id: string | undefined) => void;
@@ -691,6 +698,29 @@ function persistGeneral(g: GeneralInfo) {
   persistVersioned(GENERAL_KEY, GENERAL_VERSION, g);
 }
 
+// Écritures cloud fire-and-forget : n'ont lieu que si une session existe ET que
+// le client Supabase est configuré. Toute erreur réseau est avalée (le
+// localStorage reste la vérité UI). Import paresseux pour ne pas coupler le
+// store au module cloud au chargement.
+function pousserResultatCloud(session: CloudSession | null, entry: SavedResult) {
+  if (!session) return;
+  Promise.all([import("./supabase"), import("./cloud")])
+    .then(([{ getSupabase }, { upsertResultatCloud }]) => {
+      const sb = getSupabase();
+      if (sb) return upsertResultatCloud(sb, session.userId, entry);
+    })
+    .catch(() => {});
+}
+function retirerResultatCloud(session: CloudSession | null, id: string) {
+  if (!session) return;
+  Promise.all([import("./supabase"), import("./cloud")])
+    .then(([{ getSupabase }, { supprimerResultatCloud }]) => {
+      const sb = getSupabase();
+      if (sb) return supprimerResultatCloud(sb, id);
+    })
+    .catch(() => {});
+}
+
 export const useStore = create<AppState>((set, get) => ({
   // Par défaut on appelle l'API en relatif (/rpc, /rpg) via le proxy Next.js
   API: process.env.NEXT_PUBLIC_API_URL?.trim() || "",
@@ -871,6 +901,29 @@ export const useStore = create<AppState>((set, get) => ({
       const items = [...byId.values()];
       persistMaterials(kind, items);
       return { [slice]: items } as Partial<AppState>;
+    }),
+
+  hydraterLiantsOfficielsCloud: (officiels) =>
+    set((state) => {
+      // Les officiels cloud remplacent la couche officielle locale (verrouillée,
+      // aucun travail utilisateur) ; la couche perso locale est conservée.
+      const perso = state.catalogue_liants.filter((l) => !estOfficiel(l));
+      const items = [...officiels.map((l) => ({ ...l, origine: "officiel" as MaterialOrigine })), ...perso];
+      persistCatalogue(items);
+      return { catalogue_liants: items };
+    }),
+  hydraterMateriauxOfficielsCloud: (kind, officiels) =>
+    set((state) => {
+      const slice = SLICE_OF_KIND[kind];
+      const perso = (state[slice] as MaterialItem[]).filter((m) => !estOfficiel(m));
+      const items = [...officiels.map((m) => ({ ...m, origine: "officiel" as MaterialOrigine })), ...perso];
+      persistMaterials(kind, items);
+      return { [slice]: items } as Partial<AppState>;
+    }),
+  remplacerResultats: (resultats) =>
+    set(() => {
+      persistSaved(resultats);
+      return { savedResults: resultats };
     }),
 
   selectedMaterials: {},
@@ -1295,6 +1348,9 @@ export const useStore = create<AppState>((set, get) => ({
     const updated = [entry, ...stored.filter((s) => s.id !== entry.id)];
     const persisted = persistSaved(updated);
     set({ savedResults: updated });
+    // Écriture cloud fire-and-forget (le localStorage reste la vérité UI ; un
+    // échec réseau est silencieux, jamais de perte).
+    pousserResultatCloud(state.session, entry);
     return persisted;
   },
   restoreSavedResult: (id) => {
@@ -1355,11 +1411,12 @@ export const useStore = create<AppState>((set, get) => ({
     return true;
   },
   deleteSavedResult: (id) =>
-    set(() => {
+    set((state) => {
       // Relire le stockage avant de filtrer, pour la même raison que
       // saveCurrentResult : ne pas partir d'un état mémoire non hydraté.
       const updated = loadSavedFromStorage().filter((s) => s.id !== id);
       persistSaved(updated);
+      retirerResultatCloud(state.session, id);
       return { savedResults: updated };
     }),
 
