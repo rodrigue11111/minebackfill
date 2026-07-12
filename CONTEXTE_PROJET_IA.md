@@ -7,6 +7,13 @@ Ce document sert de memoire technique du projet **minebackfill** pour qu'un outi
 - les **fichiers importants**
 - les **points de vigilance** avant de modifier le code
 
+Lire ENSUITE, selon la tache :
+- `docs/MAINTENANCE.md` — recettes pas-a-pas (ajouter methode/pack/champ,
+  nouveau classeur Excel via `tools/extract_workbook.py`) et invariants.
+- `docs/HISTORIQUE_EXTENSIBILITE.md` — le POURQUOI des structures (P0-P5).
+- `docs/OPERATIONS.md` — cote exploitation (enseignant).
+- `docs/ANALYSE_H25.md` — classeur H25 deja depouille (pret a implementer).
+
 ## 1) But de l'application
 
 Application web de dimensionnement des melanges de remblai cimente en pate:
