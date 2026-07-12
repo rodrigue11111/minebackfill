@@ -98,6 +98,18 @@ Un champ de réponse renommé côté backend disparaît alors du type et casse l
 `pnpm typecheck` des consommateurs — c'est voulu (fini les lectures `undefined`
 silencieuses).
 
+### Documentation de maintenance et d'opération
+
+- [`docs/MAINTENANCE.md`](docs/MAINTENANCE.md) — livre de recettes du
+  mainteneur : invariants, comment ajouter une méthode / un pack / un champ,
+  procédure « nouveau classeur Excel » (avec `tools/extract_workbook.py`).
+- [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — guide de l'enseignant, sans
+  code : pannes courantes, publication, sauvegardes, anti-pause Supabase.
+- [`docs/HISTORIQUE_EXTENSIBILITE.md`](docs/HISTORIQUE_EXTENSIBILITE.md) — le
+  pourquoi des structures en place (P0 → P5, revues).
+- [`docs/ANALYSE_H25.md`](docs/ANALYSE_H25.md) — dépouillement du classeur
+  H25, prêt pour une future implémentation.
+
 ### Synchronisation en ligne (optionnelle)
 
 MineBackfill fonctionne à 100 % en local (localStorage). Une couche Supabase

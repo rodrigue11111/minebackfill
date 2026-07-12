@@ -418,6 +418,13 @@ export default function ReglagesPage() {
           </p>
           <BackupButtons />
         </div>
+
+        <p style={{ marginTop: 28, textAlign: "center", fontSize: 12.5, color: "var(--muted-foreground)" }}>
+          Support :{" "}
+          <Link href="/diagnostic" style={{ color: "var(--primary)", textDecoration: "underline" }}>
+            Diagnostic technique
+          </Link>
+        </p>
       </div>
     </div>
   );
