@@ -424,6 +424,14 @@ export default function ReglagesPage() {
           <Link href="/diagnostic" style={{ color: "var(--primary)", textDecoration: "underline" }}>
             Diagnostic technique
           </Link>
+          {isProf && (
+            <>
+              {" "}·{" "}
+              <Link href="/assistant" style={{ color: "var(--primary)", textDecoration: "underline" }}>
+                Assistant IA (modifications)
+              </Link>
+            </>
+          )}
         </p>
       </div>
     </div>
