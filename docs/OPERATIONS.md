@@ -67,8 +67,36 @@ Sans ces secrets, la tâche s'ignore poliment.
 
 ## Faire évoluer l'application sans développeur attitré
 
-Le dépôt est prévu pour être maintenu **avec un assistant IA** (Claude Code ou
-équivalent) : donner à l'assistant l'accès au dépôt et lui faire lire, dans
-l'ordre, `CONTEXTE_PROJET_IA.md` puis `docs/MAINTENANCE.md`. Les garde-fous
-(oracles Excel intouchables, 700+ tests, CI) l'empêchent de casser les
-formules sans que ce soit détecté.
+### Demander une modification à l'IA du dépôt (cas extrême, zéro installation)
+
+Le dépôt embarque une **IA mainteneuse** (`.github/workflows/claude.yml`) que
+l'on sollicite en écrivant, comme à un assistant :
+
+1. GitHub → le dépôt → **Issues** → **New issue**.
+2. Décrire la demande **en français, comme à un humain** — par exemple :
+   « @claude ajoute le liant GUb-SF (Gs 2,95) aux liants officiels par
+   défaut » ou « @claude le bouton d'export PDF affiche une erreur, corrige ».
+   Le mot **@claude** doit apparaître dans le texte.
+3. Quelques minutes plus tard, l'IA répond dans l'issue et ouvre une
+   **Pull Request** : les tests (dont les 700+ qui verrouillent les formules)
+   tournent automatiquement, et Vercel fournit un **aperçu cliquable** de
+   l'application modifiée.
+4. Tester l'aperçu ; si c'est bon, cliquer **Merge** — c'est CE clic, et lui
+   seul, qui met en production. Sinon, répondre dans la PR (« @claude ce
+   n'est pas ça, plutôt... ») et l'IA corrige.
+
+Ce que l'IA **ne peut pas** faire : pousser directement en production
+(PR obligatoire), modifier les oracles Excel (interdits et surveillés par la
+CI), être déclenchée par un inconnu (seuls le propriétaire et les
+collaborateurs du dépôt le peuvent).
+
+**Activation (une fois)** : créer une clé sur console.anthropic.com
+(facturation à l'usage — de l'ordre de quelques dizaines de cents à quelques
+dollars par demande selon la taille), puis GitHub → Settings → Secrets and
+variables → Actions → ajouter `ANTHROPIC_API_KEY`.
+
+### Avec un assistant IA local (développeur ou étudiant outillé)
+
+Donner l'accès au dépôt et faire lire, dans l'ordre, `CONTEXTE_PROJET_IA.md`
+puis `docs/MAINTENANCE.md`. Les garde-fous (oracles Excel intouchables,
+700+ tests, CI hermétique) empêchent de casser les formules sans détection.
