@@ -95,6 +95,28 @@ collaborateurs du dépôt le peuvent).
 dollars par demande selon la taille), puis GitHub → Settings → Secrets and
 variables → Actions → ajouter `ANTHROPIC_API_KEY`.
 
+### Variante : l'assistant directement SUR le site (page /assistant)
+
+Même pipeline, sans quitter l'application : connecté avec le compte
+enseignant, ouvrir **Réglages → « Assistant IA (modifications) »** (ou
+directement `/assistant`). On y écrit la demande comme dans un chat ; chaque
+message devient, en coulisses, une issue GitHub `@claude`, et les réponses de
+l'IA s'affichent dans la page (actualisation ~20 s — comptez quelques minutes
+par réponse). Le lien « Ouvrir dans GitHub » mène à la Pull Request et à son
+aperçu ; **le clic « Merge » reste la seule mise en production**.
+
+Sécurité : page et API refusent tout compte non-enseignant (vérification du
+rôle CÔTÉ SERVEUR) ; le jeton GitHub utilisé ne sait QUE créer des issues
+(aucune écriture de code possible avec lui).
+
+**Activation (une fois, en plus du secret ANTHROPIC_API_KEY ci-dessus)** :
+1. GitHub → Settings (votre profil) → Developer settings → Fine-grained
+   tokens → générer un jeton limité au dépôt, permission « Issues : Read and
+   write » uniquement.
+2. Vercel → projet → Settings → Environment Variables → ajouter
+   `ASSISTANT_GITHUB_TOKEN` (le jeton) et `ASSISTANT_GITHUB_REPO`
+   (ex. `rodrigue11111/minebackfill`) → Redeploy.
+
 ### Avec un assistant IA local (développeur ou étudiant outillé)
 
 Donner l'accès au dépôt et faire lire, dans l'ordre, `CONTEXTE_PROJET_IA.md`
