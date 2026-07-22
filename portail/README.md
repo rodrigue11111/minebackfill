@@ -38,6 +38,13 @@ Nota : la connexion protege le PORTAIL (l'annuaire). Les applications elles-
 memes restent accessibles par leur URL directe — MineBackfill gere sa propre
 session avec les memes comptes.
 
+Sessions par sous-domaine : le portail (progicielbelem.com) et MineBackfill
+(minebackfill.progicielbelem.com) sont des origines differentes, donc la
+connexion n'est PAS partagee entre les deux (l'utilisateur se connecte au
+portail, puis a MineBackfill — memes identifiants Supabase). Un partage de
+session entre sous-domaines (cookie sur `.progicielbelem.com`) est une
+amelioration possible v2, non necessaire au fonctionnement.
+
 ## Developpement local
 
 ```bash
@@ -62,5 +69,24 @@ projet Vercel distinct.
 3. Deploy.
 4. (Optionnel) Ajouter les 2 variables Supabase dans Vercel -> Settings ->
    Environment Variables, puis redeployer.
-5. (Optionnel) Brancher un domaine personnalise (ex. progicielbelem.com) dans
-   Vercel -> Settings -> Domains.
+
+## Domaines (le portail devient la porte d'entree, SANS coupure)
+
+Aujourd'hui `progicielbelem.com` sert MineBackfill. On veut que l'apex serve le
+PORTAIL et que MineBackfill vive sur `minebackfill.progicielbelem.com`. Suivre
+cet ordre pour ne jamais rendre MineBackfill injoignable :
+
+1. **D'abord** : projet Vercel de MineBackfill -> Settings -> Domains -> ajouter
+   `minebackfill.progicielbelem.com`. Si le DNS du domaine est gere par Vercel,
+   c'est automatique ; sinon ajouter un enregistrement CNAME
+   `minebackfill` -> `cname.vercel-dns.com` chez le registraire. Verifier que
+   https://minebackfill.progicielbelem.com affiche bien MineBackfill (l'apex
+   continue de le servir aussi, temporairement — c'est normal).
+2. **Ensuite** : deployer le portail (etapes ci-dessus).
+3. **Enfin** : deplacer `progicielbelem.com` (et `www`) du projet MineBackfill
+   vers le projet Portail — dans Vercel, retirer le domaine du projet
+   MineBackfill puis l'ajouter au projet Portail (Vercel propose souvent
+   directement de le reassigner).
+
+Resultat : `progicielbelem.com` = portail (page de choix) ;
+`minebackfill.progicielbelem.com` = MineBackfill ; CPB sur son URL.

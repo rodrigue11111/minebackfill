@@ -20,10 +20,10 @@ export const PROJETS: Projet[] = [
     nom: "MineBackfill",
     description:
       "Dimensionnement des mélanges de remblai minier en pâte (RPC, RPG, RRC) — méthodes Cw%, E/C, slump et essai-erreur, exports Excel/PDF, bibliothèques de matériaux.",
-    // A CONFIRMER : https://minebackfill.vercel.app renvoie 404 (2026-07-12).
-    // Mettre l'URL de production reelle une fois MineBackfill deploye sur
-    // Vercel (ou brancher un domaine). Une seule ligne a changer.
-    url: "https://minebackfill.vercel.app",
+    // MineBackfill demenage de l'apex progicielbelem.com (repris par CE portail)
+    // vers ce sous-domaine. VALIDE une fois le sous-domaine ajoute au projet
+    // Vercel de MineBackfill (voir portail/README.md, section « Domaines »).
+    url: "https://minebackfill.progicielbelem.com",
     tags: ["Module 1", "Remblai en pâte", "Laboratoire"],
     statut: "stable",
   },
