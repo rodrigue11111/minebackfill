@@ -15,6 +15,7 @@ import { RECIPE_HEX } from "@/lib/recipe-theme";
 import { fmt } from "@/lib/format";
 import { APP_NAME_VERSION, EXPORT_FOOTER } from "@/lib/branding";
 import type { MixResult, Recipe, RrcRecipe } from "@/lib/types";
+import BarresPhases from "@/components/analyse/BarresPhases";
 
 /* ── helpers ── */
 
@@ -937,6 +938,18 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
         ))}
 
       </div> {/* end sections wrapper */}
+
+      {/* ── Composition des phases (barres compactes, volumes) ── */}
+      {recipes.length > 0 && (
+        <div style={{ padding: "0 16px", marginTop: 14 }}>
+          <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+            <SectionHeader title="Composition des phases" sub="Répartition volumique par recette — vue détaillée dans l'onglet Analyse" />
+            <div style={{ padding: "14px 16px" }}>
+              <BarresPhases recipes={recipes} base="volume" compact />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* bottom padding */}
       <div style={{ height: 16 }} />
