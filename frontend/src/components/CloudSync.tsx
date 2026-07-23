@@ -28,9 +28,14 @@ export default function CloudSync() {
     let annule = false;
 
     const synchroniser = async (userId: string, email: string | null) => {
-      // 1) Profil / rôle.
-      const { data: profil } = await sb
+      // 1) Profil / rôle. En cas d'échec de lecture on retombe sur
+      // « etudiant » (jamais d'escalade), mais on le SIGNALE en console :
+      // un échec silencieux ici a déjà coûté un long diagnostic.
+      const { data: profil, error: erreurProfil } = await sb
         .from("profiles").select("role").eq("id", userId).maybeSingle();
+      if (erreurProfil) {
+        console.warn("MineBackfill : lecture du profil impossible —", erreurProfil.message);
+      }
       const role = ((profil as { role?: UserRole } | null)?.role ?? "etudiant") as UserRole;
       if (annule) return;
       useStore.getState().setSession({ userId, email, role });
@@ -90,7 +95,12 @@ export default function CloudSync() {
       }
       const u = sessionSb?.user;
       if (u && (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) {
-        synchroniser(u.id, u.email ?? null).catch(() => {});
+        // Recommandation officielle Supabase : ne pas awaiter d'appels
+        // supabase-js DANS ce callback (verrou interne auth-js, risque de
+        // blocage dans le navigateur) — on diffère d'un tick.
+        setTimeout(() => {
+          synchroniser(u.id, u.email ?? null).catch(() => {});
+        }, 0);
       }
     });
 
