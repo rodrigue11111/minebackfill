@@ -153,6 +153,13 @@ mode** (elle exige un vrai compte prof), le reste fonctionne 100 % en local.
 
 - Le drapeau : `MODE_TEST_SANS_COMPTE` dans **`frontend/src/lib/mode-test.ts`**
   ET **`portail/src/lib/mode-test.ts`** (garder les deux identiques).
+- **Assistant IA** : en mode test, la page `/assistant` (et son lien dans
+  Réglages) est OUVERTE sans compte — la route `/api/assistant` saute la
+  vérification du rôle dans ce mode uniquement (bandeau affiché sur la page).
+  Il reste 503 « non configuré » tant que `ASSISTANT_GITHUB_TOKEN` /
+  `ASSISTANT_GITHUB_REPO` ne sont pas définies sur Vercel. Conséquence
+  assumée : quiconque connaît l'URL peut créer une issue GitHub pendant la
+  fenêtre de test ; repasser le drapeau à `false` referme l'accès.
 - **Réactiver les comptes à la fin du projet** : mettre les DEUX à `false`,
   vérifier les portes (`pnpm typecheck && pnpm lint && pnpm test && pnpm build`),
   PR + merge → les variables Supabase déjà présentes reprennent effet

@@ -430,7 +430,7 @@ export default function ReglagesPage() {
           <Link href="/diagnostic" style={{ color: "var(--primary)", textDecoration: "underline" }}>
             Diagnostic technique
           </Link>
-          {isProf && (
+          {vueAdmin && (
             <>
               {" "}·{" "}
               <Link href="/assistant" style={{ color: "var(--primary)", textDecoration: "underline" }}>

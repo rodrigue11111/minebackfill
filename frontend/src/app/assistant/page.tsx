@@ -4,11 +4,17 @@
 // Façade : chaque message part dans une issue GitHub @claude ; l'IA
 // mainteneuse travaille en Pull Request (tests + aperçu Vercel) et ses
 // réponses sont réaffichées ici. Rien ne part en production sans « Merge ».
+//
+// MODE TEST SANS COMPTE (mode-test.ts, temporaire) : les comptes étant
+// désactivés, la page est ouverte sans connexion (bandeau explicite) et les
+// requêtes partent sans jeton — la route serveur saute la vérification du
+// rôle dans ce mode uniquement.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { getSupabase, cloudConfigure } from "@/lib/supabase";
+import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
 import { useHydrated } from "@/lib/use-hydrated";
 
 interface MessageAffiche {
@@ -51,10 +57,10 @@ export default function AssistantPage() {
 
   const rafraichir = useCallback(async (numero: number) => {
     const t = await jeton();
-    if (!t) return;
+    if (!t && !MODE_TEST_SANS_COMPTE) return;
     try {
       const r = await fetch(`/api/assistant?issue=${numero}`, {
-        headers: { Authorization: `Bearer ${t}` },
+        headers: t ? { Authorization: `Bearer ${t}` } : {},
       });
       if (r.status === 503) { setNonConfigure(true); return; }
       if (!r.ok) return;
@@ -71,12 +77,13 @@ export default function AssistantPage() {
 
   // Rafraîchissement périodique tant qu'une conversation est ouverte
   // (l'IA répond en quelques minutes — pas un chat instantané).
+  const accesChat = isProf || MODE_TEST_SANS_COMPTE;
   useEffect(() => {
-    if (!issue || !isProf) return;
+    if (!issue || !accesChat) return;
     rafraichir(issue);
     const id = setInterval(() => rafraichir(issue), 20000);
     return () => clearInterval(id);
-  }, [issue, isProf, rafraichir]);
+  }, [issue, accesChat, rafraichir]);
 
   const envoyer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,10 +93,13 @@ export default function AssistantPage() {
     setErreur(null);
     try {
       const t = await jeton();
-      if (!t) throw new Error("Session expirée — reconnectez-vous.");
+      if (!t && !MODE_TEST_SANS_COMPTE) throw new Error("Session expirée — reconnectez-vous.");
       const r = await fetch("/api/assistant", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` },
+        headers: {
+          "Content-Type": "application/json",
+          ...(t ? { Authorization: `Bearer ${t}` } : {}),
+        },
         body: JSON.stringify(issue ? { message, issue } : { message }),
       });
       const data = (await r.json().catch(() => ({}))) as { issue?: number; erreur?: string };
@@ -137,7 +147,7 @@ export default function AssistantPage() {
           réponse.
         </p>
 
-        {!monte ? null : !cloudConfigure() || !session ? (
+        {!monte ? null : !MODE_TEST_SANS_COMPTE && (!cloudConfigure() || !session) ? (
           <div style={{ ...card, padding: "24px 22px" }}>
             <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Accès réservé</p>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
@@ -147,11 +157,11 @@ export default function AssistantPage() {
               </Link>
             </p>
           </div>
-        ) : !isProf ? (
+        ) : !accesChat ? (
           <div style={{ ...card, padding: "24px 22px" }}>
             <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Accès réservé à l&apos;enseignant</p>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-              Votre compte ({session.email}) n&apos;a pas le rôle enseignant.
+              Votre compte ({session?.email ?? "?"}) n&apos;a pas le rôle enseignant.
             </p>
           </div>
         ) : nonConfigure ? (
@@ -165,6 +175,14 @@ export default function AssistantPage() {
           </div>
         ) : (
           <>
+            {MODE_TEST_SANS_COMPTE && (
+              <div style={{ marginBottom: 14, padding: "9px 13px", borderRadius: 8, background: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", fontSize: 12.5, lineHeight: 1.5 }}>
+                Mode test : accès temporairement ouvert sans compte (phase
+                d&apos;évaluation). Les demandes sont publiées dans le dépôt GitHub
+                du projet. À la fin du projet, cette page redeviendra réservée au
+                compte enseignant.
+              </div>
+            )}
             {/* ── Conversation ── */}
             <div style={{ ...card, padding: 0, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "#f8fafc" }}>
