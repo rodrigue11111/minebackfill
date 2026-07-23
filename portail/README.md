@@ -38,12 +38,13 @@ Nota : la connexion protege le PORTAIL (l'annuaire). Les applications elles-
 memes restent accessibles par leur URL directe — MineBackfill gere sa propre
 session avec les memes comptes.
 
-Sessions par sous-domaine : le portail (progicielbelem.com) et MineBackfill
-(minebackfill.progicielbelem.com) sont des origines differentes, donc la
-connexion n'est PAS partagee entre les deux (l'utilisateur se connecte au
-portail, puis a MineBackfill — memes identifiants Supabase). Un partage de
-session entre sous-domaines (cookie sur `.progicielbelem.com`) est une
-amelioration possible v2, non necessaire au fonctionnement.
+Connexion unique (SSO) entre sous-domaines : la session Supabase est stockee
+dans un cookie pose sur le domaine parent `.progicielbelem.com` (voir
+`src/lib/supabase.ts` — adaptateur de stockage cookie identique cote
+MineBackfill, meme cle `pb_auth`). Se connecter au portail vaut donc aussi pour
+MineBackfill, et inversement. En local / preview (hors `*.progicielbelem.com`)
+le cookie reste sur l'hote courant : chaque app garde sa propre session, le SSO
+ne s'active qu'en production.
 
 ## Developpement local
 
