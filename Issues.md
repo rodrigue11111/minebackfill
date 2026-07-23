@@ -126,3 +126,48 @@ non comparée à l'oracle gramme.
 ---
 
 *Logged: 2026-03-03 · Updated: 2026-07-11*
+
+## Issue #5 — Enrichissements de l'article C4 (Belem et al. 2018, PAF) : dosage du liant par W/C, saisie volumique Av, cible de slump
+
+**Référence.** BELEM T., HANE I., BENZAAZOUA M. & MAQSOUD A. (2018). *Reuse of
+crushed waste rocks in mine backfill*, Symposium Mines & Environnement,
+Rouyn-Noranda (PDF : `Progiciel de Mr Belem/C4-Belem et al Paste aggregate
+fill paper_Symposium 2018b.pdf`). Analyse complète : le noyau de calcul de
+l'app est CONFORME à l'article (éq. [1]-[5], convention Bw = liant/(résidus+
+granulats) secs, protocole d'essai §2.3 ≡ règle `solides_totaux`). Trois
+enrichissements en découlent — des AJOUTS optionnels, pas des corrections :
+
+1. **Dosage du liant par W/C en essai** (article §3.2.3 : quand on monte le
+   slump en ajoutant de l'eau, doser le liant par le rapport eau/liant et non
+   plus en % de masse sèche). Champ additif `dose_binder_by_wc` (défaut
+   `false`) sur `RpcEssaiAdjustment`/`RpgEssaiAdjustment` ; règle dans
+   `apply_essai_adjustments` : `wc_base = mw_base/mb_base ;
+   mb_tot = mw_tot/wc_base` (le liant suit l'EAU, y compris celle transportée
+   par un résidu humide ; un granulat sec n'ajoute aucun liant et dilue le
+   Bw atteint, publié tel quel en D89). Prioritaire sur `essai_binder_rule`.
+   Garde-fou : exige Bw > 0 sur la recette de base (validateur Pydantic, 422).
+   Défaut `false` → comportement Intra 2017/gramme préservé au bit près
+   (suite d'or inchangée). Tests : `app/tests/test_essai_dose_wc.py`.
+
+2. **Saisie volumique Av** (éq. [2]-[3] : l'article pilote ses mélanges en
+   %v/v ; la physique du squelette granulaire est volumique, mais on pèse des
+   masses). Sélecteur « % masse / % volume » sur la fraction granulat des
+   formulaires RPG (`ChampFractionGranulat.tsx`) ; conversion exacte via les
+   Gs courants (`frontend/src/lib/granulats.ts`, testée) ; la valeur canonique
+   envoyée au backend reste Am (aucun changement backend).
+
+3. **Cible de slump en essai RPG** (protocole §2.3 : cible 178 mm / 7 po au
+   cône d'Abrams 300 mm ; slump bas → eau ; slump haut → solides + liant).
+   Champ « slump cible » dans l'essai RPG + écart et geste conseillé affichés
+   sous le slump mesuré (`MesuresLabo`, prop optionnelle — RPC inchangé).
+   AUCUN modèle prédictif ajouté : le modèle slump n'existe qu'en RPC et ne
+   s'applique pas au RPG ; la boucle de convergence reste chez l'opérateur,
+   l'app fournit le critère d'arrêt et l'arithmétique de chaque itération.
+
+**Statut.** Implémenté (branche `feat/article-c4-enrichissements`). La règle
+n'a pas d'oracle Excel (elle vient de l'article, pas d'un classeur) ; ses
+tests unitaires en fixent la définition.
+
+---
+
+*Logged: 2026-07-23*

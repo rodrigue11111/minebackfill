@@ -521,6 +521,7 @@ def solve_rpg_essai(inputs: RpgEssaiInputs) -> MixDesignResult:
             water_density=water_density,
             essai_gs_convention=constantes["essai_gs_convention"],
             essai_binder_rule=constantes["essai_binder_rule"],
+            dose_binder_by_wc=adj.dose_binder_by_wc,
         )
 
         Mb_ad = eq.mb_ad

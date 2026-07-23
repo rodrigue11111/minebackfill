@@ -13,6 +13,7 @@ import {
 } from "@/lib/rpc_payload";
 import { num } from "@/lib/format";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
+import ChampFractionGranulat from "./ChampFractionGranulat";
 
 const inputStyle: React.CSSProperties = {
   display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6,
@@ -121,11 +122,12 @@ export default function RpgWbForm() {
               value={rpgWb.aggregate_sg || ""}
               onChange={(e) => setRpgWb({ aggregate_sg: num(e.target.value) })} />
           </Field>
-          <Field label="A_m — fraction agrégat (%)" hint="Ma/(Ma+Mr)×100 — % d'agrégat dans les solides non-liant">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 30"
-              value={rpgWb.aggregate_fraction_pct || ""}
-              onChange={(e) => setRpgWb({ aggregate_fraction_pct: num(e.target.value) })} />
-          </Field>
+          <ChampFractionGranulat
+            amPct={rpgWb.aggregate_fraction_pct || 0}
+            gsResidu={rpgWb.residue_sg || 0}
+            gsGranulat={rpgWb.aggregate_sg || 0}
+            onChangeAm={(am) => setRpgWb({ aggregate_fraction_pct: am })}
+          />
         </div>
       </CardSection>
 

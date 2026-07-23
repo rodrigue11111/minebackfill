@@ -237,7 +237,8 @@ def apply_essai_adjustments(*,
                             aggregate_w0_frac: float = 0.0,
                             water_density: float = 1000.0,
                             essai_gs_convention: str | None = None,
-                            essai_binder_rule: str = "solides_totaux") -> EssaiQuantities:
+                            essai_binder_rule: str = "solides_totaux",
+                            dose_binder_by_wc: bool = False) -> EssaiQuantities:
     """
     Applique des ajustements de masses à une recette de base et recalcule
     l'état final selon la feuille Intra 2017 :
@@ -245,13 +246,23 @@ def apply_essai_adjustments(*,
       - le liant est ajusté pour maintenir Bw% (négatif = à retirer)  [D65] ;
       - le volume total CROÎT du volume de chaque composant ajouté    [D61-D64] ;
       - e = Gs*rho_w*VT_new/Ms_tot - 1                                [D86] ;
-      - Sr = Gs*w/e (reste exactement à la valeur de base)            [D87] ;
+      - Sr = Gs*w/e — reste exactement à la valeur de base, SAUF sous
+        l'option dose_binder_by_wc en convention Gs « base » : le liant
+        réel dérivant de la cible, Sr peut s'en écarter marginalement
+        (artefact de convention, même famille que essai_gs_convention ;
+        la convention « recalcule » suit le Bw réel et reste exacte)    [D87] ;
       - Cv, theta calculés sur les volumes réels                      [D82, D80].
 
     Notes de convention :
       - `delta_dry_residue` (entrée propre à l'application, absente de la
         feuille) apporte son eau naturelle w0, comme dans le C# historique ;
-      - `delta_aggregate` est sec par défaut (w0_ag = 0, comme la feuille).
+      - `delta_aggregate` est sec par défaut (w0_ag = 0, comme la feuille) ;
+      - `dose_binder_by_wc` (option, défaut False) : Belem et al. 2018 §3.2.3 —
+        quand on ajuste le mélange en AJOUTANT DE L'EAU (monter le slump), le
+        liant n'est plus dosé en % de masse sèche mais par le rapport eau/liant
+        de CONCEPTION : mb_tot = eau_totale / (W/C de la recette de base). Le
+        Bw% atteint dérive alors et est publié tel quel [D89]. Prioritaire sur
+        `essai_binder_rule` quand activée.
     """
     rho_w = float(water_density)
 
@@ -267,8 +278,24 @@ def apply_essai_adjustments(*,
     mg_sec_tot = mg_sec_base + delta_aggregate
     solids_nb = mr_sec_tot + mg_sec_tot
 
-    # -- liant : deux conventions (défaut = Intra 2017, sans borne à 0)
-    if essai_binder_rule == "residu_ajoute":
+    # -- eau totale  [29a] — calculée AVANT le liant : la règle « dosage par
+    # W/C » en fait son assiette.
+    mw_tot = mw_base + delta_eau_tot
+
+    # -- liant : trois règles (défaut = Intra 2017, sans borne à 0)
+    if dose_binder_by_wc:
+        # Belem et al. 2018 §3.2.3 : liant dosé par le W/C de conception.
+        # wc_base = mw_base/mb_base ; mb_tot = mw_tot/wc_base. Équivaut à
+        # mb_ad = (eau ajoutée)/wc_base : le liant suit l'eau, pas les solides.
+        if mb_base <= 0.0 or mw_base <= 0.0:
+            raise ValueError(
+                "Dosage du liant par W/C impossible : la recette de base doit "
+                "avoir un liant (Bw > 0) et de l'eau (Cw < 100 %)."
+            )
+        wc_base = mw_base / mb_base
+        mb_tot = mw_tot / wc_base
+        mb_ad = mb_tot - mb_base
+    elif essai_binder_rule == "residu_ajoute":
         # Feuille « gramme » [D65] : le liant AJOUTÉ ne répond qu'au RÉSIDU
         # ajouté (pas au granulat, ni à l'eau). mb_tot = base + Bw·(résidu ajouté).
         mb_ad = bw_target_frac * (delta_dry_residue + sec_from_wet)
@@ -277,9 +304,6 @@ def apply_essai_adjustments(*,
         # Intra 2017 : Bw maintenu sur TOUS les solides (résidu + granulat).
         mb_tot = bw_target_frac * solids_nb
         mb_ad = mb_tot - mb_base
-
-    # -- eau totale  [29a]
-    mw_tot = mw_base + delta_eau_tot
 
     # -- volumes ajoutés  [D61-D64]
     v_add = ((delta_dry_residue + sec_from_wet) / (gs_r * rho_w)
@@ -294,8 +318,18 @@ def apply_essai_adjustments(*,
     conv = essai_gs_convention if essai_gs_convention is not None else ESSAI_GS_CONVENTION
     if conv == "recalcule":
         xg_new = mg_sec_tot / solids_nb if solids_nb > 0.0 else 0.0
+        # Sous « dose_binder_by_wc », le liant RÉEL dérive de la cible : la
+        # convention « recalcule » (la rigoureuse) suit le Bw réel. Les autres
+        # chemins gardent bw_target (comportements historiques épinglés par
+        # les tests d'or — inchangés au bit près quand l'option est absente,
+        # puisque bw réel == cible sous la règle « solides_totaux »).
+        bw_pour_gs = (
+            mb_tot / solids_nb
+            if (dose_binder_by_wc and solids_nb > 0.0)
+            else bw_target_frac
+        )
         gs_nb_used = gs_nonbinder_eff(gs_r, xg_new, gs_g)
-        gs_bkf_used = gs_backfill_eff(gs_r, xg_new, gs_g, bw_target_frac, gs_binder)
+        gs_bkf_used = gs_backfill_eff(gs_r, xg_new, gs_g, bw_pour_gs, gs_binder)
     else:
         gs_nb_used = gs_nonbinder_base
         gs_bkf_used = gs_backfill_base

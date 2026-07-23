@@ -591,6 +591,12 @@ export interface components {
              * @default 0
              */
             added_water_mass: number;
+            /**
+             * Dose Binder By Wc
+             * @description Option Belem et al. 2018 §3.2.3 : doser le liant par le rapport eau/liant de CONCEPTION (mb = eau totale / W/C de base) au lieu du % de masse sèche. Exige Bw > 0 sur la recette de base.
+             * @default false
+             */
+            dose_binder_by_wc: boolean;
         };
         /**
          * RpcEssaiInputs
@@ -841,6 +847,12 @@ export interface components {
              * @default 0
              */
             added_water_mass: number;
+            /**
+             * Dose Binder By Wc
+             * @description Option Belem et al. 2018 §3.2.3 : doser le liant par le rapport eau/liant de CONCEPTION (mb = eau totale / W/C de base) au lieu du % de masse sèche. Exige Bw > 0 sur la recette de base.
+             * @default false
+             */
+            dose_binder_by_wc: boolean;
         };
         /**
          * RpgEssaiInputs
