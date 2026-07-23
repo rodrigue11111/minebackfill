@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.routers import rpc, rpg, rrc
+from app.routers import rpc, rpg, rrc, analyse
 
 logger = logging.getLogger("minebackfill")
 
@@ -63,6 +63,7 @@ app.add_middleware(
 app.include_router(rpc.router)
 app.include_router(rpg.router)
 app.include_router(rrc.router)
+app.include_router(analyse.router)
 
 
 # ----------------------------------------------------------------------

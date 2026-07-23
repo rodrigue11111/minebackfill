@@ -10,7 +10,7 @@ Domain models (inputs & outputs) for the mine backfill calculations.
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional, Literal
+from typing import Dict, List, Optional, Literal
 
 from pydantic import BaseModel, Field, confloat, conint, field_validator, model_validator
 
@@ -783,3 +783,58 @@ class RrcResult(BaseModel):
     category: MixCategory
     general: GeneralInfo
     recipes: List[RrcRecipeState]
+
+
+# ======================================================================
+#  ANALYSE : balayage paramétrique (courbes de réponse)
+# ======================================================================
+
+class BalayageParam(str, Enum):
+    """Paramètre d'ENTRÉE à faire varier sur l'axe X d'une courbe de réponse."""
+    BW = "binder_mass_pct"         # Bw% (dosage de liant)
+    CW = "solids_mass_pct"         # Cw% (concentration massique en solides)
+    SR = "saturation_pct"          # Sr% (degré de saturation)
+    AM = "aggregate_fraction_pct"  # A_m% (fraction massique d'agrégat — RPG)
+
+
+class BalayageInputs(BaseModel):
+    """
+    Balaye UN paramètre d'entrée d'une recette (méthode Cw%) sur une plage, et
+    renvoie la réponse des grandeurs dérivées — pour tracer des courbes
+    paramétriques. RÉUTILISE le solveur RPC/RPG existant : aucune formule
+    dupliquée, aucune incidence sur les recettes ni les tests d'or.
+    """
+    category: Literal["RPC", "RPG"]
+    base_inputs_rpc: Optional[RpcCwInputs] = None
+    base_inputs_rpg: Optional[RpgCwInputs] = None
+    param: BalayageParam
+    x_min: float = Field(..., description="Valeur de départ du paramètre balayé.")
+    x_max: float = Field(..., description="Valeur de fin du paramètre balayé.")
+    steps: conint(ge=2, le=200) = Field(50, description="Nombre de points (2 à 200).")
+
+    @model_validator(mode="after")
+    def _coherence(self) -> "BalayageInputs":
+        if self.category == "RPC":
+            if self.base_inputs_rpc is None:
+                raise ValueError("base_inputs_rpc requis pour la catégorie RPC.")
+            if self.param == BalayageParam.AM:
+                raise ValueError(
+                    "Le paramètre « fraction d'agrégat » n'est balayable qu'en RPG."
+                )
+        elif self.base_inputs_rpg is None:
+            raise ValueError("base_inputs_rpg requis pour la catégorie RPG.")
+        if self.x_max <= self.x_min:
+            raise ValueError("La borne « x_max » doit être supérieure à « x_min ».")
+        return self
+
+
+class BalayageResult(BaseModel):
+    """
+    Résultat d'un balayage : l'axe X (valeurs du paramètre) et, pour chaque
+    grandeur de sortie, la série des valeurs (None si le point n'est pas
+    physiquement calculable — la courbe présente alors une coupure).
+    """
+    category: str
+    param: str
+    x: List[float]
+    series: Dict[str, List[Optional[float]]]
