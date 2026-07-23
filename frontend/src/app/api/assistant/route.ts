@@ -5,16 +5,35 @@
 // Gardes, dans l'ordre : fonctionnalité configurée (503), jeton Supabase
 // présent (401), rôle enseignant vérifié CÔTÉ SERVEUR (403). Le jeton GitHub
 // ne quitte jamais le serveur.
+//
+// MODE TEST SANS COMPTE (mode-test.ts, temporaire) : les comptes étant
+// désactivés, la vérification du rôle est SAUTÉE dans ce mode uniquement —
+// l'accès est ouvert le temps de la phase d'évaluation. Remettre le drapeau à
+// false referme tout (docs/MAINTENANCE.md, recette 9).
 
 import { NextRequest, NextResponse } from "next/server";
 import {
   lireConfigAssistant, verifierProf,
   creerIssue, commenterIssue, lireConversation,
 } from "@/lib/assistant";
+import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
 
 function jetonDepuis(req: NextRequest): string {
   const h = req.headers.get("authorization") ?? "";
   return h.startsWith("Bearer ") ? h.slice("Bearer ".length) : "";
+}
+
+/**
+ * Identité de l'appelant : { email } si autorisé, null sinon.
+ * Mode test : autorisé sans compte (email null — la provenance dans l'issue
+ * l'indiquera comme demande anonyme du site).
+ */
+async function identiteAutorisee(
+  cfg: NonNullable<ReturnType<typeof lireConfigAssistant>>,
+  req: NextRequest,
+): Promise<{ email: string | null } | null> {
+  if (MODE_TEST_SANS_COMPTE) return { email: null };
+  return verifierProf(cfg, jetonDepuis(req));
 }
 
 export async function POST(req: NextRequest) {
@@ -25,7 +44,7 @@ export async function POST(req: NextRequest) {
       { status: 503 },
     );
   }
-  const prof = await verifierProf(cfg, jetonDepuis(req));
+  const prof = await identiteAutorisee(cfg, req);
   if (!prof) {
     return NextResponse.json(
       { erreur: "Accès réservé au compte enseignant." },
@@ -54,7 +73,7 @@ export async function GET(req: NextRequest) {
   if (!cfg) {
     return NextResponse.json({ erreur: "Assistant non configuré." }, { status: 503 });
   }
-  const prof = await verifierProf(cfg, jetonDepuis(req));
+  const prof = await identiteAutorisee(cfg, req);
   if (!prof) {
     return NextResponse.json({ erreur: "Accès réservé au compte enseignant." }, { status: 403 });
   }
