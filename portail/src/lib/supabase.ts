@@ -99,12 +99,27 @@ export function creerStockageCookie(attributs: string) {
   };
 }
 
+/**
+ * Nettoie une valeur d'environnement collée à la main dans Vercel (retours à
+ * la ligne, tabulations, guillemets, valeur collée plusieurs fois) : un
+ * caractère de contrôle dans un en-tête HTTP fait échouer fetch avec
+ * « Invalid value ». Identique à frontend/src/lib/supabase.ts.
+ */
+export function nettoyerValeurEnv(brut: string | undefined): string | undefined {
+  const premier = brut
+    ?.trim()
+    .replace(/^["']+|["']+$/g, "")
+    .trim()
+    .split(/\s+/)[0];
+  return premier ? premier : undefined;
+}
+
 let client: SupabaseClient | null | undefined; // undefined = pas encore résolu
 
 export function getSupabase(): SupabaseClient | null {
   if (client !== undefined) return client;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = nettoyerValeurEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = nettoyerValeurEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   if (!url || !key) {
     client = null;
     return client;
