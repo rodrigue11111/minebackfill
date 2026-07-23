@@ -20,7 +20,10 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const STORAGE_KEY = "pb_auth";
 
 const DOMAINE_PARENT = "progicielbelem.com";
-const TAILLE_CHUNK = 3072; // marge sous la limite ~4 Ko par cookie
+// Marge sous la limite navigateur (~4096 octets par cookie, nom compris). Le
+// découpage se fait APRÈS encodage : c'est la taille écrite qui est limitée
+// (découper avant encodage produisait des cookies > 4 Ko, rejetés en silence).
+const TAILLE_CHUNK = 3200;
 
 /**
  * Attributs du cookie selon l'hôte : partage sur « .progicielbelem.com » en
@@ -39,41 +42,52 @@ function echapper(nom: string): string {
   return nom.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function litCookie(nom: string): string | null {
+// Valeur BRUTE du cookie (sans décodage) : les morceaux sont des tranches d'une
+// chaîne encodée UNIQUE — on recolle d'abord, on décode une seule fois.
+function litCookieBrut(nom: string): string | null {
   const m = document.cookie.match(new RegExp("(?:^|; )" + echapper(nom) + "=([^;]*)"));
-  return m ? decodeURIComponent(m[1]) : null;
+  return m ? m[1] : null;
 }
 
 function nbChunks(cle: string): number {
   let n = 0;
-  while (litCookie(`${cle}.${n}`) !== null) n++;
+  while (litCookieBrut(`${cle}.${n}`) !== null) n++;
   return n;
 }
 
 /**
  * Stockage compatible Supabase basé sur des cookies (partageable entre
- * sous-domaines), découpé en morceaux pour rester sous la limite de taille.
+ * sous-domaines). La valeur est encodée PUIS découpée en morceaux ≤ TAILLE_CHUNK
+ * octets (c'est la taille écrite qui est limitée par le navigateur).
  */
 export function creerStockageCookie(attributs: string) {
   const AN = 60 * 60 * 24 * 365;
-  const poser = (nom: string, val: string, maxAge: number) => {
-    document.cookie = `${nom}=${encodeURIComponent(val)}; ${attributs}; max-age=${maxAge}`;
+  // `brut` est déjà du texte encodé (%XX) : ne PAS ré-encoder ici.
+  const poser = (nom: string, brut: string, maxAge: number) => {
+    document.cookie = `${nom}=${brut}; ${attributs}; max-age=${maxAge}`;
   };
   return {
     getItem(cle: string): string | null {
       if (typeof document === "undefined") return null;
       const n = nbChunks(cle);
       if (n === 0) return null;
-      let out = "";
-      for (let i = 0; i < n; i++) out += litCookie(`${cle}.${i}`) ?? "";
-      return out;
+      let brut = "";
+      for (let i = 0; i < n; i++) brut += litCookieBrut(`${cle}.${i}`) ?? "";
+      try {
+        return decodeURIComponent(brut);
+      } catch {
+        // Cookie tronqué/corrompu (ancienne version > 4 Ko) : « pas de
+        // session » — la prochaine connexion réécrit des cookies sains.
+        return null;
+      }
     },
     setItem(cle: string, valeur: string): void {
       if (typeof document === "undefined") return;
       const ancien = nbChunks(cle);
-      const total = Math.max(1, Math.ceil(valeur.length / TAILLE_CHUNK));
+      const encode = encodeURIComponent(valeur);
+      const total = Math.max(1, Math.ceil(encode.length / TAILLE_CHUNK));
       for (let i = 0; i < total; i++) {
-        poser(`${cle}.${i}`, valeur.slice(i * TAILLE_CHUNK, (i + 1) * TAILLE_CHUNK), AN);
+        poser(`${cle}.${i}`, encode.slice(i * TAILLE_CHUNK, (i + 1) * TAILLE_CHUNK), AN);
       }
       for (let i = total; i < ancien; i++) poser(`${cle}.${i}`, "", 0);
     },

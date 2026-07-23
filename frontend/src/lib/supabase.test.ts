@@ -75,8 +75,15 @@ describe("creerStockageCookie — round-trip et découpage en morceaux", () => {
         const nom = parts[0].slice(0, i);
         const valeur = parts[0].slice(i + 1);
         const ma = parts.find((p) => p.toLowerCase().startsWith("max-age="));
-        if (ma && ma.split("=")[1] === "0") jar.delete(nom);
-        else jar.set(nom, valeur);
+        if (ma && ma.split("=")[1] === "0") {
+          jar.delete(nom);
+          return;
+        }
+        // Comportement des VRAIS navigateurs : un cookie dont nom+valeur
+        // dépasse 4096 octets est REJETÉ EN SILENCE. C'est le comportement qui
+        // a causé le bug « rôle toujours étudiant » — ne pas l'assouplir.
+        if (nom.length + valeur.length > 4096) return;
+        jar.set(nom, valeur);
       },
     };
     (globalThis as unknown as { document: unknown }).document = fake;
@@ -94,11 +101,51 @@ describe("creerStockageCookie — round-trip et découpage en morceaux", () => {
   });
 
   it("découpe puis reconstruit fidèlement une grande valeur", () => {
-    const grand = "x".repeat(8000); // > 2 morceaux de 3072
+    const grand = "x".repeat(8000); // 3 morceaux de 3200 après encodage
     st().setItem("pb_auth", grand);
     expect([...jar.keys()]).toContain("pb_auth.0");
     expect([...jar.keys()]).toContain("pb_auth.2");
     expect(st().getItem("pb_auth")).toBe(grand);
+  });
+
+  it("round-trip d'une session réaliste (JSON dense en guillemets) sans dépasser 4096 octets par cookie", () => {
+    // Reproduit le bug d'origine : le JSON de session Supabase est plein de
+    // caractères que l'encodage triple (`"` -> %22). L'ancien découpage (avant
+    // encodage) produisait ici un cookie > 4096 octets, rejeté par le
+    // navigateur -> session illisible -> requêtes anonymes -> RLS cache tout.
+    const session = JSON.stringify({
+      access_token: "eyJhbGciOiJFUzI1NiJ9." + "A".repeat(600) + ".sig",
+      token_type: "bearer",
+      expires_in: 3600,
+      expires_at: 1753142400,
+      refresh_token: "rt-3xemple",
+      user: {
+        id: "2e119616-685e-4e45-9efa-0ae6e54ff463",
+        aud: "authenticated",
+        role: "authenticated",
+        email: "prof@exemple.ca",
+        app_metadata: { provider: "email", providers: ["email"] },
+        // Métadonnées denses : dans « {"k0":0,"k1":1,…} », 6 caractères sur 8
+        // sont triplés par l'encodage — c'est ce qui faisait déborder l'ancien
+        // découpage (morceau de 3072 caractères -> cookie > 4096 octets).
+        user_metadata: Object.fromEntries(
+          Array.from({ length: 150 }, (_, i) => [`k${i}`, i]),
+        ),
+        identities: Array.from({ length: 4 }, (_, i) => ({
+          identity_id: `id-${i}-0a1b2c3d4e5f6a7b8c9d0e1f`,
+          provider: "email",
+          identity_data: { email: "prof@exemple.ca", email_verified: false, phone_verified: false },
+          last_sign_in_at: "2026-07-22T00:00:00.000000Z",
+        })),
+      },
+    });
+    st().setItem("pb_auth", session);
+    // Chaque cookie écrit respecte la limite navigateur.
+    for (const [k, v] of jar.entries()) {
+      expect(k.length + v.length).toBeLessThanOrEqual(4096);
+    }
+    // Et la session se relit à l'identique (aucun morceau rejeté).
+    expect(st().getItem("pb_auth")).toBe(session);
   });
 
   it("purge les morceaux excédentaires quand la valeur rétrécit", () => {
@@ -123,5 +170,21 @@ describe("creerStockageCookie — round-trip et découpage en morceaux", () => {
     const v = JSON.stringify({ token: "a.b-c_d", note: "é; =%", n: 1 });
     st().setItem("pb_auth", v);
     expect(st().getItem("pb_auth")).toBe(v);
+  });
+
+  it("relit les cookies écrits par l'ancienne version (morceaux encodés séparément)", () => {
+    // L'ancien setItem encodait CHAQUE morceau ; enc(a) + enc(b) reste un
+    // encodage valide de a + b, donc le nouveau getItem (recolle puis décode
+    // une fois) doit les lire tels quels.
+    jar.set("pb_auth.0", encodeURIComponent('{"a":1,'));
+    jar.set("pb_auth.1", encodeURIComponent('"b":"é"}'));
+    expect(st().getItem("pb_auth")).toBe('{"a":1,"b":"é"}');
+  });
+
+  it("cookie corrompu (séquence %XX tronquée) : null, sans exception", () => {
+    // Héritage possible de l'ancienne version : morceau rejeté par le
+    // navigateur -> reconstruction invalide. Doit valoir « pas de session ».
+    jar.set("pb_auth.0", "abc%2");
+    expect(st().getItem("pb_auth")).toBeNull();
   });
 });
