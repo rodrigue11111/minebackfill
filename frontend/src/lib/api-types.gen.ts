@@ -183,6 +183,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analyse/balayage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyse Balayage Endpoint
+         * @description Courbe de réponse : fait varier `param` de `x_min` à `x_max` en `steps`
+         *     points sur une recette Cw% de base (RPC ou RPG) et renvoie, pour chaque
+         *     grandeur de sortie, la série des valeurs.
+         */
+        post: operations["analyse_balayage_endpoint_analyse_balayage_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -204,6 +226,63 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * BalayageInputs
+         * @description Balaye UN paramètre d'entrée d'une recette (méthode Cw%) sur une plage, et
+         *     renvoie la réponse des grandeurs dérivées — pour tracer des courbes
+         *     paramétriques. RÉUTILISE le solveur RPC/RPG existant : aucune formule
+         *     dupliquée, aucune incidence sur les recettes ni les tests d'or.
+         */
+        BalayageInputs: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "RPC" | "RPG";
+            base_inputs_rpc?: components["schemas"]["RpcCwInputs"] | null;
+            base_inputs_rpg?: components["schemas"]["RpgCwInputs"] | null;
+            param: components["schemas"]["BalayageParam"];
+            /**
+             * X Min
+             * @description Valeur de départ du paramètre balayé.
+             */
+            x_min: number;
+            /**
+             * X Max
+             * @description Valeur de fin du paramètre balayé.
+             */
+            x_max: number;
+            /**
+             * Steps
+             * @description Nombre de points (2 à 200).
+             * @default 50
+             */
+            steps: number;
+        };
+        /**
+         * BalayageParam
+         * @description Paramètre d'ENTRÉE à faire varier sur l'axe X d'une courbe de réponse.
+         * @enum {string}
+         */
+        BalayageParam: "binder_mass_pct" | "solids_mass_pct" | "saturation_pct" | "aggregate_fraction_pct";
+        /**
+         * BalayageResult
+         * @description Résultat d'un balayage : l'axe X (valeurs du paramètre) et, pour chaque
+         *     grandeur de sortie, la série des valeurs (None si le point n'est pas
+         *     physiquement calculable — la courbe présente alors une coupure).
+         */
+        BalayageResult: {
+            /** Category */
+            category: string;
+            /** Param */
+            param: string;
+            /** X */
+            x: number[];
+            /** Series */
+            series: {
+                [key: string]: (number | null)[];
+            };
+        };
         /**
          * BinderComponent
          * @description Un composant de liant (un ciment) dans le système de liant.
@@ -1391,6 +1470,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RrcResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyse_balayage_endpoint_analyse_balayage_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BalayageInputs"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalayageResult"];
                 };
             };
             /** @description Validation Error */
