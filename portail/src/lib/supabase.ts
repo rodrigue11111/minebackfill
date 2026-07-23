@@ -14,6 +14,7 @@
 // mode ouvert (liste des projets sans connexion).
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { MODE_TEST_SANS_COMPTE } from "./mode-test";
 
 // Clé de session PARTAGÉE portail <-> MineBackfill. Doit rester IDENTIQUE à
 // frontend/src/lib/supabase.ts, sinon plus de SSO.
@@ -118,6 +119,11 @@ let client: SupabaseClient | null | undefined; // undefined = pas encore résolu
 
 export function getSupabase(): SupabaseClient | null {
   if (client !== undefined) return client;
+  // Mode test (mode-test.ts) : portail en accès libre, cloud désactivé.
+  if (MODE_TEST_SANS_COMPTE) {
+    client = null;
+    return client;
+  }
   const url = nettoyerValeurEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const key = nettoyerValeurEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   if (!url || !key) {

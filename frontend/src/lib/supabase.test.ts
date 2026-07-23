@@ -4,8 +4,17 @@ import { attributsCookie, creerStockageCookie, nettoyerValeurEnv } from "./supab
 // Le client est un singleton mémoïsé au niveau module : vi.resetModules() donne
 // un module frais (donc un client non résolu) à chaque test.
 describe("getSupabase — désactivé sans configuration", () => {
-  beforeEach(() => vi.resetModules());
-  afterEach(() => vi.unstubAllEnvs());
+  beforeEach(() => {
+    vi.resetModules();
+    // mode-test.ts désactive Supabase en production (MODE_TEST_SANS_COMPTE) ;
+    // ici on teste la logique fondée sur les variables d'environnement, donc on
+    // force le drapeau à false.
+    vi.doMock("./mode-test", () => ({ MODE_TEST_SANS_COMPTE: false }));
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.doUnmock("./mode-test");
+  });
 
   it("renvoie null si les variables d'environnement sont absentes", async () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
@@ -37,6 +46,25 @@ describe("getSupabase — désactivé sans configuration", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "cle-demo\ncle-demo\ncle-demo\ncle-demo");
     const { getSupabase } = await import("./supabase");
     expect(getSupabase()).not.toBeNull();
+  });
+});
+
+describe("getSupabase — mode test sans compte (TEMPORAIRE)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.doMock("./mode-test", () => ({ MODE_TEST_SANS_COMPTE: true }));
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.doUnmock("./mode-test");
+  });
+
+  it("désactive Supabase (client null) même avec les variables présentes", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://demo.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key-demo");
+    const { getSupabase, cloudConfigure } = await import("./supabase");
+    expect(getSupabase()).toBeNull();
+    expect(cloudConfigure()).toBe(false);
   });
 });
 

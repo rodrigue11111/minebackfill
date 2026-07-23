@@ -15,6 +15,7 @@
 // corps du composant, et auth-js touche au stockage (document.cookie).
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { MODE_TEST_SANS_COMPTE } from "./mode-test";
 
 // Clé de session PARTAGÉE portail <-> MineBackfill (nom de base des cookies).
 // Doit rester IDENTIQUE dans portail/src/lib/supabase.ts, sinon plus de SSO.
@@ -139,6 +140,13 @@ let client: SupabaseClient | null | undefined; // undefined = pas encore résolu
 
 export function getSupabase(): SupabaseClient | null {
   if (client !== undefined) return client;
+  // Mode test (mode-test.ts) : on se comporte comme « non configuré » — un seul
+  // point de coupure désactive tout le cloud/compte (NavBar, /compte, CloudSync,
+  // publication) sans toucher à chaque site d'appel.
+  if (MODE_TEST_SANS_COMPTE) {
+    client = null;
+    return client;
+  }
   const url = nettoyerValeurEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const key = nettoyerValeurEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   if (!url || !key) {

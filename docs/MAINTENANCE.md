@@ -144,6 +144,23 @@ Toute évolution de schéma : incrémenter la version de LA clé concernée
 (elles sont indépendantes depuis P4) + migration + test dans
 `store-persistence.test.ts`.
 
+### 9. Mode test sans compte — activer / RÉACTIVER les comptes
+
+Interrupteur temporaire pour laisser tester l'application sans connexion : tout
+le monde voit la vue enseignant, la couche Supabase (comptes, rôles, synchro,
+publication) est désactivée. **La publication en ligne est indisponible dans ce
+mode** (elle exige un vrai compte prof), le reste fonctionne 100 % en local.
+
+- Le drapeau : `MODE_TEST_SANS_COMPTE` dans **`frontend/src/lib/mode-test.ts`**
+  ET **`portail/src/lib/mode-test.ts`** (garder les deux identiques).
+- **Réactiver les comptes à la fin du projet** : mettre les DEUX à `false`,
+  vérifier les portes (`pnpm typecheck && pnpm lint && pnpm test && pnpm build`),
+  PR + merge → les variables Supabase déjà présentes reprennent effet
+  (connexion, rôles, publication). Aucune autre modification nécessaire.
+- Mécanique : `getSupabase()` renvoie `null` quand le drapeau est vrai — même
+  chemin que « variables Supabase absentes », d'où la désactivation propre de
+  toute l'UI compte/cloud sans toucher chaque appelant.
+
 ## Pièges connus
 
 - **Lint React Compiler** : `setState` synchrone dans un `useEffect` est une
