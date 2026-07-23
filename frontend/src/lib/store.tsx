@@ -236,6 +236,11 @@ export interface RpgEssaiAdjustment {
   ajout_agregat?: number;
   w0_agregat?: number;
   ajout_eau?: number;
+  /**
+   * Option Belem et al. 2018 §3.2.3 : doser le liant par le rapport eau/liant
+   * de CONCEPTION (le liant suit l'eau ajoutée) au lieu du % de masse sèche.
+   */
+  dose_liant_wc?: boolean;
 }
 
 export interface RpgEssaiState {
@@ -243,6 +248,8 @@ export interface RpgEssaiState {
   base_cw?: RpgCwState;
   base_wb?: RpgWbState;
   ajustements: RpgEssaiAdjustment[];
+  /** Cible de slump du protocole essai-erreur (mm) — défaut 178 (7 po). */
+  slump_cible_mm?: number;
 }
 
 export interface RrcState {

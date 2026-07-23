@@ -126,12 +126,16 @@ export default function RpgEssaiForm() {
         base_method,
         base_inputs_cw,
         base_inputs_wb,
-        adjustments: (rpgEssai.ajustements || []).map((a) => ({
+        // Tronqué au nombre de recettes ACTIF : un ajustement résiduel d'une
+        // recette retirée (p. ex. case W/C cochée puis nombre réduit) ne doit
+        // ni partir au serveur ni déclencher sa validation.
+        adjustments: (rpgEssai.ajustements || []).slice(0, activeBase.num_recipes || 1).map((a) => ({
           added_dry_residue_mass: a.ajout_residu_sec || 0,
           added_wet_residue_mass: a.ajout_residu_humide || 0,
           added_aggregate_mass: a.ajout_agregat || 0,
           aggregate_moisture_mass_pct: a.w0_agregat || 0,
           added_water_mass: a.ajout_eau || 0,
+          dose_binder_by_wc: a.dose_liant_wc || false,
         })),
       };
 
@@ -169,6 +173,9 @@ export default function RpgEssaiForm() {
         L&apos;ajout d&apos;agrégat modifie A_m. Le liant ajouté suit la convention active :
         Bw% maintenu sur tous les solides ajoutés (Intra 2017), ou liant sur le résidu ajouté
         seulement (feuille « gramme » — un ajout de granulat dilue alors le Bw atteint).
+        L&apos;option « doser le liant par le W/C » (par recette, ci-dessous) fait plutôt suivre
+        le liant à l&apos;eau ajoutée — recommandation de Belem et al. 2018 (§3.2.3) quand on
+        monte le slump avec de l&apos;eau.
       </div>
 
       {/* ── Base method choice ── */}
@@ -244,21 +251,60 @@ export default function RpgEssaiForm() {
                       onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_eau: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
                   </Field>
                 </div>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 10, cursor: "pointer", fontSize: 12.5, color: "#374151" }}>
+                  <input
+                    type="checkbox"
+                    checked={aj.dose_liant_wc || false}
+                    onChange={(e) => setRpgEssaiAjustement(i, { ...aj, dose_liant_wc: e.target.checked })}
+                    style={{ marginTop: 2 }}
+                  />
+                  <span>
+                    <strong>Doser le liant par le W/C de conception</strong> — le liant suit
+                    l&apos;eau ajoutée (mb = eau totale / W/C de base) au lieu du % de masse sèche.
+                    Le Bw% atteint dérive alors et est affiché tel quel. Exige un Bw &gt; 0 sur la
+                    recette de base. Référence : Belem et al. 2018, §3.2.3.
+                  </span>
+                </label>
               </div>
             );
           })}
         </div>
       </CardSection>
 
+      {/* ── Cible de slump (protocole essai-erreur, Belem et al. 2018 §2.3) ── */}
+      <CardSection
+        title="Cible de slump"
+        subtitle="Protocole essai-erreur : cône d'Abrams standard (300 mm), cible usuelle 178 mm (7 po)"
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
+          <Field label="Slump cible (mm)" hint="La comparaison s'affiche sous « Slump mesuré » ci-dessous ; vider le champ rétablit 178">
+            <input type="number" step="any" style={inputStyle} placeholder="178"
+              value={rpgEssai.slump_cible_mm ?? 178}
+              onChange={(e) => {
+                const v = num(e.target.value);
+                setRpgEssai({ slump_cible_mm: v > 0 ? v : undefined });
+              }} />
+          </Field>
+          <div style={{ fontSize: 12, color: "#64748b", alignSelf: "end", lineHeight: 1.5 }}>
+            Slump mesuré <strong>sous</strong> la cible : ajouter de l&apos;eau.
+            {" "}<strong>Au-dessus</strong> : ajouter résidus + granulats (le liant suit la règle active).
+          </div>
+        </div>
+      </CardSection>
+
       {/* ── Mesures laboratoire (feuille Intra 2017, lignes 72-77) ── */}
-      <MesuresLabo numRecipes={numRecipes} recipes={rpgEssaiResult?.recipes} />
+      <MesuresLabo
+        numRecipes={numRecipes}
+        recipes={rpgEssaiResult?.recipes}
+        slumpCibleMm={rpgEssai.slump_cible_mm ?? 178}
+      />
 
       {/* ── Actions ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button type="button" onClick={handleCompute} disabled={loading} className="btn-primary">
           {loading ? (<><span style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Calcul en cours…</>) : "▶ Lancer le calcul"}
         </button>
-        <button type="button" className="btn-secondary" onClick={() => { setRpgEssai({ base_method: "dosage_cw", ajustements: [] }); setRpgEssaiResult(null); setError(null); }}>
+        <button type="button" className="btn-secondary" onClick={() => { setRpgEssai({ base_method: "dosage_cw", ajustements: [], slump_cible_mm: undefined }); setRpgEssaiResult(null); setError(null); }}>
           Réinitialiser
         </button>
       </div>

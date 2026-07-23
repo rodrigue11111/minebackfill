@@ -12,7 +12,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import List, Optional, Literal
 
-from pydantic import BaseModel, Field, confloat, conint, field_validator
+from pydantic import BaseModel, Field, confloat, conint, field_validator, model_validator
 
 
 #: Nombre maximal de composants de liant combinables. Le cœur mathématique
@@ -412,6 +412,35 @@ class RpcSlumpInputs(BaseMixDesignInput):
 #  RPC: Essai-erreur (ajustements)
 # ======================================================================
 
+def _verifier_dose_binder_by_wc(base, adjustments, num_recipes: int) -> None:
+    """
+    Garde-fou de l'option « dosage du liant par W/C » (Belem et al. 2018,
+    §3.2.3) : le W/C de conception est mw_base/mb_base — il exige un liant
+    (Bw > 0) sur la recette de base correspondante. Refusé ici en 422 propre.
+    Cas complémentaire (base sans eau, Cw = 100 %) : rattrapé par le
+    ValueError du pipeline, converti lui aussi en 422 par le handler de
+    main.py — jamais de division par zéro.
+
+    Les ajustements AU-DELÀ de num_recipes sont ignorés : le solveur ne les
+    lit pas (boucle sur range(num_recipes)), on ne bloque donc pas sur une
+    recette invisible (p. ex. case cochée puis nombre de recettes réduit).
+    """
+    if base is None:
+        return
+    bw_list = getattr(base, "binder_mass_pct_recipes", []) or []
+    for i, adj in enumerate(adjustments):
+        if i >= num_recipes:
+            break
+        if getattr(adj, "dose_binder_by_wc", False):
+            bw = float(bw_list[i]) if i < len(bw_list) else 0.0
+            if bw <= 0.0:
+                raise ValueError(
+                    f"Recette {i + 1} : le dosage du liant par W/C "
+                    "(option de l'essai, Belem et al. 2018 §3.2.3) exige un "
+                    "Bw > 0 sur la recette de base."
+                )
+
+
 class RpcEssaiAdjustment(BaseModel):
     """
     Ajustements appliqués à une recette lors de la méthode essai-erreur.
@@ -428,6 +457,14 @@ class RpcEssaiAdjustment(BaseModel):
     )
     added_water_mass: float = Field(
         0.0, description="Masse d'eau ajoutée (kg)."
+    )
+    dose_binder_by_wc: bool = Field(
+        False,
+        description=(
+            "Option Belem et al. 2018 §3.2.3 : doser le liant par le rapport "
+            "eau/liant de CONCEPTION (mb = eau totale / W/C de base) au lieu "
+            "du % de masse sèche. Exige Bw > 0 sur la recette de base."
+        ),
     )
     # plus tard : ajout d'agrégats, etc.
 
@@ -454,6 +491,12 @@ class RpcEssaiInputs(BaseMixDesignInput):
         ...,
         description="Liste des ajustements (un par recette).",
     )
+
+    @model_validator(mode="after")
+    def _garde_dose_binder_by_wc(self) -> "RpcEssaiInputs":
+        base = self.base_inputs_cw if self.base_method == RpcMethod.CW else self.base_inputs_wb
+        _verifier_dose_binder_by_wc(base, self.adjustments, self.num_recipes)
+        return self
 
 
 # ======================================================================
@@ -610,6 +653,14 @@ class RpgEssaiAdjustment(BaseModel):
     added_aggregate_mass:   float = Field(0.0, description="Masse d'agrégat sec ajouté (kg). Spécifique RPG.")
     aggregate_moisture_mass_pct: float = Field(0.0, description="Teneur en eau massique de l'agrégat ajouté (w0-ag, %). Par défaut 0 (agrégat sec).")
     added_water_mass:       float = Field(0.0, description="Masse d'eau ajoutée (kg).")
+    dose_binder_by_wc:      bool = Field(
+        False,
+        description=(
+            "Option Belem et al. 2018 §3.2.3 : doser le liant par le rapport "
+            "eau/liant de CONCEPTION (mb = eau totale / W/C de base) au lieu "
+            "du % de masse sèche. Exige Bw > 0 sur la recette de base."
+        ),
+    )
 
 
 class RpgEssaiInputs(BaseMixDesignInput):
@@ -624,6 +675,12 @@ class RpgEssaiInputs(BaseMixDesignInput):
         ...,
         description="Liste des ajustements (un par recette).",
     )
+
+    @model_validator(mode="after")
+    def _garde_dose_binder_by_wc(self) -> "RpgEssaiInputs":
+        base = self.base_inputs_cw if self.base_method == RpcMethod.CW else self.base_inputs_wb
+        _verifier_dose_binder_by_wc(base, self.adjustments, self.num_recipes)
+        return self
 
 
 class MixDesignResult(BaseModel):

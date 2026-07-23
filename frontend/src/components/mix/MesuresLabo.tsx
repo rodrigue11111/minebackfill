@@ -56,9 +56,16 @@ function Ecart({ mesure, calcule }: { mesure: number | null; calcule: number | n
 export default function MesuresLabo({
   numRecipes,
   recipes,
+  slumpCibleMm,
 }: {
   numRecipes: number;
   recipes?: RecetteCalculee[] | null;
+  /**
+   * Cible de slump du protocole essai-erreur (mm). Si fournie, l'écart et le
+   * geste conseillé (eau vs solides) s'affichent sous le slump mesuré —
+   * protocole de Belem et al. 2018, §2.3.
+   */
+  slumpCibleMm?: number;
 }) {
   const [mesures, setMesures] = useState<MesureLabo[]>([]);
 
@@ -116,6 +123,22 @@ export default function MesuresLabo({
                     value={m.ms ?? ""} onChange={(e) => setMesure(i, { ms: num(e.target.value) })} />
                 </Field>
               </div>
+              {slumpCibleMm !== undefined && slumpCibleMm > 0 && m.slump !== undefined && (
+                <div style={{ marginTop: 10, fontSize: 12.5, color: "#374151" }}>
+                  <strong>Slump : {m.slump} mm</strong> vs cible {slumpCibleMm} mm{" "}
+                  {m.slump === slumpCibleMm ? (
+                    <span style={{ color: "#16a34a", fontWeight: 600 }}>— cible atteinte</span>
+                  ) : m.slump < slumpCibleMm ? (
+                    <span style={{ color: "#d97706", fontWeight: 600 }}>
+                      (écart −{(slumpCibleMm - m.slump).toFixed(0)} mm) — sous la cible : ajouter de l&apos;eau
+                    </span>
+                  ) : (
+                    <span style={{ color: "#d97706", fontWeight: 600 }}>
+                      (écart +{(m.slump - slumpCibleMm).toFixed(0)} mm) — au-dessus : ajouter résidus + granulats (le liant suit la règle active)
+                    </span>
+                  )}
+                </div>
+              )}
               {(w !== null || cw !== null) && (
                 <div style={{ marginTop: 10, fontSize: 12.5, color: "#374151", display: "flex", gap: 24, flexWrap: "wrap" }}>
                   <span>
