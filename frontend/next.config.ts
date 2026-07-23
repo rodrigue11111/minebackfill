@@ -22,6 +22,12 @@ const nextConfig: NextConfig = {
         source: "/rrc/:path*",
         destination: `${backendUrl}/rrc/:path*`,
       },
+      {
+        // Chemin EXACT (et non /analyse/:path*) : il existe une PAGE /analyse.
+        // On ne proxifie que l'endpoint d'API, la page reste servie par Next.
+        source: "/analyse/balayage",
+        destination: `${backendUrl}/analyse/balayage`,
+      },
     ];
   },
 };
