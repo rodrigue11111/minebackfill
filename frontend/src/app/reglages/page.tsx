@@ -8,6 +8,7 @@ import type { LiantCatalogueItem } from "@/lib/store";
 import type { MaterialKind } from "@/lib/materials";
 import { CONVENTION_PACKS, packById } from "@/lib/conventions";
 import { getSupabase } from "@/lib/supabase";
+import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
 import { publierCatalogue, type CatalogueCloudId } from "@/lib/cloud";
 import { estOfficiel } from "@/lib/materials";
 import MaterialCatalogueCard from "@/components/MaterialCatalogueCard";
@@ -27,7 +28,12 @@ export default function ReglagesPage() {
     loadUnits,
   } = useStore();
   const session = useStore((s) => s.session);
+  // isProf = vrai compte prof connecté (requis pour PUBLIER en ligne).
   const isProf = session?.role === "prof";
+  // vueAdmin = affichage/édition enseignant. En mode test sans compte, tout le
+  // monde y a droit (édition LOCALE des catalogues officiels) ; la publication
+  // en ligne, elle, reste conditionnée à isProf (impossible sans compte).
+  const vueAdmin = MODE_TEST_SANS_COMPTE || isProf;
 
   useEffect(() => {
     loadUnits();
@@ -218,8 +224,8 @@ export default function ReglagesPage() {
             {catalogue_liants.map((liant: LiantCatalogueItem, index: number) => {
               const code = String(liant.code ?? "");
               const duplique = code && codesDupliques.has(code);
-              // En mode enseignant, les liants officiels sont éditables.
-              const verrou = estOfficiel(liant) && !isProf;
+              // En vue enseignant, les liants officiels sont éditables.
+              const verrou = estOfficiel(liant) && !vueAdmin;
               return (
                 <div
                   key={liant.id}
@@ -245,7 +251,7 @@ export default function ReglagesPage() {
                       onChange={(e) =>
                         modifierLiant(index, {
                           code: String(e.target.value || "").trim().toUpperCase(),
-                        }, isProf)
+                        }, vueAdmin)
                       }
                     />
                   </div>
@@ -257,7 +263,7 @@ export default function ReglagesPage() {
                       className="field-input"
                       value={liant.nom}
                       disabled={verrou}
-                      onChange={(e) => modifierLiant(index, { nom: e.target.value }, isProf)}
+                      onChange={(e) => modifierLiant(index, { nom: e.target.value }, vueAdmin)}
                     />
                   </div>
                   <div>
@@ -270,7 +276,7 @@ export default function ReglagesPage() {
                       className="field-input"
                       value={liant.gs}
                       disabled={verrou}
-                      onChange={(e) => modifierLiant(index, { gs: Number(e.target.value || 0) }, isProf)}
+                      onChange={(e) => modifierLiant(index, { gs: Number(e.target.value || 0) }, vueAdmin)}
                     />
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingBottom: 2 }}>
@@ -284,7 +290,7 @@ export default function ReglagesPage() {
                         type="button"
                         className="btn-secondary"
                         style={{ fontSize: 12, padding: "6px 12px" }}
-                        onClick={() => supprimerLiant(index, isProf)}
+                        onClick={() => supprimerLiant(index, vueAdmin)}
                         disabled={catalogue_liants.length <= 1}
                       >
                         Supprimer
@@ -317,8 +323,8 @@ export default function ReglagesPage() {
           kind="residus"
           title="Bibliothèque de résidus"
           sub="Résidus miniers réutilisables : sélectionnez-les dans les formulaires pour remplir Gs et w0."
-          adminMode={isProf}
-          onPublish={() => publierMateriaux("residus", "residus", MATERIALS_VERSION)}
+          adminMode={vueAdmin}
+          onPublish={isProf ? () => publierMateriaux("residus", "residus", MATERIALS_VERSION) : undefined}
           columns={[
             { key: "nom", label: "Nom", type: "text", flex: 2 },
             { key: "gs", label: "Gs", type: "number" },
@@ -330,8 +336,8 @@ export default function ReglagesPage() {
           kind="granulats"
           title="Bibliothèque de granulats"
           sub="Granulats pour le remblai en pâte granulaire (RPG)."
-          adminMode={isProf}
-          onPublish={() => publierMateriaux("granulats", "granulats", MATERIALS_VERSION)}
+          adminMode={vueAdmin}
+          onPublish={isProf ? () => publierMateriaux("granulats", "granulats", MATERIALS_VERSION) : undefined}
           columns={[
             { key: "nom", label: "Nom", type: "text", flex: 2 },
             { key: "gs", label: "Gs", type: "number" },
@@ -344,8 +350,8 @@ export default function ReglagesPage() {
           kind="retardateurs"
           title="Bibliothèque de retardateurs"
           sub="Retardateurs de prise pour le remblai rocheux cimenté (RRC)."
-          adminMode={isProf}
-          onPublish={() => publierMateriaux("retardateurs", "retardateurs", MATERIALS_VERSION)}
+          adminMode={vueAdmin}
+          onPublish={isProf ? () => publierMateriaux("retardateurs", "retardateurs", MATERIALS_VERSION) : undefined}
           columns={[
             { key: "nom", label: "Nom", type: "text", flex: 2 },
             { key: "densite_g_ml", label: "Densité (g/ml)", type: "number" },

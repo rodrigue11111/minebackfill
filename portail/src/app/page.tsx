@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { PROJETS, type Projet } from "@/lib/projects";
 import { getSupabase, authConfiguree } from "@/lib/supabase";
+import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
 import { useHydrated } from "@/lib/use-hydrated";
 
 // Traduction des erreurs Supabase courantes (même table que MineBackfill).
@@ -184,7 +185,7 @@ export default function PortailPage() {
       <main style={{ flex: 1, maxWidth: 1080, width: "100%", margin: "0 auto", padding: "34px 24px 60px" }}>
         {!monte || !pretAffichage ? null : accesProjets ? (
           <>
-            {!configuree && (
+            {!configuree && !MODE_TEST_SANS_COMPTE && (
               <div
                 style={{
                   marginBottom: 20,
