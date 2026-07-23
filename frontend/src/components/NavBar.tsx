@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { APP_NAME } from "@/lib/branding";
+import { APP_NAME, PORTAIL_LABEL, PORTAIL_URL } from "@/lib/branding";
 import { useStore } from "@/lib/store";
 import { cloudConfigure } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -171,6 +171,45 @@ export default function NavBar() {
           );
         })}
       </div>
+
+      {/* ── Bascule vers le portail des projets (CPB Cockpit, etc.) ── */}
+      <a
+        href={PORTAIL_URL}
+        title="Portail des projets — basculer vers une autre application"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "5px 11px",
+          borderRadius: 6,
+          fontSize: 12.5,
+          fontWeight: 600,
+          color: "rgba(255,255,255,0.65)",
+          textDecoration: "none",
+          border: "1px solid rgba(255,255,255,0.18)",
+          marginLeft: 12,
+          flexShrink: 0,
+          whiteSpace: "nowrap",
+          transition: "background 0.13s, color 0.13s",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+          e.currentTarget.style.color = "#fff";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = "rgba(255,255,255,0.65)";
+        }}
+      >
+        {/* Icône « grille d'applications » */}
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <rect x="0.5" y="0.5" width="4.4" height="4.4" rx="1" fill="currentColor" opacity="0.9" />
+          <rect x="7.1" y="0.5" width="4.4" height="4.4" rx="1" fill="currentColor" opacity="0.6" />
+          <rect x="0.5" y="7.1" width="4.4" height="4.4" rx="1" fill="currentColor" opacity="0.6" />
+          <rect x="7.1" y="7.1" width="4.4" height="4.4" rx="1" fill="currentColor" opacity="0.9" />
+        </svg>
+        {PORTAIL_LABEL}
+      </a>
 
       {/* ── Version tag ── */}
       <div
