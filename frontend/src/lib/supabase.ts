@@ -118,12 +118,29 @@ export function creerStockageCookie(attributs: string) {
   };
 }
 
+/**
+ * Nettoie une valeur d'environnement collée à la main dans Vercel. Vu en
+ * production : clé collée PLUSIEURS fois séparée par des retours à la ligne,
+ * tabulation devant l'URL, guillemets autour de la valeur. Un caractère de
+ * contrôle dans l'en-tête `apikey` fait échouer fetch avec « Failed to execute
+ * 'fetch' on 'Window': Invalid value » — on ne garde donc que le premier
+ * « mot » utile. Exporté pour test.
+ */
+export function nettoyerValeurEnv(brut: string | undefined): string | undefined {
+  const premier = brut
+    ?.trim()
+    .replace(/^["']+|["']+$/g, "")
+    .trim()
+    .split(/\s+/)[0];
+  return premier ? premier : undefined;
+}
+
 let client: SupabaseClient | null | undefined; // undefined = pas encore résolu
 
 export function getSupabase(): SupabaseClient | null {
   if (client !== undefined) return client;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = nettoyerValeurEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = nettoyerValeurEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   if (!url || !key) {
     client = null;
     return client;

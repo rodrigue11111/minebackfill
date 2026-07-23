@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { attributsCookie, creerStockageCookie } from "./supabase";
+import { attributsCookie, creerStockageCookie, nettoyerValeurEnv } from "./supabase";
 
 // Le client est un singleton mémoïsé au niveau module : vi.resetModules() donne
 // un module frais (donc un client non résolu) à chaque test.
@@ -28,6 +28,40 @@ describe("getSupabase — désactivé sans configuration", () => {
     const { getSupabase, cloudConfigure } = await import("./supabase");
     expect(getSupabase()).not.toBeNull();
     expect(cloudConfigure()).toBe(true);
+  });
+
+  it("tolère des variables polluées par le copier-coller (client non nul)", async () => {
+    // Pollution VUE EN PRODUCTION : tabulation devant l'URL, clé collée 4 fois
+    // avec retours à la ligne — cassait fetch (« Invalid value » en en-tête).
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "\thttps://demo.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "cle-demo\ncle-demo\ncle-demo\ncle-demo");
+    const { getSupabase } = await import("./supabase");
+    expect(getSupabase()).not.toBeNull();
+  });
+});
+
+describe("nettoyerValeurEnv — tolérance aux accidents de copier-coller", () => {
+  it("retire la tabulation/espaces autour d'une URL", () => {
+    expect(nettoyerValeurEnv("\thttps://x.supabase.co ")).toBe("https://x.supabase.co");
+  });
+
+  it("ne garde qu'une copie d'une clé collée plusieurs fois (retours à la ligne)", () => {
+    expect(nettoyerValeurEnv("sb_pub_abc\nsb_pub_abc\nsb_pub_abc\nsb_pub_abc")).toBe("sb_pub_abc");
+  });
+
+  it("retire les guillemets autour de la valeur", () => {
+    expect(nettoyerValeurEnv('"sb_pub_abc"')).toBe("sb_pub_abc");
+    expect(nettoyerValeurEnv("'https://x.co'")).toBe("https://x.co");
+  });
+
+  it("valeur vide ou blanche -> undefined (client désactivé, pas d'erreur)", () => {
+    expect(nettoyerValeurEnv("")).toBeUndefined();
+    expect(nettoyerValeurEnv("   \n\t ")).toBeUndefined();
+    expect(nettoyerValeurEnv(undefined)).toBeUndefined();
+  });
+
+  it("valeur déjà propre : inchangée", () => {
+    expect(nettoyerValeurEnv("sb_publishable_abc-DEF_123")).toBe("sb_publishable_abc-DEF_123");
   });
 });
 
