@@ -538,13 +538,17 @@ function ResultatsUCS({ gachees }: { gachees: Gachee[] }) {
 }
 
 /** Édition des protocoles de laboratoire (procédures maintenues par le prof). */
-function ProtocolesEditeur({ protocoles, onAjouter, onModifier, onSupprimer }: {
+function ProtocolesEditeur({ protocoles, onAjouter, onModifier, onSupprimer, onReinitialiser }: {
   protocoles: Protocole[];
   onAjouter: (p: Protocole) => void;
   onModifier: (id: string, patch: Partial<Protocole>) => void;
   onSupprimer: (id: string) => void;
+  onReinitialiser: () => void;
 }) {
   const ajouter = () => onAjouter({ id: nouvelId(), titre: "Nouveau protocole", contenu: "", majLe: new Date().toISOString() });
+  const reinitialiser = () => {
+    if (window.confirm("Remplacer les protocoles actuels par les procédures de départ ? Les gâchées déjà créées ne sont pas touchées.")) onReinitialiser();
+  };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#475569" }}>
@@ -553,7 +557,7 @@ function ProtocolesEditeur({ protocoles, onAjouter, onModifier, onSupprimer }: {
       </div>
       {protocoles.map((p) => (
         <Carte key={p.id} titre={p.titre || "Protocole"} extra={
-          <button type="button" onClick={() => { if (window.confirm(`Supprimer le protocole « ${p.titre} » ?`)) onSupprimer(p.id); }}
+          <button type="button" onClick={() => { if (window.confirm(`Supprimer le protocole « ${p.titre || "sans titre"} » ?`)) onSupprimer(p.id); }}
             className="btn-secondary" style={{ fontSize: 12, color: "var(--danger)" }}>Supprimer</button>
         }>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -569,7 +573,10 @@ function ProtocolesEditeur({ protocoles, onAjouter, onModifier, onSupprimer }: {
           </div>
         </Carte>
       ))}
-      <button type="button" onClick={ajouter} className="btn-secondary" style={{ alignSelf: "flex-start" }}>+ Ajouter un protocole</button>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button type="button" onClick={ajouter} className="btn-secondary">+ Ajouter un protocole</button>
+        <button type="button" onClick={reinitialiser} className="btn-secondary" style={{ color: "#64748b" }}>Réinitialiser aux procédures par défaut</button>
+      </div>
     </div>
   );
 }
@@ -594,7 +601,7 @@ function CarteProtocolesFiges({ snapshot }: { snapshot: ProtocoleFige[] | undefi
 export default function LaboPage() {
   const monte = useHydrated();
   const { gachees, ajouterGachee, modifierGachee, supprimerGachee, savedResults,
-    protocoles, ajouterProtocole, modifierProtocole, supprimerProtocole } = useStore();
+    protocoles, ajouterProtocole, modifierProtocole, supprimerProtocole, reinitialiserProtocoles } = useStore();
   const [selId, setSelId] = useState<string | null>(null);
   const [nouvelle, setNouvelle] = useState(false);
   const [formId, setFormId] = useState<string>("");
@@ -824,7 +831,7 @@ export default function LaboPage() {
         {vue === "resultats" ? (
           <ResultatsUCS gachees={gachees} />
         ) : vue === "protocoles" ? (
-          <ProtocolesEditeur protocoles={protocoles} onAjouter={ajouterProtocole} onModifier={modifierProtocole} onSupprimer={supprimerProtocole} />
+          <ProtocolesEditeur protocoles={protocoles} onAjouter={ajouterProtocole} onModifier={modifierProtocole} onSupprimer={supprimerProtocole} onReinitialiser={reinitialiserProtocoles} />
         ) : (
         <>
         {nouvelle && (

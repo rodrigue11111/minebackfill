@@ -17,8 +17,13 @@ export interface ProtocoleFige {
   contenu: string;
 }
 
-/** Procédures de départ (l'enseignant les adapte à son cours). */
-export const PROTOCOLES_DEFAUT: Protocole[] = [
+/**
+ * Procédures de départ (l'enseignant les adapte à son cours). Gelées : elles
+ * servent à la fois de graine (seed) et d'état initial ; une mutation en place
+ * corromprait le module partagé — passer par `protocolesDefaut()` pour une
+ * copie fraîche et modifiable.
+ */
+const DEFAUTS: Protocole[] = [
   {
     id: "malaxage",
     titre: "Malaxage",
@@ -49,6 +54,13 @@ export const PROTOCOLES_DEFAUT: Protocole[] = [
       "5. Reporter la contrainte (charge / section) dans la gâchée.",
   },
 ];
+
+export const PROTOCOLES_DEFAUT: readonly Protocole[] = Object.freeze(DEFAUTS.map((p) => Object.freeze(p)));
+
+/** Copie fraîche et MODIFIABLE des procédures de départ (seed / réinitialisation). */
+export function protocolesDefaut(): Protocole[] {
+  return PROTOCOLES_DEFAUT.map((p) => ({ ...p }));
+}
 
 /** Fige les protocoles courants (titre + contenu) pour rattachement à une gâchée. */
 export function snapshotProtocoles(protocoles: Protocole[]): ProtocoleFige[] {

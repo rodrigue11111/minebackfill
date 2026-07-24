@@ -5,7 +5,7 @@ import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
 import { loadVersioned, persistVersioned } from "./persisted";
 import type { Gachee } from "./gachee";
-import { PROTOCOLES_DEFAUT, type Protocole } from "./protocole";
+import { protocolesDefaut, type Protocole } from "./protocole";
 import { descriptorFor } from "./method-registry";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
@@ -417,8 +417,9 @@ const PROTOCOLES_KEY = "minebackfill_protocoles";
 const PROTOCOLES_VERSION = 1;
 
 function loadProtocolesFromStorage(): Protocole[] {
-  // Absence de clé = première venue : on sème les procédures de départ.
-  return loadVersioned<Protocole[]>(PROTOCOLES_KEY, PROTOCOLES_VERSION, (d) => d as Protocole[], PROTOCOLES_DEFAUT);
+  // Absence de clé = première venue : on sème une COPIE des procédures de départ
+  // (jamais le singleton gelé, pour ne pas risquer sa mutation).
+  return loadVersioned<Protocole[]>(PROTOCOLES_KEY, PROTOCOLES_VERSION, (d) => d as Protocole[], protocolesDefaut());
 }
 function persistProtocoles(items: Protocole[]): void {
   persistVersioned(PROTOCOLES_KEY, PROTOCOLES_VERSION, items);
@@ -613,6 +614,7 @@ interface AppState {
   ajouterProtocole: (p: Protocole) => void;
   modifierProtocole: (id: string, patch: Partial<Protocole>) => void;
   supprimerProtocole: (id: string) => void;
+  reinitialiserProtocoles: () => void;
 
   industrie: IndustrieState;
   setIndustrie: (patch: Partial<IndustrieState>) => void;
@@ -1389,7 +1391,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { gachees: updated };
     }),
 
-  protocoles: PROTOCOLES_DEFAUT,
+  protocoles: protocolesDefaut(),
   loadProtocoles: () => set({ protocoles: loadProtocolesFromStorage() }),
   ajouterProtocole: (p) =>
     set(() => {
@@ -1408,6 +1410,12 @@ export const useStore = create<AppState>((set, get) => ({
       const updated = loadProtocolesFromStorage().filter((p) => p.id !== id);
       persistProtocoles(updated);
       return { protocoles: updated };
+    }),
+  reinitialiserProtocoles: () =>
+    set(() => {
+      const defauts = protocolesDefaut();
+      persistProtocoles(defauts);
+      return { protocoles: defauts };
     }),
 
   savedResults: [],

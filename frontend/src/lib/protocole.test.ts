@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROTOCOLES_DEFAUT, snapshotProtocoles, type Protocole } from "./protocole";
+import { PROTOCOLES_DEFAUT, protocolesDefaut, snapshotProtocoles, type Protocole } from "./protocole";
 
 describe("PROTOCOLES_DEFAUT", () => {
   it("fournit des procédures de départ avec id, titre et contenu", () => {
@@ -13,6 +13,21 @@ describe("PROTOCOLES_DEFAUT", () => {
   it("a des identifiants uniques", () => {
     const ids = PROTOCOLES_DEFAUT.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+  it("les défauts sont gelés (protège le singleton partagé)", () => {
+    expect(Object.isFrozen(PROTOCOLES_DEFAUT)).toBe(true);
+    expect(Object.isFrozen(PROTOCOLES_DEFAUT[0])).toBe(true);
+  });
+});
+
+describe("protocolesDefaut", () => {
+  it("renvoie une copie fraîche, modifiable et découplée du singleton", () => {
+    const a = protocolesDefaut();
+    const b = protocolesDefaut();
+    expect(a).not.toBe(b);
+    expect(a[0]).not.toBe(PROTOCOLES_DEFAUT[0]);
+    a[0].titre = "Modifié";
+    expect(PROTOCOLES_DEFAUT[0].titre).not.toBe("Modifié"); // le défaut reste intact
   });
 });
 
