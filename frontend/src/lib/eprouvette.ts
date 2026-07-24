@@ -6,6 +6,24 @@
 
 export type StatutEprouvette = "en_cure" | "ecrase";
 
+/**
+ * Essai de résistance en compression uniaxiale (UCS) sur une éprouvette écrasée.
+ * On MESURE une contrainte à la rupture ; le programme n'affiche AUCUNE valeur
+ * calculée/prédite (aucun modèle de prédiction validé n'existe ici).
+ * La contrainte est soit saisie directement (contrainteKpaSaisie, si la presse
+ * la donne), soit calculée depuis la charge et le diamètre (voir contrainteKpa).
+ */
+export interface EssaiUCS {
+  date?: string; // ISO — date de l'essai (écrasement)
+  chargeKn?: number; // charge à la rupture (kN)
+  diametreMm?: number; // diamètre de l'éprouvette (pour la section)
+  hauteurMm?: number; // hauteur (traçabilité ; élancement)
+  contrainteKpaSaisie?: number; // contrainte mesurée saisie directement (kPa)
+  modeRupture?: string;
+  exclu?: boolean; // exclu de la moyenne (aberrant) — justification requise
+  justificationExclusion?: string;
+}
+
 export interface Eprouvette {
   id: string;
   code: string; // « G-AAAAMMJJ-NN-E01 »
@@ -13,10 +31,92 @@ export interface Eprouvette {
   ageJours: number; // âge de cure cible (jours) -> échéance = couleLe + ageJours
   moule?: string; // type/dimensions, ex. « cylindre 50 × 100 mm »
   statut: StatutEprouvette;
+  essai?: EssaiUCS; // renseigné une fois l'éprouvette écrasée
 }
 
 /** Âges de cure usuels pour les remblais en pâte (jours). */
 export const AGES_CURE_DEFAUT = [7, 14, 28, 56, 91] as const;
+
+/**
+ * Contrainte UCS mesurée (kPa) : la saisie directe prime ; sinon on la déduit
+ * de la charge (kN) et du diamètre (mm) — σ = F / A, A = π·d²/4. Renvoie null si
+ * l'essai n'est pas exploitable (ni contrainte ni charge+diamètre valides).
+ */
+export function contrainteKpa(essai: EssaiUCS | undefined): number | null {
+  if (!essai) return null;
+  // Une contrainte directe positive prime ; une valeur <= 0 (aucune résistance
+  // négative en compression) est ignorée et on retombe sur le calcul F/A.
+  const directe = essai.contrainteKpaSaisie;
+  if (directe != null && Number.isFinite(directe) && directe > 0) return directe;
+  const { chargeKn, diametreMm } = essai;
+  if (chargeKn != null && chargeKn > 0 && diametreMm != null && diametreMm > 0) {
+    const aireMm2 = (Math.PI * diametreMm * diametreMm) / 4;
+    // (kN·1000 = N) / mm² = MPa ; ×1000 -> kPa
+    return ((chargeKn * 1000) / aireMm2) * 1000;
+  }
+  return null;
+}
+
+/** Moyenne arithmétique, ou null si vide. */
+export function moyenne(xs: number[]): number | null {
+  if (xs.length === 0) return null;
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
+/** Écart-type d'échantillon (dénominateur n−1), ou null si moins de 2 valeurs. */
+export function ecartTypeEch(xs: number[]): number | null {
+  if (xs.length < 2) return null;
+  const m = moyenne(xs) as number;
+  const v = xs.reduce((a, b) => a + (b - m) * (b - m), 0) / (xs.length - 1);
+  return Math.sqrt(v);
+}
+
+export interface AgregatAge {
+  ageJours: number;
+  valeurs: number[]; // contraintes RETENUES (kPa), hors exclusions
+  n: number; // nb retenu
+  nExclus: number;
+  moyenneKpa: number | null;
+  ecartTypeKpa: number | null;
+  cvPct: number | null; // coefficient de variation (%)
+}
+
+/**
+ * Agrège les essais UCS par âge de cure : moyenne, écart-type et CV des
+ * éprouvettes RETENUES (les éprouvettes marquées « exclues » sont comptées à
+ * part, jamais dans la moyenne). Ne considère que les éprouvettes ÉCRASÉES à
+ * essai exploitable, et n'inclut que les âges ayant au moins une telle
+ * éprouvette. Trié par âge croissant.
+ */
+export function agregerParAge(eprouvettes: Eprouvette[]): AgregatAge[] {
+  const parAge = new Map<number, { retenus: number[]; exclus: number }>();
+  for (const e of eprouvettes) {
+    // Seules les éprouvettes ÉCRASÉES comptent : une éprouvette remise en cure
+    // conserve son essai (donnée non perdue) mais sort des statistiques.
+    if (e.statut !== "ecrase") continue;
+    const c = contrainteKpa(e.essai);
+    if (c === null) continue;
+    const slot = parAge.get(e.ageJours) ?? { retenus: [], exclus: 0 };
+    if (e.essai?.exclu) slot.exclus += 1;
+    else slot.retenus.push(c);
+    parAge.set(e.ageJours, slot);
+  }
+  return [...parAge.entries()]
+    .map(([ageJours, { retenus, exclus }]) => {
+      const m = moyenne(retenus);
+      const sd = ecartTypeEch(retenus);
+      return {
+        ageJours,
+        valeurs: retenus,
+        n: retenus.length,
+        nExclus: exclus,
+        moyenneKpa: m,
+        ecartTypeKpa: sd,
+        cvPct: m !== null && m !== 0 && sd !== null ? (sd / m) * 100 : null,
+      };
+    })
+    .sort((a, b) => a.ageJours - b.ageJours);
+}
 
 const MS_JOUR = 86_400_000;
 

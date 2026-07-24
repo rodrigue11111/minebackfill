@@ -9,6 +9,18 @@ import type { Eprouvette } from "./eprouvette";
 
 export type StatutGachee = "brouillon" | "terminee";
 
+/**
+ * Instantané des paramètres de la formulation d'origine (traçabilité et axes
+ * des résultats UCS mesurés). Capturé à la création de la gâchée pour rester
+ * stable même si la formulation source est modifiée ou supprimée.
+ */
+export interface ParametresFormulation {
+  cwPct?: number; // concentration solide Cw (solids_mass_pct)
+  wcRatio?: number; // rapport eau/liant (wc_ratio)
+  bwPct?: number; // dosage en liant Bw (bw_mass_pct)
+  wPct?: number; // teneur en eau w (w_mass_pct)
+}
+
 /** Un composant à peser : masse CIBLE (théorique) vs masse RÉELLEMENT pesée. */
 export interface ComposantPese {
   cle: string; // "residu" | "granulat" | "liant" | "liant:0" | "eau"
@@ -59,6 +71,9 @@ export interface Gachee {
 
   // Éprouvettes moulées à partir de cette gâchée (mise en cure, écrasement).
   eprouvettes: Eprouvette[];
+
+  // Instantané des paramètres de la recette (Cw, W/C, Bw, w) — traçabilité.
+  parametres?: ParametresFormulation;
 }
 
 function num(v: number | null | undefined): number {
@@ -134,4 +149,16 @@ export function composantsDepuisRecette(r: Recipe, nomLiant: (i: number) => stri
   if (eau > 0) out.push({ cle: "eau", label: "Eau à ajouter", cibleKg: eau });
 
   return out;
+}
+
+/** Instantané des paramètres (Cw, W/C, Bw, w) d'une recette calculée. */
+export function parametresDepuisRecette(r: Recipe): ParametresFormulation {
+  const val = (v: number | null | undefined): number | undefined =>
+    typeof v === "number" && Number.isFinite(v) ? v : undefined;
+  return {
+    cwPct: val(r.solids_mass_pct),
+    wcRatio: val(r.wc_ratio),
+    bwPct: val(r.bw_mass_pct),
+    wPct: val(r.w_mass_pct),
+  };
 }

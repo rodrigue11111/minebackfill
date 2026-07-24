@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   dateEcheance, joursRestants, classeEcheance, genererCodeEprouvette,
   construireIcs, etiquettesHtml,
-  type Eprouvette,
+  contrainteKpa, moyenne, ecartTypeEch, agregerParAge,
+  type Eprouvette, type EssaiUCS,
 } from "./eprouvette";
 
 function ep(p: Partial<Eprouvette>): Eprouvette {
@@ -88,6 +89,72 @@ describe("construireIcs", () => {
     // Le dépliage (retrait de « CRLF + espace ») restaure la description exacte.
     const deplie = s.replace(/\r\n /g, "");
     expect(deplie).toContain(`DESCRIPTION:${longue}`);
+  });
+});
+
+describe("contrainteKpa", () => {
+  it("calcule σ = F / A depuis charge (kN) et diamètre (mm)", () => {
+    // d = 50 mm -> A = π·625 ≈ 1963,5 mm² ; F = 10 kN = 10000 N
+    // σ = 10000 / 1963,5 = 5,093 MPa = 5093 kPa
+    const v = contrainteKpa({ chargeKn: 10, diametreMm: 50 })!;
+    expect(v).toBeCloseTo(5092.96, 0);
+  });
+  it("la saisie directe prime sur le calcul", () => {
+    expect(contrainteKpa({ chargeKn: 10, diametreMm: 50, contrainteKpaSaisie: 1200 })).toBe(1200);
+  });
+  it("null si ni contrainte ni charge+diamètre exploitables", () => {
+    expect(contrainteKpa(undefined)).toBeNull();
+    expect(contrainteKpa({ chargeKn: 10 })).toBeNull(); // diamètre manquant
+    expect(contrainteKpa({ chargeKn: 10, diametreMm: 0 })).toBeNull();
+  });
+  it("rejette les valeurs <= 0 (pas de résistance négative en compression)", () => {
+    expect(contrainteKpa({ chargeKn: -12, diametreMm: 50 })).toBeNull();
+    expect(contrainteKpa({ contrainteKpaSaisie: -100 })).toBeNull();
+    // une contrainte directe absurde (<=0) retombe sur le calcul F/A valide
+    expect(contrainteKpa({ contrainteKpaSaisie: 0, chargeKn: 10, diametreMm: 50 })).toBeCloseTo(5092.96, 0);
+  });
+});
+
+describe("moyenne / ecartTypeEch", () => {
+  it("moyenne, et écart-type d'échantillon (n−1)", () => {
+    expect(moyenne([2, 4, 6])).toBe(4);
+    expect(ecartTypeEch([2, 4, 6])).toBeCloseTo(2, 10); // var = ((4+0+4)/2)=4 -> sd=2
+  });
+  it("écart-type null si moins de 2 valeurs", () => {
+    expect(ecartTypeEch([5])).toBeNull();
+    expect(moyenne([])).toBeNull();
+  });
+});
+
+describe("agregerParAge", () => {
+  const e = (p: Partial<Eprouvette> & { essai?: EssaiUCS }): Eprouvette =>
+    ({ id: Math.random().toString(), code: "c", couleLe: "2026-07-24T12:00:00", ageJours: 28, statut: "ecrase", ...p });
+  it("moyenne par âge, exclut les éprouvettes marquées exclues", () => {
+    const eps = [
+      e({ ageJours: 28, essai: { contrainteKpaSaisie: 1000 } }),
+      e({ ageJours: 28, essai: { contrainteKpaSaisie: 1200 } }),
+      e({ ageJours: 28, essai: { contrainteKpaSaisie: 5000, exclu: true } }), // aberrante -> exclue
+      e({ ageJours: 7, essai: { contrainteKpaSaisie: 400 } }),
+      e({ ageJours: 7, essai: {} }), // pas de mesure -> ignorée
+    ];
+    const agr = agregerParAge(eps);
+    expect(agr.map((a) => a.ageJours)).toEqual([7, 28]); // trié
+    const a28 = agr.find((a) => a.ageJours === 28)!;
+    expect(a28.n).toBe(2);
+    expect(a28.moyenneKpa).toBe(1100);
+    expect(a28.nExclus).toBe(1);
+    const a7 = agr.find((a) => a.ageJours === 7)!;
+    expect(a7.n).toBe(1);
+    expect(a7.moyenneKpa).toBe(400);
+  });
+  it("ignore une éprouvette remise en cure même si elle garde son essai", () => {
+    const eps = [
+      e({ ageJours: 28, statut: "ecrase", essai: { contrainteKpaSaisie: 1000 } }),
+      e({ ageJours: 28, statut: "en_cure", essai: { contrainteKpaSaisie: 5000 } }), // remise en cure -> exclue des stats
+    ];
+    const a28 = agregerParAge(eps).find((a) => a.ageJours === 28)!;
+    expect(a28.n).toBe(1);
+    expect(a28.moyenneKpa).toBe(1000);
   });
 });
 

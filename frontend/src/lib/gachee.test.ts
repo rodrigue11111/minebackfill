@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  ecart, horsTolerance, nbHorsTolerance, genererCode, composantsDepuisRecette,
+  ecart, horsTolerance, nbHorsTolerance, genererCode, composantsDepuisRecette, parametresDepuisRecette,
   type Gachee, type ComposantPese,
 } from "./gachee";
 import type { Recipe } from "./types";
@@ -97,5 +97,19 @@ describe("composantsDepuisRecette", () => {
     } } as Recipe;
     const cles = composantsDepuisRecette(r, nom).filter((c) => c.cle.startsWith("liant:")).map((c) => c.cle);
     expect(cles).toEqual(["liant:0", "liant:2"]);
+  });
+});
+
+describe("parametresDepuisRecette", () => {
+  it("capture Cw, W/C, Bw, w depuis la recette", () => {
+    const r = { solids_mass_pct: 78, wc_ratio: 7.2, bw_mass_pct: 4.5, w_mass_pct: 28 } as Recipe;
+    expect(parametresDepuisRecette(r)).toEqual({ cwPct: 78, wcRatio: 7.2, bwPct: 4.5, wPct: 28 });
+  });
+  it("omet les valeurs absentes ou non finies (undefined)", () => {
+    const r = { solids_mass_pct: 78, wc_ratio: null } as unknown as Recipe;
+    const p = parametresDepuisRecette(r);
+    expect(p.cwPct).toBe(78);
+    expect(p.wcRatio).toBeUndefined();
+    expect(p.bwPct).toBeUndefined();
   });
 });

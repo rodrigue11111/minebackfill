@@ -12,14 +12,16 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { fmt } from "@/lib/format";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
 import {
-  ecart, nbHorsTolerance, genererCode, composantsDepuisRecette,
+  ecart, nbHorsTolerance, genererCode, composantsDepuisRecette, parametresDepuisRecette,
   type Gachee, type Ajustement,
 } from "@/lib/gachee";
 import {
   AGES_CURE_DEFAUT, dateCoulee, dateEcheance, joursRestants, classeEcheance,
   genererCodeEprouvette, construireIcs, etiquettesHtml,
-  type Eprouvette, type ClasseEcheance, type EvenementIcs, type EtiquetteEprouvette,
+  contrainteKpa, agregerParAge,
+  type Eprouvette, type EssaiUCS, type ClasseEcheance, type EvenementIcs, type EtiquetteEprouvette,
 } from "@/lib/eprouvette";
+import CourbeUCS, { type SerieUCS } from "@/components/labo/CourbeUCS";
 
 const inputStyle: React.CSSProperties = {
   width: "100%", minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 6, padding: "9px 11px",
@@ -107,6 +109,11 @@ function isoVersDateInput(iso: string): string {
   return fmtDate(new Date(iso));
 }
 
+/** ISO au midi LOCAL d'un jour (évite tout décalage de date fuseau/heure d'été). */
+function isoJourMidi(d: Date): string {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).toISOString();
+}
+
 /** Déclenche le téléchargement d'un fichier texte (sans dépendance). */
 function telecharger(nom: string, type: string, contenu: string): void {
   const blob = new Blob([contenu], { type: `${type};charset=utf-8` });
@@ -169,6 +176,60 @@ function badgeEcheance(e: Eprouvette, ref: Date): { texte: string; couleur: stri
   return { texte, couleur: COULEUR_ECHEANCE[c] };
 }
 
+/** Saisie de l'essai UCS d'une éprouvette écrasée (contrainte mesurée). */
+function FormEssaiUCS({ eprouvette, onChange }: {
+  eprouvette: Eprouvette;
+  onChange: (patch: Partial<EssaiUCS>) => void;
+}) {
+  const es = eprouvette.essai ?? {};
+  const calculee = contrainteKpa({ chargeKn: es.chargeKn, diametreMm: es.diametreMm });
+  const retenue = contrainteKpa(es);
+  return (
+    <div style={{ marginTop: 8, padding: "12px 12px 4px", background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
+        <Champ label="Date d'essai">
+          <input type="date" style={inputStyle} value={es.date ? isoVersDateInput(es.date) : ""}
+            onChange={(e) => onChange({ date: e.target.value ? new Date(`${e.target.value}T12:00:00`).toISOString() : undefined })} />
+        </Champ>
+        <Champ label="Charge à la rupture (kN)"><NumInput style={inputStyle} value={es.chargeKn} onChange={(n) => onChange({ chargeKn: n })} /></Champ>
+        <Champ label="Diamètre (mm)"><NumInput style={inputStyle} value={es.diametreMm} onChange={(n) => onChange({ diametreMm: n })} /></Champ>
+        <Champ label="Mode de rupture (optionnel)"><input style={inputStyle} placeholder="ex. cône" value={es.modeRupture ?? ""} onChange={(e) => onChange({ modeRupture: e.target.value || undefined })} /></Champ>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap" }}>
+        <Champ label="ou contrainte mesurée directe (kPa)" hint="Si la presse donne directement la contrainte (prioritaire sur le calcul).">
+          <NumInput style={{ ...inputStyle, maxWidth: 200 }} value={es.contrainteKpaSaisie} onChange={(n) => onChange({ contrainteKpaSaisie: n })} />
+        </Champ>
+        <div style={{ fontSize: 13, color: "#334155", paddingBottom: 9 }}>
+          {retenue !== null ? (
+            <>UCS retenue : <strong style={{ fontSize: 15, color: "#0f172a" }}>{Math.round(retenue).toLocaleString("fr-CA")} kPa</strong>
+              {es.contrainteKpaSaisie != null && es.contrainteKpaSaisie > 0 ? " (saisie directe)" : calculee !== null ? " (déduite de F / A)" : ""}</>
+          ) : <span style={{ color: "#94a3b8" }}>Saisis une charge + un diamètre, ou une contrainte directe.</span>}
+        </div>
+      </div>
+
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#374151", cursor: "pointer" }}>
+        <input type="checkbox" checked={!!es.exclu} onChange={(e) => onChange({ exclu: e.target.checked || undefined })} />
+        Exclure cette éprouvette de la moyenne (valeur aberrante)
+      </label>
+      {es.exclu && (
+        <div>
+          <Champ label="Justification de l'exclusion (obligatoire)">
+            <input style={{ ...inputStyle, borderColor: es.justificationExclusion ? "#cbd5e1" : "#f59e0b" }}
+              placeholder="ex. défaut de surfaçage, rupture prématurée sur bulle…"
+              value={es.justificationExclusion ?? ""} onChange={(e) => onChange({ justificationExclusion: e.target.value || undefined })} />
+          </Champ>
+          {!es.justificationExclusion && (
+            <p style={{ fontSize: 11.5, color: "#b45309", marginTop: 4 }}>
+              Exclusion non documentée : la valeur est déjà écartée de la moyenne, mais indique pourquoi (rigueur scientifique).
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Carte « Éprouvettes » de l'éditeur d'une gâchée (mise en cure, écrasement). */
 function CarteEprouvettes({ gachee, maintenant, onChange }: {
   gachee: Gachee;
@@ -199,7 +260,17 @@ function CarteEprouvettes({ gachee, maintenant, onChange }: {
 
   const majEprouvette = (id: string, patch: Partial<Eprouvette>) =>
     onChange(gachee.eprouvettes.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  const majEssai = (id: string, patch: Partial<EssaiUCS>) =>
+    onChange(gachee.eprouvettes.map((e) => (e.id === id ? { ...e, essai: { ...(e.essai ?? {}), ...patch } } : e)));
   const retirer = (id: string) => onChange(gachee.eprouvettes.filter((e) => e.id !== id));
+
+  // Bascule cure <-> écrasée : à l'écrasement, on initialise la date d'essai au jour même.
+  const basculerStatut = (e: Eprouvette) =>
+    majEprouvette(e.id, e.statut === "ecrase"
+      ? { statut: "en_cure" }
+      : { statut: "ecrase", essai: { date: isoJourMidi(new Date()), ...(e.essai ?? {}) } });
+
+  const agr = agregerParAge(gachee.eprouvettes);
 
   const imprimer = () => {
     if (gachee.eprouvettes.length === 0) return;
@@ -246,23 +317,61 @@ function CarteEprouvettes({ gachee, maintenant, onChange }: {
             {eprouvettes.map((e) => {
               const b = badgeEcheance(e, maintenant);
               return (
-                <div key={e.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 0", borderTop: "1px solid #f1f5f9" }}>
-                  <div style={{ minWidth: 0, flex: "1 1 160px" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{e.code}</div>
-                    <div style={{ fontSize: 11.5, color: "#64748b" }}>
-                      {e.ageJours} j · échéance {fmtDate(dateEcheance(e))} · <span style={{ fontWeight: 700, color: b.couleur }}>{b.texte}</span>
+                <div key={e.id} style={{ padding: "8px 0", borderTop: "1px solid #f1f5f9" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <div style={{ minWidth: 0, flex: "1 1 160px" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{e.code}</div>
+                      <div style={{ fontSize: 11.5, color: "#64748b" }}>
+                        {e.ageJours} j · échéance {fmtDate(dateEcheance(e))} · <span style={{ fontWeight: 700, color: b.couleur }}>{b.texte}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <button type="button" onClick={() => basculerStatut(e)}
+                        className="btn-secondary" style={{ fontSize: 11.5, whiteSpace: "nowrap" }}>
+                        {e.statut === "ecrase" ? "Remettre en cure" : "Marquer écrasée"}
+                      </button>
+                      <button type="button" onClick={() => retirer(e.id)} className="btn-secondary" style={{ fontSize: 11.5, color: "var(--danger)" }}>Retirer</button>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    <button type="button" onClick={() => majEprouvette(e.id, { statut: e.statut === "ecrase" ? "en_cure" : "ecrase" })}
-                      className="btn-secondary" style={{ fontSize: 11.5, whiteSpace: "nowrap" }}>
-                      {e.statut === "ecrase" ? "Remettre en cure" : "Marquer écrasée"}
-                    </button>
-                    <button type="button" onClick={() => retirer(e.id)} className="btn-secondary" style={{ fontSize: 11.5, color: "var(--danger)" }}>Retirer</button>
-                  </div>
+                  {e.statut === "ecrase" && <FormEssaiUCS eprouvette={e} onChange={(patch) => majEssai(e.id, patch)} />}
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Résumé UCS mesurée par âge (moyenne des éprouvettes retenues) */}
+        {agr.length > 0 && (
+          <div style={{ marginTop: 4 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#94a3b8", marginBottom: 6 }}>
+              UCS mesurée par âge (moyenne des éprouvettes retenues)
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 420 }}>
+                <thead>
+                  <tr style={{ color: "#64748b", textAlign: "right" }}>
+                    <th style={{ textAlign: "left", padding: "4px 8px" }}>Âge</th>
+                    <th style={{ padding: "4px 8px" }}>n</th>
+                    <th style={{ padding: "4px 8px" }}>Moyenne (kPa)</th>
+                    <th style={{ padding: "4px 8px" }}>± écart-type</th>
+                    <th style={{ padding: "4px 8px" }}>CV</th>
+                    <th style={{ padding: "4px 8px" }}>Exclues</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {agr.map((a) => (
+                    <tr key={a.ageJours} style={{ borderTop: "1px solid #f1f5f9", textAlign: "right" }}>
+                      <td style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>{a.ageJours} j</td>
+                      <td style={{ padding: "4px 8px" }}>{a.n}</td>
+                      <td style={{ padding: "4px 8px", fontWeight: 700, color: "#0f172a" }}>{a.moyenneKpa !== null ? Math.round(a.moyenneKpa).toLocaleString("fr-CA") : "—"}</td>
+                      <td style={{ padding: "4px 8px" }}>{a.ecartTypeKpa !== null ? Math.round(a.ecartTypeKpa).toLocaleString("fr-CA") : "—"}</td>
+                      <td style={{ padding: "4px 8px" }}>{a.cvPct !== null ? `${a.cvPct.toFixed(1)} %` : "—"}</td>
+                      <td style={{ padding: "4px 8px", color: a.nExclus > 0 ? "#b45309" : "#94a3b8" }}>{a.nExclus}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -348,6 +457,85 @@ function Echeancier({ gachees, maintenant, onOuvrir }: {
   );
 }
 
+const fmtParam = (v: number | undefined, suffixe = "") => (v != null ? `${v.toLocaleString("fr-CA", { maximumFractionDigits: 2 })}${suffixe}` : "—");
+
+// Palette étendue (au-delà des 4 couleurs de recette) pour distinguer plus de
+// gâchées sur la même courbe.
+const COULEURS_SERIE = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4d7c0f"];
+
+/** Vue « Résultats UCS » : UCS MESURÉE (aucune valeur prédite). */
+function ResultatsUCS({ gachees }: { gachees: Gachee[] }) {
+  const donnees = gachees
+    .map((g) => ({ g, ages: agregerParAge(g.eprouvettes).filter((a) => a.moyenneKpa !== null) }))
+    .filter((d) => d.ages.length > 0);
+
+  const series: SerieUCS[] = donnees.map((d, i) => ({
+    cle: d.g.id,
+    label: d.g.code,
+    couleur: COULEURS_SERIE[i % COULEURS_SERIE.length],
+    points: d.ages.map((a) => ({ age: a.ageJours, moyenne: a.moyenneKpa as number, ecartType: a.ecartTypeKpa, n: a.n })),
+  }));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#1e3a8a" }}>
+        Ces courbes montrent la résistance <strong>mesurée</strong> en laboratoire (UCS = charge à la rupture rapportée à la
+        section). Aucune valeur <strong>prédite ou modélisée</strong> n&apos;est tracée : le programme ne dispose pas de modèle
+        de prédiction validé. Les points sont les moyennes des éprouvettes retenues ; les barres verticales indiquent ± un écart-type.
+      </div>
+
+      {series.length === 0 ? (
+        <p style={{ fontSize: 13.5, color: "#94a3b8", textAlign: "center", padding: "24px 0" }}>
+          Aucune mesure UCS pour l&apos;instant. Dans une gâchée, marque une éprouvette « écrasée » et saisis sa charge (ou sa contrainte).
+        </p>
+      ) : (
+        <>
+          <Carte titre="UCS mesurée vs âge de cure">
+            <CourbeUCS series={series} />
+          </Carte>
+
+          <Carte titre="Détail des mesures">
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 620 }}>
+                <thead>
+                  <tr style={{ color: "#64748b", textAlign: "right" }}>
+                    <th style={{ textAlign: "left", padding: "5px 8px" }}>Gâchée</th>
+                    <th style={{ padding: "5px 8px" }}>Cw</th>
+                    <th style={{ padding: "5px 8px" }}>W/C</th>
+                    <th style={{ padding: "5px 8px" }}>Bw</th>
+                    <th style={{ padding: "5px 8px" }}>Âge</th>
+                    <th style={{ padding: "5px 8px" }}>UCS moyenne (kPa)</th>
+                    <th style={{ padding: "5px 8px" }}>± σ</th>
+                    <th style={{ padding: "5px 8px" }}>n</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {donnees.flatMap((d) =>
+                    d.ages.map((a, j) => (
+                      <tr key={`${d.g.id}-${a.ageJours}`} style={{ borderTop: "1px solid #f1f5f9", textAlign: "right" }}>
+                        <td style={{ textAlign: "left", padding: "5px 8px", fontWeight: j === 0 ? 700 : 400, color: j === 0 ? "#0f172a" : "#94a3b8" }}>
+                          {j === 0 ? d.g.code : ""}
+                        </td>
+                        <td style={{ padding: "5px 8px" }}>{j === 0 ? fmtParam(d.g.parametres?.cwPct, " %") : ""}</td>
+                        <td style={{ padding: "5px 8px" }}>{j === 0 ? fmtParam(d.g.parametres?.wcRatio) : ""}</td>
+                        <td style={{ padding: "5px 8px" }}>{j === 0 ? fmtParam(d.g.parametres?.bwPct, " %") : ""}</td>
+                        <td style={{ padding: "5px 8px" }}>{a.ageJours} j</td>
+                        <td style={{ padding: "5px 8px", fontWeight: 700, color: "#0f172a" }}>{Math.round(a.moyenneKpa as number).toLocaleString("fr-CA")}</td>
+                        <td style={{ padding: "5px 8px" }}>{a.ecartTypeKpa !== null ? Math.round(a.ecartTypeKpa).toLocaleString("fr-CA") : "—"}</td>
+                        <td style={{ padding: "5px 8px" }}>{a.n}</td>
+                      </tr>
+                    )),
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Carte>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function LaboPage() {
   const monte = useHydrated();
   const { gachees, ajouterGachee, modifierGachee, supprimerGachee, savedResults } = useStore();
@@ -355,6 +543,7 @@ export default function LaboPage() {
   const [nouvelle, setNouvelle] = useState(false);
   const [formId, setFormId] = useState<string>("");
   const [recIndex, setRecIndex] = useState(0);
+  const [vue, setVue] = useState<"gachees" | "resultats">("gachees");
 
   // « Aujourd'hui » pour l'échéancier et les badges. En état (pas en plein
   // rendu) : le React Compiler figerait un `new Date()` de rendu au premier
@@ -399,6 +588,7 @@ export default function LaboPage() {
       tolerancePct: 2,
       ajustements: [],
       eprouvettes: [],
+      parametres: parametresDepuisRecette(recette),
     };
     ajouterGachee(g);
     setNouvelle(false);
@@ -552,9 +742,30 @@ export default function LaboPage() {
               part d&apos;une formulation sauvegardée dans Calculs.
             </p>
           </div>
-          <button type="button" onClick={() => setNouvelle((v) => !v)} className="btn-primary">Nouvelle gâchée</button>
+          {vue === "gachees" && (
+            <button type="button" onClick={() => setNouvelle((v) => !v)} className="btn-primary">Nouvelle gâchée</button>
+          )}
         </div>
 
+        {/* Sélecteur de vue */}
+        <div style={{ display: "flex", gap: 6, background: "#eef2f7", padding: 4, borderRadius: 10, alignSelf: "flex-start" }}>
+          {([["gachees", "Gâchées"], ["resultats", "Résultats UCS"]] as const).map(([cle, label]) => {
+            const actif = vue === cle;
+            return (
+              <button key={cle} type="button" onClick={() => setVue(cle)}
+                style={{ padding: "6px 14px", borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none",
+                  background: actif ? "#fff" : "transparent", color: actif ? "#1d4ed8" : "#64748b",
+                  boxShadow: actif ? "0 1px 3px rgba(15,23,42,0.12)" : "none" }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {vue === "resultats" ? (
+          <ResultatsUCS gachees={gachees} />
+        ) : (
+        <>
         {nouvelle && (
           <Carte titre="Nouvelle gâchée">
             {formulations.length === 0 ? (
@@ -616,6 +827,8 @@ export default function LaboPage() {
               );
             })}
           </div>
+        )}
+        </>
         )}
       </div>
     </div>
