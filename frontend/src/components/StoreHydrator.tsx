@@ -19,6 +19,7 @@ export default function StoreHydrator() {
     loadSavedResults,
     loadBinderPrices,
     loadProductionLog,
+    loadGachees,
   } = useStore();
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export default function StoreHydrator() {
     loadSavedResults();
     loadBinderPrices();
     loadProductionLog();
+    loadGachees();
   }, [
     loadGeneral,
     loadConstantes,
@@ -39,6 +41,7 @@ export default function StoreHydrator() {
     loadSavedResults,
     loadBinderPrices,
     loadProductionLog,
+    loadGachees,
   ]);
 
   // Synchronisation multi-onglets : l'événement `storage` ne se déclenche que
@@ -48,6 +51,7 @@ export default function StoreHydrator() {
     const onStorage = (e: StorageEvent) => {
       switch (e.key) {
         case "minebackfill_saved_results": loadSavedResults(); break;
+        case "minebackfill_gachees": loadGachees(); break;
         case "minebackfill_binder_prices": loadBinderPrices(); break;
         case "minebackfill_production_log": loadProductionLog(); break;
         case "minebackfill_unit_prefs": loadUnits(); break;
@@ -70,6 +74,7 @@ export default function StoreHydrator() {
     loadSavedResults,
     loadBinderPrices,
     loadProductionLog,
+    loadGachees,
   ]);
 
   return null;
