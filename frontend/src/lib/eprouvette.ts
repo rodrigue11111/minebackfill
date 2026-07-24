@@ -98,6 +98,38 @@ function horodatageIcs(d: Date): string {
   );
 }
 
+const encodeurUtf8 = new TextEncoder();
+const octets = (s: string): number => encodeurUtf8.encode(s).length;
+
+/**
+ * Pliage RFC 5545 §3.1 : aucune ligne physique ne dépasse 75 octets. Les lignes
+ * de continuation débutent par une espace (CRLF + espace). Le découpage se fait
+ * sur les points de code (jamais au milieu d'un octet UTF-8 multi-octets) ; le
+ * dépliage par le lecteur restaure le contenu exact, y compris les séquences
+ * échappées coupées en deux.
+ */
+function plierLigneIcs(ligne: string): string {
+  if (octets(ligne) <= 75) return ligne;
+  const morceaux: string[] = [];
+  let courant = "";
+  let taille = 0;
+  let premier = true;
+  for (const ch of ligne) {
+    const t = octets(ch);
+    const limite = premier ? 75 : 74; // 1 octet réservé à l'espace de continuation
+    if (taille + t > limite) {
+      morceaux.push(courant);
+      premier = false;
+      courant = "";
+      taille = 0;
+    }
+    courant += ch;
+    taille += t;
+  }
+  morceaux.push(courant);
+  return morceaux.join("\r\n ");
+}
+
 /**
  * Construit un fichier iCalendar (événements « toute la journée ») pour les
  * échéances d'écrasement. Compatible Google Agenda / Outlook / Apple Calendar.
@@ -126,7 +158,7 @@ export function construireIcs(evenements: EvenementIcs[], horodatage: Date): str
     lignes.push("END:VEVENT");
   }
   lignes.push("END:VCALENDAR");
-  return lignes.join("\r\n") + "\r\n";
+  return lignes.map(plierLigneIcs).join("\r\n") + "\r\n";
 }
 
 // ── Étiquettes imprimables ──

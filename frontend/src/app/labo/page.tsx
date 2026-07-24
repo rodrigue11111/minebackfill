@@ -6,7 +6,7 @@
 // (slump, température, w, Cw — persistées) et ajustements de l'essai-erreur.
 // Auto-sauvegarde : chaque saisie est persistée immédiatement (localStorage).
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
 import { fmt } from "@/lib/format";
@@ -120,22 +120,32 @@ function telecharger(nom: string, type: string, contenu: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Imprime un document HTML autonome via une iframe cachée (isole les styles). */
+/** Imprime un document HTML autonome via une iframe hors-écran (isole les styles). */
 function imprimerHtml(html: string): void {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  // Hors-écran mais de taille NON nulle : certains moteurs ignorent l'impression
+  // d'une iframe 0 × 0 (format ~A4 à 96 dpi).
+  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;";
   document.body.appendChild(iframe);
   const w = iframe.contentWindow;
   const doc = w?.document;
   if (!w || !doc) { iframe.remove(); return; }
-  const nettoyer = () => setTimeout(() => iframe.remove(), 800);
+  let retire = false;
+  const nettoyer = () => {
+    if (retire) return;
+    retire = true;
+    setTimeout(() => iframe.remove(), 300);
+  };
   w.onafterprint = nettoyer;
   doc.open();
   doc.write(html);
   doc.close();
   setTimeout(() => {
     try { w.focus(); w.print(); } catch { nettoyer(); }
+    // Filet de sécurité : retire l'iframe même si onafterprint ne se déclenche
+    // pas (Safari iOS, certains webviews) — sinon fuite DOM à chaque impression.
+    setTimeout(nettoyer, 60_000);
   }, 200);
 }
 
@@ -301,7 +311,8 @@ function Echeancier({ gachees, maintenant, onOuvrir }: {
       description: `Gâchée ${x.g.code} · ${x.g.formulationLabel} · ${x.e.ageJours} j de cure`,
     }));
     if (evenements.length === 0) return;
-    telecharger("echeances-labo.ics", "text/calendar", construireIcs(evenements, maintenant));
+    // Horodatage réel de l'export (dans un handler : pas de gel par le compilateur).
+    telecharger("echeances-labo.ics", "text/calendar", construireIcs(evenements, new Date()));
   };
 
   return (
@@ -345,6 +356,27 @@ export default function LaboPage() {
   const [formId, setFormId] = useState<string>("");
   const [recIndex, setRecIndex] = useState(0);
 
+  // « Aujourd'hui » pour l'échéancier et les badges. En état (pas en plein
+  // rendu) : le React Compiler figerait un `new Date()` de rendu au premier
+  // appel et l'horloge ne changerait jamais de jour. On ne re-rend qu'au
+  // changement de jour (échéances au jour près), au focus et au retour d'onglet.
+  const [maintenant, setMaintenant] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const tick = () =>
+      setMaintenant((prev) => {
+        const n = new Date();
+        return n.toDateString() === prev.toDateString() ? prev : n;
+      });
+    const id = window.setInterval(tick, 60_000);
+    window.addEventListener("focus", tick);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", tick);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, []);
+
   const formulations = savedResults.filter((s) => (s.recipes?.length ?? 0) > 0);
   const selection = gachees.find((g) => g.id === selId) ?? null;
 
@@ -374,9 +406,6 @@ export default function LaboPage() {
   }
 
   if (!monte) return null;
-  // Après hydratation uniquement (pas de mismatch SSR) : « aujourd'hui » pour
-  // l'échéancier et les badges d'échéance.
-  const maintenant = new Date();
 
   // ── Éditeur d'une gâchée ──
   if (selection) {
@@ -494,7 +523,7 @@ export default function LaboPage() {
             )}
           </Carte>
 
-          <CarteEprouvettes gachee={g} maintenant={maintenant} onChange={(eprouvettes) => maj({ eprouvettes })} />
+          <CarteEprouvettes key={g.id} gachee={g} maintenant={maintenant} onChange={(eprouvettes) => maj({ eprouvettes })} />
 
           <Carte titre="Observations">
             <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical", fontFamily: "inherit" }}

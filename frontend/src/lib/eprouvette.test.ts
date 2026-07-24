@@ -75,6 +75,20 @@ describe("construireIcs", () => {
     const s = construireIcs([{ uid: "x", date: new Date(2026, 0, 1), titre: "a; b, c\\d" }], new Date(Date.UTC(2026, 0, 1)));
     expect(s).toContain("SUMMARY:a\\; b\\, c\\\\d");
   });
+  it("plie les lignes > 75 octets (RFC 5545) sans dépasser 75 octets par ligne physique", () => {
+    const longue = "Gâchée G-20260724-01 · Essai RPG méthode Cw — résidu Westwood 78 % très détaillé · 91 j de cure";
+    const s = construireIcs(
+      [{ uid: "x@minebackfill", date: new Date(2026, 7, 21), titre: "Écraser", description: longue }],
+      new Date(Date.UTC(2026, 6, 24)),
+    );
+    const enc = new TextEncoder();
+    for (const ligne of s.split("\r\n")) {
+      expect(enc.encode(ligne).length).toBeLessThanOrEqual(75);
+    }
+    // Le dépliage (retrait de « CRLF + espace ») restaure la description exacte.
+    const deplie = s.replace(/\r\n /g, "");
+    expect(deplie).toContain(`DESCRIPTION:${longue}`);
+  });
 });
 
 describe("etiquettesHtml", () => {
