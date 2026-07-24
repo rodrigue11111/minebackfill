@@ -107,6 +107,12 @@ describe("contrainteKpa", () => {
     expect(contrainteKpa({ chargeKn: 10 })).toBeNull(); // diamètre manquant
     expect(contrainteKpa({ chargeKn: 10, diametreMm: 0 })).toBeNull();
   });
+  it("rejette les valeurs <= 0 (pas de résistance négative en compression)", () => {
+    expect(contrainteKpa({ chargeKn: -12, diametreMm: 50 })).toBeNull();
+    expect(contrainteKpa({ contrainteKpaSaisie: -100 })).toBeNull();
+    // une contrainte directe absurde (<=0) retombe sur le calcul F/A valide
+    expect(contrainteKpa({ contrainteKpaSaisie: 0, chargeKn: 10, diametreMm: 50 })).toBeCloseTo(5092.96, 0);
+  });
 });
 
 describe("moyenne / ecartTypeEch", () => {
@@ -140,6 +146,15 @@ describe("agregerParAge", () => {
     const a7 = agr.find((a) => a.ageJours === 7)!;
     expect(a7.n).toBe(1);
     expect(a7.moyenneKpa).toBe(400);
+  });
+  it("ignore une éprouvette remise en cure même si elle garde son essai", () => {
+    const eps = [
+      e({ ageJours: 28, statut: "ecrase", essai: { contrainteKpaSaisie: 1000 } }),
+      e({ ageJours: 28, statut: "en_cure", essai: { contrainteKpaSaisie: 5000 } }), // remise en cure -> exclue des stats
+    ];
+    const a28 = agregerParAge(eps).find((a) => a.ageJours === 28)!;
+    expect(a28.n).toBe(1);
+    expect(a28.moyenneKpa).toBe(1000);
   });
 });
 

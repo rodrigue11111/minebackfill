@@ -44,10 +44,12 @@ export const AGES_CURE_DEFAUT = [7, 14, 28, 56, 91] as const;
  */
 export function contrainteKpa(essai: EssaiUCS | undefined): number | null {
   if (!essai) return null;
+  // Une contrainte directe positive prime ; une valeur <= 0 (aucune résistance
+  // négative en compression) est ignorée et on retombe sur le calcul F/A.
   const directe = essai.contrainteKpaSaisie;
-  if (directe != null && Number.isFinite(directe)) return directe;
+  if (directe != null && Number.isFinite(directe) && directe > 0) return directe;
   const { chargeKn, diametreMm } = essai;
-  if (chargeKn != null && Number.isFinite(chargeKn) && diametreMm != null && diametreMm > 0) {
+  if (chargeKn != null && chargeKn > 0 && diametreMm != null && diametreMm > 0) {
     const aireMm2 = (Math.PI * diametreMm * diametreMm) / 4;
     // (kN·1000 = N) / mm² = MPa ; ×1000 -> kPa
     return ((chargeKn * 1000) / aireMm2) * 1000;
@@ -82,12 +84,16 @@ export interface AgregatAge {
 /**
  * Agrège les essais UCS par âge de cure : moyenne, écart-type et CV des
  * éprouvettes RETENUES (les éprouvettes marquées « exclues » sont comptées à
- * part, jamais dans la moyenne). N'inclut que les âges ayant au moins un essai
- * exploitable. Trié par âge croissant.
+ * part, jamais dans la moyenne). Ne considère que les éprouvettes ÉCRASÉES à
+ * essai exploitable, et n'inclut que les âges ayant au moins une telle
+ * éprouvette. Trié par âge croissant.
  */
 export function agregerParAge(eprouvettes: Eprouvette[]): AgregatAge[] {
   const parAge = new Map<number, { retenus: number[]; exclus: number }>();
   for (const e of eprouvettes) {
+    // Seules les éprouvettes ÉCRASÉES comptent : une éprouvette remise en cure
+    // conserve son essai (donnée non perdue) mais sort des statistiques.
+    if (e.statut !== "ecrase") continue;
     const c = contrainteKpa(e.essai);
     if (c === null) continue;
     const slot = parAge.get(e.ageJours) ?? { retenus: [], exclus: 0 };

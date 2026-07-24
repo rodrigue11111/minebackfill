@@ -203,7 +203,7 @@ function FormEssaiUCS({ eprouvette, onChange }: {
         <div style={{ fontSize: 13, color: "#334155", paddingBottom: 9 }}>
           {retenue !== null ? (
             <>UCS retenue : <strong style={{ fontSize: 15, color: "#0f172a" }}>{Math.round(retenue).toLocaleString("fr-CA")} kPa</strong>
-              {es.contrainteKpaSaisie == null && calculee !== null ? " (calculée F / A)" : es.contrainteKpaSaisie != null ? " (saisie directe)" : ""}</>
+              {es.contrainteKpaSaisie != null && es.contrainteKpaSaisie > 0 ? " (saisie directe)" : calculee !== null ? " (déduite de F / A)" : ""}</>
           ) : <span style={{ color: "#94a3b8" }}>Saisis une charge + un diamètre, ou une contrainte directe.</span>}
         </div>
       </div>
@@ -213,11 +213,18 @@ function FormEssaiUCS({ eprouvette, onChange }: {
         Exclure cette éprouvette de la moyenne (valeur aberrante)
       </label>
       {es.exclu && (
-        <Champ label="Justification de l'exclusion (obligatoire)">
-          <input style={{ ...inputStyle, borderColor: es.justificationExclusion ? "#cbd5e1" : "#f59e0b" }}
-            placeholder="ex. défaut de surfaçage, rupture prématurée sur bulle…"
-            value={es.justificationExclusion ?? ""} onChange={(e) => onChange({ justificationExclusion: e.target.value || undefined })} />
-        </Champ>
+        <div>
+          <Champ label="Justification de l'exclusion (obligatoire)">
+            <input style={{ ...inputStyle, borderColor: es.justificationExclusion ? "#cbd5e1" : "#f59e0b" }}
+              placeholder="ex. défaut de surfaçage, rupture prématurée sur bulle…"
+              value={es.justificationExclusion ?? ""} onChange={(e) => onChange({ justificationExclusion: e.target.value || undefined })} />
+          </Champ>
+          {!es.justificationExclusion && (
+            <p style={{ fontSize: 11.5, color: "#b45309", marginTop: 4 }}>
+              Exclusion non documentée : la valeur est déjà écartée de la moyenne, mais indique pourquoi (rigueur scientifique).
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -452,6 +459,10 @@ function Echeancier({ gachees, maintenant, onOuvrir }: {
 
 const fmtParam = (v: number | undefined, suffixe = "") => (v != null ? `${v.toLocaleString("fr-CA", { maximumFractionDigits: 2 })}${suffixe}` : "—");
 
+// Palette étendue (au-delà des 4 couleurs de recette) pour distinguer plus de
+// gâchées sur la même courbe.
+const COULEURS_SERIE = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4d7c0f"];
+
 /** Vue « Résultats UCS » : UCS MESURÉE (aucune valeur prédite). */
 function ResultatsUCS({ gachees }: { gachees: Gachee[] }) {
   const donnees = gachees
@@ -461,16 +472,16 @@ function ResultatsUCS({ gachees }: { gachees: Gachee[] }) {
   const series: SerieUCS[] = donnees.map((d, i) => ({
     cle: d.g.id,
     label: d.g.code,
-    couleur: RECIPE_COLORS[i % RECIPE_COLORS.length] ?? "#2563eb",
+    couleur: COULEURS_SERIE[i % COULEURS_SERIE.length],
     points: d.ages.map((a) => ({ age: a.ageJours, moyenne: a.moyenneKpa as number, ecartType: a.ecartTypeKpa, n: a.n })),
   }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#1e3a8a" }}>
-        Ces courbes montrent la résistance <strong>mesurée</strong> en laboratoire (UCS). Aucune valeur calculée ou prédite
-        n&apos;est tracée : le programme ne dispose pas de modèle de prédiction validé. Les points sont les moyennes des
-        éprouvettes retenues ; les barres verticales indiquent ± un écart-type.
+        Ces courbes montrent la résistance <strong>mesurée</strong> en laboratoire (UCS = charge à la rupture rapportée à la
+        section). Aucune valeur <strong>prédite ou modélisée</strong> n&apos;est tracée : le programme ne dispose pas de modèle
+        de prédiction validé. Les points sont les moyennes des éprouvettes retenues ; les barres verticales indiquent ± un écart-type.
       </div>
 
       {series.length === 0 ? (
