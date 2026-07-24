@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/mix", label: "Calculs", step: "02" },
   { href: "/industrie", label: "Industrie", step: "03" },
   { href: "/analyse", label: "Analyse", step: null },
+  { href: "/labo", label: "Labo", step: null },
   { href: "/formulas", label: "Formules", step: null },
   { href: "/historique", label: "Historique", step: null },
   { href: "/guide", label: "Guide", step: null },

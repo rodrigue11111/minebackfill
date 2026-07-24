@@ -1,0 +1,125 @@
+// frontend/src/lib/gachee.ts
+// Modèle « gâchée réelle » : ce que l'étudiant a VRAIMENT préparé au laboratoire
+// (pesées réelles, lots, humidité mesurée, mesures fraîches, ajustements), relié
+// à une formulation théorique. C'est le maillon manquant entre la recette
+// calculée et les éprouvettes/essais (phases suivantes). Types + helpers PURS.
+
+import type { Recipe } from "./types";
+
+export type StatutGachee = "brouillon" | "terminee";
+
+/** Un composant à peser : masse CIBLE (théorique) vs masse RÉELLEMENT pesée. */
+export interface ComposantPese {
+  cle: string; // "residu" | "granulat" | "liant" | "liant:0" | "eau"
+  label: string;
+  cibleKg: number;
+  peseeKg?: number;
+}
+
+export interface Ajustement {
+  id: string;
+  type: "eau" | "residu" | "granulat" | "liant";
+  masseKg: number;
+  note?: string;
+}
+
+export interface Gachee {
+  id: string;
+  code: string; // auto « G-AAAAMMJJ-NN »
+  creeLe: string; // ISO
+  statut: StatutGachee;
+
+  // Formulation d'origine (instantané minimal — traçabilité).
+  formulationLabel: string;
+  formulationId?: string; // id d'un SavedResult, si issu d'une sauvegarde
+  categorie: string; // RPC | RPG | RRC
+  recetteIndex: number; // n° de recette dans la formulation (0-indexé)
+  solverVersion?: string;
+
+  // Pesées cibles vs réelles + seuil de tolérance (%).
+  composants: ComposantPese[];
+  tolerancePct: number;
+
+  // Lots de matériaux (traçabilité).
+  lotResidu?: string;
+  lotGranulat?: string;
+  lotLiant?: string;
+
+  // Mesures au labo.
+  w0MesurePct?: number; // humidité réelle du résidu
+  slumpMesureMm?: number;
+  temperatureC?: number;
+  wMesurePct?: number;
+  cwMesurePct?: number;
+
+  // Essai-erreur : ce qui a été ajouté après le premier malaxage.
+  ajustements: Ajustement[];
+  observations?: string;
+}
+
+function num(v: number | null | undefined): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
+/** Écart pesée − cible (kg et %), ou null si rien de pesé. */
+export function ecart(c: ComposantPese): { kg: number; pct: number } | null {
+  if (c.peseeKg === undefined || !Number.isFinite(c.peseeKg)) return null;
+  const kg = c.peseeKg - c.cibleKg;
+  const pct = c.cibleKg !== 0 ? (kg / Math.abs(c.cibleKg)) * 100 : 0;
+  return { kg, pct };
+}
+
+/** Vrai si l'écart d'un composant dépasse la tolérance (en valeur absolue). */
+export function horsTolerance(c: ComposantPese, tolerancePct: number): boolean {
+  const e = ecart(c);
+  return e !== null && Math.abs(e.pct) > tolerancePct;
+}
+
+/** Nombre de composants pesés hors tolérance. */
+export function nbHorsTolerance(g: Gachee): number {
+  return g.composants.filter((c) => horsTolerance(c, g.tolerancePct)).length;
+}
+
+/**
+ * Code de gâchée « G-AAAAMMJJ-NN » : NN incrémente parmi les gâchées du même
+ * jour (déduit des codes existants), pour rester lisible et unique localement.
+ */
+export function genererCode(existantes: Gachee[], date: Date): string {
+  const jour = date.toISOString().slice(0, 10).replace(/-/g, "");
+  const prefixe = `G-${jour}-`;
+  const max = existantes
+    .filter((g) => g.code.startsWith(prefixe))
+    .map((g) => parseInt(g.code.slice(prefixe.length), 10))
+    .filter((n) => Number.isInteger(n))
+    .reduce((m, n) => Math.max(m, n), 0);
+  return `${prefixe}${String(max + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Composants à peser déduits d'une recette calculée : résidu HUMIDE (ce qu'on
+ * pèse réellement), granulat sec, liant(s) — détaillés si plusieurs ciments —,
+ * et eau à ajouter. Les composants nuls sont omis.
+ */
+export function composantsDepuisRecette(r: Recipe, nomLiant: (i: number) => string): ComposantPese[] {
+  const c = r.components ?? {};
+  const out: ComposantPese[] = [];
+
+  const rh = num(c.residue_wet_mass_kg);
+  if (rh > 0) out.push({ cle: "residu", label: "Résidu humide", cibleKg: rh });
+
+  const g = num(c.aggregate_dry_mass_kg);
+  if (g > 0) out.push({ cle: "granulat", label: "Granulat", cibleKg: g });
+
+  const masses = (c.binder_masses_kg ?? []).map(num).filter((m) => m > 0);
+  if (masses.length > 1) {
+    masses.forEach((m, i) => out.push({ cle: `liant:${i}`, label: nomLiant(i + 1), cibleKg: m }));
+  } else {
+    const b = num(c.binder_total_mass_kg);
+    if (b > 0) out.push({ cle: "liant", label: "Liant", cibleKg: b });
+  }
+
+  const eau = num(c.water_to_add_mass_kg);
+  if (eau !== 0) out.push({ cle: "eau", label: "Eau à ajouter", cibleKg: eau });
+
+  return out;
+}

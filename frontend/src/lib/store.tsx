@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
 import { loadVersioned, persistVersioned } from "./persisted";
+import type { Gachee } from "./gachee";
 import { descriptorFor } from "./method-registry";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
@@ -393,6 +394,17 @@ function persistSaved(items: SavedResult[]): boolean {
   }
 }
 
+// ── Gâchées réelles (labo) : enveloppe versionnée {v,data} ──
+const GACHEES_KEY = "minebackfill_gachees";
+const GACHEES_VERSION = 1;
+
+function loadGacheesFromStorage(): Gachee[] {
+  return loadVersioned<Gachee[]>(GACHEES_KEY, GACHEES_VERSION, (d) => d, []);
+}
+function persistGachees(items: Gachee[]): void {
+  persistVersioned(GACHEES_KEY, GACHEES_VERSION, items);
+}
+
 const UNITS_KEY = "minebackfill_unit_prefs";
 
 function loadUnitsFromStorage(): UnitPreferences {
@@ -568,6 +580,13 @@ interface AppState {
   deleteSavedResult: (id: string) => void;
   loadSavedResults: () => void;
   restoreSavedResult: (id: string) => boolean;
+
+  // Gâchées réelles (laboratoire) — persistées, enveloppe versionnée.
+  gachees: Gachee[];
+  loadGachees: () => void;
+  ajouterGachee: (g: Gachee) => void;
+  modifierGachee: (id: string, patch: Partial<Gachee>) => void;
+  supprimerGachee: (id: string) => void;
 
   industrie: IndustrieState;
   setIndustrie: (patch: Partial<IndustrieState>) => void;
@@ -1320,6 +1339,29 @@ export const useStore = create<AppState>((set, get) => ({
 
   session: null,
   setSession: (session) => set({ session }),
+
+  gachees: [],
+  loadGachees: () => set({ gachees: loadGacheesFromStorage() }),
+  ajouterGachee: (g) =>
+    set(() => {
+      // Défensif : on repart du stockage juste avant d'écrire (jamais partir
+      // d'un état mémoire non hydraté -> perte de données).
+      const updated = [g, ...loadGacheesFromStorage().filter((x) => x.id !== g.id)];
+      persistGachees(updated);
+      return { gachees: updated };
+    }),
+  modifierGachee: (id, patch) =>
+    set(() => {
+      const updated = loadGacheesFromStorage().map((g) => (g.id === id ? { ...g, ...patch } : g));
+      persistGachees(updated);
+      return { gachees: updated };
+    }),
+  supprimerGachee: (id) =>
+    set(() => {
+      const updated = loadGacheesFromStorage().filter((g) => g.id !== id);
+      persistGachees(updated);
+      return { gachees: updated };
+    }),
 
   savedResults: [],
   loadSavedResults: () => set({ savedResults: loadSavedFromStorage() }),
