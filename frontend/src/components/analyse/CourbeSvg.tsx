@@ -1,12 +1,13 @@
 "use client";
 
-// Graphe de courbes paramétriques, en SVG pur (aucune dépendance). Axes,
-// graduations rondes, légende, survol (guide vertical + infobulle). Option
-// « normaliser » : chaque série est ramenée à [0, 1] par ses propres bornes
-// pour comparer les FORMES malgré des échelles différentes ; l'infobulle
-// affiche toujours les valeurs RÉELLES.
+// Graphe de courbe(s) en SVG pur (aucune dépendance). Axes, graduations rondes,
+// survol (guide + infobulle). Un marqueur vertical optionnel indique la
+// « recette de référence » sur l'axe X. Hauteur paramétrable (petits multiples).
+// PAS de normalisation min-max ici : la comparaison de grandeurs d'échelles
+// différentes se fait via le mode « écart % » côté page (séries déjà en %) ou
+// via un graphe par grandeur (une série par instance).
 
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { bornes, echelle, graduations, decimalesTick, chemin } from "@/lib/courbe-utils";
 
 export interface SerieTrace {
@@ -18,10 +19,8 @@ export interface SerieTrace {
 }
 
 const W = 760;
-const H = 430;
 const M = { gauche: 60, droite: 16, haut: 16, bas: 54 };
 const PX: [number, number] = [M.gauche, W - M.droite];
-const PY: [number, number] = [H - M.bas, M.haut];
 
 function fmtVal(v: number | null, unite: string): string {
   if (v === null || !Number.isFinite(v)) return "—";
@@ -29,27 +28,33 @@ function fmtVal(v: number | null, unite: string): string {
   return v.toLocaleString("fr-CA", { maximumFractionDigits: d });
 }
 
-function bornesSerie(valeurs: (number | null)[]): [number, number] {
-  return bornes([valeurs]);
-}
-
 export default function CourbeSvg({
   x,
   xLabel,
   series,
-  normaliser = false,
+  reference,
+  hauteur = 430,
 }: {
   x: number[];
   xLabel: string;
   series: SerieTrace[];
-  normaliser?: boolean;
+  /** Valeur X de la recette de référence (marqueur vertical). */
+  reference?: number;
+  hauteur?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  // id unique par instance : plusieurs CourbeSvg coexistent (petits multiples),
+  // un id de clipPath fixe entrerait en collision (le navigateur résout vers le
+  // premier <clipPath> du document).
+  const clipId = useId();
+
+  const H = hauteur;
+  const PY: [number, number] = [H - M.bas, M.haut];
 
   if (x.length === 0 || series.length === 0) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
-        Sélectionnez au moins une grandeur à tracer, puis lancez le calcul.
+        Sélectionne au moins une grandeur, puis lance le calcul.
       </div>
     );
   }
@@ -58,31 +63,17 @@ export default function CourbeSvg({
   const xmax = Math.max(...x);
   const xDomaine: [number, number] = xmin === xmax ? [xmin - 1, xmin + 1] : [xmin, xmax];
   const sx = echelle(xDomaine, PX);
-
-  // Domaine Y : normalisé -> [0,1] ; sinon bornes communes des séries affichées.
-  const yDomaine: [number, number] = normaliser
-    ? [0, 1]
-    : bornes(series.map((s) => s.valeurs));
+  const yDomaine = bornes(series.map((s) => s.valeurs));
   const sy = echelle(yDomaine, PY);
-
-  // En mode normalisé, chaque série a sa propre échelle interne.
-  const normBornes = normaliser ? series.map((s) => bornesSerie(s.valeurs)) : null;
-  const yTrace = (valeur: number, iSerie: number): number => {
-    if (!normaliser) return sy(valeur);
-    const [a, b] = normBornes![iSerie];
-    const t = b === a ? 0.5 : (valeur - a) / (b - a);
-    return sy(t);
-  };
 
   const ticksX = graduations(xDomaine[0], xDomaine[1], 6);
   const pasX = ticksX.length > 1 ? ticksX[1] - ticksX[0] : 1;
   const ticksY = graduations(yDomaine[0], yDomaine[1], 5);
   const pasY = ticksY.length > 1 ? ticksY[1] - ticksY[0] : 1;
 
-  // Unité commune sur l'axe Y (si toutes les séries partagent la même, hors
-  // mode normalisé) — sinon rien (les unités sont dans la légende/infobulle).
-  const uniteCommune =
-    !normaliser && series.every((s) => s.unite === series[0].unite) ? series[0].unite : null;
+  const uniteCommune = series.every((s) => s.unite === series[0].unite) ? series[0].unite : null;
+  const refVisible = reference !== undefined && reference >= xmin && reference <= xmax;
+  const rx = refVisible ? sx(reference!) : 0;
 
   const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -93,19 +84,12 @@ export default function CourbeSvg({
     let bestD = Infinity;
     for (let i = 0; i < x.length; i++) {
       const d = Math.abs(sx(x[i]) - clamp);
-      if (d < bestD) {
-        bestD = d;
-        best = i;
-      }
+      if (d < bestD) { bestD = d; best = i; }
     }
     setHover(best);
   };
 
-  // Index de survol borné : x peut avoir changé de longueur depuis le dernier
-  // survol (nouveau balayage moins dense) — on évite x[hover] = undefined -> NaN.
   const h = hover !== null && hover >= 0 && hover < x.length ? hover : null;
-
-  // Infobulle : dimensions et position (bascule à gauche près du bord droit).
   const hx = h !== null ? sx(x[h]) : 0;
   const tipLignes = h !== null
     ? [
@@ -118,19 +102,11 @@ export default function CourbeSvg({
   const tipX = hx > W - M.droite - tipW - 8 ? hx - tipW - 8 : hx + 8;
 
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      width="100%"
-      style={{ height: "auto", maxWidth: "100%", display: "block", userSelect: "none" }}
-      role="img"
-      aria-label={`Courbe de réponse en fonction de ${xLabel}`}
-      onMouseMove={onMove}
-      onMouseLeave={() => setHover(null)}
-    >
-      {/* Fond de zone de tracé */}
-      <rect x={PX[0]} y={PY[1]} width={PX[1] - PX[0]} height={PY[0] - PY[1]} fill="#fbfdff" stroke="none" />
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ height: "auto", maxWidth: "100%", display: "block", userSelect: "none" }}
+      role="img" aria-label={`Courbe en fonction de ${xLabel}`}
+      onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+      <rect x={PX[0]} y={PY[1]} width={PX[1] - PX[0]} height={PY[0] - PY[1]} fill="#fbfdff" />
 
-      {/* Grille + graduations Y */}
       {ticksY.map((t, i) => {
         const y = sy(t);
         if (y < PY[1] - 0.5 || y > PY[0] + 0.5) return null;
@@ -143,8 +119,6 @@ export default function CourbeSvg({
           </g>
         );
       })}
-
-      {/* Grille + graduations X */}
       {ticksX.map((t, i) => {
         const xp = sx(t);
         if (xp < PX[0] - 0.5 || xp > PX[1] + 0.5) return null;
@@ -158,48 +132,47 @@ export default function CourbeSvg({
         );
       })}
 
-      {/* Axes */}
+      {/* Marqueur de la recette de référence */}
+      {refVisible && (
+        <g>
+          <line x1={rx} y1={PY[1]} x2={rx} y2={PY[0]} stroke="#d97706" strokeWidth={1.2} strokeDasharray="4 3" />
+          <text x={rx} y={PY[1] - 3} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#b45309">réf.</text>
+        </g>
+      )}
+
       <line x1={PX[0]} y1={PY[0]} x2={PX[1]} y2={PY[0]} stroke="#94a3b8" strokeWidth={1.2} />
       <line x1={PX[0]} y1={PY[1]} x2={PX[0]} y2={PY[0]} stroke="#94a3b8" strokeWidth={1.2} />
 
-      {/* Étiquette X */}
-      <text x={(PX[0] + PX[1]) / 2} y={H - 12} textAnchor="middle" fontSize={12} fontWeight={600} fill="#374151">
-        {xLabel}
-      </text>
-      {/* Étiquette Y (unité commune ou « normalisé ») */}
+      <text x={(PX[0] + PX[1]) / 2} y={H - 12} textAnchor="middle" fontSize={12} fontWeight={600} fill="#374151">{xLabel}</text>
       <text x={16} y={(PY[0] + PY[1]) / 2} textAnchor="middle" fontSize={11.5} fontWeight={600} fill="#374151"
         transform={`rotate(-90 16 ${(PY[0] + PY[1]) / 2})`}>
-        {normaliser ? "Valeurs normalisées (0–1)" : uniteCommune ?? "Valeur"}
+        {uniteCommune ?? "Valeur"}
       </text>
 
-      {/* Courbes */}
-      {series.map((s, iS) => {
-        const pts = x.map((xv, i) => ({ x: sx(xv), y: yTrace((s.valeurs[i] ?? 0) as number, iS) }));
+      {series.map((s) => {
+        const pts = x.map((xv, i) => ({ x: sx(xv), y: sy((s.valeurs[i] ?? 0) as number) }));
         const nul = s.valeurs.map((v) => v === null || !Number.isFinite(v));
         return <path key={s.cle} d={chemin(pts, nul)} fill="none" stroke={s.couleur} strokeWidth={2} strokeLinejoin="round" />;
       })}
 
-      {/* Survol */}
       {h !== null && (
         <g>
           <line x1={hx} y1={PY[1]} x2={hx} y2={PY[0]} stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" />
-          {series.map((s, iS) => {
+          {series.map((s) => {
             const v = s.valeurs[h];
             if (v === null || !Number.isFinite(v)) return null;
-            return <circle key={s.cle} cx={hx} cy={yTrace(v as number, iS)} r={3.2} fill={s.couleur} stroke="#fff" strokeWidth={1} />;
+            return <circle key={s.cle} cx={hx} cy={sy(v as number)} r={3.2} fill={s.couleur} stroke="#fff" strokeWidth={1} />;
           })}
           <g>
             <defs>
-              <clipPath id="infobulle-clip">
+              <clipPath id={clipId}>
                 <rect x={tipX} y={PY[1] + 4} width={tipW} height={tipH} rx={6} />
               </clipPath>
             </defs>
             <rect x={tipX} y={PY[1] + 4} width={tipW} height={tipH} rx={6} fill="#ffffff" stroke="#e2e8f0" strokeWidth={1} opacity={0.97} />
-            <g clipPath="url(#infobulle-clip)">
+            <g clipPath={`url(#${clipId})`}>
               {tipLignes.map((l, i) => (
-                <text key={i} x={tipX + 9} y={PY[1] + 4 + 15 + i * 15} fontSize={10.5} fontWeight={l.gras ? 700 : 500} fill={l.c}>
-                  {l.t}
-                </text>
+                <text key={i} x={tipX + 9} y={PY[1] + 4 + 15 + i * 15} fontSize={10.5} fontWeight={l.gras ? 700 : 500} fill={l.c}>{l.t}</text>
               ))}
             </g>
           </g>

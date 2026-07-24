@@ -14,6 +14,7 @@ import type { Recipe } from "@/lib/types";
 import ErrorBox from "@/components/ErrorBox";
 import CourbeSvg, { type SerieTrace } from "@/components/analyse/CourbeSvg";
 import CompositionVue from "@/components/analyse/CompositionVue";
+import { indexProche, ecartPct, statsSerie } from "@/lib/courbe-analyse";
 import {
   paramsPour, sortiesPour, paramMeta, sortieMeta, type CategorieAnalyse,
 } from "@/lib/analyse-series";
@@ -49,6 +50,12 @@ const inputStyle: React.CSSProperties = {
   background: "#fff", fontSize: 13.5, outline: "none",
 };
 
+function fmtStat(v: number, unite: string): string {
+  const d = unite === "kg/m³" ? 1 : unite === "%" ? 2 : 4;
+  const s = v.toLocaleString("fr-CA", { maximumFractionDigits: d });
+  return unite === "—" ? s : `${s} ${unite}`;
+}
+
 export default function AnalysePage() {
   const { API, general, constantes, catalogue_liants, cw, rpgCw } = useStore();
 
@@ -61,8 +68,9 @@ export default function AnalysePage() {
   const [xMax, setXMax] = useState(10);
   const [steps, setSteps] = useState(40);
   const [sorties, setSorties] = useState<string[]>(DEFAUT_SORTIES);
-  const [normaliser, setNormaliser] = useState(false);
+  const [modeCourbe, setModeCourbe] = useState<"absolu" | "ecart">("absolu");
   const [res, setRes] = useState<Balayage | null>(null);
+  const [resProtocole, setResProtocole] = useState<string>("");
 
   // Composition
   const [recettes, setRecettes] = useState<Recipe[] | null>(null);
@@ -153,6 +161,7 @@ export default function AnalysePage() {
       const data = await r.json().catch(() => null);
       if (!r.ok) throw new Error(messageErreurApi(data, r.status));
       setRes(data as Balayage);
+      setResProtocole(JSON.stringify({ categorie, param, xMin, xMax, steps }));
     } catch (e) {
       setError(e instanceof TypeError ? messageErreurReseau() : e instanceof Error ? e.message : "Erreur inconnue");
     } finally {
@@ -200,6 +209,32 @@ export default function AnalysePage() {
     traces.length > 0 &&
     traces.every((t) => t.valeurs.every((v) => v === null || !Number.isFinite(v)));
   const bwAffiche = (base.binder_pct || [])[0];
+
+  // « Périmé » : la courbe affichée a été calculée avec d'autres paramètres.
+  const protocoleActuel = JSON.stringify({ categorie, param, xMin, xMax, steps });
+  const perime = res !== null && resProtocole !== protocoleActuel;
+
+  // Valeur du paramètre balayé POUR la recette de base = point de référence.
+  const referenceX: number | null =
+    param === "binder_mass_pct" ? ((base.binder_pct || [])[0] ?? null)
+    : param === "solids_mass_pct" ? (base.solid_mass_pct ?? null)
+    : param === "saturation_pct" ? (base.saturation_pct ?? null)
+    : param === "aggregate_fraction_pct" ? (rpgCw.aggregate_fraction_pct ?? null)
+    : null;
+  const paramCourt = xLabel.split(" — ")[0];
+  // La référence n'ancre l'écart % que si elle est DANS la plage balayée ;
+  // sinon on ancre sur le 1er point et on le dit clairement (pas de fausse
+  // référence silencieuse).
+  const refDansPlage =
+    res !== null && referenceX !== null &&
+    referenceX >= Math.min(...res.x) && referenceX <= Math.max(...res.x);
+  const iRef = refDansPlage ? indexProche(res!.x, referenceX!) : 0;
+  const tracesEcart: SerieTrace[] = traces.map((t) => ({
+    ...t, unite: "%", valeurs: ecartPct(t.valeurs, iRef),
+  }));
+  const ecartToutNul =
+    tracesEcart.length > 0 &&
+    tracesEcart.every((t) => t.valeurs.every((v) => v === null || !Number.isFinite(v)));
 
   return (
     <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
@@ -256,8 +291,8 @@ export default function AnalysePage() {
           <>
             <Carte titre="Paramètres de la courbe">
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: "10px 14px", alignItems: "end" }}>
-                  <div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "10px 14px", alignItems: "end" }}>
+                  <div style={{ gridColumn: "1 / -1" }}>
                     <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 5 }}>Paramètre à faire varier (X)</label>
                     <select style={inputStyle} value={param} onChange={(e) => changerParam(e.target.value)}>
                       {paramsDispo.map((p) => <option key={p.cle} value={p.cle}>{p.label}</option>)}
@@ -294,28 +329,17 @@ export default function AnalysePage() {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                  <button type="button" onClick={tracer} disabled={loading} className="btn-primary">
-                    {loading ? "Calcul en cours…" : "Tracer la courbe"}
-                  </button>
-                  <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "#374151", cursor: "pointer" }}>
-                    <input type="checkbox" checked={normaliser} onChange={(e) => setNormaliser(e.target.checked)} />
-                    Normaliser (comparer des grandeurs d&apos;échelles différentes ; valeurs réelles au survol)
-                  </label>
-                </div>
+                <button type="button" onClick={tracer} disabled={loading} className="btn-primary" style={{ alignSelf: "flex-start" }}>
+                  {loading ? "Calcul en cours…" : "Tracer la courbe"}
+                </button>
               </div>
             </Carte>
 
             {res && (
               <Carte titre="Courbe de réponse">
-                {traces.length > 0 && !toutNul && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 6 }}>
-                    {traces.map((t) => (
-                      <span key={t.cle} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151" }}>
-                        <span style={{ width: 14, height: 3, background: t.couleur, borderRadius: 2 }} />
-                        {t.label}{t.unite !== "—" ? ` (${t.unite})` : ""}
-                      </span>
-                    ))}
+                {perime && (
+                  <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 7, background: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", fontSize: 12.5 }}>
+                    Paramètres modifiés — relance « Tracer la courbe » pour mettre à jour cette courbe.
                   </div>
                 )}
                 {toutNul ? (
@@ -324,7 +348,75 @@ export default function AnalysePage() {
                     (type de contenant dans Informations, Sr, Gs…) et la plage choisie.
                   </div>
                 ) : (
-                  <CourbeSvg x={res.x} xLabel={xLabel} series={traces} normaliser={normaliser} />
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {([["absolu", "Valeurs"], ["ecart", "Écart % vs référence"]] as const).map(([m, label]) => {
+                          const actif = modeCourbe === m;
+                          return (
+                            <button key={m} type="button" onClick={() => setModeCourbe(m)}
+                              style={{ padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                                border: `1.5px solid ${actif ? "#2563eb" : "#e2e8f0"}`, background: actif ? "#2563eb" : "#fff", color: actif ? "#fff" : "#64748b" }}>
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {referenceX !== null && (
+                        refDansPlage ? (
+                          <span style={{ fontSize: 11.5, color: "#b45309" }}>Référence (trait orange) : {paramCourt} = {fmt(referenceX, 2)}</span>
+                        ) : (
+                          <span style={{ fontSize: 11.5, color: "#94a3b8" }}>Référence ({paramCourt} = {fmt(referenceX, 2)}) hors de la plage balayée</span>
+                        )
+                      )}
+                    </div>
+
+                    {modeCourbe === "absolu" ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 14 }}>
+                        {traces.map((t) => {
+                          const s = statsSerie(res.x, t.valeurs);
+                          return (
+                            <div key={t.cle} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px" }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 700, color: t.couleur, marginBottom: 2 }}>
+                                {t.label}{t.unite !== "—" ? ` (${t.unite})` : ""}
+                              </div>
+                              <CourbeSvg x={res.x} xLabel={xLabel} series={[t]} reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
+                              {s && (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                                  <span>min {fmtStat(s.min, t.unite)}</span>
+                                  <span>max {fmtStat(s.max, t.unite)}</span>
+                                  <span>Δ {fmtStat(s.variation, t.unite)}</span>
+                                  <span>pente {fmtStat(s.pente, t.unite)}/{paramCourt}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : ecartToutNul ? (
+                      <div style={{ padding: "24px 8px", textAlign: "center", color: "#b45309", fontSize: 13, lineHeight: 1.55 }}>
+                        L&apos;écart % n&apos;est pas calculable ici : la valeur de référence est nulle pour les grandeurs sélectionnées.
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 6 }}>
+                          {traces.map((t) => (
+                            <span key={t.cle} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151" }}>
+                              <span style={{ width: 14, height: 3, background: t.couleur, borderRadius: 2 }} />
+                              {t.label}
+                            </span>
+                          ))}
+                        </div>
+                        <CourbeSvg x={res.x} xLabel={xLabel} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} />
+                        <p style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 6, lineHeight: 1.5 }}>
+                          {refDansPlage
+                            ? "Écart relatif (%) de chaque grandeur par rapport à sa valeur à la recette de référence (trait orange)."
+                            : `Écart relatif (%) par rapport au 1er point balayé (${paramCourt} = ${fmt(res.x[0], 2)}) — la recette de référence est hors de la plage.`}
+                          {" "}Une grandeur quasi constante reste plate — contrairement à une normalisation min-max.
+                        </p>
+                      </>
+                    )}
+                  </>
                 )}
               </Carte>
             )}

@@ -71,7 +71,7 @@ export default function CompositionVue({ recipes }: { recipes: Recipe[] }) {
         </Sous>
 
         <Sous
-          titre="Échantillon"
+          titre="Schéma volumique illustratif"
           extra={recipes.length > 1 ? (
             <div style={{ display: "flex", gap: 6 }}>
               {recipes.map((_, i) => {

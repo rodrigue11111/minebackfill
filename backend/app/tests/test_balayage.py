@@ -14,6 +14,24 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.analyse import balayer, SERIES_KEYS
+
+# Liste CANONIQUE des grandeurs de sortie du balayage. C'est CETTE sentinelle
+# (ordonnée, ci-dessous) qui casse de façon GARANTIE dès qu'on modifie _SERIES.
+# Elle rappelle alors de mettre à jour AUSSI le frontend : le tableau SORTIES et
+# sa copie dans frontend/src/lib/analyse-series.test.ts (libellés + unités),
+# sans quoi une nouvelle grandeur ne serait jamais affichée dans l'onglet.
+SERIES_CANONIQUE = (
+    "solids_mass_pct", "wc_ratio", "void_ratio", "porosity",
+    "saturation_pct", "bw_mass_pct", "bv_vol_pct", "w_mass_pct",
+    "dry_density_kg_m3", "bulk_density_kg_m3",
+    "aggregate_mass_pct", "aggregate_vol_pct_of_residue",
+)
+
+
+def test_series_keys_sentinelle():
+    """Anti-dérive : garde synchronisées les clés backend et la liste
+    canonique partagée avec le frontend."""
+    assert tuple(SERIES_KEYS) == SERIES_CANONIQUE
 from app.core.models import BalayageInputs, RpcCwInputs, RpgCwInputs
 from app.core.rpc_solver import solve_rpc_cw
 from .test_excel_golden import _common_kwargs, BINDER_SPECS, GSG
@@ -53,9 +71,9 @@ class TestGrille:
         assert res.x[1] == 5.0
         direct = solve_rpc_cw(RpcCwInputs(category="RPC", **{
             **common, "num_recipes": 1, "binder_mass_pct_recipes": [5.0]})).recipes[0]
-        assert res.series["wc_ratio"][1] == round(direct.wc_ratio, 6)
-        assert res.series["void_ratio"][1] == round(direct.void_ratio, 6)
-        assert res.series["dry_density_kg_m3"][1] == round(direct.dry_density_kg_m3, 6)
+        assert res.series["wc_ratio"][1] == pytest.approx(direct.wc_ratio)
+        assert res.series["void_ratio"][1] == pytest.approx(direct.void_ratio)
+        assert res.series["dry_density_kg_m3"][1] == pytest.approx(direct.dry_density_kg_m3)
 
     def test_coherence_cw_base_multi_recettes_reduite(self):
         """Balayer Cw sur une base MULTI-recettes : chaque point == solve direct
@@ -70,10 +88,10 @@ class TestGrille:
         direct = solve_rpc_cw(RpcCwInputs(category="RPC", **{
             **common, "num_recipes": 1, "binder_mass_pct_recipes": [4.0],
             "solids_mass_pct": 75.0})).recipes[0]
-        assert res.series["wc_ratio"][1] == round(direct.wc_ratio, 6)
-        assert res.series["void_ratio"][1] == round(direct.void_ratio, 6)
+        assert res.series["wc_ratio"][1] == pytest.approx(direct.wc_ratio)
+        assert res.series["void_ratio"][1] == pytest.approx(direct.void_ratio)
         # le liant est bien figé à la 1re recette (4 %), pas 5 ni 6
-        assert res.series["bw_mass_pct"][1] == round(direct.bw_mass_pct, 6)
+        assert res.series["bw_mass_pct"][1] == pytest.approx(direct.bw_mass_pct)
         assert res.series["bw_mass_pct"][1] == pytest.approx(4.0, abs=1e-6)
 
     def test_coherence_sr(self):
@@ -85,7 +103,7 @@ class TestGrille:
         direct = solve_rpc_cw(RpcCwInputs(category="RPC", **{
             **common, "num_recipes": 1, "binder_mass_pct_recipes": [5.0],
             "saturation_pct": 100.0})).recipes[0]
-        assert res.series["void_ratio"][-1] == round(direct.void_ratio, 6)
+        assert res.series["void_ratio"][-1] == pytest.approx(direct.void_ratio)
         assert res.series["saturation_pct"][-1] == pytest.approx(100.0, abs=1e-6)
 
     def test_wc_decroit_avec_bw(self):
