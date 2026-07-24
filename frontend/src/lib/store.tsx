@@ -5,6 +5,7 @@ import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
 import { loadVersioned, persistVersioned } from "./persisted";
 import type { Gachee } from "./gachee";
+import { PROTOCOLES_DEFAUT, type Protocole } from "./protocole";
 import { descriptorFor } from "./method-registry";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
@@ -411,6 +412,18 @@ function persistGachees(items: Gachee[]): void {
   persistVersioned(GACHEES_KEY, GACHEES_VERSION, items);
 }
 
+// ── Protocoles de laboratoire (éditables, figés par gâchée) ──
+const PROTOCOLES_KEY = "minebackfill_protocoles";
+const PROTOCOLES_VERSION = 1;
+
+function loadProtocolesFromStorage(): Protocole[] {
+  // Absence de clé = première venue : on sème les procédures de départ.
+  return loadVersioned<Protocole[]>(PROTOCOLES_KEY, PROTOCOLES_VERSION, (d) => d as Protocole[], PROTOCOLES_DEFAUT);
+}
+function persistProtocoles(items: Protocole[]): void {
+  persistVersioned(PROTOCOLES_KEY, PROTOCOLES_VERSION, items);
+}
+
 const UNITS_KEY = "minebackfill_unit_prefs";
 
 function loadUnitsFromStorage(): UnitPreferences {
@@ -593,6 +606,13 @@ interface AppState {
   ajouterGachee: (g: Gachee) => void;
   modifierGachee: (id: string, patch: Partial<Gachee>) => void;
   supprimerGachee: (id: string) => void;
+
+  // Protocoles de laboratoire (éditables, figés par gâchée).
+  protocoles: Protocole[];
+  loadProtocoles: () => void;
+  ajouterProtocole: (p: Protocole) => void;
+  modifierProtocole: (id: string, patch: Partial<Protocole>) => void;
+  supprimerProtocole: (id: string) => void;
 
   industrie: IndustrieState;
   setIndustrie: (patch: Partial<IndustrieState>) => void;
@@ -1367,6 +1387,27 @@ export const useStore = create<AppState>((set, get) => ({
       const updated = loadGacheesFromStorage().filter((g) => g.id !== id);
       persistGachees(updated);
       return { gachees: updated };
+    }),
+
+  protocoles: PROTOCOLES_DEFAUT,
+  loadProtocoles: () => set({ protocoles: loadProtocolesFromStorage() }),
+  ajouterProtocole: (p) =>
+    set(() => {
+      const updated = [...loadProtocolesFromStorage().filter((x) => x.id !== p.id), p];
+      persistProtocoles(updated);
+      return { protocoles: updated };
+    }),
+  modifierProtocole: (id, patch) =>
+    set(() => {
+      const updated = loadProtocolesFromStorage().map((p) => (p.id === id ? { ...p, ...patch } : p));
+      persistProtocoles(updated);
+      return { protocoles: updated };
+    }),
+  supprimerProtocole: (id) =>
+    set(() => {
+      const updated = loadProtocolesFromStorage().filter((p) => p.id !== id);
+      persistProtocoles(updated);
+      return { protocoles: updated };
     }),
 
   savedResults: [],

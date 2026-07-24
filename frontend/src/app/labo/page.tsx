@@ -21,6 +21,7 @@ import {
   contrainteKpa, agregerParAge,
   type Eprouvette, type EssaiUCS, type ClasseEcheance, type EvenementIcs, type EtiquetteEprouvette,
 } from "@/lib/eprouvette";
+import { snapshotProtocoles, type Protocole, type ProtocoleFige } from "@/lib/protocole";
 import CourbeUCS, { type SerieUCS } from "@/components/labo/CourbeUCS";
 
 const inputStyle: React.CSSProperties = {
@@ -536,14 +537,69 @@ function ResultatsUCS({ gachees }: { gachees: Gachee[] }) {
   );
 }
 
+/** Édition des protocoles de laboratoire (procédures maintenues par le prof). */
+function ProtocolesEditeur({ protocoles, onAjouter, onModifier, onSupprimer }: {
+  protocoles: Protocole[];
+  onAjouter: (p: Protocole) => void;
+  onModifier: (id: string, patch: Partial<Protocole>) => void;
+  onSupprimer: (id: string) => void;
+}) {
+  const ajouter = () => onAjouter({ id: nouvelId(), titre: "Nouveau protocole", contenu: "", majLe: new Date().toISOString() });
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#475569" }}>
+        Ces procédures sont éditables. Chaque nouvelle gâchée en <strong>fige une copie</strong> : modifier un protocole ici
+        ne change jamais celui d&apos;une gâchée déjà créée (traçabilité).
+      </div>
+      {protocoles.map((p) => (
+        <Carte key={p.id} titre={p.titre || "Protocole"} extra={
+          <button type="button" onClick={() => { if (window.confirm(`Supprimer le protocole « ${p.titre} » ?`)) onSupprimer(p.id); }}
+            className="btn-secondary" style={{ fontSize: 12, color: "var(--danger)" }}>Supprimer</button>
+        }>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <Champ label="Titre">
+              <input style={inputStyle} value={p.titre}
+                onChange={(e) => onModifier(p.id, { titre: e.target.value, majLe: new Date().toISOString() })} />
+            </Champ>
+            <Champ label="Contenu">
+              <textarea style={{ ...inputStyle, minHeight: 130, resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }}
+                value={p.contenu} onChange={(e) => onModifier(p.id, { contenu: e.target.value, majLe: new Date().toISOString() })} />
+            </Champ>
+            {p.majLe && <p style={{ fontSize: 11, color: "#94a3b8" }}>Modifié le {new Date(p.majLe).toLocaleDateString("fr-CA")}</p>}
+          </div>
+        </Carte>
+      ))}
+      <button type="button" onClick={ajouter} className="btn-secondary" style={{ alignSelf: "flex-start" }}>+ Ajouter un protocole</button>
+    </div>
+  );
+}
+
+/** Protocole FIGÉ d'une gâchée (lecture seule) : la procédure réellement suivie. */
+function CarteProtocolesFiges({ snapshot }: { snapshot: ProtocoleFige[] | undefined }) {
+  if (!snapshot || snapshot.length === 0) return null;
+  return (
+    <Carte titre="Protocole suivi (figé à la création)">
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {snapshot.map((p, i) => (
+          <div key={i}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 3 }}>{p.titre}</div>
+            <div style={{ fontSize: 12.5, color: "#475569", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{p.contenu}</div>
+          </div>
+        ))}
+      </div>
+    </Carte>
+  );
+}
+
 export default function LaboPage() {
   const monte = useHydrated();
-  const { gachees, ajouterGachee, modifierGachee, supprimerGachee, savedResults } = useStore();
+  const { gachees, ajouterGachee, modifierGachee, supprimerGachee, savedResults,
+    protocoles, ajouterProtocole, modifierProtocole, supprimerProtocole } = useStore();
   const [selId, setSelId] = useState<string | null>(null);
   const [nouvelle, setNouvelle] = useState(false);
   const [formId, setFormId] = useState<string>("");
   const [recIndex, setRecIndex] = useState(0);
-  const [vue, setVue] = useState<"gachees" | "resultats">("gachees");
+  const [vue, setVue] = useState<"gachees" | "resultats" | "protocoles">("gachees");
 
   // « Aujourd'hui » pour l'échéancier et les badges. En état (pas en plein
   // rendu) : le React Compiler figerait un `new Date()` de rendu au premier
@@ -589,6 +645,7 @@ export default function LaboPage() {
       ajustements: [],
       eprouvettes: [],
       parametres: parametresDepuisRecette(recette),
+      protocolesSnapshot: snapshotProtocoles(protocoles),
     };
     ajouterGachee(g);
     setNouvelle(false);
@@ -715,6 +772,8 @@ export default function LaboPage() {
 
           <CarteEprouvettes key={g.id} gachee={g} maintenant={maintenant} onChange={(eprouvettes) => maj({ eprouvettes })} />
 
+          <CarteProtocolesFiges snapshot={g.protocolesSnapshot} />
+
           <Carte titre="Observations">
             <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical", fontFamily: "inherit" }}
               placeholder="Remarques sur la gâchée, la consistance, les incidents…"
@@ -748,8 +807,8 @@ export default function LaboPage() {
         </div>
 
         {/* Sélecteur de vue */}
-        <div style={{ display: "flex", gap: 6, background: "#eef2f7", padding: 4, borderRadius: 10, alignSelf: "flex-start" }}>
-          {([["gachees", "Gâchées"], ["resultats", "Résultats UCS"]] as const).map(([cle, label]) => {
+        <div style={{ display: "flex", gap: 6, background: "#eef2f7", padding: 4, borderRadius: 10, alignSelf: "flex-start", flexWrap: "wrap" }}>
+          {([["gachees", "Gâchées"], ["resultats", "Résultats UCS"], ["protocoles", "Protocoles"]] as const).map(([cle, label]) => {
             const actif = vue === cle;
             return (
               <button key={cle} type="button" onClick={() => setVue(cle)}
@@ -764,6 +823,8 @@ export default function LaboPage() {
 
         {vue === "resultats" ? (
           <ResultatsUCS gachees={gachees} />
+        ) : vue === "protocoles" ? (
+          <ProtocolesEditeur protocoles={protocoles} onAjouter={ajouterProtocole} onModifier={modifierProtocole} onSupprimer={supprimerProtocole} />
         ) : (
         <>
         {nouvelle && (
