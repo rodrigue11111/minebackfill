@@ -6,6 +6,7 @@
 
 import type { Recipe } from "./types";
 import type { Eprouvette } from "./eprouvette";
+import type { ProtocoleFige } from "./protocole";
 
 export type StatutGachee = "brouillon" | "terminee";
 
@@ -74,6 +75,9 @@ export interface Gachee {
 
   // Instantané des paramètres de la recette (Cw, W/C, Bw, w) — traçabilité.
   parametres?: ParametresFormulation;
+
+  // Instantané FIGÉ des protocoles suivis (procédures au moment de la gâchée).
+  protocolesSnapshot?: ProtocoleFige[];
 }
 
 function num(v: number | null | undefined): number {

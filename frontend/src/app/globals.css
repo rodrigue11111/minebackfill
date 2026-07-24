@@ -30,6 +30,7 @@
   --warning-light:     #fffbeb;
   --error:             #b91c1c;
   --error-light:       #fef2f2;
+  --danger:            #dc2626;
 
   /* ── Layout ── */
   --nav-height:        48px;
