@@ -396,10 +396,16 @@ function persistSaved(items: SavedResult[]): boolean {
 
 // ── Gâchées réelles (labo) : enveloppe versionnée {v,data} ──
 const GACHEES_KEY = "minebackfill_gachees";
-const GACHEES_VERSION = 1;
+// v2 : ajout du registre d'éprouvettes (les gâchées v1 reçoivent []).
+const GACHEES_VERSION = 2;
+
+function migrerGachees(data: unknown): Gachee[] {
+  if (!Array.isArray(data)) return [];
+  return data.map((g) => ({ ...(g as Gachee), eprouvettes: (g as Gachee).eprouvettes ?? [] }));
+}
 
 function loadGacheesFromStorage(): Gachee[] {
-  return loadVersioned<Gachee[]>(GACHEES_KEY, GACHEES_VERSION, (d) => d, []);
+  return loadVersioned<Gachee[]>(GACHEES_KEY, GACHEES_VERSION, migrerGachees, []);
 }
 function persistGachees(items: Gachee[]): void {
   persistVersioned(GACHEES_KEY, GACHEES_VERSION, items);

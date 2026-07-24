@@ -5,6 +5,7 @@
 // calculée et les éprouvettes/essais (phases suivantes). Types + helpers PURS.
 
 import type { Recipe } from "./types";
+import type { Eprouvette } from "./eprouvette";
 
 export type StatutGachee = "brouillon" | "terminee";
 
@@ -55,6 +56,9 @@ export interface Gachee {
   // Essai-erreur : ce qui a été ajouté après le premier malaxage.
   ajustements: Ajustement[];
   observations?: string;
+
+  // Éprouvettes moulées à partir de cette gâchée (mise en cure, écrasement).
+  eprouvettes: Eprouvette[];
 }
 
 function num(v: number | null | undefined): number {

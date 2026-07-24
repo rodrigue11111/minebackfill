@@ -9,7 +9,7 @@ function gachee(p: Partial<Gachee>): Gachee {
   return {
     id: "g1", code: "G-20260724-01", creeLe: "2026-07-24T00:00:00Z", statut: "brouillon",
     formulationLabel: "Test", categorie: "RPG", recetteIndex: 0,
-    composants: [], tolerancePct: 2, ajustements: [], ...p,
+    composants: [], tolerancePct: 2, ajustements: [], eprouvettes: [], ...p,
   };
 }
 
