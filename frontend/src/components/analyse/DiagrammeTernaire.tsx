@@ -38,7 +38,7 @@ export default function DiagrammeTernaire({
   const niveaux = [0.2, 0.4, 0.6, 0.8];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ height: "auto", maxWidth: 460, display: "block" }}
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ height: "auto", maxWidth: 460, display: "block", fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
       role="img" aria-label={`Diagramme ternaire ${meta.sommets.join(" / ")}`}>
       {/* Grille : lignes à a/b/c constants */}
       {niveaux.map((t, i) => {

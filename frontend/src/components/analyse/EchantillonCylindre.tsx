@@ -33,7 +33,7 @@ export default function EchantillonCylindre({ recipe }: { recipe: Recipe }) {
   const y = (f: number) => BOTTOM - f * HB;
 
   return (
-    <svg viewBox="0 0 320 300" width="100%" style={{ height: "auto", maxWidth: 340, display: "block" }}
+    <svg viewBox="0 0 320 300" width="100%" style={{ height: "auto", maxWidth: 340, display: "block", fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
       role="img" aria-label="Échantillon cylindrique par phases">
       <defs>
         {/* Silhouette du cylindre (corps + calottes) — l'union arrondit les bords. */}
