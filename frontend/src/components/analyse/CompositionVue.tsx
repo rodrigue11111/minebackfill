@@ -10,6 +10,7 @@ import type { BasePhases, BaseTernaire } from "@/lib/composition";
 import BarresPhases from "./BarresPhases";
 import DiagrammeTernaire from "./DiagrammeTernaire";
 import EchantillonCylindre from "./EchantillonCylindre";
+import FigurePng from "./FigurePng";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
 
 function Bascule<T extends string>({ valeur, options, onChange }: {
@@ -67,7 +68,9 @@ export default function CompositionVue({ recipes }: { recipes: Recipe[] }) {
           titre="Diagramme ternaire"
           extra={<Bascule valeur={baseTern} options={[{ v: "phases", label: "Solides/Eau/Air" }, { v: "solides", label: "Résidu/Granulat/Liant" }]} onChange={setBaseTern} />}
         >
-          <DiagrammeTernaire recipes={recipes} base={baseTern} />
+          <FigurePng nom="composition-ternaire">
+            <DiagrammeTernaire recipes={recipes} base={baseTern} />
+          </FigurePng>
         </Sous>
 
         <Sous
@@ -88,7 +91,9 @@ export default function CompositionVue({ recipes }: { recipes: Recipe[] }) {
             </div>
           ) : undefined}
         >
-          <EchantillonCylindre recipe={recipes[iSel]} />
+          <FigurePng nom={`composition-echantillon-r${iSel + 1}`}>
+            <EchantillonCylindre recipe={recipes[iSel]} />
+          </FigurePng>
         </Sous>
       </div>
     </div>

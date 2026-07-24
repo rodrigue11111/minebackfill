@@ -102,7 +102,7 @@ export default function CourbeSvg({
   const tipX = hx > W - M.droite - tipW - 8 ? hx - tipW - 8 : hx + 8;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ height: "auto", maxWidth: "100%", display: "block", userSelect: "none" }}
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ height: "auto", maxWidth: "100%", display: "block", userSelect: "none", fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
       role="img" aria-label={`Courbe en fonction de ${xLabel}`}
       onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
       <rect x={PX[0]} y={PY[1]} width={PX[1] - PX[0]} height={PY[0] - PY[1]} fill="#fbfdff" />

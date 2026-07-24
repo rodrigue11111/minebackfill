@@ -14,6 +14,7 @@ import type { Recipe } from "@/lib/types";
 import ErrorBox from "@/components/ErrorBox";
 import CourbeSvg, { type SerieTrace } from "@/components/analyse/CourbeSvg";
 import CompositionVue from "@/components/analyse/CompositionVue";
+import FigurePng from "@/components/analyse/FigurePng";
 import { indexProche, ecartPct, statsSerie } from "@/lib/courbe-analyse";
 import {
   paramsPour, sortiesPour, paramMeta, sortieMeta, type CategorieAnalyse,
@@ -21,6 +22,12 @@ import {
 import {
   construireConstantesPayload, construireGeneralPayload, construireSystemeLiant,
 } from "@/lib/rpc_payload";
+import { solverVersionActive, packById } from "@/lib/conventions";
+import {
+  lignesResume, lignesMetaCsv, type InstantaneAnalyse,
+} from "@/lib/analyse-instantane";
+import { telechargerTexte, versCsv, nomFichier } from "@/lib/export-fig";
+import { phases, fractions } from "@/lib/composition";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import { num, fmt } from "@/lib/format";
 
@@ -56,6 +63,30 @@ function fmtStat(v: number, unite: string): string {
   return unite === "—" ? s : `${s} ${unite}`;
 }
 
+function PanneauProvenance({ meta, boutons, ouvert, onToggle }: {
+  meta: InstantaneAnalyse;
+  boutons: React.ReactNode;
+  ouvert: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        {boutons}
+        <button type="button" onClick={onToggle}
+          style={{ border: "none", background: "transparent", color: "var(--primary)", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+          {ouvert ? "▾" : "▸"} Reproductibilité / provenance
+        </button>
+      </div>
+      {ouvert && (
+        <div style={{ marginTop: 8, fontSize: 11.5, color: "#64748b", lineHeight: 1.65, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
+          {lignesResume(meta).map((l, i) => <div key={i}>{l}</div>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AnalysePage() {
   const { API, general, constantes, catalogue_liants, cw, rpgCw } = useStore();
 
@@ -74,6 +105,11 @@ export default function AnalysePage() {
 
   // Composition
   const [recettes, setRecettes] = useState<Recipe[] | null>(null);
+
+  // Instantané de provenance figé AU CALCUL (pas à l'export) -> reproductibilité.
+  const [resMeta, setResMeta] = useState<InstantaneAnalyse | null>(null);
+  const [compMeta, setCompMeta] = useState<InstantaneAnalyse | null>(null);
+  const [detailsProv, setDetailsProv] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +179,47 @@ export default function AnalysePage() {
     return commun;
   }
 
+  /** Instantané de provenance de l'analyse (reproductibilité). */
+  function construireInstantane(avecParametre: boolean): InstantaneAnalyse {
+    // Les composants de liant portent DÉJÀ code (type), Gs et fraction, dans le
+    // MÊME ordre filtré que le calcul (construireSystemeLiant). On ne réapparie
+    // donc PAS avec la liste non filtrée : le nom vient du catalogue via le code.
+    const bs = construireSystemeLiant(general, catalogue_liants);
+    const comps = (bs.components ?? []) as { type?: string; specific_gravity?: number; mass_fraction?: number }[];
+    const liants = comps.map((c) => {
+      const item = catalogue_liants.find((l) => l.code === c.type);
+      return {
+        code: item?.nom ?? c.type ?? "?",
+        gs: c.specific_gravity ?? 0,
+        fractionPct: (c.mass_fraction ?? 0) * 100,
+      };
+    });
+    return {
+      date: new Date().toISOString(),
+      categorie, methode: "Cw%",
+      parametre: avecParametre ? { label: xLabel, min: xMin, max: xMax, points: steps } : undefined,
+      recette: {
+        gsResidu: base.residue_sg || 0, w0Pct: base.residue_w_pct || 0,
+        cwPct: base.solid_mass_pct || 0, srPct: base.saturation_pct || 0,
+        bwPct: (base.binder_pct || [])[0] ?? 0,
+        amPct: categorie === "RPG" ? (rpgCw.aggregate_fraction_pct || 0) : undefined,
+        gsAgregat: categorie === "RPG" ? (rpgCw.aggregate_sg || 0) : undefined,
+      },
+      liants,
+      constantes: {
+        packLabel: packById(constantes.pack_id)?.label ?? "personnalisé",
+        masseVolEau: constantes.masse_volumique_eau_kg_m3,
+        gravite: constantes.gravite_m_s2,
+        facteurCone: constantes.facteur_petit_cone_vers_grand_cone,
+        coeffSlump: constantes.coefficient_modele_slump,
+        constSlump: constantes.constante_modele_slump,
+        conventionGs: constantes.essai_gs_convention,
+        regleLiant: constantes.essai_binder_rule,
+      },
+      versionSolveur: solverVersionActive(constantes),
+    };
+  }
+
   async function tracer() {
     const err = verifierBase();
     if (err) { setError(err); return; }
@@ -162,6 +239,7 @@ export default function AnalysePage() {
       if (!r.ok) throw new Error(messageErreurApi(data, r.status));
       setRes(data as Balayage);
       setResProtocole(JSON.stringify({ categorie, param, xMin, xMax, steps }));
+      setResMeta(construireInstantane(true));
     } catch (e) {
       setError(e instanceof TypeError ? messageErreurReseau() : e instanceof Error ? e.message : "Erreur inconnue");
     } finally {
@@ -183,11 +261,51 @@ export default function AnalysePage() {
       const data = await r.json().catch(() => null);
       if (!r.ok) throw new Error(messageErreurApi(data, r.status));
       setRecettes(Array.isArray(data?.recipes) ? (data.recipes as Recipe[]).filter(Boolean) : []);
+      setCompMeta(construireInstantane(false));
     } catch (e) {
       setError(e instanceof TypeError ? messageErreurReseau() : e instanceof Error ? e.message : "Erreur inconnue");
     } finally {
       setLoading(false);
     }
+  }
+
+  // ── Exports (les données brutes, pleine précision ; l'en-tête porte la
+  //    provenance figée au calcul -> figure traçable et reproductible). ──
+  const boutonExport: React.CSSProperties = {
+    padding: "5px 12px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer",
+    border: "1px solid #cbd5e1", background: "#fff", color: "#374151",
+  };
+
+  function exporterCsvCourbes() {
+    if (!res || !resMeta) return;
+    const meta = lignesMetaCsv(resMeta).map((l) => [l] as (string | number | null)[]);
+    const entete: (string | number | null)[] = [xLabel, ...traces.map((t) => `${t.label}${t.unite !== "—" ? ` (${t.unite})` : ""}`)];
+    const donnees = res.x.map((xv, i) => [xv, ...traces.map((t) => t.valeurs[i])] as (string | number | null)[]);
+    telechargerTexte(versCsv([...meta, [], entete, ...donnees]), nomFichier(`analyse-${categorie}-courbes`, "csv"), "text/csv;charset=utf-8");
+  }
+
+  function exporterJsonCourbes() {
+    if (!res || !resMeta) return;
+    const artefact = { format: "minebackfill-analyse-courbes/1", instantane: resMeta, resultat: res };
+    telechargerTexte(JSON.stringify(artefact, null, 2), nomFichier(`analyse-${categorie}-courbes`, "json"), "application/json;charset=utf-8");
+  }
+
+  function exporterCsvComposition() {
+    if (!recettes || !compMeta) return;
+    const meta = lignesMetaCsv(compMeta).map((l) => [l] as (string | number | null)[]);
+    const entete = ["Recette", "Phase", "Volume (m³)", "Fraction volume (%)", "Masse (kg)", "Fraction masse (%)"];
+    const lignes: (string | number | null)[][] = [];
+    recettes.forEach((r, i) => {
+      const vol = fractions(phases(r, "volume"));
+      const mas = phases(r, "masse");
+      const totMas = mas.reduce((s, p) => s + p.valeur, 0);
+      const parCle = new Map(mas.map((p) => [p.cle, p.valeur]));
+      vol.forEach((p) => {
+        const m = parCle.get(p.cle);
+        lignes.push([`Recette ${i + 1}`, p.label, p.valeur, p.frac * 100, m ?? null, m !== undefined && totMas > 0 ? (m / totMas) * 100 : null]);
+      });
+    });
+    telechargerTexte(versCsv([...meta, [], entete, ...lignes]), nomFichier(`analyse-${categorie}-composition`, "csv"), "text/csv;charset=utf-8");
   }
 
   const paramsDispo = paramsPour(categorie);
@@ -380,7 +498,9 @@ export default function AnalysePage() {
                               <div style={{ fontSize: 12.5, fontWeight: 700, color: t.couleur, marginBottom: 2 }}>
                                 {t.label}{t.unite !== "—" ? ` (${t.unite})` : ""}
                               </div>
-                              <CourbeSvg x={res.x} xLabel={xLabel} series={[t]} reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
+                              <FigurePng nom={`analyse-${categorie}-${t.cle}`}>
+                                <CourbeSvg x={res.x} xLabel={xLabel} series={[t]} reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
+                              </FigurePng>
                               {s && (
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 11, color: "#64748b", marginTop: 2 }}>
                                   <span>min {fmtStat(s.min, t.unite)}</span>
@@ -407,7 +527,9 @@ export default function AnalysePage() {
                             </span>
                           ))}
                         </div>
-                        <CourbeSvg x={res.x} xLabel={xLabel} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} />
+                        <FigurePng nom={`analyse-${categorie}-ecart`}>
+                          <CourbeSvg x={res.x} xLabel={xLabel} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} />
+                        </FigurePng>
                         <p style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 6, lineHeight: 1.5 }}>
                           {refDansPlage
                             ? "Écart relatif (%) de chaque grandeur par rapport à sa valeur à la recette de référence (trait orange)."
@@ -415,6 +537,20 @@ export default function AnalysePage() {
                           {" "}Une grandeur quasi constante reste plate — contrairement à une normalisation min-max.
                         </p>
                       </>
+                    )}
+
+                    {resMeta && (
+                      <PanneauProvenance
+                        meta={resMeta}
+                        ouvert={detailsProv}
+                        onToggle={() => setDetailsProv((v) => !v)}
+                        boutons={
+                          <>
+                            <button type="button" onClick={exporterCsvCourbes} style={boutonExport}>Export CSV</button>
+                            <button type="button" onClick={exporterJsonCourbes} style={boutonExport}>Export JSON</button>
+                          </>
+                        }
+                      />
                     )}
                   </>
                 )}
@@ -434,7 +570,21 @@ export default function AnalysePage() {
               </div>
             </Carte>
 
-            {recettes && recettes.length > 0 && <CompositionVue recipes={recettes} />}
+            {recettes && recettes.length > 0 && (
+              <>
+                <CompositionVue recipes={recettes} />
+                {compMeta && (
+                  <Carte titre="Export">
+                    <PanneauProvenance
+                      meta={compMeta}
+                      ouvert={detailsProv}
+                      onToggle={() => setDetailsProv((v) => !v)}
+                      boutons={<button type="button" onClick={exporterCsvComposition} style={boutonExport}>Export CSV (phases)</button>}
+                    />
+                  </Carte>
+                )}
+              </>
+            )}
             {recettes && recettes.length === 0 && (
               <Carte titre="Composition du mélange">
                 <div style={{ padding: "12px 4px", color: "#b45309", fontSize: 13 }}>
