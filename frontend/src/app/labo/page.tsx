@@ -6,7 +6,7 @@
 // (slump, température, w, Cw — persistées) et ajustements de l'essai-erreur.
 // Auto-sauvegarde : chaque saisie est persistée immédiatement (localStorage).
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
 import { fmt } from "@/lib/format";
@@ -15,6 +15,11 @@ import {
   ecart, nbHorsTolerance, genererCode, composantsDepuisRecette,
   type Gachee, type Ajustement,
 } from "@/lib/gachee";
+import {
+  AGES_CURE_DEFAUT, dateCoulee, dateEcheance, joursRestants, classeEcheance,
+  genererCodeEprouvette, construireIcs, etiquettesHtml,
+  type Eprouvette, type ClasseEcheance, type EvenementIcs, type EtiquetteEprouvette,
+} from "@/lib/eprouvette";
 
 const inputStyle: React.CSSProperties = {
   width: "100%", minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 6, padding: "9px 11px",
@@ -90,6 +95,259 @@ function nouvelId(): string {
   }
 }
 
+const p2 = (n: number) => String(n).padStart(2, "0");
+
+/** Date affichée AAAA-MM-JJ (non ambigu, local). */
+function fmtDate(d: Date): string {
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+}
+
+/** ISO -> valeur d'un <input type="date"> (AAAA-MM-JJ, date LOCALE). */
+function isoVersDateInput(iso: string): string {
+  return fmtDate(new Date(iso));
+}
+
+/** Déclenche le téléchargement d'un fichier texte (sans dépendance). */
+function telecharger(nom: string, type: string, contenu: string): void {
+  const blob = new Blob([contenu], { type: `${type};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nom;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Imprime un document HTML autonome via une iframe hors-écran (isole les styles). */
+function imprimerHtml(html: string): void {
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  // Hors-écran mais de taille NON nulle : certains moteurs ignorent l'impression
+  // d'une iframe 0 × 0 (format ~A4 à 96 dpi).
+  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;";
+  document.body.appendChild(iframe);
+  const w = iframe.contentWindow;
+  const doc = w?.document;
+  if (!w || !doc) { iframe.remove(); return; }
+  let retire = false;
+  const nettoyer = () => {
+    if (retire) return;
+    retire = true;
+    setTimeout(() => iframe.remove(), 300);
+  };
+  w.onafterprint = nettoyer;
+  doc.open();
+  doc.write(html);
+  doc.close();
+  setTimeout(() => {
+    try { w.focus(); w.print(); } catch { nettoyer(); }
+    // Filet de sécurité : retire l'iframe même si onafterprint ne se déclenche
+    // pas (Safari iOS, certains webviews) — sinon fuite DOM à chaque impression.
+    setTimeout(nettoyer, 60_000);
+  }, 200);
+}
+
+const COULEUR_ECHEANCE: Record<ClasseEcheance, string> = {
+  retard: "#dc2626",
+  aujourdhui: "#d97706",
+  proche: "#2563eb",
+  planifie: "#64748b",
+  fait: "#16a34a",
+};
+
+/** Libellé + couleur de l'état d'échéance d'une éprouvette. */
+function badgeEcheance(e: Eprouvette, ref: Date): { texte: string; couleur: string } {
+  const c = classeEcheance(e, ref);
+  const j = joursRestants(e, ref);
+  const texte =
+    c === "fait" ? "écrasée"
+    : c === "aujourdhui" ? "à écraser aujourd'hui"
+    : c === "retard" ? `en retard de ${-j} j`
+    : `dans ${j} j`;
+  return { texte, couleur: COULEUR_ECHEANCE[c] };
+}
+
+/** Carte « Éprouvettes » de l'éditeur d'une gâchée (mise en cure, écrasement). */
+function CarteEprouvettes({ gachee, maintenant, onChange }: {
+  gachee: Gachee;
+  maintenant: Date;
+  onChange: (eprouvettes: Eprouvette[]) => void;
+}) {
+  const [couleLe, setCouleLe] = useState(() => isoVersDateInput(gachee.creeLe));
+  const [age, setAge] = useState<number | undefined>(28);
+  const [nb, setNb] = useState<number | undefined>(1);
+  const [moule, setMoule] = useState("");
+
+  const eprouvettes = [...gachee.eprouvettes].sort(
+    (a, b) => dateEcheance(a).getTime() - dateEcheance(b).getTime(),
+  );
+
+  const ajouter = () => {
+    const n = Math.max(1, Math.round(nb ?? 1));
+    const a = Math.max(0, Math.round(age ?? 0));
+    // Coulée à midi LOCAL : évite tout décalage de jour (fuseau/heure d'été).
+    const iso = couleLe ? new Date(`${couleLe}T12:00:00`).toISOString() : gachee.creeLe;
+    const nouvelles: Eprouvette[] = [];
+    for (let i = 0; i < n; i++) {
+      const code = genererCodeEprouvette(gachee.code, [...gachee.eprouvettes, ...nouvelles]);
+      nouvelles.push({ id: nouvelId(), code, couleLe: iso, ageJours: a, moule: moule.trim() || undefined, statut: "en_cure" });
+    }
+    onChange([...gachee.eprouvettes, ...nouvelles]);
+  };
+
+  const majEprouvette = (id: string, patch: Partial<Eprouvette>) =>
+    onChange(gachee.eprouvettes.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  const retirer = (id: string) => onChange(gachee.eprouvettes.filter((e) => e.id !== id));
+
+  const imprimer = () => {
+    if (gachee.eprouvettes.length === 0) return;
+    const etiquettes: EtiquetteEprouvette[] = eprouvettes.map((e) => ({
+      codeEprouvette: e.code, codeGachee: gachee.code,
+      formulation: gachee.formulationLabel, categorie: gachee.categorie,
+      couleLe: fmtDate(dateCoulee(e)), echeance: fmtDate(dateEcheance(e)),
+      ageJours: e.ageJours, moule: e.moule,
+    }));
+    imprimerHtml(etiquettesHtml(etiquettes, `Étiquettes — gâchée ${gachee.code}`));
+  };
+
+  return (
+    <Carte titre="Éprouvettes (cure et écrasement)" extra={
+      gachee.eprouvettes.length > 0
+        ? <button type="button" onClick={imprimer} className="btn-secondary" style={{ fontSize: 12 }}>Imprimer les étiquettes</button>
+        : undefined
+    }>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Ajout d'éprouvettes */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, alignItems: "end" }}>
+          <Champ label="Date de coulée"><input type="date" style={inputStyle} value={couleLe} onChange={(e) => setCouleLe(e.target.value)} /></Champ>
+          <Champ label="Âge de cure (j)"><NumInput style={inputStyle} value={age} onChange={setAge} /></Champ>
+          <Champ label="Nombre (réplicats)"><NumInput style={inputStyle} value={nb} onChange={setNb} /></Champ>
+          <Champ label="Moule (optionnel)"><input style={inputStyle} placeholder="cylindre 50 × 100 mm" value={moule} onChange={(e) => setMoule(e.target.value)} /></Champ>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: "#64748b" }}>Âges usuels :</span>
+          {AGES_CURE_DEFAUT.map((a) => (
+            <button key={a} type="button" onClick={() => setAge(a)}
+              style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                border: `1px solid ${age === a ? "#2563eb" : "#cbd5e1"}`, background: age === a ? "#eff6ff" : "#fff", color: age === a ? "#1d4ed8" : "#475569" }}>
+              {a} j
+            </button>
+          ))}
+          <button type="button" onClick={ajouter} className="btn-secondary" style={{ marginLeft: "auto", fontSize: 12.5 }}>+ Ajouter</button>
+        </div>
+
+        {/* Liste des éprouvettes */}
+        {eprouvettes.length === 0 ? (
+          <p style={{ fontSize: 12.5, color: "#94a3b8" }}>Aucune éprouvette. Choisis un âge de cure et un nombre de réplicats, puis « Ajouter ».</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {eprouvettes.map((e) => {
+              const b = badgeEcheance(e, maintenant);
+              return (
+                <div key={e.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 0", borderTop: "1px solid #f1f5f9" }}>
+                  <div style={{ minWidth: 0, flex: "1 1 160px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{e.code}</div>
+                    <div style={{ fontSize: 11.5, color: "#64748b" }}>
+                      {e.ageJours} j · échéance {fmtDate(dateEcheance(e))} · <span style={{ fontWeight: 700, color: b.couleur }}>{b.texte}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    <button type="button" onClick={() => majEprouvette(e.id, { statut: e.statut === "ecrase" ? "en_cure" : "ecrase" })}
+                      className="btn-secondary" style={{ fontSize: 11.5, whiteSpace: "nowrap" }}>
+                      {e.statut === "ecrase" ? "Remettre en cure" : "Marquer écrasée"}
+                    </button>
+                    <button type="button" onClick={() => retirer(e.id)} className="btn-secondary" style={{ fontSize: 11.5, color: "var(--danger)" }}>Retirer</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </Carte>
+  );
+}
+
+/** Une ligne cliquable de l'échéancier (ouvre la gâchée parente). */
+function LigneEcheancier({ x, maintenant, onOuvrir }: {
+  x: { e: Eprouvette; g: Gachee };
+  maintenant: Date;
+  onOuvrir: (gacheeId: string) => void;
+}) {
+  const b = badgeEcheance(x.e, maintenant);
+  return (
+    <button type="button" onClick={() => onOuvrir(x.g.id)}
+      style={{ textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap",
+        background: "#fff", border: "1px solid #e2e8f0", borderLeft: `4px solid ${b.couleur}`, borderRadius: 8, padding: "9px 12px", cursor: "pointer" }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{x.e.code}</div>
+        <div style={{ fontSize: 11.5, color: "#64748b" }}>{x.g.formulationLabel} · échéance {fmtDate(dateEcheance(x.e))}</div>
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 700, color: b.couleur, whiteSpace: "nowrap" }}>{b.texte}</span>
+    </button>
+  );
+}
+
+/** Échéancier global : ce qu'il faut écraser, sur toutes les gâchées. */
+function Echeancier({ gachees, maintenant, onOuvrir }: {
+  gachees: Gachee[];
+  maintenant: Date;
+  onOuvrir: (gacheeId: string) => void;
+}) {
+  const toutes = gachees.flatMap((g) => g.eprouvettes.map((e) => ({ e, g })));
+  if (toutes.length === 0) return null;
+  const enCure = toutes.filter((x) => x.e.statut !== "ecrase");
+  const parEcheance = (a: { e: Eprouvette }, b: { e: Eprouvette }) => dateEcheance(a.e).getTime() - dateEcheance(b.e).getTime();
+  const aEcraser = enCure.filter((x) => ["retard", "aujourdhui"].includes(classeEcheance(x.e, maintenant))).sort(parEcheance);
+  const aVenir = enCure.filter((x) => ["proche", "planifie"].includes(classeEcheance(x.e, maintenant))).sort(parEcheance);
+
+  const exporterIcs = () => {
+    const evenements: EvenementIcs[] = enCure.map((x) => ({
+      uid: `${x.e.id}@minebackfill`,
+      date: dateEcheance(x.e),
+      titre: `Écraser ${x.e.code}`,
+      description: `Gâchée ${x.g.code} · ${x.g.formulationLabel} · ${x.e.ageJours} j de cure`,
+    }));
+    if (evenements.length === 0) return;
+    // Horodatage réel de l'export (dans un handler : pas de gel par le compilateur).
+    telecharger("echeances-labo.ics", "text/calendar", construireIcs(evenements, new Date()));
+  };
+
+  return (
+    <Carte titre="Échéancier — à écraser" extra={
+      <button type="button" onClick={exporterIcs} className="btn-secondary" style={{ fontSize: 12 }} disabled={enCure.length === 0}>Exporter le calendrier (.ics)</button>
+    }>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div>
+          <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#94a3b8", marginBottom: 8 }}>
+            À écraser maintenant {aEcraser.length > 0 ? `(${aEcraser.length})` : ""}
+          </div>
+          {aEcraser.length === 0 ? (
+            <p style={{ fontSize: 12.5, color: "#94a3b8" }}>Rien à écraser aujourd&apos;hui. Bon travail.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {aEcraser.map((x) => <LigneEcheancier key={x.e.id} x={x} maintenant={maintenant} onOuvrir={onOuvrir} />)}
+            </div>
+          )}
+        </div>
+        {aVenir.length > 0 && (
+          <div>
+            <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#94a3b8", marginBottom: 8 }}>
+              Prochaines échéances
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {aVenir.slice(0, 8).map((x) => <LigneEcheancier key={x.e.id} x={x} maintenant={maintenant} onOuvrir={onOuvrir} />)}
+            </div>
+            {aVenir.length > 8 && <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 8 }}>+ {aVenir.length - 8} autre{aVenir.length - 8 > 1 ? "s" : ""}…</p>}
+          </div>
+        )}
+      </div>
+    </Carte>
+  );
+}
+
 export default function LaboPage() {
   const monte = useHydrated();
   const { gachees, ajouterGachee, modifierGachee, supprimerGachee, savedResults } = useStore();
@@ -97,6 +355,27 @@ export default function LaboPage() {
   const [nouvelle, setNouvelle] = useState(false);
   const [formId, setFormId] = useState<string>("");
   const [recIndex, setRecIndex] = useState(0);
+
+  // « Aujourd'hui » pour l'échéancier et les badges. En état (pas en plein
+  // rendu) : le React Compiler figerait un `new Date()` de rendu au premier
+  // appel et l'horloge ne changerait jamais de jour. On ne re-rend qu'au
+  // changement de jour (échéances au jour près), au focus et au retour d'onglet.
+  const [maintenant, setMaintenant] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const tick = () =>
+      setMaintenant((prev) => {
+        const n = new Date();
+        return n.toDateString() === prev.toDateString() ? prev : n;
+      });
+    const id = window.setInterval(tick, 60_000);
+    window.addEventListener("focus", tick);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", tick);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, []);
 
   const formulations = savedResults.filter((s) => (s.recipes?.length ?? 0) > 0);
   const selection = gachees.find((g) => g.id === selId) ?? null;
@@ -119,6 +398,7 @@ export default function LaboPage() {
       composants: composantsDepuisRecette(recette, (i) => `Ciment ${i}`),
       tolerancePct: 2,
       ajustements: [],
+      eprouvettes: [],
     };
     ajouterGachee(g);
     setNouvelle(false);
@@ -243,6 +523,8 @@ export default function LaboPage() {
             )}
           </Carte>
 
+          <CarteEprouvettes key={g.id} gachee={g} maintenant={maintenant} onChange={(eprouvettes) => maj({ eprouvettes })} />
+
           <Carte titre="Observations">
             <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical", fontFamily: "inherit" }}
               placeholder="Remarques sur la gâchée, la consistance, les incidents…"
@@ -302,6 +584,8 @@ export default function LaboPage() {
             )}
           </Carte>
         )}
+
+        <Echeancier gachees={gachees} maintenant={maintenant} onOuvrir={(id) => setSelId(id)} />
 
         {gachees.length === 0 ? (
           <p style={{ fontSize: 13.5, color: "#94a3b8", textAlign: "center", padding: "24px 0" }}>Aucune gâchée pour l&apos;instant.</p>
