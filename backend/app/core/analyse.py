@@ -83,12 +83,14 @@ def _etat(base, solve, param: BalayageParam, x: float) -> Optional[MixState]:
     return result.recipes[0] if result.recipes else None
 
 
-def _arrondi(v: float) -> Optional[float]:
+def _valeur(v: float) -> Optional[float]:
     # None, NaN ou ±inf -> coupure (None) : une valeur non finie n'est pas du
-    # JSON valide et n'a pas de sens sur une courbe.
+    # JSON valide et n'a pas de sens sur une courbe. PLEINE PRÉCISION conservée
+    # (l'arrondi se fait à l'affichage) — nécessaire pour les écarts relatifs de
+    # grandeurs très peu variables (p. ex. l'indice des vides e).
     if v is None or not math.isfinite(v):
         return None
-    return round(float(v), 6)
+    return float(v)
 
 
 def balayer(inputs: BalayageInputs) -> BalayageResult:
@@ -100,11 +102,11 @@ def balayer(inputs: BalayageInputs) -> BalayageResult:
     for x in xs:
         st = _etat(base, solve, inputs.param, x)
         for key, extract in _SERIES.items():
-            series[key].append(_arrondi(extract(st)) if st is not None else None)
+            series[key].append(_valeur(extract(st)) if st is not None else None)
 
     return BalayageResult(
         category=inputs.category,
         param=inputs.param.value,
-        x=[round(v, 6) for v in xs],
+        x=xs,
         series=series,
     )
