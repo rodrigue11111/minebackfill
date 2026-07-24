@@ -110,16 +110,24 @@ export function composantsDepuisRecette(r: Recipe, nomLiant: (i: number) => stri
   const g = num(c.aggregate_dry_mass_kg);
   if (g > 0) out.push({ cle: "granulat", label: "Granulat", cibleKg: g });
 
-  const masses = (c.binder_masses_kg ?? []).map(num).filter((m) => m > 0);
-  if (masses.length > 1) {
-    masses.forEach((m, i) => out.push({ cle: `liant:${i}`, label: nomLiant(i + 1), cibleKg: m }));
+  const masses = (c.binder_masses_kg ?? []).map(num);
+  if (masses.filter((m) => m > 0).length > 1) {
+    // Détail par ciment. On garde l'indice RÉEL dans le système de liant : ne
+    // pas ré-indexer après avoir sauté les masses nulles, sinon l'étiquette et
+    // la clé se décalent par rapport au vrai liant.
+    masses.forEach((m, i) => {
+      if (m > 0) out.push({ cle: `liant:${i}`, label: nomLiant(i + 1), cibleKg: m });
+    });
   } else {
     const b = num(c.binder_total_mass_kg);
     if (b > 0) out.push({ cle: "liant", label: "Liant", cibleKg: b });
   }
 
+  // Eau : uniquement ce qu'il faut AJOUTER. Une valeur négative signifie « eau à
+  // retirer » (résidu livré plus humide que le Cw cible) — ce n'est pas une
+  // pesée, on l'omet donc de la liste des composants à peser.
   const eau = num(c.water_to_add_mass_kg);
-  if (eau !== 0) out.push({ cle: "eau", label: "Eau à ajouter", cibleKg: eau });
+  if (eau > 0) out.push({ cle: "eau", label: "Eau à ajouter", cibleKg: eau });
 
   return out;
 }

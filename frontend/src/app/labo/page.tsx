@@ -9,7 +9,7 @@
 import React, { useState } from "react";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
-import { num, fmt } from "@/lib/format";
+import { fmt } from "@/lib/format";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
 import {
   ecart, nbHorsTolerance, genererCode, composantsDepuisRecette,
@@ -17,9 +17,48 @@ import {
 } from "@/lib/gachee";
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", border: "1px solid #cbd5e1", borderRadius: 6, padding: "9px 11px",
+  width: "100%", minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 6, padding: "9px 11px",
   background: "#fff", fontSize: 14, outline: "none",
 };
+
+/**
+ * Champ numérique robuste. Pendant la frappe, on affiche la chaîne RÉELLEMENT
+ * saisie (brouillon local) au lieu de la re-dériver du nombre stocké : sans
+ * cela, « 12,05 » ou « 0,5 » se feraient tronquer, car la persistance immédiate
+ * (auto-sauvegarde) force un re-render qui réécrit la valeur normalisée. Hors
+ * frappe, on affiche la valeur canonique. Accepte la virgule décimale.
+ * onChange reçoit `undefined` quand le champ est vidé (le 0 n'est plus imposé).
+ */
+function NumInput({
+  value, onChange, style, placeholder,
+}: {
+  value: number | undefined;
+  onChange: (n: number | undefined) => void;
+  style?: React.CSSProperties;
+  placeholder?: string;
+}) {
+  const [brouillon, setBrouillon] = useState<string | null>(null);
+  const affiche = brouillon !== null ? brouillon : value ?? "";
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      style={style}
+      placeholder={placeholder}
+      value={affiche}
+      onFocus={() => setBrouillon(value === undefined ? "" : String(value))}
+      onBlur={() => setBrouillon(null)}
+      onChange={(e) => {
+        const brut = e.target.value;
+        setBrouillon(brut);
+        const t = brut.trim().replace(/\s/g, "").replace(",", ".");
+        if (t === "") { onChange(undefined); return; }
+        const n = Number(t);
+        if (Number.isFinite(n)) onChange(n);
+      }}
+    />
+  );
+}
 
 function Carte({ titre, extra, children }: { titre: string; extra?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -132,23 +171,23 @@ export default function LaboPage() {
           <Carte titre="Pesées : cible vs réelle" extra={
             <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#64748b" }}>
               Tolérance ±
-              <input type="number" step="any" style={{ ...inputStyle, width: 64, padding: "4px 8px" }}
-                value={g.tolerancePct} onChange={(e) => maj({ tolerancePct: num(e.target.value) })} /> %
+              <NumInput style={{ ...inputStyle, width: 64, padding: "4px 8px" }}
+                value={g.tolerancePct} onChange={(n) => maj({ tolerancePct: n ?? 0 })} /> %
             </span>
           }>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.2fr", gap: 8, fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr)", gap: 8, fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>
                 <span>Composant</span><span>Cible (kg)</span><span>Pesée (kg)</span><span>Écart</span>
               </div>
               {g.composants.map((c) => {
                 const e = ecart(c);
                 const hors = e !== null && Math.abs(e.pct) > g.tolerancePct;
                 return (
-                  <div key={c.cle} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.2fr", gap: 8, alignItems: "center" }}>
+                  <div key={c.cle} style={{ display: "grid", gridTemplateColumns: "minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr)", gap: 8, alignItems: "center" }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{c.label}</span>
                     <span style={{ fontSize: 13, color: "#64748b" }}>{fmt(c.cibleKg, 1)}</span>
-                    <input type="number" step="any" style={inputStyle} placeholder="—"
-                      value={c.peseeKg ?? ""} onChange={(ev) => majComposant(c.cle, ev.target.value === "" ? undefined : num(ev.target.value))} />
+                    <NumInput style={inputStyle} placeholder="—"
+                      value={c.peseeKg} onChange={(n) => majComposant(c.cle, n)} />
                     <span style={{ fontSize: 12.5, fontWeight: 600, color: e === null ? "#cbd5e1" : hors ? "#dc2626" : "#16a34a" }}>
                       {e === null ? "—" : `${e.kg >= 0 ? "+" : ""}${fmt(e.kg, 1)} kg (${e.pct >= 0 ? "+" : ""}${fmt(e.pct, 1)} %)`}
                     </span>
@@ -165,8 +204,8 @@ export default function LaboPage() {
               <Champ label="Lot de granulat"><input style={inputStyle} value={g.lotGranulat ?? ""} onChange={(e) => maj({ lotGranulat: e.target.value })} /></Champ>
               <Champ label="Lot de liant"><input style={inputStyle} value={g.lotLiant ?? ""} onChange={(e) => maj({ lotLiant: e.target.value })} /></Champ>
               <Champ label="Humidité mesurée du résidu w₀ (%)" hint="Mesure du jour (peut différer de la valeur de la recette)">
-                <input type="number" step="any" style={inputStyle} placeholder="—"
-                  value={g.w0MesurePct ?? ""} onChange={(e) => maj({ w0MesurePct: e.target.value === "" ? undefined : num(e.target.value) })} />
+                <NumInput style={inputStyle} placeholder="—"
+                  value={g.w0MesurePct} onChange={(n) => maj({ w0MesurePct: n })} />
               </Champ>
             </div>
           </Carte>
@@ -174,10 +213,10 @@ export default function LaboPage() {
           {/* Mesures fraîches */}
           <Carte titre="Mesures sur pâte fraîche">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
-              <Champ label="Slump mesuré (mm)"><input type="number" step="any" style={inputStyle} value={g.slumpMesureMm ?? ""} onChange={(e) => maj({ slumpMesureMm: e.target.value === "" ? undefined : num(e.target.value) })} /></Champ>
-              <Champ label="Température (°C)"><input type="number" step="any" style={inputStyle} value={g.temperatureC ?? ""} onChange={(e) => maj({ temperatureC: e.target.value === "" ? undefined : num(e.target.value) })} /></Champ>
-              <Champ label="w mesuré (%)"><input type="number" step="any" style={inputStyle} value={g.wMesurePct ?? ""} onChange={(e) => maj({ wMesurePct: e.target.value === "" ? undefined : num(e.target.value) })} /></Champ>
-              <Champ label="Cw mesuré (%)"><input type="number" step="any" style={inputStyle} value={g.cwMesurePct ?? ""} onChange={(e) => maj({ cwMesurePct: e.target.value === "" ? undefined : num(e.target.value) })} /></Champ>
+              <Champ label="Slump mesuré (mm)"><NumInput style={inputStyle} value={g.slumpMesureMm} onChange={(n) => maj({ slumpMesureMm: n })} /></Champ>
+              <Champ label="Température (°C)"><NumInput style={inputStyle} value={g.temperatureC} onChange={(n) => maj({ temperatureC: n })} /></Champ>
+              <Champ label="w mesuré (%)"><NumInput style={inputStyle} value={g.wMesurePct} onChange={(n) => maj({ wMesurePct: n })} /></Champ>
+              <Champ label="Cw mesuré (%)"><NumInput style={inputStyle} value={g.cwMesurePct} onChange={(n) => maj({ cwMesurePct: n })} /></Champ>
             </div>
           </Carte>
 
@@ -190,12 +229,12 @@ export default function LaboPage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {g.ajustements.map((a) => (
-                  <div key={a.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr auto", gap: 8, alignItems: "center" }}>
+                  <div key={a.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) auto", gap: 8, alignItems: "center" }}>
                     <select style={inputStyle} value={a.type} onChange={(e) => majAjustement(a.id, { type: e.target.value as Ajustement["type"] })}>
                       <option value="eau">Eau</option><option value="residu">Résidu</option>
                       <option value="granulat">Granulat</option><option value="liant">Liant</option>
                     </select>
-                    <input type="number" step="any" style={inputStyle} placeholder="kg" value={a.masseKg || ""} onChange={(e) => majAjustement(a.id, { masseKg: num(e.target.value) })} />
+                    <NumInput style={inputStyle} placeholder="kg" value={a.masseKg || undefined} onChange={(n) => majAjustement(a.id, { masseKg: n ?? 0 })} />
                     <input style={inputStyle} placeholder="Note (optionnel)" value={a.note ?? ""} onChange={(e) => majAjustement(a.id, { note: e.target.value })} />
                     <button type="button" onClick={() => retirerAjustement(a.id)} className="btn-secondary" style={{ fontSize: 12 }}>Retirer</button>
                   </div>
@@ -249,7 +288,7 @@ export default function LaboPage() {
                   </select>
                 </Champ>
                 {(() => {
-                  const form = formulations.find((s) => s.id === (formId || formulations[0].id))!;
+                  const form = formulations.find((s) => s.id === (formId || formulations[0].id)) ?? formulations[0];
                   return form.recipes.length > 1 ? (
                     <Champ label="Recette">
                       <select style={inputStyle} value={recIndex} onChange={(e) => setRecIndex(Number(e.target.value))}>

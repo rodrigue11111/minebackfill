@@ -83,4 +83,19 @@ describe("composantsDepuisRecette", () => {
     } } as Recipe;
     expect(composantsDepuisRecette(r, nom).some((c) => c.cle === "granulat")).toBe(false);
   });
+  it("omet l'eau quand elle est négative (eau à retirer, non pesable)", () => {
+    const r = { components: {
+      residue_wet_mass_kg: 1000, binder_total_mass_kg: 50,
+      water_to_add_mass_kg: -30, binder_masses_kg: [50],
+    } } as Recipe;
+    expect(composantsDepuisRecette(r, nom).some((c) => c.cle === "eau")).toBe(false);
+  });
+  it("garde l'indice réel du liant quand une masse intermédiaire est nulle", () => {
+    const r = { components: {
+      residue_wet_mass_kg: 1000, binder_total_mass_kg: 100,
+      water_to_add_mass_kg: 200, binder_masses_kg: [20, 0, 80],
+    } } as Recipe;
+    const cles = composantsDepuisRecette(r, nom).filter((c) => c.cle.startsWith("liant:")).map((c) => c.cle);
+    expect(cles).toEqual(["liant:0", "liant:2"]);
+  });
 });
