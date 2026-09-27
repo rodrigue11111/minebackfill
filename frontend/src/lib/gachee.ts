@@ -166,3 +166,34 @@ export function parametresDepuisRecette(r: Recipe): ParametresFormulation {
     wPct: val(r.w_mass_pct),
   };
 }
+
+/**
+ * Paramètres de formulation d'une gâchée, avec repli sur la formulation
+ * d'origine.
+ *
+ * `Gachee.parametres` est optionnel et n'a jamais été rempli rétroactivement :
+ * les gâchées créées avant son introduction affichent « — » et sont
+ * intraçables. Plutôt qu'une migration de la clé localStorage — qui ne
+ * s'exécute qu'une fois et doit deviner le bon moment — on résout
+ * PARESSEUSEMENT à la lecture, via `formulationId` + `recetteIndex`.
+ *
+ * Ces deux champs étaient jusqu'ici écrits puis jamais relus. Ils servent
+ * enfin.
+ *
+ * Aucune formule nouvelle : `parametresDepuisRecette` recopie des sorties de
+ * solveur déjà calculées.
+ *
+ * Type structurel minimal en second paramètre, pour ne pas importer le store
+ * ici (ce module doit rester pur et testable sans DOM).
+ */
+export function parametresEffectifs(
+  g: Gachee,
+  formulations: { id: string; recipes: Recipe[] }[],
+): ParametresFormulation | undefined {
+  if (g.parametres) return g.parametres;
+  if (!g.formulationId) return undefined;
+  const form = formulations.find((f) => f.id === g.formulationId);
+  if (!form || !form.recipes?.length) return undefined;
+  const i = Math.min(Math.max(g.recetteIndex ?? 0, 0), form.recipes.length - 1);
+  return parametresDepuisRecette(form.recipes[i]);
+}

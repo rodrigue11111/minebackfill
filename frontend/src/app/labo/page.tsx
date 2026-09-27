@@ -7,14 +7,22 @@
 // Auto-sauvegarde : chaque saisie est persistée immédiatement (localStorage).
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
 import { fmt } from "@/lib/format";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
 import {
   ecart, nbHorsTolerance, genererCode, composantsDepuisRecette, parametresDepuisRecette,
+  parametresEffectifs,
   type Gachee, type Ajustement,
 } from "@/lib/gachee";
+import {
+  AXES_FORMULATION, axeMeta, agesDisponibles, nuageUcs, lignesCsvNuage, lignesProvenanceLabo,
+  type AxeFormulation,
+} from "@/lib/ucs-formulation";
+import { telechargerTexte, celluleCsv, nomFichier } from "@/lib/export-fig";
+import type { Recipe } from "@/lib/types";
 import {
   AGES_CURE_DEFAUT, dateCoulee, dateEcheance, joursRestants, classeEcheance,
   genererCodeEprouvette, construireIcs, etiquettesHtml,
@@ -465,7 +473,15 @@ const fmtParam = (v: number | undefined, suffixe = "") => (v != null ? `${v.toLo
 const COULEURS_SERIE = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4d7c0f"];
 
 /** Vue « Résultats UCS » : UCS MESURÉE (aucune valeur prédite). */
-function ResultatsUCS({ gachees }: { gachees: Gachee[] }) {
+function ResultatsUCS({ gachees, formulations }: {
+  gachees: Gachee[];
+  formulations: { id: string; recipes: Recipe[] }[];
+}) {
+  // « age » = la courbe historique ; les autres valeurs = le nuage UCS vs
+  // paramètre de formulation.
+  const [axe, setAxe] = React.useState<"age" | AxeFormulation>("age");
+  const [ageVoulu, setAgeVoulu] = React.useState<number | null>(null);
+
   const donnees = gachees
     .map((g) => ({ g, ages: agregerParAge(g.eprouvettes).filter((a) => a.moyenneKpa !== null) }))
     .filter((d) => d.ages.length > 0);
@@ -474,26 +490,124 @@ function ResultatsUCS({ gachees }: { gachees: Gachee[] }) {
     cle: d.g.id,
     label: d.g.code,
     couleur: COULEURS_SERIE[i % COULEURS_SERIE.length],
-    points: d.ages.map((a) => ({ age: a.ageJours, moyenne: a.moyenneKpa as number, ecartType: a.ecartTypeKpa, n: a.n })),
+    points: d.ages.map((a) => ({ x: a.ageJours, moyenne: a.moyenneKpa as number, ecartType: a.ecartTypeKpa, n: a.n })),
   }));
+
+  // Dérivé en useMemo, PAS synchronisé par un effet : un setState dans un
+  // useEffect est une erreur de lint (React Compiler). L'âge choisi est borné
+  // AU RENDU, de sorte que supprimer la dernière éprouvette d'un âge ne laisse
+  // pas l'écran sur un âge qui n'existe plus.
+  const ages = React.useMemo(() => agesDisponibles(gachees), [gachees]);
+  const age = ageVoulu !== null && ages.includes(ageVoulu) ? ageVoulu : (ages[0] ?? 0);
+
+  const metaAxe = axe !== "age" ? axeMeta(axe) : undefined;
+  const nuage = axe !== "age" ? nuageUcs(gachees, formulations, axe, age) : null;
+
+  const seriesNuage: SerieUCS[] = nuage
+    ? nuage.points.map((p, i) => ({
+        cle: p.id, label: p.code, couleur: COULEURS_SERIE[i % COULEURS_SERIE.length],
+        points: [{ x: p.x, moyenne: p.moyenneKpa, ecartType: p.ecartTypeKpa, n: p.n }],
+      }))
+    : [];
+
+  function exporterCsvMesures() {
+    if (!nuage || axe === "age") return;
+    const meta = lignesProvenanceLabo(gachees, axe, age).map((l) => "# " + l);
+    const corps = lignesCsvNuage(nuage, axe);
+    telechargerTexte(
+      [...meta, "", ...corps.map((r) => r.map(celluleCsv).join(";"))].join("\r\n"),
+      nomFichier(`labo-ucs-${axe}-${age}j`, "csv"),
+    );
+  }
+
+  const boutonAxe = (actif: boolean): React.CSSProperties => ({
+    padding: "5px 11px", fontSize: 12, borderRadius: 6, cursor: "pointer",
+    border: `1px solid ${actif ? "#1d4ed8" : "#cbd5e1"}`,
+    background: actif ? "#dbeafe" : "#fff",
+    color: actif ? "#1e3a8a" : "#475569", fontWeight: actif ? 700 : 500,
+  });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#1e3a8a" }}>
-        Ces courbes montrent la résistance <strong>mesurée</strong> en laboratoire (UCS = charge à la rupture rapportée à la
+        Ces graphiques montrent la résistance <strong>mesurée</strong> en laboratoire (UCS = charge à la rupture rapportée à la
         section). Aucune valeur <strong>prédite ou modélisée</strong> n&apos;est tracée : le programme ne dispose pas de modèle
         de prédiction validé. Les points sont les moyennes des éprouvettes retenues ; les barres verticales indiquent ± un écart-type.
+        {" "}Aucune droite d&apos;ajustement n&apos;est tracée et aucune valeur n&apos;est interpolée : seuls des âges réellement
+        mesurés sont proposés. Pour les grandeurs <strong>calculées</strong> et leurs courbes de réponse, voir{" "}
+        <Link href="/analyse" style={{ color: "#1d4ed8", fontWeight: 600, textDecoration: "underline" }}>Analyse</Link>.
       </div>
 
       {series.length === 0 ? (
-        <p style={{ fontSize: 13.5, color: "#94a3b8", textAlign: "center", padding: "24px 0" }}>
+        <p style={{ fontSize: 13.5, color: "#64748b", textAlign: "center", padding: "24px 0" }}>
           Aucune mesure UCS pour l&apos;instant. Dans une gâchée, marque une éprouvette « écrasée » et saisis sa charge (ou sa contrainte).
         </p>
       ) : (
         <>
-          <Carte titre="UCS mesurée vs âge de cure">
-            <CourbeUCS series={series} />
+          <Carte titre="Abscisse">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <button type="button" style={boutonAxe(axe === "age")} onClick={() => setAxe("age")}>
+                Âge de cure
+              </button>
+              {AXES_FORMULATION.map((a) => (
+                <button key={a.cle} type="button" style={boutonAxe(axe === a.cle)} onClick={() => setAxe(a.cle)}>
+                  {a.label}
+                </button>
+              ))}
+              {axe !== "age" && (
+                <span style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 8, fontSize: 12.5, color: "#475569" }}>
+                  à l&apos;âge de
+                  <select value={age} onChange={(e) => setAgeVoulu(Number(e.target.value))}
+                    style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "4px 8px", fontSize: 12.5 }}>
+                    {ages.map((a) => <option key={a} value={a}>{a} j</option>)}
+                  </select>
+                </span>
+              )}
+            </div>
+            {axe !== "age" && (
+              <p style={{ fontSize: 11.5, color: "#64748b", margin: "10px 0 0", lineHeight: 1.5 }}>
+                Un point par gâchée. Les points ne sont <strong>pas reliés</strong> : joindre deux gâchées
+                suggérerait une tendance, qui n&apos;est pas mesurée.
+              </p>
+            )}
           </Carte>
+
+          {axe === "age" ? (
+            <Carte titre="UCS mesurée vs âge de cure">
+              <CourbeUCS series={series} />
+            </Carte>
+          ) : (
+            <Carte titre={`UCS mesurée à ${age} j vs ${metaAxe?.label ?? axe}`}>
+              <CourbeUCS
+                series={seriesNuage}
+                relier={false}
+                ticksX="rondes"
+                xLabel={`${metaAxe?.label ?? axe}${metaAxe && metaAxe.unite !== "—" ? ` (${metaAxe.unite})` : ""}`}
+                formatX={(x) => x.toLocaleString("fr-CA", { maximumFractionDigits: 3 })}
+                messageVide={`Aucune gâchée ne porte à la fois une mesure à ${age} j et un paramètre de formulation connu.`}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                <button type="button" onClick={exporterCsvMesures}
+                  style={{ padding: "5px 11px", fontSize: 12, borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", color: "#475569", cursor: "pointer" }}>
+                  Export CSV (mesures)
+                </button>
+              </div>
+              {nuage && nuage.ecartees.length > 0 && (
+                // Dire ce qui n'est PAS sur la figure : c'est ce qui sépare une
+                // figure défendable d'un graphe trompeur.
+                <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "#b45309", marginBottom: 4 }}>
+                    Gâchées absentes de cette figure ({nuage.ecartees.length})
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, color: "#64748b", lineHeight: 1.6 }}>
+                    {nuage.ecartees.map((e) => (
+                      <li key={e.code}><strong>{e.code}</strong> — {e.raison}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Carte>
+          )}
 
           <Carte titre="Détail des mesures">
             <div style={{ overflowX: "auto" }}>
@@ -517,9 +631,9 @@ function ResultatsUCS({ gachees }: { gachees: Gachee[] }) {
                         <td style={{ textAlign: "left", padding: "5px 8px", fontWeight: j === 0 ? 700 : 400, color: j === 0 ? "#0f172a" : "#94a3b8" }}>
                           {j === 0 ? d.g.code : ""}
                         </td>
-                        <td style={{ padding: "5px 8px" }}>{j === 0 ? fmtParam(d.g.parametres?.cwPct, " %") : ""}</td>
-                        <td style={{ padding: "5px 8px" }}>{j === 0 ? fmtParam(d.g.parametres?.wcRatio) : ""}</td>
-                        <td style={{ padding: "5px 8px" }}>{j === 0 ? fmtParam(d.g.parametres?.bwPct, " %") : ""}</td>
+                        <td style={{ padding: "5px 8px" }}>{j === 0 ? fmtParam(parametresEffectifs(d.g, formulations)?.cwPct, " %") : ""}</td>
+                        <td style={{ padding: "5px 8px" }}>{j === 0 ? fmtParam(parametresEffectifs(d.g, formulations)?.wcRatio) : ""}</td>
+                        <td style={{ padding: "5px 8px" }}>{j === 0 ? fmtParam(parametresEffectifs(d.g, formulations)?.bwPct, " %") : ""}</td>
                         <td style={{ padding: "5px 8px" }}>{a.ageJours} j</td>
                         <td style={{ padding: "5px 8px", fontWeight: 700, color: "#0f172a" }}>{Math.round(a.moyenneKpa as number).toLocaleString("fr-CA")}</td>
                         <td style={{ padding: "5px 8px" }}>{a.ecartTypeKpa !== null ? Math.round(a.ecartTypeKpa).toLocaleString("fr-CA") : "—"}</td>
@@ -829,7 +943,7 @@ export default function LaboPage() {
         </div>
 
         {vue === "resultats" ? (
-          <ResultatsUCS gachees={gachees} />
+          <ResultatsUCS gachees={gachees} formulations={formulations} />
         ) : vue === "protocoles" ? (
           <ProtocolesEditeur protocoles={protocoles} onAjouter={ajouterProtocole} onModifier={modifierProtocole} onSupprimer={supprimerProtocole} onReinitialiser={reinitialiserProtocoles} />
         ) : (
