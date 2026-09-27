@@ -417,6 +417,17 @@ export default function AnalysePage() {
             {categorie === "RPG" && <span>Am : <strong>{fmt(rpgCw.aggregate_fraction_pct, 1)} %</strong></span>}
             <Link href="/mix" style={{ color: "var(--primary)", fontWeight: 600, textDecoration: "underline" }}>Modifier dans Calculs</Link>
           </div>
+          {/* Découvrabilité : les deux modules vivaient côte à côte dans la
+              barre sans que rien ne les relie. Cette page ne trace QUE du
+              calculé ; les mesures réelles sont dans Labo. */}
+          <p style={{ fontSize: 11.5, color: "#64748b", marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+            Cette page trace uniquement des valeurs <strong>calculées</strong> par les solveurs.
+            Pour vos <strong>mesures</strong> de laboratoire — gâchées réelles, éprouvettes et
+            essais UCS —, voir{" "}
+            <Link href="/labo" style={{ color: "var(--primary)", fontWeight: 600, textDecoration: "underline" }}>
+              Labo → Résultats UCS
+            </Link>.
+          </p>
         </Carte>
 
         {mode === "courbes" ? (
