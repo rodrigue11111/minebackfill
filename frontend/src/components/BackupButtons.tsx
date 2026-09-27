@@ -7,6 +7,12 @@ import { useStore } from "@/lib/store";
 /**
  * Boutons « Exporter / Importer les données (.json) » — sauvegarde de tout
  * le contenu localStorage (résultats, prix des liants, journal, unités).
+ *
+ * ATTENTION, écart volontaire : l'infobulle du bouton ne mentionne plus les
+ * prix des liants depuis le 2026-09-27, le module Industrie ayant été retiré
+ * de la navigation. L'export les contient toujours — ne pas « corriger »
+ * exporterDonnees() pour le faire coïncider avec l'infobulle : ce sont les
+ * données des utilisateurs, et rien d'autre n'en garde copie.
  */
 export default function BackupButtons() {
   const {
@@ -40,7 +46,7 @@ export default function BackupButtons() {
         className="btn-secondary"
         style={{ padding: "7px 14px", fontSize: 12.5 }}
         onClick={() => exporterDonnees()}
-        title="Télécharge un fichier JSON contenant résultats sauvegardés, prix des liants, journal de production et unités"
+        title="Télécharge un fichier JSON contenant résultats sauvegardés, journal de production et unités"
       >
         Exporter les données (.json)
       </button>
