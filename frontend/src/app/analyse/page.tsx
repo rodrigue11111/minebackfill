@@ -7,7 +7,7 @@
 // Les deux REPRENNENT la recette Cw% déjà saisie dans Calculs. Aucun calcul
 // n'est réimplémenté côté client.
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import type { Recipe } from "@/lib/types";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/analyse-series";
 import PanneauVariation from "@/components/analyse/PanneauVariation";
 import { estParamCle, valeurReference } from "@/lib/analyse-fixe";
+import { lireArtefact } from "@/lib/analyse-artefact";
 import {
   construireConstantesPayload, construireGeneralPayload, construireSystemeLiant,
 } from "@/lib/rpc_payload";
@@ -117,6 +118,11 @@ export default function AnalysePage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Balayage rechargé depuis un fichier : la provenance affichée est celle
+  // d'ORIGINE, pas celle du store actuel. Le drapeau sert à le dire à l'écran.
+  const [recharge, setRecharge] = useState(false);
+  const fichierRef = useRef<HTMLInputElement>(null);
 
   const base = categorie === "RPC" ? cw : rpgCw;
 
@@ -233,7 +239,42 @@ export default function AnalysePage() {
     };
   }
 
+  /**
+   * Recharge un balayage exporté précédemment. L'export JSON existait depuis
+   * le début mais rien ne savait le relire : c'était un cul-de-sac, alors que
+   * c'est exactement ce qu'il faut pour reproduire une figure d'un poste à
+   * l'autre ou la retrouver des mois plus tard.
+   *
+   * La provenance affichée reste celle du FICHIER. La réécrire avec les
+   * valeurs du store actuel donnerait une figure ancienne portant une
+   * provenance neuve — c'est-à-dire une provenance fausse.
+   */
+  async function rechargerArtefact(f: File | undefined) {
+    if (!f) return;
+    const lu = lireArtefact(await f.text());
+    if (!lu.ok) { setError(lu.erreur); return; }
+    const a = lu.artefact;
+    const b = a.resultats[0];
+    setError(null);
+    // On aligne les contrôles sur le fichier, sans passer par
+    // changerCategorie() qui remettrait le résultat à null.
+    setCategorie(b.category === "RPC" ? "RPC" : "RPG");
+    setParam(b.param);
+    const p = a.instantane.parametre;
+    if (p) { setXMin(p.min); setXMax(p.max); setSteps(p.points); }
+    setRes(b as Balayage);
+    setResMeta(a.instantane);
+    setRecharge(true);
+    // Le bandeau « Paramètres modifiés » n'aurait aucun sens ici : les
+    // contrôles viennent d'être alignés sur le fichier.
+    setResProtocole(JSON.stringify({
+      categorie: b.category === "RPC" ? "RPC" : "RPG", param: b.param,
+      xMin: p?.min ?? xMin, xMax: p?.max ?? xMax, steps: p?.points ?? steps,
+    }));
+  }
+
   async function tracer() {
+    setRecharge(false);
     const err = verifierBase();
     if (err) { setError(err); return; }
     if (!(xMax > xMin)) { setError("La borne « à » doit être supérieure à la borne « de »."); return; }
@@ -472,15 +513,31 @@ export default function AnalysePage() {
                   </div>
                 </div>
 
-                <button type="button" onClick={tracer} disabled={loading} className="btn-primary" style={{ alignSelf: "flex-start" }}>
-                  {loading ? "Calcul en cours…" : "Tracer la courbe"}
-                </button>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <button type="button" onClick={tracer} disabled={loading} className="btn-primary">
+                    {loading ? "Calcul en cours…" : "Tracer la courbe"}
+                  </button>
+                  <button type="button" onClick={() => fichierRef.current?.click()} className="btn-secondary"
+                    style={{ padding: "7px 14px", fontSize: 12.5 }}
+                    title="Rouvre un balayage exporté en JSON, avec sa provenance d'origine">
+                    Recharger un balayage (.json)
+                  </button>
+                  <input ref={fichierRef} type="file" accept="application/json,.json" style={{ display: "none" }}
+                    onChange={(e) => { void rechargerArtefact(e.target.files?.[0]); e.target.value = ""; }} />
+                </div>
               </div>
             </Carte>
 
             {res && (
               <Carte titre="Courbe de réponse">
-                {perime && (
+                {recharge && (
+                  <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 7, background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e3a8a", fontSize: 12.5 }}>
+                    Balayage <strong>rechargé depuis un fichier</strong>. Le bloc de provenance ci-dessous
+                    est celui d&apos;origine, pas celui de la recette actuellement saisie dans Calculs.
+                    Relancez « Tracer la courbe » pour repartir de votre recette.
+                  </div>
+                )}
+                {perime && !recharge && (
                   <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 7, background: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", fontSize: 12.5 }}>
                     Paramètres modifiés — relance « Tracer la courbe » pour mettre à jour cette courbe.
                   </div>
