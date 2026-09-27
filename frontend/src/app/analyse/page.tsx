@@ -19,6 +19,8 @@ import { indexProche, ecartPct, statsSerie } from "@/lib/courbe-analyse";
 import {
   paramsPour, sortiesPour, paramMeta, sortieMeta, type CategorieAnalyse,
 } from "@/lib/analyse-series";
+import PanneauVariation from "@/components/analyse/PanneauVariation";
+import { estParamCle, valeurReference } from "@/lib/analyse-fixe";
 import {
   construireConstantesPayload, construireGeneralPayload, construireSystemeLiant,
 } from "@/lib/rpc_payload";
@@ -344,12 +346,13 @@ export default function AnalysePage() {
   const perime = res !== null && resProtocole !== protocoleActuel;
 
   // Valeur du paramètre balayé POUR la recette de base = point de référence.
+  // Lue dans l'INSTANTANÉ figé au calcul, et non plus dans le store vivant :
+  // modifier la recette dans Calculs déplaçait sinon le trait de référence
+  // alors que la courbe, elle, ne bougeait pas. Le `switch` exhaustif de
+  // valeurReference remplace une chaîne de ternaires qu'il fallait penser à
+  // compléter à chaque nouveau paramètre.
   const referenceX: number | null =
-    param === "binder_mass_pct" ? ((base.binder_pct || [])[0] ?? null)
-    : param === "solids_mass_pct" ? (base.solid_mass_pct ?? null)
-    : param === "saturation_pct" ? (base.saturation_pct ?? null)
-    : param === "aggregate_fraction_pct" ? (rpgCw.aggregate_fraction_pct ?? null)
-    : null;
+    resMeta && estParamCle(param) ? valeurReference(param, resMeta.recette) : null;
   const paramCourt = xLabel.split(" — ")[0];
   // La référence n'ancre l'écart % que si elle est DANS la plage balayée ;
   // sinon on ancre sur le 1er point et on le dit clairement (pas de fausse
@@ -548,6 +551,20 @@ export default function AnalysePage() {
                           {" "}Une grandeur quasi constante reste plate — contrairement à une normalisation min-max.
                         </p>
                       </>
+                    )}
+
+                    {resMeta && estParamCle(param) && (
+                      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #e2e8f0" }}>
+                        <PanneauVariation
+                          instantane={resMeta}
+                          param={param}
+                          categorie={categorie}
+                          x={res.x}
+                          series={res.series}
+                          reference={refDansPlage ? referenceX! : undefined}
+                          fmt={fmtStat}
+                        />
+                      </div>
                     )}
 
                     {resMeta && (
