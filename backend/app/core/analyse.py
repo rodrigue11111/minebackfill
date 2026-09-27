@@ -50,6 +50,14 @@ _SERIES: Dict[str, Callable[[MixState], float]] = {
     # peine. Sans elles, cette redistribution n'est affirmée nulle part.
     "residue_dry_mass_kg": lambda s: s.components.residue_dry_mass_kg,
     "binder_total_mass_kg": lambda s: s.components.binder_total_mass_kg,
+    # Second lot, même règle : APPEND, et rien de recalculé.
+    "theta_pct": lambda s: s.theta_pct,                                    # θ%
+    # gs_backfill varie avec Bw parce que le Gs du liant diffère de celui du
+    # résidu. C'est LE mécanisme derrière les petites variations de ρd et de e
+    # qu'on observe en balayant Bw, et il n'était visible nulle part.
+    "gs_backfill": lambda s: s.gs_backfill,
+    "water_total_mass_kg": lambda s: s.components.water_total_mass_kg,
+    "aggregate_dry_mass_kg": lambda s: s.components.aggregate_dry_mass_kg,
 }
 
 #: Grandeurs disponibles côté clients (nom stable). Exporté pour les tests.

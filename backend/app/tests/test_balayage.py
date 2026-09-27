@@ -26,6 +26,7 @@ SERIES_CANONIQUE = (
     "dry_density_kg_m3", "bulk_density_kg_m3",
     "aggregate_mass_pct", "aggregate_vol_pct_of_residue",
     "cv_vol_pct", "residue_dry_mass_kg", "binder_total_mass_kg",
+    "theta_pct", "gs_backfill", "water_total_mass_kg", "aggregate_dry_mass_kg",
 )
 
 
