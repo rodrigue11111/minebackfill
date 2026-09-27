@@ -219,6 +219,15 @@ export default function AnalysePage() {
         regleLiant: constantes.essai_binder_rule,
       },
       versionSolveur: solverVersionActive(constantes),
+      // Les grandeurs tracées font partie de la provenance : sans elles, un CSV
+      // exporté ne dit pas ce qu'il contient.
+      sorties: sorties.map((c) => sortieMeta(c)?.label ?? c),
+      // Géométrie et extensivité : obligatoires depuis qu'on trace des masses.
+      // Comparer des kg entre deux balayages de contenants différents n'a aucun
+      // sens, et rien ne le signalait.
+      contenant: general.container_type ? { type: general.container_type } : undefined,
+      contenants: base.desired_qty ?? undefined,
+      facteurSecurite: base.safety_factor ?? undefined,
     };
   }
 

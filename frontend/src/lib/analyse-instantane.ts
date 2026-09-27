@@ -22,6 +22,17 @@ export interface InstantaneAnalyse {
     conventionGs: string; regleLiant: string;
   };
   versionSolveur: string;
+
+  // ── Ajouts 2026-09-27, tous OPTIONNELS (additif : un instantané écrit avant
+  // cette date reste lisible et lignesResume les omet proprement). ──
+  /** Libellés des grandeurs tracées au moment du calcul. */
+  sorties?: string[];
+  /** Géométrie du contenant : indispensable dès qu'on trace des MASSES. */
+  contenant?: { type: string; description?: string };
+  /** Nombre de contenants et facteur de sécurité : les masses sont extensives,
+   *  comparer des kg entre deux balayages sans eux n'a aucun sens. */
+  contenants?: number;
+  facteurSecurite?: number;
 }
 
 function f(n: number, dec = 3): string {
@@ -55,6 +66,22 @@ export function lignesResume(inst: InstantaneAnalyse): string[] {
   const c = inst.constantes;
   lignes.push(`Pack de conventions : ${c.packLabel} · convention Gs « ${c.conventionGs} » · règle liant « ${c.regleLiant} »`);
   lignes.push(`Constantes : ρ_eau ${f(c.masseVolEau, 0)} · g ${f(c.gravite)} · facteur cône ${f(c.facteurCone)} · coeff slump ${f(c.coeffSlump, 0)} · const slump ${f(c.constSlump)}`);
+  if (inst.contenant) {
+    const geo = [`type ${inst.contenant.type}`];
+    if (inst.contenant.description) geo.push(inst.contenant.description);
+    if (inst.contenants !== undefined) geo.push(`${f(inst.contenants, 0)} contenant(s)`);
+    if (inst.facteurSecurite !== undefined) geo.push(`facteur de sécurité ${f(inst.facteurSecurite)}`);
+    lignes.push(`Contenant : ${geo.join(" · ")}`);
+  }
+  if (inst.sorties?.length) {
+    lignes.push(`Grandeurs tracées : ${inst.sorties.join(", ")}`);
+  }
+  if (inst.parametre) {
+    // Le sous-mode « écart % » est choisi APRÈS le calcul, alors que cet
+    // instantané est figé AU calcul : il n'a donc pas sa place ci-dessus. Ce
+    // que l'on peut affirmer sans mentir, c'est ce que contient l'export.
+    lignes.push("Export en valeurs absolues (le mode « écart % » est un affichage).");
+  }
   lignes.push(`Version du solveur : ${inst.versionSolveur}`);
   return lignes;
 }
