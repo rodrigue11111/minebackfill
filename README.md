@@ -15,8 +15,12 @@ la géométrie du contenant, l'application calcule des recettes complètes :
 - paramètres géotechniques (e, n, ρd, ρh, Cw%, Cv%, Sr, W/C, Bw%, Bv%, θ) ;
 - quatre méthodes : **Dosage Cw%**, **Rapport eau/ciment (W/C)**, **Ajustement pour slump**
   (RPC) et **Méthode essai-erreur** (ajouts/retraits d'eau, de résidu et de granulat) ;
-- un module **Industrie** : comparaison des coûts de liant par niveau de Bw% et journal de
-  production ;
+- un module **Industrie** (comparaison des coûts de liant par niveau de Bw% et journal de
+  production) — **retiré de la navigation le 2026-09-27** : le code reste en place et la
+  page répond toujours sur `/industrie`, mais elle n'est plus proposée dans la barre.
+  Les prix des liants n'ayant d'interface que dans ce module, ils disparaissent donc aussi
+  de l'écran, sans que les données stockées soient touchées. Pour tout rétablir,
+  décommenter la ligne indiquée dans `frontend/src/components/NavBar.tsx` ;
 - exports **Excel** et **PDF**, historique local des résultats, unités configurables.
 
 ## Validation contre le classeur de référence

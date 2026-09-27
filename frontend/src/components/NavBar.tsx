@@ -7,10 +7,17 @@ import { useStore } from "@/lib/store";
 import { cloudConfigure } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
 
+// Le module Industrie (« /industrie ») a été retiré de la navigation le
+// 2026-09-27, à la demande de l'enseignant. La page et ses composants restent
+// dans le dépôt et répondent toujours à l'URL directe : le retrait est
+// volontairement réversible, il suffit de remettre la ligne ci-dessous.
+//   { href: "/industrie", label: "Industrie", step: "03" },
+// Les données déjà saisies par les utilisateurs ne sont pas touchées : la clé
+// localStorage « minebackfill_production_log » reste lisible et n'a aucune
+// copie dans le cloud (voir supabase/README.md).
 const NAV_LINKS = [
   { href: "/", label: "Informations", step: "01" },
   { href: "/mix", label: "Calculs", step: "02" },
-  { href: "/industrie", label: "Industrie", step: "03" },
   { href: "/analyse", label: "Analyse", step: null },
   { href: "/labo", label: "Labo", step: null },
   { href: "/formulas", label: "Formules", step: null },
