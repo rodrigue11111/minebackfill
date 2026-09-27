@@ -26,15 +26,21 @@ Les solveurs reproduisent **cellule par cellule** le classeur de référence du 
 
 - `backend/app/tests/excel_twin.py` — réplique Python exacte de la feuille, validée sur
   38 valeurs du classeur (précision ~1e-15) ;
-- `backend/app/tests/` — **514 tests** : les tests d'or (tolérance 1e-9, cas
+- `backend/app/tests/` — **574 tests** : les tests d'or (tolérance 1e-9, cas
   canonique « Mélange 1 », grille de 144 combinaisons Cw, grille W/C avec invariant
   Mw = W/C × Mb, 13 scénarios d'essai-erreur), les tests d'or RRC/CRF, les tests
   unitaires du pipeline (identités algébriques sur grille aléatoire reproductible,
   constantes personnalisées, géométrie du contenant, modèle de slump), les tests
   de contrat HTTP et les gardes-fous de validation (limite de 3 liants, entrées
-  hors domaine). Côté frontend : 116 tests Vitest (conversions d'unités, calculs
-  usine, grandeurs dérivées, w/Cw mesurés, constructeurs de payload, persistance
-  versionnée, bibliothèques de matériaux, prix des liants, invariants des formules).
+  hors domaine). Côté frontend : 277 tests Vitest sur 26 fichiers (conversions
+  d'unités, calculs usine, grandeurs dérivées, w/Cw mesurés, constructeurs de
+  payload, persistance versionnée, bibliothèques de matériaux, prix des liants,
+  invariants des formules, séries et instantanés d'analyse, gâchées, éprouvettes,
+  protocoles de labo).
+
+Ces deux compteurs sont vérifiés le 2026-09-27 (`pytest app/tests -q` et
+`pnpm test`). Ils bougent à chaque ajout de test : en cas d'écart, c'est le
+README qui a tort, pas la suite.
 
 Le bouton **« Exemple Intra 2017 »** de la page Informations charge exactement les entrées du
 classeur : l'application affiche alors les mêmes valeurs que la feuille du professeur.
@@ -46,8 +52,9 @@ classeur : l'application affiche alors les mêmes valeurs que la feuille du prof
 | `frontend/` | Next.js 16 · React 19 · Zustand | Saisie, affichage, exports (le calcul reste côté serveur) |
 | `backend/`  | FastAPI · Pydantic | Solveurs (`app/core/mix_pipeline.py` — pipeline partagé RPC/RPG, convention Intra 2017) |
 
-Endpoints : `POST /rpc/cw`, `/rpc/wb`, `/rpc/slump`, `/rpc/essai`, `/rpg/cw`, `/rpg/wb`,
-`/rpg/essai` — documentation interactive sur `/docs`.
+Endpoints (9) : `POST /rpc/cw`, `/rpc/wb`, `/rpc/slump`, `/rpc/essai`, `/rpg/cw`,
+`/rpg/wb`, `/rpg/essai`, `/rrc/dosage`, `/analyse/balayage` — documentation
+interactive sur `/docs`.
 
 ## Lancer en local
 
