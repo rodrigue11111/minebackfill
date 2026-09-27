@@ -498,7 +498,7 @@ export default function AnalysePage() {
                         refDansPlage ? (
                           <span style={{ fontSize: 11.5, color: "#b45309" }}>Référence (trait orange) : {paramCourt} = {fmt(referenceX, 2)}</span>
                         ) : (
-                          <span style={{ fontSize: 11.5, color: "#94a3b8" }}>Référence ({paramCourt} = {fmt(referenceX, 2)}) hors de la plage balayée</span>
+                          <span style={{ fontSize: 11.5, color: "#64748b" }}>Référence ({paramCourt} = {fmt(referenceX, 2)}) hors de la plage balayée</span>
                         )
                       )}
                     </div>
@@ -544,7 +544,7 @@ export default function AnalysePage() {
                         <FigurePng nom={`analyse-${categorie}-ecart`}>
                           <CourbeSvg x={res.x} xLabel={xLabel} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} />
                         </FigurePng>
-                        <p style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 6, lineHeight: 1.5 }}>
+                        <p style={{ fontSize: 11.5, color: "#64748b", marginTop: 6, lineHeight: 1.5 }}>
                           {refDansPlage
                             ? "Écart relatif (%) de chaque grandeur par rapport à sa valeur à la recette de référence (trait orange)."
                             : `Écart relatif (%) par rapport au 1er point balayé (${paramCourt} = ${fmt(res.x[0], 2)}) — la recette de référence est hors de la plage.`}
