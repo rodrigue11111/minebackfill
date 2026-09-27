@@ -25,6 +25,7 @@ SERIES_CANONIQUE = (
     "saturation_pct", "bw_mass_pct", "bv_vol_pct", "w_mass_pct",
     "dry_density_kg_m3", "bulk_density_kg_m3",
     "aggregate_mass_pct", "aggregate_vol_pct_of_residue",
+    "cv_vol_pct", "residue_dry_mass_kg", "binder_total_mass_kg",
 )
 
 
@@ -175,6 +176,47 @@ class TestGrille:
                                      param="binder_mass_pct", x_min=2, x_max=10, steps=9))
         wc = res.series["wc_ratio"]
         assert all(a > b for a, b in zip(wc, wc[1:]))  # strictement décroissant
+
+
+class TestRedistributionDesSolides:
+    """À Cw imposé, balayer Bw redistribue les solides sans changer Cw.
+
+    C'est LA question que pose un étudiant devant la page Analyse (« si je
+    fais varier Bw, est-ce que Cw change ? »). La réponse est non : Cw est une
+    ENTRÉE de la méthode Cw%, et _override ne remplace que le paramètre
+    balayé. Ce qui bouge, c'est la répartition résidu/liant.
+    """
+
+    def test_cw_reste_exactement_constant(self):
+        base, _ = _rpc_base()
+        res = balayer(BalayageInputs(category="RPC", base_inputs_rpc=base,
+                                     param="binder_mass_pct", x_min=2, x_max=10, steps=5))
+        cw = [v for v in res.series["solids_mass_pct"] if v is not None]
+        assert len(cw) == 5
+        assert max(cw) - min(cw) == pytest.approx(0.0, abs=1e-12)
+
+    def test_le_residu_cede_la_place_au_liant(self):
+        base, _ = _rpc_base()
+        res = balayer(BalayageInputs(category="RPC", base_inputs_rpc=base,
+                                     param="binder_mass_pct", x_min=2, x_max=10, steps=5))
+        residu = res.series["residue_dry_mass_kg"]
+        liant = res.series["binder_total_mass_kg"]
+        assert all(a > b for a, b in zip(residu, residu[1:])), "le résidu doit décroître"
+        assert all(a < b for a, b in zip(liant, liant[1:])), "le liant doit croître"
+        # Le total des solides ne bouge qu'à peine : il suit rho_d, qui se
+        # déplace parce que le Gs du liant diffère de celui du résidu. Ce n'est
+        # donc PAS exactement constant — ne jamais l'écrire dans l'UI.
+        total = [r + b for r, b in zip(residu, liant)]
+        variation = (max(total) - min(total)) / min(total)
+        assert 0 < variation < 0.01, f"variation inattendue du total : {variation}"
+
+    def test_teneur_en_eau_suit_cw_donc_reste_constante(self):
+        # w = (1 - Cw)/Cw : Cw figé implique w figé.
+        base, _ = _rpc_base()
+        res = balayer(BalayageInputs(category="RPC", base_inputs_rpc=base,
+                                     param="binder_mass_pct", x_min=2, x_max=10, steps=5))
+        w = [v for v in res.series["w_mass_pct"] if v is not None]
+        assert max(w) - min(w) == pytest.approx(0.0, abs=1e-12)
 
 
 class TestCoupures:

@@ -24,7 +24,8 @@ const PX: [number, number] = [M.gauche, W - M.droite];
 
 function fmtVal(v: number | null, unite: string): string {
   if (v === null || !Number.isFinite(v)) return "—";
-  const d = unite === "kg/m³" ? 0 : unite === "%" ? 2 : 3;
+  // « kg » : voir fmtStat dans la page Analyse, même piège.
+  const d = unite === "kg/m³" ? 0 : unite === "kg" ? 1 : unite === "%" ? 2 : 3;
   return v.toLocaleString("fr-CA", { maximumFractionDigits: d });
 }
 

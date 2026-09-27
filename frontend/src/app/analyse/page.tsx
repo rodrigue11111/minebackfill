@@ -58,7 +58,9 @@ const inputStyle: React.CSSProperties = {
 };
 
 function fmtStat(v: number, unite: string): string {
-  const d = unite === "kg/m³" ? 1 : unite === "%" ? 2 : 4;
+  // « kg » doit être branché ici : sans lui, une masse tombe dans la branche
+  // par défaut et s'affiche avec 4 décimales (« 1 234,5678 kg »).
+  const d = unite === "kg/m³" ? 1 : unite === "kg" ? 1 : unite === "%" ? 2 : 4;
   const s = v.toLocaleString("fr-CA", { maximumFractionDigits: d });
   return unite === "—" ? s : `${s} ${unite}`;
 }

@@ -41,6 +41,15 @@ _SERIES: Dict[str, Callable[[MixState], float]] = {
     "bulk_density_kg_m3": lambda s: s.bulk_density_kg_m3,                  # rho_h
     "aggregate_mass_pct": lambda s: s.aggregate_mass_pct,                  # A_m%
     "aggregate_vol_pct_of_residue": lambda s: s.aggregate_vol_pct_of_residue,  # A_v%
+    # Ajouts 2026-09-27 — APPEND uniquement : la sentinelle des tests est un
+    # tuple ORDONNÉ, réordonner casserait test_series_keys_sentinelle.
+    # Aucune formule nouvelle : ces champs sont déjà calculés par les solveurs.
+    "cv_vol_pct": lambda s: s.cv_vol_pct,                                  # Cv%
+    # Les deux masses répondent à « que change vraiment un balayage de Bw ? » :
+    # à Cw imposé, le résidu cède la place au liant et le total ne bouge qu'à
+    # peine. Sans elles, cette redistribution n'est affirmée nulle part.
+    "residue_dry_mass_kg": lambda s: s.components.residue_dry_mass_kg,
+    "binder_total_mass_kg": lambda s: s.components.binder_total_mass_kg,
 }
 
 #: Grandeurs disponibles côté clients (nom stable). Exporté pour les tests.
