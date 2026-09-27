@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from app.core.analyse import balayer, SERIES_KEYS
+from app.core.analyse import balayer, SERIES_KEYS, PARAM_KEYS, _PARAM_OVERRIDE
 
 # Liste CANONIQUE des grandeurs de sortie du balayage. C'est CETTE sentinelle
 # (ordonnée, ci-dessous) qui casse de façon GARANTIE dès qu'on modifie _SERIES.
@@ -47,6 +47,68 @@ def _rpg_base():
     base = RpgCwInputs(category="RPG", aggregate_fraction_pct=20.0,
                        aggregate_specific_gravity=GSG, **common)
     return base, common
+
+
+# Liste CANONIQUE des paramètres balayables, symétrique de SERIES_CANONIQUE.
+# Elle manquait : rien ne reliait BalayageParam au tableau PARAMS du frontend
+# (frontend/src/lib/analyse-series.ts), ni à sa copie dans
+# analyse-series.test.ts. Ajouter un membre ici oblige à les mettre à jour.
+PARAMS_CANONIQUE = (
+    "binder_mass_pct", "solids_mass_pct", "saturation_pct", "aggregate_fraction_pct",
+)
+
+# Sortie qui DOIT suivre chaque paramètre balayé. Sert au test anti-courbe-plate.
+SORTIE_MIROIR = {
+    "binder_mass_pct": ("RPC", "bw_mass_pct"),
+    "solids_mass_pct": ("RPC", "solids_mass_pct"),
+    "saturation_pct": ("RPC", "saturation_pct"),
+    "aggregate_fraction_pct": ("RPG", "aggregate_mass_pct"),
+}
+
+
+def test_params_keys_sentinelle():
+    """Anti-dérive : garde synchronisés les paramètres backend et la liste
+    canonique partagée avec le frontend (PARAMS + sa copie dans les tests)."""
+    assert tuple(PARAM_KEYS) == PARAMS_CANONIQUE
+
+
+def test_override_couvre_tous_les_params():
+    """Doublon volontaire du contrôle fait à l'import d'analyse.py : si
+    quelqu'un affaiblit ce contrôle, ce test reste."""
+    assert set(p.value for p in _PARAM_OVERRIDE) == set(PARAM_KEYS)
+
+
+def test_sortie_miroir_couvre_tous_les_params():
+    """Le test anti-courbe-plate ne vaut que s'il couvre TOUS les paramètres."""
+    assert set(SORTIE_MIROIR) == set(PARAM_KEYS)
+
+
+@pytest.mark.parametrize("param", PARAMS_CANONIQUE)
+def test_aucun_param_ne_donne_une_courbe_plate(param):
+    """LE test qui aurait attrapé le bug historique.
+
+    Un paramètre non branché dans _PARAM_OVERRIDE produisait un balayage qui
+    réussissait en ne balayant rien : toutes les valeurs identiques, aucune
+    erreur, aucune coupure. On vérifie ici le SYMPTÔME (la sortie miroir varie
+    réellement sur la plage) et non la cause, ce qui couvre aussi les futurs
+    modes de défaillance.
+    """
+    categorie, cle_sortie = SORTIE_MIROIR[param]
+    if categorie == "RPC":
+        base, _ = _rpc_base()
+        inputs = BalayageInputs(category="RPC", base_inputs_rpc=base,
+                                param=param, x_min=20, x_max=40, steps=5)
+    else:
+        base, _ = _rpg_base()
+        inputs = BalayageInputs(category="RPG", base_inputs_rpg=base,
+                                param=param, x_min=10, x_max=40, steps=5)
+
+    valeurs = [v for v in balayer(inputs).series[cle_sortie] if v is not None]
+    assert len(valeurs) >= 2, f"{param} : pas assez de points calculables"
+    assert max(valeurs) - min(valeurs) > 1e-6, (
+        f"{param} : la sortie {cle_sortie} est PLATE sur la plage — "
+        "le paramètre n'est probablement pas appliqué"
+    )
 
 
 class TestGrille:

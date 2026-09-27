@@ -53,20 +53,43 @@ def _linspace(a: float, b: float, n: int) -> List[float]:
     return [a + (b - a) * i / (n - 1) for i in range(n)]
 
 
+# Delta à appliquer sur la base pour porter le paramètre balayé, UN par membre
+# de BalayageParam. Table plutôt que chaîne de si/sinon : une chaîne sans
+# branche par défaut acceptait silencieusement un paramètre non branché et
+# rendait une courbe PARFAITEMENT PLATE, sans erreur ni coupure — le balayage
+# « réussissait » en ne balayant rien.
+_PARAM_OVERRIDE: Dict[BalayageParam, Callable[[float], dict]] = {
+    BalayageParam.BW: lambda x: {"binder_mass_pct_recipes": [x]},
+    BalayageParam.CW: lambda x: {"solids_mass_pct": x},
+    BalayageParam.SR: lambda x: {"saturation_pct": x},
+    BalayageParam.AM: lambda x: {"aggregate_fraction_pct": x},
+}
+
+# Contrôle de complétude À L'IMPORT du module, et non au moment du balayage.
+# Un membre ajouté à BalayageParam sans branche ici casse donc l'import, donc
+# la suite entière — immédiatement, sans attendre que quelqu'un balaie ce
+# paramètre-là. C'est volontairement plus brutal qu'une exception levée dans
+# _override : celle-ci ne se déclencherait qu'au premier usage réel.
+# `raise` et non `assert` : les assertions disparaissent sous `python -O`.
+_sans_branche = set(BalayageParam) - set(_PARAM_OVERRIDE)
+if _sans_branche:
+    raise RuntimeError(
+        "Paramètres balayables sans branche dans _PARAM_OVERRIDE : "
+        f"{sorted(p.value for p in _sans_branche)}"
+    )
+
+#: Paramètres balayables (nom stable). Exporté pour la sentinelle des tests,
+#: symétrique de SERIES_KEYS.
+PARAM_KEYS = tuple(p.value for p in BalayageParam)
+
+
 def _override(base, param: BalayageParam, x: float) -> dict:
     """Champs à remplacer sur la base pour porter le paramètre balayé (recette
     unique). Le liant garde la valeur de la 1re recette sauf si c'est LUI qu'on
     balaie."""
     bw0 = base.binder_mass_pct_recipes[0] if base.binder_mass_pct_recipes else 0.0
     maj: dict = {"num_recipes": 1, "binder_mass_pct_recipes": [bw0]}
-    if param == BalayageParam.BW:
-        maj["binder_mass_pct_recipes"] = [x]
-    elif param == BalayageParam.CW:
-        maj["solids_mass_pct"] = x
-    elif param == BalayageParam.SR:
-        maj["saturation_pct"] = x
-    elif param == BalayageParam.AM:
-        maj["aggregate_fraction_pct"] = x
+    maj.update(_PARAM_OVERRIDE[param](x))
     return maj
 
 
