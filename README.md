@@ -1,10 +1,11 @@
 # MineBackfill — Outil de dimensionnement des mélanges de remblai minier
 
 Application web de calcul des recettes de **remblai cimenté en pâte** (RPC), **remblai pâte
-granulaire** (RPG/PAF) et bientôt remblai rocheux cimenté (RRC), développée dans le cadre du
+granulaire** (RPG/PAF) et **remblai rocheux cimenté** (RRC/CRF), développée dans le cadre du
 Module 1 du programme de M. Belem (GNM1002).
 
-**Application en ligne : https://frontend-eight-xi-64.vercel.app**
+**Application en ligne : https://minebackfill.progicielbelem.com**
+(portail des outils : https://progicielbelem.com)
 
 ## Ce que fait l'outil
 
