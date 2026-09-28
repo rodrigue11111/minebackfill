@@ -138,11 +138,23 @@ optionnel+nullable pour les vieux localStorage).
 | `minebackfill_constantes` | `{v,data}` | 2 | `completerConstantes` (drapeaux + détection de pack) |
 | `minebackfill_general` | `{v,data}` | 1 | identité |
 | `minebackfill_catalogue_residus/granulats/retardateurs` | `{v,data}` | 1 | identité |
-| Sauvegarde (fichier) | `backup.ts` | schéma 3 | fusion par id, le local gagne |
+| `minebackfill_gachees` | `{v,data}` | 2 | `migrerGachees` (registre d'éprouvettes) |
+| `minebackfill_protocoles` | `{v,data}` | 1 | identité + graine `protocolesDefaut()` |
+| Sauvegarde (fichier) | `backup.ts` | schéma 4 | fusion par id, le local gagne |
 
 Toute évolution de schéma : incrémenter la version de LA clé concernée
 (elles sont indépendantes depuis P4) + migration + test dans
 `store-persistence.test.ts`.
+
+**Une clé ajoutée doit AUSSI entrer dans `backup.ts`.** Les deux clés du labo
+y ont manqué du jour de leur création jusqu'au schéma 4 : les gâchées, les
+éprouvettes et les essais UCS n'étaient ni exportés ni importés, et rien ne le
+signalait. Leur cas est particulier et sert de modèle : parce qu'elles sont en
+enveloppe `{v,data}`, `backup.ts` ne les lit pas par `lire()` (qui rendrait
+l'enveloppe, empêchant la fusion par id) mais par les accesseurs exportés du
+store, `loadGacheesFromStorage` / `persistGachees` et leurs équivalents
+protocoles, qui rendent des données déjà migrées. À l'import, `deballer()`
+tolère les deux formes. Tests : `backup.test.ts`.
 
 ### 9. Mode test sans compte — activer / RÉACTIVER les comptes
 

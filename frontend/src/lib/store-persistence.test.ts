@@ -235,3 +235,64 @@ describe("store — détection de pack dans setConstantes (revue P4)", () => {
     expect(useStore.getState().constantes.pack_id).toBe("intra2017");
   });
 });
+
+describe("store — gâchées et protocoles (persistance labo)", () => {
+  // Ces deux clés n'avaient AUCUN test de persistance : elles sont pourtant
+  // les seules à porter des mesures irremplaçables (essais UCS), et elles
+  // étaient absentes de backup.ts jusqu'au schéma 4.
+
+  function gacheeAvecEssai() {
+    return {
+      id: "g1", code: "G-20260927-01", creeLe: "2026-09-27T12:00:00.000Z",
+      statut: "terminee" as const,
+      formulationLabel: "Mélange 1", categorie: "RPC", recetteIndex: 0,
+      composants: [], tolerancePct: 2, ajustements: [],
+      eprouvettes: [{
+        id: "e1", code: "G-20260927-01-E01", couleLe: "2026-09-27T12:00:00.000Z",
+        ageJours: 28, statut: "ecrase" as const,
+        essai: { date: "2026-10-25T12:00:00.000Z", chargeKn: 2.5, diametreMm: 50 },
+      }],
+    };
+  }
+
+  it("une gâchée avec éprouvette et essai UCS survit au rechargement", () => {
+    const s = useStore.getState();
+    s.ajouterGachee(gacheeAvecEssai());
+    useStore.setState({ gachees: [] });
+    useStore.getState().loadGachees();
+    const g = useStore.getState().gachees;
+    expect(g).toHaveLength(1);
+    expect(g[0].eprouvettes[0].essai?.chargeKn).toBe(2.5);
+    expect(g[0].eprouvettes[0].ageJours).toBe(28);
+  });
+
+  it("une gâchée v1 (sans registre d'éprouvettes) est migrée vers []", () => {
+    // v1 = avant la phase 2 du labo. migrerGachees doit poser le tableau vide
+    // plutôt que de laisser `undefined`, qui ferait planter agregerParAge.
+    localStorage.setItem(
+      "minebackfill_gachees",
+      JSON.stringify({ v: 1, data: [{ id: "vieille", code: "G-1", statut: "terminee" }] }),
+    );
+    useStore.getState().loadGachees();
+    const g = useStore.getState().gachees;
+    expect(g).toHaveLength(1);
+    expect(g[0].eprouvettes).toEqual([]);
+  });
+
+  it("les protocoles absents sont semés avec les procédures par défaut", () => {
+    useStore.getState().loadProtocoles();
+    const p = useStore.getState().protocoles;
+    expect(p.length).toBeGreaterThan(0);
+    expect(p.map((x) => x.id)).toContain("essai-ucs");
+  });
+
+  it("une édition de protocole survit au rechargement", () => {
+    useStore.getState().loadProtocoles();
+    const id = useStore.getState().protocoles[0].id;
+    useStore.getState().modifierProtocole(id, { contenu: "Procédure révisée 2026." });
+    useStore.setState({ protocoles: [] });
+    useStore.getState().loadProtocoles();
+    expect(useStore.getState().protocoles.find((x) => x.id === id)?.contenu)
+      .toBe("Procédure révisée 2026.");
+  });
+});
