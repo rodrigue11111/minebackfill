@@ -481,15 +481,33 @@ function ResultatsUCS({ gachees, formulations }: {
   // paramètre de formulation.
   const [axe, setAxe] = React.useState<"age" | AxeFormulation>("age");
   const [ageVoulu, setAgeVoulu] = React.useState<number | null>(null);
+  // On mémorise les gâchées MASQUÉES, pas les affichées : une gâchée créée
+  // après coup apparaît ainsi d'office, au lieu de rester invisible jusqu'à ce
+  // qu'on pense à la cocher.
+  const [masquees, setMasquees] = React.useState<Set<string>>(new Set());
 
   const donnees = gachees
     .map((g) => ({ g, ages: agregerParAge(g.eprouvettes).filter((a) => a.moyenneKpa !== null) }))
     .filter((d) => d.ages.length > 0);
 
-  const series: SerieUCS[] = donnees.map((d, i) => ({
+  // Couleur attachée à la GÂCHÉE, calculée sur la liste complète. Si on la
+  // calculait sur la liste filtrée, masquer une gâchée recolorierait toutes
+  // les suivantes — et un étudiant croirait avoir perdu la sienne.
+  const couleurDe = new Map(donnees.map((d, i) => [d.g.id, COULEURS_SERIE[i % COULEURS_SERIE.length]]));
+
+  const visibles = donnees.filter((d) => !masquees.has(d.g.id));
+  const nbMasquees = donnees.length - visibles.length;
+
+  const basculer = (id: string) => setMasquees((prev) => {
+    const s = new Set(prev);
+    if (s.has(id)) s.delete(id); else s.add(id);
+    return s;
+  });
+
+  const series: SerieUCS[] = visibles.map((d) => ({
     cle: d.g.id,
     label: d.g.code,
-    couleur: COULEURS_SERIE[i % COULEURS_SERIE.length],
+    couleur: couleurDe.get(d.g.id) ?? COULEURS_SERIE[0],
     points: d.ages.map((a) => ({ x: a.ageJours, moyenne: a.moyenneKpa as number, ecartType: a.ecartTypeKpa, n: a.n })),
   }));
 
@@ -500,19 +518,25 @@ function ResultatsUCS({ gachees, formulations }: {
   const ages = React.useMemo(() => agesDisponibles(gachees), [gachees]);
   const age = ageVoulu !== null && ages.includes(ageVoulu) ? ageVoulu : (ages[0] ?? 0);
 
+  // Les gâchées masquées sont retirées AVANT le calcul du nuage : elles ne
+  // doivent pas apparaître dans « Gâchées absentes de cette figure », qui
+  // signale des problèmes de DONNÉES (pas d'éprouvette à cet âge, toutes
+  // exclues). Y mêler un masquage volontaire rendrait cette liste illisible.
+  const gacheesRetenues = gachees.filter((g) => !masquees.has(g.id));
   const metaAxe = axe !== "age" ? axeMeta(axe) : undefined;
-  const nuage = axe !== "age" ? nuageUcs(gachees, formulations, axe, age) : null;
+  const nuage = axe !== "age" ? nuageUcs(gacheesRetenues, formulations, axe, age) : null;
 
   const seriesNuage: SerieUCS[] = nuage
-    ? nuage.points.map((p, i) => ({
-        cle: p.id, label: p.code, couleur: COULEURS_SERIE[i % COULEURS_SERIE.length],
+    ? nuage.points.map((p) => ({
+        cle: p.id, label: p.code, couleur: couleurDe.get(p.id) ?? COULEURS_SERIE[0],
         points: [{ x: p.x, moyenne: p.moyenneKpa, ecartType: p.ecartTypeKpa, n: p.n }],
       }))
     : [];
 
   function exporterCsvMesures() {
     if (!nuage || axe === "age") return;
-    const meta = lignesProvenanceLabo(gachees, axe, age).map((l) => "# " + l);
+    // L'export porte exactement ce que la figure montre.
+    const meta = lignesProvenanceLabo(gacheesRetenues, axe, age).map((l) => "# " + l);
     const corps = lignesCsvNuage(nuage, axe);
     telechargerTexte(
       [...meta, "", ...corps.map((r) => r.map(celluleCsv).join(";"))].join("\r\n"),
@@ -529,21 +553,72 @@ function ResultatsUCS({ gachees, formulations }: {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Ce que la page MONTRE d'abord. Les précautions méthodologiques
+          viennent après, et seulement quand il y a des mesures : sur un écran
+          vide, quatre refus alignés avant la moindre explication décourageaient
+          plus qu'ils n'informaient. */}
       <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#1e3a8a" }}>
-        Ces graphiques montrent la résistance <strong>mesurée</strong> en laboratoire (UCS = charge à la rupture rapportée à la
-        section). Aucune valeur <strong>prédite ou modélisée</strong> n&apos;est tracée : le programme ne dispose pas de modèle
-        de prédiction validé. Les points sont les moyennes des éprouvettes retenues ; les barres verticales indiquent ± un écart-type.
-        {" "}Aucune droite d&apos;ajustement n&apos;est tracée et aucune valeur n&apos;est interpolée : seuls des âges réellement
-        mesurés sont proposés. Pour les grandeurs <strong>calculées</strong> et leurs courbes de réponse, voir{" "}
+        <strong>UCS</strong> = résistance en compression uniaxiale : on écrase une éprouvette, on note la charge
+        à la rupture, et on la rapporte à la section du cylindre. Cet onglet trace la résistance que vous avez{" "}
+        <strong>mesurée</strong>, en fonction de l&apos;âge de cure ou du dosage du mélange. Pour les grandeurs{" "}
+        <strong>calculées</strong> et leurs courbes de réponse, voir{" "}
         <Link href="/analyse" style={{ color: "#1d4ed8", fontWeight: 600, textDecoration: "underline" }}>Analyse</Link>.
       </div>
 
-      {series.length === 0 ? (
-        <p style={{ fontSize: 13.5, color: "#64748b", textAlign: "center", padding: "24px 0" }}>
-          Aucune mesure UCS pour l&apos;instant. Dans une gâchée, marque une éprouvette « écrasée » et saisis sa charge (ou sa contrainte).
-        </p>
+      {donnees.length === 0 ? (
+        <div style={{ padding: "18px 4px", color: "#475569", fontSize: 13.5, lineHeight: 1.7 }}>
+          <p style={{ margin: "0 0 10px", fontWeight: 600, color: "#0f172a" }}>
+            Aucune mesure UCS pour l&apos;instant — c&apos;est normal tant qu&apos;aucune éprouvette n&apos;a été écrasée.
+          </p>
+          <p style={{ margin: "0 0 6px" }}>Pour remplir cet onglet :</p>
+          <ol style={{ margin: 0, paddingLeft: 22 }}>
+            <li>onglet <strong>Gâchées</strong> → <strong>Nouvelle gâchée</strong>, à partir d&apos;une formulation
+              sauvegardée dans Calculs ;</li>
+            <li>dans la gâchée, carte <strong>« Éprouvettes (cure et écrasement) »</strong> → choisir un âge de cure
+              et un nombre d&apos;éprouvettes, puis <strong>Ajouter</strong> ;</li>
+            <li>le jour de l&apos;essai, sur une éprouvette : <strong>« Marquer écrasée »</strong> ;</li>
+            <li>saisir <strong>« Charge à la rupture (kN) »</strong> et <strong>« Diamètre (mm) »</strong> —
+              la résistance est calculée automatiquement.</li>
+          </ol>
+          <p style={{ margin: "10px 0 0" }}>
+            Le graphique apparaît dès la première éprouvette écrasée.
+          </p>
+        </div>
       ) : (
         <>
+          <Carte titre={`Gâchées affichées (${visibles.length} sur ${donnees.length})`}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px" }}>
+              {donnees.map((d) => (
+                <label key={d.g.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, cursor: "pointer" }}>
+                  <input type="checkbox" checked={!masquees.has(d.g.id)} onChange={() => basculer(d.g.id)} />
+                  <span style={{ width: 12, height: 3, background: couleurDe.get(d.g.id), borderRadius: 2 }} />
+                  <span style={{ color: masquees.has(d.g.id) ? "#94a3b8" : "#0f172a" }}>{d.g.code}</span>
+                </label>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <button type="button" onClick={() => setMasquees(new Set())}
+                style={{ padding: "4px 10px", fontSize: 12, borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", color: "#475569", cursor: "pointer" }}>
+                Tout afficher
+              </button>
+              <button type="button" onClick={() => setMasquees(new Set(donnees.map((d) => d.g.id)))}
+                style={{ padding: "4px 10px", fontSize: 12, borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", color: "#475569", cursor: "pointer" }}>
+                Tout masquer
+              </button>
+            </div>
+            <p style={{ fontSize: 11.5, color: "#64748b", margin: "10px 0 0", lineHeight: 1.5 }}>
+              La couleur reste attachée à la gâchée : en masquer une ne change pas la couleur des autres.
+              La palette compte {COULEURS_SERIE.length} couleurs et se répète au-delà — raison de plus pour
+              n&apos;afficher que les gâchées qui vous intéressent.
+            </p>
+          </Carte>
+
+          {visibles.length === 0 && (
+            <p style={{ fontSize: 13, color: "#b45309", textAlign: "center", padding: "12px 0" }}>
+              Toutes les gâchées sont masquées : cochez-en au moins une ci-dessus.
+            </p>
+          )}
+
           <Carte titre="Abscisse">
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
               <button type="button" style={boutonAxe(axe === "age")} onClick={() => setAxe("age")}>
@@ -609,6 +684,26 @@ function ResultatsUCS({ gachees, formulations }: {
             </Carte>
           )}
 
+          {/* Les précautions méthodologiques, à leur place : SOUS la figure,
+              quand il y a quelque chose à interpréter. Elles restent
+              indispensables — elles empêchent de lire un nuage de mesures
+              comme une loi physique. */}
+          <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
+            <strong style={{ color: "#0f172a" }}>Comment lire ces graphiques.</strong> Les points sont les{" "}
+            <strong>moyennes</strong> des éprouvettes retenues et les barres verticales valent ± un écart-type.
+            Aucune valeur n&apos;est <strong>prédite ni modélisée</strong> — le programme ne dispose d&apos;aucun
+            modèle de prédiction validé. Aucune <strong>droite d&apos;ajustement</strong> n&apos;est tracée et aucune
+            valeur n&apos;est <strong>interpolée</strong> : seuls des âges réellement mesurés sont proposés.
+            {nbMasquees > 0 && (
+              <>
+                {" "}<span style={{ color: "#b45309" }}>
+                  {nbMasquees} gâchée{nbMasquees > 1 ? "s sont masquées" : " est masquée"} : les figures, la table
+                  et l&apos;export ne portent que les gâchées cochées.
+                </span>
+              </>
+            )}
+          </div>
+
           <Carte titre="Détail des mesures">
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 620 }}>
@@ -625,7 +720,7 @@ function ResultatsUCS({ gachees, formulations }: {
                   </tr>
                 </thead>
                 <tbody>
-                  {donnees.flatMap((d) =>
+                  {visibles.flatMap((d) =>
                     d.ages.map((a, j) => (
                       <tr key={`${d.g.id}-${a.ageJours}`} style={{ borderTop: "1px solid #f1f5f9", textAlign: "right" }}>
                         <td style={{ textAlign: "left", padding: "5px 8px", fontWeight: j === 0 ? 700 : 400, color: j === 0 ? "#0f172a" : "#94a3b8" }}>
