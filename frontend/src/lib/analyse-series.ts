@@ -32,6 +32,13 @@ export const SORTIES: SortieMeta[] = [
   { cle: "bulk_density_kg_m3", label: "ρh — densité humide", unite: "kg/m³", categories: ["RPC", "RPG"], couleur: "#0d9488" },
   { cle: "aggregate_mass_pct", label: "Am — agrégat massique", unite: "%", categories: ["RPG"], couleur: "#9333ea" },
   { cle: "aggregate_vol_pct_of_residue", label: "Av — agrégat volumique", unite: "%", categories: ["RPG"], couleur: "#0284c7" },
+  { cle: "cv_vol_pct", label: "Cv — solides volumiques", unite: "%", categories: ["RPC", "RPG"], couleur: "#c026d3" },
+  // Les deux masses montrent la redistribution que masque un balayage de Bw :
+  // à Cw imposé, le résidu cède la place au liant. Unité « kg » — pensez à la
+  // brancher dans fmtStat (page Analyse) et fmtVal (CourbeSvg), sans quoi
+  // elles tombent dans la branche par défaut et affichent 4 décimales.
+  { cle: "residue_dry_mass_kg", label: "Masse de résidu sec", unite: "kg", categories: ["RPC", "RPG"], couleur: "#a16207" },
+  { cle: "binder_total_mass_kg", label: "Masse de liant", unite: "kg", categories: ["RPC", "RPG"], couleur: "#475569" },
 ];
 
 export interface ParamMeta {

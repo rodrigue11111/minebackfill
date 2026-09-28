@@ -24,7 +24,8 @@ const PX: [number, number] = [M.gauche, W - M.droite];
 
 function fmtVal(v: number | null, unite: string): string {
   if (v === null || !Number.isFinite(v)) return "—";
-  const d = unite === "kg/m³" ? 0 : unite === "%" ? 2 : 3;
+  // « kg » : voir fmtStat dans la page Analyse, même piège.
+  const d = unite === "kg/m³" ? 0 : unite === "kg" ? 1 : unite === "%" ? 2 : 3;
   return v.toLocaleString("fr-CA", { maximumFractionDigits: d });
 }
 
@@ -51,9 +52,12 @@ export default function CourbeSvg({
   const H = hauteur;
   const PY: [number, number] = [H - M.bas, M.haut];
 
+  // Gris de texte : #64748b (4,76:1 sur blanc) et non #94a3b8 (2,56:1, sous
+  // le seuil AA de 4,5:1). Le reste de l'application utilise encore #94a3b8
+  // pour du texte secondaire — à reprendre dans une passe dédiée.
   if (x.length === 0 || series.length === 0) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
+      <div style={{ padding: 40, textAlign: "center", color: "#64748b", fontSize: 13 }}>
         Sélectionne au moins une grandeur, puis lance le calcul.
       </div>
     );
@@ -101,10 +105,21 @@ export default function CourbeSvg({
   const tipH = 16 + tipLignes.length * 15;
   const tipX = hx > W - M.droite - tipW - 8 ? hx - tipW - 8 : hx + 8;
 
+  // « Courbe en fonction de X » ne disait pas CE QUI est tracé : sans regarder
+  // la figure, on ne savait pas de quelle grandeur il s'agissait.
+  const etiquette = series.length === 1
+    ? `Courbe de ${series[0].label} en fonction de ${xLabel}`
+    : `Courbes de ${series.map((s) => s.label).join(", ")} en fonction de ${xLabel}`;
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ height: "auto", maxWidth: "100%", display: "block", userSelect: "none", fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
-      role="img" aria-label={`Courbe en fonction de ${xLabel}`}
+      role="img" aria-label={etiquette}
       onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+      {/* Premier enfant du <svg> : certains lecteurs d'écran lisent <title>
+          plutôt que aria-label. L'alternative TEXTUELLE complète à la figure
+          reste le tableau « Ce qui varie sur la plage » sous le graphique —
+          on ne construit pas un navigateur de points au clavier. */}
+      <title>{etiquette}</title>
       <rect x={PX[0]} y={PY[1]} width={PX[1] - PX[0]} height={PY[0] - PY[1]} fill="#fbfdff" />
 
       {ticksY.map((t, i) => {
@@ -156,7 +171,11 @@ export default function CourbeSvg({
       })}
 
       {h !== null && (
-        <g>
+        // aria-hidden : l'infobulle ne se déclenche qu'au survol de la souris,
+        // donc elle est inatteignable au clavier. La laisser dans l'arbre
+        // d'accessibilité ferait lire au lecteur d'écran des valeurs que son
+        // utilisateur ne peut pas provoquer.
+        <g aria-hidden="true">
           <line x1={hx} y1={PY[1]} x2={hx} y2={PY[0]} stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" />
           {series.map((s) => {
             const v = s.valeurs[h];

@@ -19,6 +19,8 @@ import { indexProche, ecartPct, statsSerie } from "@/lib/courbe-analyse";
 import {
   paramsPour, sortiesPour, paramMeta, sortieMeta, type CategorieAnalyse,
 } from "@/lib/analyse-series";
+import PanneauVariation from "@/components/analyse/PanneauVariation";
+import { estParamCle, valeurReference } from "@/lib/analyse-fixe";
 import {
   construireConstantesPayload, construireGeneralPayload, construireSystemeLiant,
 } from "@/lib/rpc_payload";
@@ -58,7 +60,9 @@ const inputStyle: React.CSSProperties = {
 };
 
 function fmtStat(v: number, unite: string): string {
-  const d = unite === "kg/m³" ? 1 : unite === "%" ? 2 : 4;
+  // « kg » doit être branché ici : sans lui, une masse tombe dans la branche
+  // par défaut et s'affiche avec 4 décimales (« 1 234,5678 kg »).
+  const d = unite === "kg/m³" ? 1 : unite === "kg" ? 1 : unite === "%" ? 2 : 4;
   const s = v.toLocaleString("fr-CA", { maximumFractionDigits: d });
   return unite === "—" ? s : `${s} ${unite}`;
 }
@@ -217,6 +221,15 @@ export default function AnalysePage() {
         regleLiant: constantes.essai_binder_rule,
       },
       versionSolveur: solverVersionActive(constantes),
+      // Les grandeurs tracées font partie de la provenance : sans elles, un CSV
+      // exporté ne dit pas ce qu'il contient.
+      sorties: sorties.map((c) => sortieMeta(c)?.label ?? c),
+      // Géométrie et extensivité : obligatoires depuis qu'on trace des masses.
+      // Comparer des kg entre deux balayages de contenants différents n'a aucun
+      // sens, et rien ne le signalait.
+      contenant: general.container_type ? { type: general.container_type } : undefined,
+      contenants: base.desired_qty ?? undefined,
+      facteurSecurite: base.safety_factor ?? undefined,
     };
   }
 
@@ -333,12 +346,13 @@ export default function AnalysePage() {
   const perime = res !== null && resProtocole !== protocoleActuel;
 
   // Valeur du paramètre balayé POUR la recette de base = point de référence.
+  // Lue dans l'INSTANTANÉ figé au calcul, et non plus dans le store vivant :
+  // modifier la recette dans Calculs déplaçait sinon le trait de référence
+  // alors que la courbe, elle, ne bougeait pas. Le `switch` exhaustif de
+  // valeurReference remplace une chaîne de ternaires qu'il fallait penser à
+  // compléter à chaque nouveau paramètre.
   const referenceX: number | null =
-    param === "binder_mass_pct" ? ((base.binder_pct || [])[0] ?? null)
-    : param === "solids_mass_pct" ? (base.solid_mass_pct ?? null)
-    : param === "saturation_pct" ? (base.saturation_pct ?? null)
-    : param === "aggregate_fraction_pct" ? (rpgCw.aggregate_fraction_pct ?? null)
-    : null;
+    resMeta && estParamCle(param) ? valeurReference(param, resMeta.recette) : null;
   const paramCourt = xLabel.split(" — ")[0];
   // La référence n'ancre l'écart % que si elle est DANS la plage balayée ;
   // sinon on ancre sur le 1er point et on le dit clairement (pas de fausse
@@ -403,6 +417,17 @@ export default function AnalysePage() {
             {categorie === "RPG" && <span>Am : <strong>{fmt(rpgCw.aggregate_fraction_pct, 1)} %</strong></span>}
             <Link href="/mix" style={{ color: "var(--primary)", fontWeight: 600, textDecoration: "underline" }}>Modifier dans Calculs</Link>
           </div>
+          {/* Découvrabilité : les deux modules vivaient côte à côte dans la
+              barre sans que rien ne les relie. Cette page ne trace QUE du
+              calculé ; les mesures réelles sont dans Labo. */}
+          <p style={{ fontSize: 11.5, color: "#64748b", marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+            Cette page trace uniquement des valeurs <strong>calculées</strong> par les solveurs.
+            Pour vos <strong>mesures</strong> de laboratoire — gâchées réelles, éprouvettes et
+            essais UCS —, voir{" "}
+            <Link href="/labo" style={{ color: "var(--primary)", fontWeight: 600, textDecoration: "underline" }}>
+              Labo → Résultats UCS
+            </Link>.
+          </p>
         </Carte>
 
         {mode === "courbes" ? (
@@ -484,7 +509,7 @@ export default function AnalysePage() {
                         refDansPlage ? (
                           <span style={{ fontSize: 11.5, color: "#b45309" }}>Référence (trait orange) : {paramCourt} = {fmt(referenceX, 2)}</span>
                         ) : (
-                          <span style={{ fontSize: 11.5, color: "#94a3b8" }}>Référence ({paramCourt} = {fmt(referenceX, 2)}) hors de la plage balayée</span>
+                          <span style={{ fontSize: 11.5, color: "#64748b" }}>Référence ({paramCourt} = {fmt(referenceX, 2)}) hors de la plage balayée</span>
                         )
                       )}
                     </div>
@@ -530,13 +555,27 @@ export default function AnalysePage() {
                         <FigurePng nom={`analyse-${categorie}-ecart`}>
                           <CourbeSvg x={res.x} xLabel={xLabel} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} />
                         </FigurePng>
-                        <p style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 6, lineHeight: 1.5 }}>
+                        <p style={{ fontSize: 11.5, color: "#64748b", marginTop: 6, lineHeight: 1.5 }}>
                           {refDansPlage
                             ? "Écart relatif (%) de chaque grandeur par rapport à sa valeur à la recette de référence (trait orange)."
                             : `Écart relatif (%) par rapport au 1er point balayé (${paramCourt} = ${fmt(res.x[0], 2)}) — la recette de référence est hors de la plage.`}
                           {" "}Une grandeur quasi constante reste plate — contrairement à une normalisation min-max.
                         </p>
                       </>
+                    )}
+
+                    {resMeta && estParamCle(param) && (
+                      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #e2e8f0" }}>
+                        <PanneauVariation
+                          instantane={resMeta}
+                          param={param}
+                          categorie={categorie}
+                          x={res.x}
+                          series={res.series}
+                          reference={refDansPlage ? referenceX! : undefined}
+                          fmt={fmtStat}
+                        />
+                      </div>
                     )}
 
                     {resMeta && (

@@ -168,6 +168,57 @@ mode** (elle exige un vrai compte prof), le reste fonctionne 100 % en local.
   chemin que « variables Supabase absentes », d'où la désactivation propre de
   toute l'UI compte/cloud sans toucher chaque appelant.
 
+### 10. Toucher au module Analyse (balayages, courbes)
+
+Aucune recette ne couvrait ce module ; voici ses points d'accroche.
+
+**Ajouter une grandeur de sortie (axe Y)** — 4 fichiers, 2 sentinelles :
+1. le champ doit exister sur `MixState` et être renseigné par les solveurs ;
+2. entrée dans `_SERIES` (`backend/app/core/analyse.py`), **en APPEND** ;
+3. `SERIES_CANONIQUE` dans `backend/app/tests/test_balayage.py` — tuple
+   **ORDONNÉ**, réordonner casse `test_series_keys_sentinelle` ;
+4. entrée `SortieMeta` dans `frontend/src/lib/analyse-series.ts` (`SORTIES`) ;
+5. la copie `SERIES_CANONIQUE` dans `analyse-series.test.ts` (comparaison
+   triée, l'ordre y est libre).
+Si l'unité est nouvelle, la brancher dans `fmtStat` (page Analyse) **et**
+`fmtVal` (`CourbeSvg.tsx`) : ces deux fonctions choisissent leurs décimales
+par une chaîne d'unités, et le défaut donne « 1 234,5678 kg ».
+
+**Ajouter un paramètre balayable (axe X)** — trois garde-fous, tous
+indispensables :
+1. membre de `BalayageParam` (`backend/app/core/models.py`) ; la VALEUR doit
+   être exactement le nom du champ d'entrée ;
+2. branche dans `_PARAM_OVERRIDE` (`analyse.py`). **Un contrôle de complétude
+   s'exécute à l'IMPORT du module** : un membre non branché casse l'import,
+   donc la suite entière. C'est voulu — la chaîne de si/sinon d'avant rendait
+   une courbe parfaitement plate sans erreur ;
+3. `BalayageInputs._coherence` si le paramètre est réservé à une catégorie
+   (modèle existant : `AM` refusé en RPC) ;
+4. `PARAMS_CANONIQUE` dans `test_balayage.py`, et sa copie dans
+   `analyse-series.test.ts` ;
+5. entrée `ParamMeta` dans `PARAMS` (`analyse-series.ts`) ;
+6. membre de `ParamCle` **et** branche dans `valeurReference`
+   (`frontend/src/lib/analyse-fixe.ts`) : le `switch` y est exhaustif, donc
+   un oubli est une erreur de compilation.
+
+**Où vit le tracé.** `CourbeSvg.tsx` (Analyse) et `CourbeUCS.tsx` (Labo)
+partagent `frontend/src/lib/courbe-utils.ts`. Refus documentés dans
+`CourbeSvg.tsx`, à ne pas défaire sans lire la raison : pas de zoom, pas de
+second axe Y, pas d'échelle log, pas de normalisation min-max (une grandeur
+quasi constante doit RESTER plate).
+
+**Pourquoi les mesures de labo ne sont pas dans Analyse.** La page fige
+`versionSolveur`, le pack de conventions et les constantes dans son
+instantané de provenance. Une mesure d'UCS ne dépend d'aucun des trois : l'y
+afficher produirait une provenance fausse. Et un nuage mesuré à côté d'une
+courbe calculée, sur des graphes identiques, se lit comme une validation de
+modèle. Les mesures restent donc dans `/labo`, avec deux liens croisés.
+
+**Pas de test de composant** dans ce dépôt : `vitest.config.ts` n'inclut que
+`src/**/*.test.ts` en environnement `node`. La règle est d'extraire la
+logique en modules purs de `src/lib` et de la tester là —
+`courbe-analyse.ts`, `analyse-fixe.ts`, `composition.ts` suivent ce patron.
+
 ## Pièges connus
 
 - **Lint React Compiler** : `setState` synchrone dans un `useEffect` est une

@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from app.core.analyse import balayer, SERIES_KEYS
+from app.core.analyse import balayer, SERIES_KEYS, PARAM_KEYS, _PARAM_OVERRIDE
 
 # Liste CANONIQUE des grandeurs de sortie du balayage. C'est CETTE sentinelle
 # (ordonnée, ci-dessous) qui casse de façon GARANTIE dès qu'on modifie _SERIES.
@@ -25,6 +25,7 @@ SERIES_CANONIQUE = (
     "saturation_pct", "bw_mass_pct", "bv_vol_pct", "w_mass_pct",
     "dry_density_kg_m3", "bulk_density_kg_m3",
     "aggregate_mass_pct", "aggregate_vol_pct_of_residue",
+    "cv_vol_pct", "residue_dry_mass_kg", "binder_total_mass_kg",
 )
 
 
@@ -47,6 +48,68 @@ def _rpg_base():
     base = RpgCwInputs(category="RPG", aggregate_fraction_pct=20.0,
                        aggregate_specific_gravity=GSG, **common)
     return base, common
+
+
+# Liste CANONIQUE des paramètres balayables, symétrique de SERIES_CANONIQUE.
+# Elle manquait : rien ne reliait BalayageParam au tableau PARAMS du frontend
+# (frontend/src/lib/analyse-series.ts), ni à sa copie dans
+# analyse-series.test.ts. Ajouter un membre ici oblige à les mettre à jour.
+PARAMS_CANONIQUE = (
+    "binder_mass_pct", "solids_mass_pct", "saturation_pct", "aggregate_fraction_pct",
+)
+
+# Sortie qui DOIT suivre chaque paramètre balayé. Sert au test anti-courbe-plate.
+SORTIE_MIROIR = {
+    "binder_mass_pct": ("RPC", "bw_mass_pct"),
+    "solids_mass_pct": ("RPC", "solids_mass_pct"),
+    "saturation_pct": ("RPC", "saturation_pct"),
+    "aggregate_fraction_pct": ("RPG", "aggregate_mass_pct"),
+}
+
+
+def test_params_keys_sentinelle():
+    """Anti-dérive : garde synchronisés les paramètres backend et la liste
+    canonique partagée avec le frontend (PARAMS + sa copie dans les tests)."""
+    assert tuple(PARAM_KEYS) == PARAMS_CANONIQUE
+
+
+def test_override_couvre_tous_les_params():
+    """Doublon volontaire du contrôle fait à l'import d'analyse.py : si
+    quelqu'un affaiblit ce contrôle, ce test reste."""
+    assert set(p.value for p in _PARAM_OVERRIDE) == set(PARAM_KEYS)
+
+
+def test_sortie_miroir_couvre_tous_les_params():
+    """Le test anti-courbe-plate ne vaut que s'il couvre TOUS les paramètres."""
+    assert set(SORTIE_MIROIR) == set(PARAM_KEYS)
+
+
+@pytest.mark.parametrize("param", PARAMS_CANONIQUE)
+def test_aucun_param_ne_donne_une_courbe_plate(param):
+    """LE test qui aurait attrapé le bug historique.
+
+    Un paramètre non branché dans _PARAM_OVERRIDE produisait un balayage qui
+    réussissait en ne balayant rien : toutes les valeurs identiques, aucune
+    erreur, aucune coupure. On vérifie ici le SYMPTÔME (la sortie miroir varie
+    réellement sur la plage) et non la cause, ce qui couvre aussi les futurs
+    modes de défaillance.
+    """
+    categorie, cle_sortie = SORTIE_MIROIR[param]
+    if categorie == "RPC":
+        base, _ = _rpc_base()
+        inputs = BalayageInputs(category="RPC", base_inputs_rpc=base,
+                                param=param, x_min=20, x_max=40, steps=5)
+    else:
+        base, _ = _rpg_base()
+        inputs = BalayageInputs(category="RPG", base_inputs_rpg=base,
+                                param=param, x_min=10, x_max=40, steps=5)
+
+    valeurs = [v for v in balayer(inputs).series[cle_sortie] if v is not None]
+    assert len(valeurs) >= 2, f"{param} : pas assez de points calculables"
+    assert max(valeurs) - min(valeurs) > 1e-6, (
+        f"{param} : la sortie {cle_sortie} est PLATE sur la plage — "
+        "le paramètre n'est probablement pas appliqué"
+    )
 
 
 class TestGrille:
@@ -113,6 +176,47 @@ class TestGrille:
                                      param="binder_mass_pct", x_min=2, x_max=10, steps=9))
         wc = res.series["wc_ratio"]
         assert all(a > b for a, b in zip(wc, wc[1:]))  # strictement décroissant
+
+
+class TestRedistributionDesSolides:
+    """À Cw imposé, balayer Bw redistribue les solides sans changer Cw.
+
+    C'est LA question que pose un étudiant devant la page Analyse (« si je
+    fais varier Bw, est-ce que Cw change ? »). La réponse est non : Cw est une
+    ENTRÉE de la méthode Cw%, et _override ne remplace que le paramètre
+    balayé. Ce qui bouge, c'est la répartition résidu/liant.
+    """
+
+    def test_cw_reste_exactement_constant(self):
+        base, _ = _rpc_base()
+        res = balayer(BalayageInputs(category="RPC", base_inputs_rpc=base,
+                                     param="binder_mass_pct", x_min=2, x_max=10, steps=5))
+        cw = [v for v in res.series["solids_mass_pct"] if v is not None]
+        assert len(cw) == 5
+        assert max(cw) - min(cw) == pytest.approx(0.0, abs=1e-12)
+
+    def test_le_residu_cede_la_place_au_liant(self):
+        base, _ = _rpc_base()
+        res = balayer(BalayageInputs(category="RPC", base_inputs_rpc=base,
+                                     param="binder_mass_pct", x_min=2, x_max=10, steps=5))
+        residu = res.series["residue_dry_mass_kg"]
+        liant = res.series["binder_total_mass_kg"]
+        assert all(a > b for a, b in zip(residu, residu[1:])), "le résidu doit décroître"
+        assert all(a < b for a, b in zip(liant, liant[1:])), "le liant doit croître"
+        # Le total des solides ne bouge qu'à peine : il suit rho_d, qui se
+        # déplace parce que le Gs du liant diffère de celui du résidu. Ce n'est
+        # donc PAS exactement constant — ne jamais l'écrire dans l'UI.
+        total = [r + b for r, b in zip(residu, liant)]
+        variation = (max(total) - min(total)) / min(total)
+        assert 0 < variation < 0.01, f"variation inattendue du total : {variation}"
+
+    def test_teneur_en_eau_suit_cw_donc_reste_constante(self):
+        # w = (1 - Cw)/Cw : Cw figé implique w figé.
+        base, _ = _rpc_base()
+        res = balayer(BalayageInputs(category="RPC", base_inputs_rpc=base,
+                                     param="binder_mass_pct", x_min=2, x_max=10, steps=5))
+        w = [v for v in res.series["w_mass_pct"] if v is not None]
+        assert max(w) - min(w) == pytest.approx(0.0, abs=1e-12)
 
 
 class TestCoupures:

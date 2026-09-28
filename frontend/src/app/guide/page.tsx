@@ -344,6 +344,32 @@ export default function GuidePage() {
             <strong>Exporter Excel</strong> pour télécharger un fichier .xlsx complet.
           </Step>
 
+          <Step n={6} title="Explorer les courbes de réponse (page Analyse)">
+            La page <strong>Calculs</strong> répond à « quelle recette pour ces valeurs ? ». La page{" "}
+            <strong>Analyse</strong> répond à une autre question : « et si je faisais varier un
+            paramètre, que devient le reste ? ». Choisissez un paramètre à balayer — Bw, Cw, Sr ou
+            la fraction d&apos;agrégat — une plage, et l&apos;application calcule une recette complète à
+            chaque point. Aucune formule n&apos;est approchée : chaque point est une vraie résolution
+            par les mêmes solveurs que la page Calculs, donc une courbe ne peut pas diverger du
+            calculateur. Le tableau <strong>« Tenu fixe / ce qui varie »</strong> sous le graphique
+            dit exactement ce que le balayage laisse constant. Un second mode montre la{" "}
+            <strong>composition du mélange</strong> en barres, en diagramme ternaire et en
+            échantillon. Exports CSV, JSON et PNG, chacun accompagné de son bloc de provenance.
+          </Step>
+
+          <Step n={7} title="Suivre les gâchées et les essais UCS (page Labo)">
+            La page <strong>Labo</strong> accompagne la séance : enregistrez la{" "}
+            <strong>gâchée réelle</strong> (masses cibles contre masses réellement pesées, lots de
+            matériaux, ajustements versés après le premier malaxage), moulez des{" "}
+            <strong>éprouvettes</strong> avec leur âge de cure, suivez l&apos;échéancier des
+            écrasements — exportable en calendrier .ics — puis saisissez la charge à la rupture.
+            L&apos;application calcule la contrainte, agrège par âge (moyenne, écart-type, CV) et
+            trace la courbe <strong>UCS mesurée en fonction de l&apos;âge</strong>. Aucune valeur
+            n&apos;est prédite : seules vos mesures sont tracées. Les protocoles sont éditables et
+            chaque gâchée en fige un instantané, de sorte qu&apos;une mesure reste interprétable même
+            si la procédure change ensuite.
+          </Step>
+
           <InfoBox type="tip">
             <strong>Astuce :</strong> Utilisez le bouton plein ecran (icone en haut a droite du panneau
             de résultats) pour afficher les tableaux en disposition a deux colonnes, plus lisible avec
