@@ -194,6 +194,13 @@ function FormEssaiUCS({ eprouvette, onChange }: {
   const es = eprouvette.essai ?? {};
   const calculee = contrainteKpa({ chargeKn: es.chargeKn, diametreMm: es.diametreMm });
   const retenue = contrainteKpa(es);
+  // Une contrainte directe renseignee l'emporte sur F/A (voir contrainteKpa).
+  const directePrime = es.contrainteKpaSaisie != null && es.contrainteKpaSaisie > 0;
+  // Ecart entre les deux voies, pour que l'etudiant VOIE si elles concordent.
+  // Simple difference relative affichee : aucun modele, aucune correction.
+  const ecartPct = directePrime && calculee !== null && calculee > 0
+    ? ((es.contrainteKpaSaisie! - calculee) / calculee) * 100
+    : null;
   return (
     <div style={{ marginTop: 8, padding: "12px 12px 4px", background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
@@ -214,9 +221,36 @@ function FormEssaiUCS({ eprouvette, onChange }: {
           {retenue !== null ? (
             <>UCS retenue : <strong style={{ fontSize: 15, color: "#0f172a" }}>{Math.round(retenue).toLocaleString("fr-CA")} kPa</strong>
               {es.contrainteKpaSaisie != null && es.contrainteKpaSaisie > 0 ? " (saisie directe)" : calculee !== null ? " (déduite de F / A)" : ""}</>
-          ) : <span style={{ color: "#94a3b8" }}>Saisis une charge + un diamètre, ou une contrainte directe.</span>}
+          ) : <span style={{ color: "#64748b" }}>Saisis une charge + un diamètre, ou une contrainte directe.</span>}
         </div>
       </div>
+
+      {directePrime && (
+        // Sans ce bloc, modifier la charge ou le diametre apres un import
+        // n'aurait AUCUN effet visible : la contrainte directe prime sur le
+        // calcul F/A. Le champ accepterait la saisie et l'ecran resterait fige
+        // — le genre de silence qui fait croire a une panne.
+        <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 7, padding: "8px 11px", fontSize: 12, color: "#92400e", lineHeight: 1.6 }}>
+          La <strong>contrainte directe prime</strong> : modifier la charge ou le diamètre ne changera
+          pas l&apos;UCS retenue tant qu&apos;elle est renseignée.
+          {calculee !== null && (
+            <>
+              {" "}Votre calcul F / A donnerait{" "}
+              <strong>{Math.round(calculee).toLocaleString("fr-CA")} kPa</strong>
+              {ecartPct !== null && (
+                <> — soit un écart de <strong>{ecartPct.toLocaleString("fr-CA", { maximumFractionDigits: 2 })} %</strong>
+                  {Math.abs(ecartPct) < 0.5 ? " (les deux concordent)" : ""}</>
+              )}.
+            </>
+          )}
+          <div style={{ marginTop: 6 }}>
+            <button type="button" className="btn-secondary" style={{ fontSize: 11.5, padding: "4px 10px" }}
+              onClick={() => onChange({ contrainteKpaSaisie: undefined })}>
+              Effacer la contrainte directe et revenir au calcul F / A
+            </button>
+          </div>
+        </div>
+      )}
 
       {es.sourcePresse && (
         // Ce que la presse apporte en plus de la contrainte, et qui était
@@ -627,6 +661,12 @@ function ResultatsUCS({ gachees, formulations }: {
             <li>saisir <strong>« Charge à la rupture (kN) »</strong> et <strong>« Diamètre (mm) »</strong> —
               la résistance est calculée automatiquement.</li>
           </ol>
+          <p style={{ margin: "10px 0 0" }}>
+            Si votre laboratoire fournit un classeur de presse, le bouton{" "}
+            <strong>« Importer un fichier de presse (.xlsx) »</strong> remplit ces essais sans
+            ressaisie. <strong>La saisie à la main reste possible dans tous les cas</strong> — et
+            les deux voies donnent le même résultat.
+          </p>
           <p style={{ margin: "10px 0 0" }}>
             Le graphique apparaît dès la première éprouvette écrasée.
           </p>

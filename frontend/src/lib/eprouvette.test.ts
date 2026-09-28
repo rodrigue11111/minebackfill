@@ -172,3 +172,39 @@ describe("etiquettesHtml", () => {
     expect(html).not.toContain("Essai <A>");
   });
 });
+
+describe("contrainteKpa — saisie manuelle et import de presse cohabitent", () => {
+  // Chiffres RÉELS de l'export URSTM du 2026-09-25 : charge 895,326 N sur un
+  // moule de 76,20 mm, contrainte annoncée par la presse 196,328 kPa.
+  const CHARGE_KN = 0.895326;
+  const DIAMETRE_MM = 76.2;
+  const PRESSE_KPA = 196.328;
+
+  it("le calcul F/A de l'application reproduit la presse au chiffre près", () => {
+    // C'est ce qui rend l'import sans risque de contradiction : les deux
+    // voies donnent la même valeur, donc importer ne trahit pas ce que
+    // l'étudiant aurait obtenu à la main.
+    const calculee = contrainteKpa({ chargeKn: CHARGE_KN, diametreMm: DIAMETRE_MM })!;
+    expect(calculee).toBeCloseTo(PRESSE_KPA, 2);
+  });
+
+  it("effacer la contrainte importée fait retomber sur le calcul manuel", () => {
+    // Sans cette bascule, un étudiant qui modifie la charge après un import
+    // ne verrait RIEN changer : la contrainte directe prime toujours.
+    const avecImport = { chargeKn: CHARGE_KN, diametreMm: DIAMETRE_MM, contrainteKpaSaisie: PRESSE_KPA };
+    expect(contrainteKpa(avecImport)).toBe(PRESSE_KPA);
+    const efface = { ...avecImport, contrainteKpaSaisie: undefined };
+    expect(contrainteKpa(efface)).toBeCloseTo(PRESSE_KPA, 2);
+  });
+
+  it("une éprouvette saisie entièrement à la main reste valide", () => {
+    // L'import ne doit jamais devenir un passage obligé.
+    expect(contrainteKpa({ chargeKn: 2.5, diametreMm: 50 })).toBeCloseTo(1273.24, 1);
+  });
+
+  it("modifier la charge change l'UCS quand aucune contrainte directe n'est posée", () => {
+    const a = contrainteKpa({ chargeKn: 2.0, diametreMm: 50 })!;
+    const b = contrainteKpa({ chargeKn: 3.0, diametreMm: 50 })!;
+    expect(b).toBeGreaterThan(a);
+  });
+});
