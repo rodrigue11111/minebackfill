@@ -33,6 +33,8 @@ export interface InstantaneAnalyse {
    *  comparer des kg entre deux balayages sans eux n'a aucun sens. */
   contenants?: number;
   facteurSecurite?: number;
+  /** Recettes comparées sur un même balayage (vide ou absent si une seule). */
+  variantes?: string[];
 }
 
 function f(n: number, dec = 3): string {
@@ -72,6 +74,9 @@ export function lignesResume(inst: InstantaneAnalyse): string[] {
     if (inst.contenants !== undefined) geo.push(`${f(inst.contenants, 0)} contenant(s)`);
     if (inst.facteurSecurite !== undefined) geo.push(`facteur de sécurité ${f(inst.facteurSecurite)}`);
     lignes.push(`Contenant : ${geo.join(" · ")}`);
+  }
+  if (inst.variantes?.length) {
+    lignes.push(`Recettes comparées : ${inst.variantes.join(" · ")}`);
   }
   if (inst.sorties?.length) {
     lignes.push(`Grandeurs tracées : ${inst.sorties.join(", ")}`);

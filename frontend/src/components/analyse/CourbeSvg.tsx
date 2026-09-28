@@ -16,6 +16,10 @@ export interface SerieTrace {
   couleur: string;
   unite: string;
   valeurs: (number | null)[];
+  /** Motif de tirets SVG (« 6 3 »…). Utilisé pour distinguer des variantes
+   *  autrement que par la couleur : une figure imprimée en niveaux de gris
+   *  doit rester lisible, et la couleur seule exclut les daltoniens. */
+  tirets?: string;
 }
 
 const W = 760;
@@ -167,7 +171,7 @@ export default function CourbeSvg({
       {series.map((s) => {
         const pts = x.map((xv, i) => ({ x: sx(xv), y: sy((s.valeurs[i] ?? 0) as number) }));
         const nul = s.valeurs.map((v) => v === null || !Number.isFinite(v));
-        return <path key={s.cle} d={chemin(pts, nul)} fill="none" stroke={s.couleur} strokeWidth={2} strokeLinejoin="round" />;
+        return <path key={s.cle} d={chemin(pts, nul)} fill="none" stroke={s.couleur} strokeWidth={2} strokeLinejoin="round" strokeDasharray={s.tirets || undefined} />;
       })}
 
       {h !== null && (

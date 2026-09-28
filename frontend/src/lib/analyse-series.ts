@@ -39,6 +39,13 @@ export const SORTIES: SortieMeta[] = [
   // elles tombent dans la branche par défaut et affichent 4 décimales.
   { cle: "residue_dry_mass_kg", label: "Masse de résidu sec", unite: "kg", categories: ["RPC", "RPG"], couleur: "#a16207" },
   { cle: "binder_total_mass_kg", label: "Masse de liant", unite: "kg", categories: ["RPC", "RPG"], couleur: "#475569" },
+  { cle: "theta_pct", label: "θ — teneur en eau volumique", unite: "%", categories: ["RPC", "RPG"], couleur: "#0369a1" },
+  // Gs du remblai : il bouge avec Bw parce que le Gs du liant diffère de celui
+  // du résidu. C'est l'explication des petites variations de ρd et de e.
+  { cle: "gs_backfill", label: "Gs du remblai", unite: "—", categories: ["RPC", "RPG"], couleur: "#be123c" },
+  { cle: "water_total_mass_kg", label: "Masse d'eau totale", unite: "kg", categories: ["RPC", "RPG"], couleur: "#0ea5e9" },
+  // Gaté RPG : vaut 0 en RPC, une courbe plate à zéro n'apprend rien.
+  { cle: "aggregate_dry_mass_kg", label: "Masse de granulat sec", unite: "kg", categories: ["RPG"], couleur: "#57534e" },
 ];
 
 export interface ParamMeta {

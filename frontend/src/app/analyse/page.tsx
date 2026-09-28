@@ -7,7 +7,7 @@
 // Les deux REPRENNENT la recette Cw% déjà saisie dans Calculs. Aucun calcul
 // n'est réimplémenté côté client.
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import type { Recipe } from "@/lib/types";
@@ -21,6 +21,10 @@ import {
 } from "@/lib/analyse-series";
 import PanneauVariation from "@/components/analyse/PanneauVariation";
 import { estParamCle, valeurReference } from "@/lib/analyse-fixe";
+import { lireArtefact } from "@/lib/analyse-artefact";
+import {
+  variantesDepuisBase, comparaisonPossible, construireTracesVariantes,
+} from "@/lib/analyse-variantes";
 import {
   construireConstantesPayload, construireGeneralPayload, construireSystemeLiant,
 } from "@/lib/rpc_payload";
@@ -104,7 +108,16 @@ export default function AnalysePage() {
   const [steps, setSteps] = useState(40);
   const [sorties, setSorties] = useState<string[]>(DEFAUT_SORTIES);
   const [modeCourbe, setModeCourbe] = useState<"absolu" | "ecart">("absolu");
-  const [res, setRes] = useState<Balayage | null>(null);
+  // Liste plutôt que valeur unique : le cas courant a un seul élément, et
+  // `res` en reste le premier — toutes les lectures existantes sont donc
+  // inchangées. Seule la comparaison de variantes lit `resultats`.
+  const [resultats, setResultats] = useState<Balayage[] | null>(null);
+  const res = resultats && resultats.length > 0 ? resultats[0] : null;
+  // Comparer plusieurs recettes sur le même balayage.
+  const [comparer, setComparer] = useState(false);
+  // Anti-course : deux clics rapides pouvaient afficher la réponse la plus
+  // lente. Le défaut existait déjà avec un seul setRes.
+  const seq = useRef(0);
   const [resProtocole, setResProtocole] = useState<string>("");
 
   // Composition
@@ -117,6 +130,11 @@ export default function AnalysePage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Balayage rechargé depuis un fichier : la provenance affichée est celle
+  // d'ORIGINE, pas celle du store actuel. Le drapeau sert à le dire à l'écran.
+  const [recharge, setRecharge] = useState(false);
+  const fichierRef = useRef<HTMLInputElement>(null);
 
   const base = categorie === "RPC" ? cw : rpgCw;
 
@@ -134,7 +152,7 @@ export default function AnalysePage() {
       const gardees = prev.filter((k) => valides.has(k));
       return gardees.length ? gardees : DEFAUT_SORTIES.filter((k) => valides.has(k));
     });
-    setRes(null);
+    setResultats(null);
     setRecettes(null);
     setError(null);
   };
@@ -143,7 +161,7 @@ export default function AnalysePage() {
     setParam(cle);
     const m = paramMeta(cle);
     if (m) { setXMin(m.defautMin); setXMax(m.defautMax); }
-    setRes(null);
+    setResultats(null);
   };
 
   const basculerSortie = (cle: string) =>
@@ -230,30 +248,80 @@ export default function AnalysePage() {
       contenant: general.container_type ? { type: general.container_type } : undefined,
       contenants: base.desired_qty ?? undefined,
       facteurSecurite: base.safety_factor ?? undefined,
+      variantes: comparaisonActive ? variantes.map((v) => v.label) : undefined,
     };
   }
 
+  /**
+   * Recharge un balayage exporté précédemment. L'export JSON existait depuis
+   * le début mais rien ne savait le relire : c'était un cul-de-sac, alors que
+   * c'est exactement ce qu'il faut pour reproduire une figure d'un poste à
+   * l'autre ou la retrouver des mois plus tard.
+   *
+   * La provenance affichée reste celle du FICHIER. La réécrire avec les
+   * valeurs du store actuel donnerait une figure ancienne portant une
+   * provenance neuve — c'est-à-dire une provenance fausse.
+   */
+  async function rechargerArtefact(f: File | undefined) {
+    if (!f) return;
+    const lu = lireArtefact(await f.text());
+    if (!lu.ok) { setError(lu.erreur); return; }
+    const a = lu.artefact;
+    const b = a.resultats[0];
+    setError(null);
+    // On aligne les contrôles sur le fichier, sans passer par
+    // changerCategorie() qui remettrait le résultat à null.
+    setCategorie(b.category === "RPC" ? "RPC" : "RPG");
+    setParam(b.param);
+    const p = a.instantane.parametre;
+    if (p) { setXMin(p.min); setXMax(p.max); setSteps(p.points); }
+    setResultats([b as Balayage]);
+    setResMeta(a.instantane);
+    setRecharge(true);
+    // Le bandeau « Paramètres modifiés » n'aurait aucun sens ici : les
+    // contrôles viennent d'être alignés sur le fichier.
+    setResProtocole(JSON.stringify({
+      categorie: b.category === "RPC" ? "RPC" : "RPG", param: b.param,
+      xMin: p?.min ?? xMin, xMax: p?.max ?? xMax, steps: p?.points ?? steps,
+    }));
+  }
+
   async function tracer() {
+    setRecharge(false);
     const err = verifierBase();
     if (err) { setError(err); return; }
     if (!(xMax > xMin)) { setError("La borne « à » doit être supérieure à la borne « de »."); return; }
     setError(null);
+    const mien = ++seq.current;
     try {
       setLoading(true);
-      const body = {
-        category: categorie,
-        [categorie === "RPC" ? "base_inputs_rpc" : "base_inputs_rpg"]: payloadCommun(1),
-        param, x_min: xMin, x_max: xMax, steps,
-      };
-      const r = await fetch(`${API}/analyse/balayage`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-      });
-      const data = await r.json().catch(() => null);
-      if (!r.ok) throw new Error(messageErreurApi(data, r.status));
-      setRes(data as Balayage);
-      setResProtocole(JSON.stringify({ categorie, param, xMin, xMax, steps }));
+      // Une requête par variante, en parallèle. Aucun changement backend : le
+      // payload porte déjà binder_mass_pct_recipes et _override en reprend le
+      // premier élément. 4 requêtes sur un backend local sont imperceptibles.
+      const bws = comparaisonActive ? variantes.map((v) => v.bwPct) : [null];
+      const reponses = await Promise.all(bws.map(async (bw) => {
+        const payload = payloadCommun(1);
+        if (bw !== null) payload.binder_mass_pct_recipes = [bw];
+        const body = {
+          category: categorie,
+          [categorie === "RPC" ? "base_inputs_rpc" : "base_inputs_rpg"]: payload,
+          param, x_min: xMin, x_max: xMax, steps,
+        };
+        const r = await fetch(`${API}/analyse/balayage`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        });
+        const data = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(messageErreurApi(data, r.status));
+        return data as Balayage;
+      }));
+      // Une réponse plus lente d'un clic précédent ne doit pas écraser la plus
+      // récente.
+      if (mien !== seq.current) return;
+      setResultats(reponses);
+      setResProtocole(protocoleActuel);
       setResMeta(construireInstantane(true));
     } catch (e) {
+      if (mien !== seq.current) return;
       setError(e instanceof TypeError ? messageErreurReseau() : e instanceof Error ? e.message : "Erreur inconnue");
     } finally {
       setLoading(false);
@@ -290,16 +358,41 @@ export default function AnalysePage() {
   };
 
   function exporterCsvCourbes() {
-    if (!res || !resMeta) return;
+    if (!res || !resMeta || !resultats) return;
     const meta = lignesMetaCsv(resMeta).map((l) => [l] as (string | number | null)[]);
-    const entete: (string | number | null)[] = [xLabel, ...traces.map((t) => `${t.label}${t.unite !== "—" ? ` (${t.unite})` : ""}`)];
-    const donnees = res.x.map((xv, i) => [xv, ...traces.map((t) => t.valeurs[i])] as (string | number | null)[]);
+
+    // En comparaison : un GROUPE de colonnes par variante, l'en-tête portant
+    // la recette (« Bw 3 % — W/C ») pour que le fichier reste lisible seul.
+    const colonnes = comparaisonActive && resultats.length > 1
+      ? sorties.flatMap((cle) => {
+          const m = sortieMeta(cle);
+          if (!m) return [];
+          return variantes.map((v, i) => ({
+            titre: `${v.label} — ${m.label}${m.unite !== "—" ? ` (${m.unite})` : ""}`,
+            valeurs: resultats[i]?.series[cle] ?? [],
+          }));
+        })
+      : traces.map((t) => ({
+          titre: `${t.label}${t.unite !== "—" ? ` (${t.unite})` : ""}`,
+          valeurs: t.valeurs,
+        }));
+
+    const entete: (string | number | null)[] = [xLabel, ...colonnes.map((c) => c.titre)];
+    const donnees = res.x.map((xv, i) => [xv, ...colonnes.map((c) => c.valeurs[i] ?? null)] as (string | number | null)[]);
     telechargerTexte(versCsv([...meta, [], entete, ...donnees]), nomFichier(`analyse-${categorie}-courbes`, "csv"), "text/csv;charset=utf-8");
   }
 
   function exporterJsonCourbes() {
-    if (!res || !resMeta) return;
-    const artefact = { format: "minebackfill-analyse-courbes/1", instantane: resMeta, resultat: res };
+    if (!res || !resMeta || !resultats) return;
+    // Format /2 : `resultats` et `variantes` sont TOUJOURS présents, de
+    // longueur 1 dans le cas simple. Le bump est sans risque — jusqu'à
+    // aujourd'hui aucun ré-import n'existait, et lireArtefact tolère /1.
+    const artefact = {
+      format: "minebackfill-analyse-courbes/2",
+      instantane: resMeta,
+      resultats,
+      variantes: comparaisonActive && resultats.length > 1 ? variantes.map((v) => v.label) : [],
+    };
     telechargerTexte(JSON.stringify(artefact, null, 2), nomFichier(`analyse-${categorie}-courbes`, "json"), "application/json;charset=utf-8");
   }
 
@@ -341,8 +434,19 @@ export default function AnalysePage() {
     traces.every((t) => t.valeurs.every((v) => v === null || !Number.isFinite(v)));
   const bwAffiche = (base.binder_pct || [])[0];
 
+  // Variantes = les recettes DÉJÀ saisies dans Calculs : aucun nouveau champ,
+  // et cohérent avec la carte « Recette de base (reprise de Calculs) ».
+  const variantes = variantesDepuisBase(base.binder_pct || [], base.num_recipes || 1);
+  const garde = comparaisonPossible(param, variantes);
+  const comparaisonActive = comparer && garde.ok;
+
   // « Périmé » : la courbe affichée a été calculée avec d'autres paramètres.
-  const protocoleActuel = JSON.stringify({ categorie, param, xMin, xMax, steps });
+  // Les variantes DOIVENT y figurer, sinon changer de recette dans Calculs
+  // n'afficherait pas le bandeau.
+  const protocoleActuel = JSON.stringify({
+    categorie, param, xMin, xMax, steps,
+    variantes: comparaisonActive ? variantes.map((v) => v.bwPct) : null,
+  });
   const perime = res !== null && resProtocole !== protocoleActuel;
 
   // Valeur du paramètre balayé POUR la recette de base = point de référence.
@@ -472,15 +576,45 @@ export default function AnalysePage() {
                   </div>
                 </div>
 
-                <button type="button" onClick={tracer} disabled={loading} className="btn-primary" style={{ alignSelf: "flex-start" }}>
-                  {loading ? "Calcul en cours…" : "Tracer la courbe"}
-                </button>
+                <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: garde.ok ? "#0f172a" : "#94a3b8", cursor: garde.ok ? "pointer" : "not-allowed" }}>
+                    <input type="checkbox" checked={comparaisonActive} disabled={!garde.ok}
+                      onChange={(e) => setComparer(e.target.checked)} />
+                    Comparer les {variantes.length} recette{variantes.length > 1 ? "s" : ""} de Calculs
+                    {variantes.length > 1 && ` (${variantes.map((v) => v.label).join(" · ")})`}
+                  </label>
+                  {!garde.ok && (
+                    // Dire POURQUOI c'est indisponible : une case grisée sans
+                    // explication est plus frustrante qu'une case absente.
+                    <p style={{ fontSize: 11.5, color: "#b45309", margin: "6px 0 0" }}>{garde.raison}</p>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <button type="button" onClick={tracer} disabled={loading} className="btn-primary">
+                    {loading ? "Calcul en cours…" : "Tracer la courbe"}
+                  </button>
+                  <button type="button" onClick={() => fichierRef.current?.click()} className="btn-secondary"
+                    style={{ padding: "7px 14px", fontSize: 12.5 }}
+                    title="Rouvre un balayage exporté en JSON, avec sa provenance d'origine">
+                    Recharger un balayage (.json)
+                  </button>
+                  <input ref={fichierRef} type="file" accept="application/json,.json" style={{ display: "none" }}
+                    onChange={(e) => { void rechargerArtefact(e.target.files?.[0]); e.target.value = ""; }} />
+                </div>
               </div>
             </Carte>
 
             {res && (
               <Carte titre="Courbe de réponse">
-                {perime && (
+                {recharge && (
+                  <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 7, background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e3a8a", fontSize: 12.5 }}>
+                    Balayage <strong>rechargé depuis un fichier</strong>. Le bloc de provenance ci-dessous
+                    est celui d&apos;origine, pas celui de la recette actuellement saisie dans Calculs.
+                    Relancez « Tracer la courbe » pour repartir de votre recette.
+                  </div>
+                )}
+                {perime && !recharge && (
                   <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 7, background: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", fontSize: 12.5 }}>
                     Paramètres modifiés — relance « Tracer la courbe » pour mettre à jour cette courbe.
                   </div>
@@ -514,7 +648,42 @@ export default function AnalysePage() {
                       )}
                     </div>
 
-                    {modeCourbe === "absolu" ? (
+                    {comparaisonActive && resultats && resultats.length > 1 ? (
+                      // Comparaison : une figure par grandeur, N courbes (une
+                      // par recette). Un seul axe Y suffit puisqu'on compare la
+                      // MÊME grandeur entre variantes — c'est ce qui évite
+                      // d'introduire un second axe.
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 14 }}>
+                        {sorties.map((cle) => {
+                          const meta = sortieMeta(cle);
+                          if (!meta) return null;
+                          const tv = construireTracesVariantes(resultats, cle, variantes)
+                            .map((t, i) => ({ ...t, unite: meta.unite, tirets: variantes[i]?.tirets }));
+                          return (
+                            <div key={cle} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px" }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>
+                                {meta.label}{meta.unite !== "—" ? ` (${meta.unite})` : ""}
+                              </div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 4 }}>
+                                {variantes.map((v) => (
+                                  <span key={v.bwPct} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "#475569" }}>
+                                    <svg width={20} height={6} aria-hidden="true">
+                                      <line x1={0} y1={3} x2={20} y2={3} stroke={v.couleur} strokeWidth={2}
+                                        strokeDasharray={v.tirets || undefined} />
+                                    </svg>
+                                    {v.label}
+                                  </span>
+                                ))}
+                              </div>
+                              <FigurePng nom={`analyse-${categorie}-${cle}-variantes`}>
+                                <CourbeSvg x={res.x} xLabel={xLabel} series={tv}
+                                  reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
+                              </FigurePng>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : modeCourbe === "absolu" ? (
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 14 }}>
                         {traces.map((t) => {
                           const s = statsSerie(res.x, t.valeurs);
