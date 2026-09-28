@@ -692,7 +692,7 @@ function SearchInput({
             color: "#64748b",
           }}
         >
-          <span style={{ whiteSpace: "nowrap", fontWeight: 600 }}>Apercu :</span>
+          <span style={{ whiteSpace: "nowrap", fontWeight: 600 }}>Aperçu :</span>
           <div
             style={{
               minHeight: 22,
@@ -733,7 +733,7 @@ function SearchInput({
             return (
               <button
                 key={i}
-                onMouseDown={() => { onChange(s.label.split(" — ")[0]); setOpen(false); }}
+                onMouseDown={() => { onChange(s.symbol ?? s.label.split(" — ")[0]); setOpen(false); }}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -769,7 +769,18 @@ function SearchInput({
                   {TYPE_LABELS[s.type]}
                 </span>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {s.label}
+                  {/* Une variable porte son symbole et sa description
+                      séparément : on rend le symbole comme les pastilles et
+                      l'aperçu le font déjà, au lieu d'afficher le LaTeX brut.
+                      Repli sur le libellé pour les autres types. */}
+                  {s.symbol ? (
+                    <>
+                      <KaTeX tex={s.symbol} />
+                      {s.description ? <span style={{ color: "#64748b" }}> — {s.description}</span> : null}
+                    </>
+                  ) : (
+                    s.label
+                  )}
                 </span>
               </button>
             );

@@ -161,6 +161,16 @@ export function searchFormulas(query: string): SearchResult[] {
 export interface Suggestion {
   type: "title" | "variable" | "keyword" | "section";
   label: string;
+  /**
+   * Pour une variable : le symbole LaTeX et sa description, SÉPARÉS.
+   * `label` les concatène pour les consommateurs existants, mais l'écran doit
+   * pouvoir rendre le symbole avec KaTeX au lieu d'afficher « \%P_{80\,\mu\
+   * text{m}} » tel quel — incohérent avec les pastilles de variables et la
+   * ligne « Aperçu », qui le rendent toutes deux correctement.
+   * Champs OPTIONNELS : additif, les autres types n'en portent pas.
+   */
+  symbol?: string;
+  description?: string;
   formulaId?: string;
 }
 
@@ -183,7 +193,13 @@ export function getSuggestions(query: string, limit = 8): Suggestion[] {
     for (const v of f.variables) {
       const normSym = normalise(v.symbol);
       if ((normSym.includes(norm) || normalise(v.description).includes(norm)) && !seen.has(v.symbol)) {
-        suggestions.push({ type: "variable", label: `${v.symbol} — ${v.description}`, formulaId: f.id });
+        suggestions.push({
+          type: "variable",
+          label: `${v.symbol} — ${v.description}`,
+          symbol: v.symbol,
+          description: v.description,
+          formulaId: f.id,
+        });
         seen.add(v.symbol);
       }
     }
