@@ -22,6 +22,31 @@ export interface EssaiUCS {
   modeRupture?: string;
   exclu?: boolean; // exclu de la moyenne (aberrant) — justification requise
   justificationExclusion?: string;
+
+  // ── Import d'un classeur de presse (URSTM). Tous OPTIONNELS : un essai
+  //    saisi à la main reste valide et inchangé. ──
+  /** Module de Young (kPa) mesuré par la presse. Mesure réelle, jusqu'ici
+   *  perdue parce que l'application ne gardait que la contrainte. */
+  moduleYoungKpa?: number;
+  /** Déformation maximale (%) mesurée par la presse. */
+  deformationMaxPct?: number;
+  /** Temps de cure RÉEL relevé par la presse (jours). À distinguer de
+   *  `Eprouvette.ageJours`, qui est l'âge CIBLE et sert à l'agrégation : un
+   *  essai prévu à 28 j mais écrasé à 29 reste classé dans les 28 j. */
+  tempsDeCureReelJours?: number;
+  /** Provenance de l'import, pour que la mesure reste traçable. */
+  sourcePresse?: {
+    fichier: string;
+    echantillon: string;
+    importeLe: string; // ISO
+    operateur?: string;
+    commentaires?: string;
+  };
+  /** Courbe contrainte-déformation RÉDUITE (voir reduireCourbe). L'essai
+   *  d'origine compte ~153 000 points, impossibles à conserver : le stockage
+   *  local plafonne vers 5 Mo. Seuls des points RÉELLEMENT MESURÉS sont
+   *  gardés, jamais de moyenne. */
+  courbe?: { tempsS: number; chargeN: number; deplacementMm: number; contrainteKpa: number; deformationPct: number }[];
 }
 
 export interface Eprouvette {

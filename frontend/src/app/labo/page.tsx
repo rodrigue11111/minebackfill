@@ -31,6 +31,7 @@ import {
 } from "@/lib/eprouvette";
 import { snapshotProtocoles, type Protocole, type ProtocoleFige } from "@/lib/protocole";
 import CourbeUCS, { type SerieUCS } from "@/components/labo/CourbeUCS";
+import ImportPresse from "@/components/labo/ImportPresse";
 
 const inputStyle: React.CSSProperties = {
   width: "100%", minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 6, padding: "9px 11px",
@@ -217,6 +218,37 @@ function FormEssaiUCS({ eprouvette, onChange }: {
         </div>
       </div>
 
+      {es.sourcePresse && (
+        // Ce que la presse apporte en plus de la contrainte, et qui était
+        // perdu avant l'import : module de Young, déformation maximale, et
+        // le temps de cure REEL (à distinguer de l'âge cible, sur lequel les
+        // moyennes sont faites).
+        <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "8px 11px", fontSize: 12, color: "#1e3a8a", lineHeight: 1.7 }}>
+          <strong>Importé de la presse</strong> — fichier « {es.sourcePresse.fichier} », échantillon {es.sourcePresse.echantillon}
+          {es.sourcePresse.operateur ? `, opérateur ${es.sourcePresse.operateur}` : ""}
+          {es.sourcePresse.commentaires ? `, commentaire « ${es.sourcePresse.commentaires} »` : ""}.
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 18px", marginTop: 4, color: "#1e40af" }}>
+            {es.moduleYoungKpa !== undefined && (
+              <span>Module de Young : <strong>{Math.round(es.moduleYoungKpa).toLocaleString("fr-CA")} kPa</strong></span>
+            )}
+            {es.deformationMaxPct !== undefined && (
+              <span>Déformation max : <strong>{es.deformationMaxPct.toLocaleString("fr-CA", { maximumFractionDigits: 3 })} %</strong></span>
+            )}
+            {es.tempsDeCureReelJours !== undefined && (
+              <span>
+                Cure réelle : <strong>{es.tempsDeCureReelJours} j</strong>
+                {es.tempsDeCureReelJours !== eprouvette.ageJours && (
+                  <span style={{ color: "#b45309" }}> (âge cible {eprouvette.ageJours} j — les moyennes suivent la cible)</span>
+                )}
+              </span>
+            )}
+            {es.courbe && es.courbe.length > 0 && (
+              <span>Courbe conservée : <strong>{es.courbe.length} points</strong></span>
+            )}
+          </div>
+        </div>
+      )}
+
       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#374151", cursor: "pointer" }}>
         <input type="checkbox" checked={!!es.exclu} onChange={(e) => onChange({ exclu: e.target.checked || undefined })} />
         Exclure cette éprouvette de la moyenne (valeur aberrante)
@@ -299,6 +331,21 @@ function CarteEprouvettes({ gachee, maintenant, onChange }: {
         : undefined
     }>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {gachee.eprouvettes.length > 0 && (
+          <ImportPresse
+            eprouvettes={gachee.eprouvettes}
+            onAppliquer={(affectations) => {
+              // Un seul onChange pour toutes les affectations : appeler
+              // majEssai en boucle repartirait de l'état d'avant et
+              // n'en garderait que la dernière.
+              const parId = new Map(affectations.map((a) => [a.eprouvetteId, a.essai]));
+              onChange(gachee.eprouvettes.map((e) => {
+                const patch = parId.get(e.id);
+                return patch ? { ...e, statut: "ecrase" as const, essai: { ...(e.essai ?? {}), ...patch } } : e;
+              }));
+            }}
+          />
+        )}
         {/* Ajout d'éprouvettes */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, alignItems: "end" }}>
           <Champ label="Date de coulée"><input type="date" style={inputStyle} value={couleLe} onChange={(e) => setCouleLe(e.target.value)} /></Champ>

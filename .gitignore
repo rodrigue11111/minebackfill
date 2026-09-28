@@ -38,3 +38,9 @@ tmp_*
 Progiciel de Mr Belem/
 
 .vercel
+
+# Exports bruts de la presse du laboratoire (URSTM) : un seul essai pese 5 Mo,
+# l'essentiel est importe dans l'application et le reste n'a rien a faire dans
+# l'historique git.
+URSTM results/
+*.xlsx.bak
