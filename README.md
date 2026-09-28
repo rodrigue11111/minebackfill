@@ -16,6 +16,14 @@ la géométrie du contenant, l'application calcule des recettes complètes :
 - paramètres géotechniques (e, n, ρd, ρh, Cw%, Cv%, Sr, W/C, Bw%, Bv%, θ) ;
 - quatre méthodes : **Dosage Cw%**, **Rapport eau/ciment (W/C)**, **Ajustement pour slump**
   (RPC) et **Méthode essai-erreur** (ajouts/retraits d'eau, de résidu et de granulat) ;
+- un module **Analyse** : courbes de réponse paramétriques (balayage de Bw, Cw, Sr ou de la
+  fraction d'agrégat — chaque point est une vraie résolution par les solveurs, jamais une
+  formule approchée), tableau « tenu fixe / ce qui varie », visuels de composition du mélange
+  (barres, diagramme ternaire, échantillon), exports CSV/JSON/PNG avec bloc de provenance ;
+- un module **Labo** : gâchée réelle (masses cibles contre masses pesées, lots, ajustements),
+  éprouvettes et échéancier des écrasements exportable en `.ics`, **essais UCS mesurés** avec
+  statistiques par âge et courbe UCS vs âge, protocoles éditables figés par gâchée. Aucune
+  valeur n'y est prédite : seules les mesures sont tracées ;
 - un module **Industrie** (comparaison des coûts de liant par niveau de Bw% et journal de
   production) — **retiré de la navigation le 2026-09-27** : le code reste en place et la
   page répond toujours sur `/industrie`, mais elle n'est plus proposée dans la barre.

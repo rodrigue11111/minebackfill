@@ -7,6 +7,7 @@
 // Auto-sauvegarde : chaque saisie est persistée immédiatement (localStorage).
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
 import { fmt } from "@/lib/format";
@@ -483,6 +484,8 @@ function ResultatsUCS({ gachees }: { gachees: Gachee[] }) {
         Ces courbes montrent la résistance <strong>mesurée</strong> en laboratoire (UCS = charge à la rupture rapportée à la
         section). Aucune valeur <strong>prédite ou modélisée</strong> n&apos;est tracée : le programme ne dispose pas de modèle
         de prédiction validé. Les points sont les moyennes des éprouvettes retenues ; les barres verticales indiquent ± un écart-type.
+        {" "}Pour les grandeurs <strong>calculées</strong> et leurs courbes de réponse, voir{" "}
+        <Link href="/analyse" style={{ color: "#1d4ed8", fontWeight: 600, textDecoration: "underline" }}>Analyse</Link>.
       </div>
 
       {series.length === 0 ? (
