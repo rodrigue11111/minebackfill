@@ -337,6 +337,82 @@ label:has(input[type="radio"]:focus-visible) {
   .nav-version { display: none; }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   TÉLÉPHONE — mesuré au navigateur à 360 px le 2026-09-28.
+   Le débordement horizontal n'était PAS le problème (12 pages sur 13
+   tenaient déjà). Les deux vrais défauts étaient structurels :
+   1. la barre de navigation n'affichait que « 01 Inform… » tronqué, les
+      8 autres pages étant inatteignables sans deviner qu'elle défile —
+      et sa barre de défilement est masquée. L'application semblait
+      n'avoir qu'une seule page ;
+   2. le pied de page « Desktop » passait à la ligne dans une barre de
+      hauteur fixe et chevauchait le contenu.
+   ══════════════════════════════════════════════════════════════════ */
+@media (max-width: 720px) {
+  /* Le nom de l'application et son sous-titre mangeaient ~140 px : l'icône
+     suffit à identifier l'application, et le lien reste cliquable. */
+  .nav-brand-text { display: none !important; }
+  .nav-brand { margin-right: 10px !important; }
+  /* Le libellé « Portail » part aussi ; l'icône reste, et le lien garde sa
+     cible tactile. */
+  .nav-portail-label { display: none !important; }
+
+  /* Les liens PASSENT A LA LIGNE au lieu de defiler. Mesure a 360 px : le
+     defilement horizontal ne laissait voir que 2 liens sur 8, et rien
+     n'indiquait que la barre continuait — l'application semblait n'avoir
+     qu'une page. Deux rangees coutent ~36 px de hauteur et montrent tout. */
+  .nav-bar {
+    height: auto !important;
+    flex-wrap: wrap;
+    padding: 6px 10px !important;
+    row-gap: 4px;
+  }
+  /* Deux rangees nettes : l'identite et les actions en haut, la navigation
+     en dessous. Sans ordre explicite, l'icone de marque se retrouvait au
+     milieu des liens. */
+  .nav-brand { order: 1; }
+  .nav-portail { order: 2; }
+  .nav-links {
+    overflow-x: visible;
+    flex-wrap: wrap;
+    row-gap: 2px;
+    /* !important obligatoire : le composant porte un `flex: 1` EN LIGNE, dont
+       le raccourci fixe flex-basis a 0 % et l'emporte sur la feuille de style.
+       Sans cela, le conteneur partageait sa rangee avec l'icone de marque,
+       qui se retrouvait plantee au milieu des liens. */
+    flex: 0 0 100% !important;
+    order: 10;
+    justify-content: flex-start;
+  }
+  /* Liens compacts : le numero d'etape et les marges genereuses du bureau
+     ne servent a rien ici. */
+  .nav-links a { padding: 7px 9px !important; font-size: 12.5px !important; }
+  .nav-step { display: none !important; }
+}
+
+@media (max-width: 780px) {
+  /* Grilles dont la colonne MINIMALE depasse la largeur utile d'un telephone.
+     Elles ne defilent pas : `body` est en overflow-x hidden, donc ce qui
+     depasse est COUPE et devient inatteignable. Une seule colonne.
+     Meme procede que la regle .form-card plus bas, deja en place. */
+  .panneau-variation { grid-template-columns: 1fr !important; }
+  div[style*="minmax(340px"],
+  div[style*="minmax(320px"],
+  div[style*="minmax(280px"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Tableaux denses : defilement horizontal DANS leur cadre plutot qu'un
+     rognage silencieux. */
+  .panneau-variation table { display: block; overflow-x: auto; }
+}
+
+@media (max-width: 640px) {
+  /* Barre d'état : version, module et le mot « Desktop ». Rien
+     d'actionnable, et son contenu ne tient pas dans 360 px — il passait à
+     la ligne dans une hauteur fixe, d'où le chevauchement observé. */
+  .status-bar { display: none !important; }
+}
+
 @media (max-width: 560px) {
   /* Très étroit : une seule colonne dans les formulaires */
   .form-card div[style*="grid-template-columns"] {

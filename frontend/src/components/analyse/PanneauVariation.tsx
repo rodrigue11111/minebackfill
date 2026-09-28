@@ -57,7 +57,7 @@ export default function PanneauVariation({
   const td: React.CSSProperties = { textAlign: "right", padding: "3px 6px", whiteSpace: "nowrap" };
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(240px, 1fr) minmax(320px, 2fr)", gap: 18 }}>
+    <div className="panneau-variation" style={{ display: "grid", gridTemplateColumns: "minmax(240px, 1fr) minmax(320px, 2fr)", gap: 18 }}>
       <div>
         <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
           Tenu fixe pendant le balayage

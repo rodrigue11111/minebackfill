@@ -36,6 +36,7 @@ export default function NavBar() {
 
   return (
     <nav
+      className="nav-bar"
       style={{
         background: "var(--navy)",
         height: "var(--nav-height)",
@@ -53,6 +54,7 @@ export default function NavBar() {
       {/* ── Brand ── */}
       <Link
         href="/"
+        className="nav-brand"
         style={{
           display: "flex",
           alignItems: "center",
@@ -84,7 +86,7 @@ export default function NavBar() {
             <rect x="2" y="2" width="12" height="2" rx="1" fill="white" opacity="0.6"/>
           </svg>
         </div>
-        <div>
+        <div className="nav-brand-text">
           <div
             style={{
               fontSize: 14,
@@ -164,6 +166,7 @@ export default function NavBar() {
               >
                 {link.step && (
                   <span
+                    className="nav-step"
                     style={{
                       fontSize: 10,
                       fontWeight: 700,
@@ -183,6 +186,7 @@ export default function NavBar() {
 
       {/* ── Bascule vers le portail des projets (CPB Cockpit, etc.) ── */}
       <a
+        className="nav-portail"
         href={PORTAIL_URL}
         title="Portail des projets — basculer vers une autre application"
         style={{
@@ -217,7 +221,7 @@ export default function NavBar() {
           <rect x="0.5" y="7.1" width="4.4" height="4.4" rx="1" fill="currentColor" opacity="0.6" />
           <rect x="7.1" y="7.1" width="4.4" height="4.4" rx="1" fill="currentColor" opacity="0.9" />
         </svg>
-        {PORTAIL_LABEL}
+        <span className="nav-portail-label">{PORTAIL_LABEL}</span>
       </a>
 
       {/* ── Version tag ── */}
