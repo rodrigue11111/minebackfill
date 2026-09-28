@@ -31,6 +31,7 @@ import {
 } from "@/lib/eprouvette";
 import { snapshotProtocoles, type Protocole, type ProtocoleFige } from "@/lib/protocole";
 import CourbeUCS, { type SerieUCS } from "@/components/labo/CourbeUCS";
+import ImportPresse from "@/components/labo/ImportPresse";
 
 const inputStyle: React.CSSProperties = {
   width: "100%", minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 6, padding: "9px 11px",
@@ -193,6 +194,13 @@ function FormEssaiUCS({ eprouvette, onChange }: {
   const es = eprouvette.essai ?? {};
   const calculee = contrainteKpa({ chargeKn: es.chargeKn, diametreMm: es.diametreMm });
   const retenue = contrainteKpa(es);
+  // Une contrainte directe renseignee l'emporte sur F/A (voir contrainteKpa).
+  const directePrime = es.contrainteKpaSaisie != null && es.contrainteKpaSaisie > 0;
+  // Ecart entre les deux voies, pour que l'etudiant VOIE si elles concordent.
+  // Simple difference relative affichee : aucun modele, aucune correction.
+  const ecartPct = directePrime && calculee !== null && calculee > 0
+    ? ((es.contrainteKpaSaisie! - calculee) / calculee) * 100
+    : null;
   return (
     <div style={{ marginTop: 8, padding: "12px 12px 4px", background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
@@ -213,9 +221,67 @@ function FormEssaiUCS({ eprouvette, onChange }: {
           {retenue !== null ? (
             <>UCS retenue : <strong style={{ fontSize: 15, color: "#0f172a" }}>{Math.round(retenue).toLocaleString("fr-CA")} kPa</strong>
               {es.contrainteKpaSaisie != null && es.contrainteKpaSaisie > 0 ? " (saisie directe)" : calculee !== null ? " (déduite de F / A)" : ""}</>
-          ) : <span style={{ color: "#94a3b8" }}>Saisis une charge + un diamètre, ou une contrainte directe.</span>}
+          ) : <span style={{ color: "#64748b" }}>Saisis une charge + un diamètre, ou une contrainte directe.</span>}
         </div>
       </div>
+
+      {directePrime && (
+        // Sans ce bloc, modifier la charge ou le diametre apres un import
+        // n'aurait AUCUN effet visible : la contrainte directe prime sur le
+        // calcul F/A. Le champ accepterait la saisie et l'ecran resterait fige
+        // — le genre de silence qui fait croire a une panne.
+        <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 7, padding: "8px 11px", fontSize: 12, color: "#92400e", lineHeight: 1.6 }}>
+          La <strong>contrainte directe prime</strong> : modifier la charge ou le diamètre ne changera
+          pas l&apos;UCS retenue tant qu&apos;elle est renseignée.
+          {calculee !== null && (
+            <>
+              {" "}Votre calcul F / A donnerait{" "}
+              <strong>{Math.round(calculee).toLocaleString("fr-CA")} kPa</strong>
+              {ecartPct !== null && (
+                <> — soit un écart de <strong>{ecartPct.toLocaleString("fr-CA", { maximumFractionDigits: 2 })} %</strong>
+                  {Math.abs(ecartPct) < 0.5 ? " (les deux concordent)" : ""}</>
+              )}.
+            </>
+          )}
+          <div style={{ marginTop: 6 }}>
+            <button type="button" className="btn-secondary" style={{ fontSize: 11.5, padding: "4px 10px" }}
+              onClick={() => onChange({ contrainteKpaSaisie: undefined })}>
+              Effacer la contrainte directe et revenir au calcul F / A
+            </button>
+          </div>
+        </div>
+      )}
+
+      {es.sourcePresse && (
+        // Ce que la presse apporte en plus de la contrainte, et qui était
+        // perdu avant l'import : module de Young, déformation maximale, et
+        // le temps de cure REEL (à distinguer de l'âge cible, sur lequel les
+        // moyennes sont faites).
+        <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "8px 11px", fontSize: 12, color: "#1e3a8a", lineHeight: 1.7 }}>
+          <strong>Importé de la presse</strong> — fichier « {es.sourcePresse.fichier} », échantillon {es.sourcePresse.echantillon}
+          {es.sourcePresse.operateur ? `, opérateur ${es.sourcePresse.operateur}` : ""}
+          {es.sourcePresse.commentaires ? `, commentaire « ${es.sourcePresse.commentaires} »` : ""}.
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 18px", marginTop: 4, color: "#1e40af" }}>
+            {es.moduleYoungKpa !== undefined && (
+              <span>Module de Young : <strong>{Math.round(es.moduleYoungKpa).toLocaleString("fr-CA")} kPa</strong></span>
+            )}
+            {es.deformationMaxPct !== undefined && (
+              <span>Déformation max : <strong>{es.deformationMaxPct.toLocaleString("fr-CA", { maximumFractionDigits: 3 })} %</strong></span>
+            )}
+            {es.tempsDeCureReelJours !== undefined && (
+              <span>
+                Cure réelle : <strong>{es.tempsDeCureReelJours} j</strong>
+                {es.tempsDeCureReelJours !== eprouvette.ageJours && (
+                  <span style={{ color: "#b45309" }}> (âge cible {eprouvette.ageJours} j — les moyennes suivent la cible)</span>
+                )}
+              </span>
+            )}
+            {es.courbe && es.courbe.length > 0 && (
+              <span>Courbe conservée : <strong>{es.courbe.length} points</strong></span>
+            )}
+          </div>
+        </div>
+      )}
 
       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#374151", cursor: "pointer" }}>
         <input type="checkbox" checked={!!es.exclu} onChange={(e) => onChange({ exclu: e.target.checked || undefined })} />
@@ -299,6 +365,21 @@ function CarteEprouvettes({ gachee, maintenant, onChange }: {
         : undefined
     }>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {gachee.eprouvettes.length > 0 && (
+          <ImportPresse
+            eprouvettes={gachee.eprouvettes}
+            onAppliquer={(affectations) => {
+              // Un seul onChange pour toutes les affectations : appeler
+              // majEssai en boucle repartirait de l'état d'avant et
+              // n'en garderait que la dernière.
+              const parId = new Map(affectations.map((a) => [a.eprouvetteId, a.essai]));
+              onChange(gachee.eprouvettes.map((e) => {
+                const patch = parId.get(e.id);
+                return patch ? { ...e, statut: "ecrase" as const, essai: { ...(e.essai ?? {}), ...patch } } : e;
+              }));
+            }}
+          />
+        )}
         {/* Ajout d'éprouvettes */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, alignItems: "end" }}>
           <Champ label="Date de coulée"><input type="date" style={inputStyle} value={couleLe} onChange={(e) => setCouleLe(e.target.value)} /></Champ>
@@ -580,6 +661,12 @@ function ResultatsUCS({ gachees, formulations }: {
             <li>saisir <strong>« Charge à la rupture (kN) »</strong> et <strong>« Diamètre (mm) »</strong> —
               la résistance est calculée automatiquement.</li>
           </ol>
+          <p style={{ margin: "10px 0 0" }}>
+            Si votre laboratoire fournit un classeur de presse, le bouton{" "}
+            <strong>« Importer un fichier de presse (.xlsx) »</strong> remplit ces essais sans
+            ressaisie. <strong>La saisie à la main reste possible dans tous les cas</strong> — et
+            les deux voies donnent le même résultat.
+          </p>
           <p style={{ margin: "10px 0 0" }}>
             Le graphique apparaît dès la première éprouvette écrasée.
           </p>
