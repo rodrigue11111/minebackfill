@@ -405,10 +405,13 @@ function migrerGachees(data: unknown): Gachee[] {
   return data.map((g) => ({ ...(g as Gachee), eprouvettes: (g as Gachee).eprouvettes ?? [] }));
 }
 
-function loadGacheesFromStorage(): Gachee[] {
+// Exportés pour `backup.ts` : la sauvegarde doit lire et écrire des données
+// DÉJÀ MIGRÉES, pas l'enveloppe brute du localStorage. Même patron que
+// lireBinders(), utilisé de l'extérieur par pdf-report.ts.
+export function loadGacheesFromStorage(): Gachee[] {
   return loadVersioned<Gachee[]>(GACHEES_KEY, GACHEES_VERSION, migrerGachees, []);
 }
-function persistGachees(items: Gachee[]): void {
+export function persistGachees(items: Gachee[]): void {
   persistVersioned(GACHEES_KEY, GACHEES_VERSION, items);
 }
 
@@ -416,12 +419,12 @@ function persistGachees(items: Gachee[]): void {
 const PROTOCOLES_KEY = "minebackfill_protocoles";
 const PROTOCOLES_VERSION = 1;
 
-function loadProtocolesFromStorage(): Protocole[] {
+export function loadProtocolesFromStorage(): Protocole[] {
   // Absence de clé = première venue : on sème une COPIE des procédures de départ
   // (jamais le singleton gelé, pour ne pas risquer sa mutation).
   return loadVersioned<Protocole[]>(PROTOCOLES_KEY, PROTOCOLES_VERSION, (d) => d as Protocole[], protocolesDefaut());
 }
-function persistProtocoles(items: Protocole[]): void {
+export function persistProtocoles(items: Protocole[]): void {
   persistVersioned(PROTOCOLES_KEY, PROTOCOLES_VERSION, items);
 }
 
