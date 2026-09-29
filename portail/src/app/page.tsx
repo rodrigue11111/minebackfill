@@ -85,6 +85,8 @@ export default function PortailPage() {
   const [mode, setMode] = useState<"connexion" | "inscription">("connexion");
   const [email, setEmail] = useState("");
   const [nom, setNom] = useState("");
+  const [enseignant, setEnseignant] = useState(false);
+  const [code, setCode] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -116,9 +118,10 @@ export default function PortailPage() {
       if (mode === "inscription") {
         // Même compte que MineBackfill : le nom affiché est celui que voit
         // l'enseignant. Le serveur ne lit QUE ce champ des métadonnées.
-        const { error } = await sb.auth.signUp({
-          email, password: motDePasse, options: { data: { display_name: nom.trim() } },
-        });
+        // Code enseignant : vérifié par le SERVEUR, jamais conservé sur le compte.
+        const donnees: Record<string, string> = { display_name: nom.trim() };
+        if (enseignant && code.trim()) donnees.code_enseignant = code.trim();
+        const { error } = await sb.auth.signUp({ email, password: motDePasse, options: { data: donnees } });
         if (error) throw error;
         setInfo("Compte créé. Vous pouvez vous connecter.");
         setMode("connexion");
@@ -280,6 +283,26 @@ export default function PortailPage() {
                     onChange={(e) => setNom(e.target.value)}
                     placeholder="Prénom Nom"
                   />
+                  {!enseignant ? (
+                    <button type="button" onClick={() => setEnseignant(true)}
+                      style={{ marginTop: 6, background: "none", border: "none", padding: 0, fontSize: 12, color: "var(--primary)", cursor: "pointer" }}>
+                      Je suis l&apos;enseignant
+                    </button>
+                  ) : (
+                    <div style={{ marginTop: 10 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>
+                        Code enseignant (fourni par l&apos;administrateur du site)
+                      </label>
+                      <input
+                        type="password"
+                        className="field-input"
+                        value={code}
+                        autoComplete="off"
+                        onChange={(e) => setCode(e.target.value)}
+                        placeholder="Code enseignant"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               <div>

@@ -32,12 +32,20 @@ aujourd'hui (le lien « Compte » est masqué, aucun appel réseau).
    - `frontend/.env.local` (développement) — voir `frontend/.env.example` ;
    - les variables d'environnement du projet Vercel (production), **puis
      redéployer** : les `NEXT_PUBLIC_*` sont inlinées au build.
-5. Créer le **compte enseignant** via la page `/compte` (inscription normale).
-6. **SQL Editor** (one-off) — promouvoir ce compte :
+5. **SQL Editor** — poser le **code enseignant** (jamais écrit dans le dépôt,
+   qui est public : seule son empreinte est gardée en base) :
+   ```sql
+   select public.definir_code_enseignant('UN_CODE_DIFFICILE_A_DEVINER');
+   ```
+   Il ne sert qu'**une fois** (2e argument pour plus, ex. `, 2`).
+6. L'enseignant s'inscrit sur la page `/compte` → Inscription → « Je suis
+   l'enseignant » → saisit le code : son compte est « prof » d'emblée. Un
+   mauvais code donne simplement un compte étudiant. Compte déjà créé sans
+   le code :
    ```sql
    update public.profiles set role = 'prof' where email = 'VOTRE_EMAIL';
    ```
-   Se déconnecter/reconnecter pour rafraîchir le rôle.
+   puis se déconnecter/reconnecter.
 7. **Réglages** → publier les catalogues officiels et les constantes (seed
    initial ; en l'absence de ligne cloud, chaque client garde ses défauts).
 

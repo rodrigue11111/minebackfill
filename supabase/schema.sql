@@ -34,15 +34,78 @@ create or replace function public.is_prof() returns boolean
 language sql stable security definer set search_path = public as
 $$ select exists (select 1 from profiles where id = auth.uid() and role = 'prof') $$;
 
+-- ----------------------------------------------------------------------
+--  Code enseignant : un compte créé avec ce code devient « prof » tout seul.
+--  Le code n'est JAMAIS écrit dans ce dépôt (il est public) : seule son
+--  EMPREINTE (bcrypt) vit dans la base, posée depuis SQL Editor par
+--    select public.definir_code_enseignant('LE_CODE');
+--  Par défaut il ne sert qu'UNE fois : après l'inscription de l'enseignant,
+--  il ne fonctionne plus (plus rien à deviner). Tables invisibles par l'API.
+-- ----------------------------------------------------------------------
+create extension if not exists pgcrypto with schema extensions;
+
+create table if not exists public.code_enseignant (
+  id                     boolean primary key default true check (id),
+  empreinte              text    not null,
+  utilisations_restantes integer not null default 1 check (utilisations_restantes >= 0),
+  maj                    timestamptz not null default now()
+);
+create table if not exists public.prof_a_promouvoir (user_id uuid primary key);
+alter table public.code_enseignant   enable row level security;
+alter table public.prof_a_promouvoir enable row level security;
+revoke all on public.code_enseignant, public.prof_a_promouvoir from anon, authenticated;
+
+-- À exécuter dans SQL Editor (jamais depuis l'application).
+create or replace function public.definir_code_enseignant(p_code text, p_utilisations integer default 1)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if char_length(coalesce(p_code, '')) < 8 then
+    raise exception 'code enseignant : 8 caractères au moins' using errcode = '22023';
+  end if;
+  insert into public.code_enseignant (id, empreinte, utilisations_restantes, maj)
+  values (true, extensions.crypt(p_code, extensions.gen_salt('bf', 10)), greatest(p_utilisations, 0), now())
+  on conflict (id) do update
+    set empreinte = excluded.empreinte, utilisations_restantes = excluded.utilisations_restantes, maj = now();
+end $$;
+revoke execute on function public.definir_code_enseignant(text, integer) from public, anon, authenticated;
+
+-- AVANT l'insertion du compte : vérifie le code, puis le RETIRE des
+-- métadonnées (il ne doit pas rester stocké avec le compte).
+create or replace function public.verifier_code_enseignant() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare v_code text := new.raw_user_meta_data ->> 'code_enseignant';
+begin
+  if v_code is not null then
+    new.raw_user_meta_data := new.raw_user_meta_data - 'code_enseignant';
+    update public.code_enseignant c
+       set utilisations_restantes = c.utilisations_restantes - 1, maj = now()
+     where c.utilisations_restantes > 0
+       and c.empreinte = extensions.crypt(v_code, c.empreinte);
+    if found then
+      insert into public.prof_a_promouvoir (user_id) values (new.id) on conflict do nothing;
+    end if;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists on_auth_user_code on auth.users;
+create trigger on_auth_user_code
+  before insert on auth.users
+  for each row execute function public.verifier_code_enseignant();
+
 -- Création automatique du profil à l'inscription.
 -- raw_user_meta_data est SAISI PAR L'UTILISATEUR : on n'en lit QUE le nom
--- affiché, jamais un rôle.
+-- affiché, jamais un rôle. Le rôle « prof » ne vient que d'un code vérifié
+-- par le serveur (ci-dessus), ou de la commande SQL de l'enseignant.
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as
-$$ begin
-     insert into public.profiles (id, email, display_name)
+$$ declare v_prof boolean;
+   begin
+     delete from public.prof_a_promouvoir where user_id = new.id returning true into v_prof;
+     insert into public.profiles (id, email, display_name, role)
      values (new.id, new.email,
-             nullif(left(btrim(coalesce(new.raw_user_meta_data ->> 'display_name', '')), 80), ''))
+             nullif(left(btrim(coalesce(new.raw_user_meta_data ->> 'display_name', '')), 80), ''),
+             case when coalesce(v_prof, false) then 'prof' else 'etudiant' end)
      on conflict (id) do nothing;
      return new;
    end $$;
@@ -459,7 +522,12 @@ select s.user_id, 'resultat', s.id, s.payload - 'ownerId'
 on conflict (user_id, kind, id) do nothing;
 
 -- ======================================================================
---  BOOTSTRAP PROF (one-off, après création du compte via /compte) :
+--  COMPTE ENSEIGNANT — automatique : AVANT que l'enseignant s'inscrive,
+--    select public.definir_code_enseignant('LE_CODE');
+--  puis il s'inscrit (page Compte → Inscription → « Je suis l'enseignant »)
+--  avec ce code : son compte est « prof » d'emblée. Le code ne sert qu'une
+--  fois (2e argument pour plus : definir_code_enseignant('LE_CODE', 2)).
+--  Compte déjà créé sans le code :
 --    update public.profiles set role = 'prof' where email = 'prof@exemple.ca';
 --
 --  CONTRÔLES après exécution (voir supabase/README.md) :
