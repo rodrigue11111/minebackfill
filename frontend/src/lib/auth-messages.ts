@@ -7,6 +7,8 @@ export function messageErreurAuth(brut: string, code?: string | null): string {
   const m = brut.toLowerCase();
   const c = (code ?? "").toLowerCase();
   if (m.includes("invalid login")) return "Courriel ou mot de passe incorrect.";
+  if (c === "user_banned" || m.includes("user is banned") || m.includes("user banned"))
+    return "Ce compte est suspendu. Adressez-vous à l'enseignant. Le travail enregistré dans ce navigateur y reste.";
   if (m.includes("already registered") || m.includes("already been registered") || c === "user_already_exists")
     return "Ce courriel a déjà un compte. Connectez-vous (ou « Mot de passe oublié ? »).";
   if (m.includes("password should be at least") || c === "weak_password")

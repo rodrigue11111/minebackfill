@@ -26,10 +26,22 @@ export function schemaPasAJour(code: string | undefined): boolean {
   return code === "PGRST202" || code === "42883" || code === "42703" || code === "PGRST204";
 }
 
-/** Message d'une erreur réseau pour l'enseignant (schéma absent : quoi faire). */
+/**
+ * Le serveur a refusé d'écrire dans les comptes de connexion (auth.users,
+ * auth.sessions) : droit que Supabase peut retirer au propriétaire des
+ * fonctions. Le blocage se fait alors dans Supabase Studio.
+ */
+export function droitAuthRefuse(e: unknown): boolean {
+  return e instanceof Error && /permission denied for (table|relation) (users|sessions)/i.test(e.message);
+}
+
+/** Message d'une erreur réseau pour l'enseignant (schéma absent, droit refusé : quoi faire). */
 export function messageErreurClasse(e: unknown): string {
   if (e instanceof ErreurClasse && schemaPasAJour(e.code)) {
     return "la base de données n'est pas à jour pour cette version du site : exécutez supabase/schema.sql dans SQL Editor (voir docs/OPERATIONS.md)";
+  }
+  if (droitAuthRefuse(e)) {
+    return "le serveur refuse de modifier les comptes de connexion : bloquez ce compte dans Supabase Studio (Authentication → Users → « Ban user »), voir docs/OPERATIONS.md";
   }
   return e instanceof Error ? e.message : String(e);
 }
@@ -262,4 +274,46 @@ export async function lireMesAnnotations(
     curseur = { maj: d.maj_serveur, id: d.annotation_id };
   }
   return { annotations: r, curseur };
+}
+
+/* ── Comptes (enseignant) ────────────────────────────────────────────────── */
+
+export interface CompteClasse {
+  id: string;
+  courriel: string | null;
+  nom: string | null;
+  role: "prof" | "etudiant";
+  creeLe: string | null;
+  derniereConnexion: string | null;
+  /** Bloqué jusqu'à cette date (connexion refusée) ; null = actif. */
+  bloqueJusquA: string | null;
+  nbResultats: number;
+  nbGachees: number;
+  derniereActivite: string | null;
+}
+
+export async function lireComptes(sb: SupabaseClient): Promise<CompteClasse[]> {
+  const { data, error } = await sb.rpc("lister_comptes");
+  if (error) throw echec(error);
+  return ((Array.isArray(data) ? data : []) as {
+    compte_id: string; courriel: string | null; nom_affiche: string | null; compte_role: string; cree_le: string | null;
+    derniere_connexion: string | null; bloque_jusqu_a: string | null; nb_resultats: number | string; nb_gachees: number | string;
+    derniere_activite: string | null;
+  }[]).map((x) => ({
+    id: x.compte_id, courriel: x.courriel, nom: x.nom_affiche, role: x.compte_role === "prof" ? "prof" : "etudiant",
+    creeLe: x.cree_le, derniereConnexion: x.derniere_connexion, bloqueJusquA: x.bloque_jusqu_a,
+    nbResultats: Number(x.nb_resultats) || 0, nbGachees: Number(x.nb_gachees) || 0, derniereActivite: x.derniere_activite,
+  }));
+}
+
+/** Nomme (prof) ou retire (etudiant) un enseignant. */
+export async function definirRole(sb: SupabaseClient, compte: string, role: "prof" | "etudiant"): Promise<void> {
+  const { error } = await sb.rpc("definir_role", { p_compte: compte, p_role: role });
+  if (error) throw echec(error);
+}
+
+/** Bloque (connexion refusée) ou débloque un compte étudiant. */
+export async function bloquerCompte(sb: SupabaseClient, compte: string, bloquer: boolean): Promise<void> {
+  const { error } = await sb.rpc("bloquer_compte", { p_compte: compte, p_bloquer: bloquer });
+  if (error) throw echec(error);
 }

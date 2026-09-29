@@ -33,7 +33,14 @@ const SUPABASE_MINIMAL = `
   create schema auth;
   create table auth.users (
     id uuid primary key, email text,
-    raw_user_meta_data jsonb not null default '{}'::jsonb
+    raw_user_meta_data jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    last_sign_in_at timestamptz,
+    banned_until timestamptz
+  );
+  create table auth.sessions (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade
   );
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
@@ -565,5 +572,72 @@ describe("schema.sql — réponses et accusés de lecture", () => {
     await db.exec(SCHEMA);
     await expect(comme(PROF, "update public.annotations set lu_le = now() where id = $1", [commentaire])).rejects.toMatchObject({ code: "42501" });
     expect((await comme(PROF, "update public.annotations set deleted = false where id = $1", [commentaire])).affectedRows).toBe(1);
+  });
+});
+
+describe("schema.sql — comptes (enseignant)", () => {
+  // Comptes propres à ce bloc ; PROF n'y change jamais de rôle ni n'est bloqué.
+  const K1 = "00000000-0000-4000-8000-0000000000f5";
+  const K2 = "00000000-0000-4000-8000-0000000000f6";
+  const P3 = "00000000-0000-4000-8000-0000000000f3";
+  const P4 = "00000000-0000-4000-8000-0000000000f4";
+  const role = async (id: string) => (await db.query<{ role: string }>("select role from public.profiles where id = $1", [id])).rows[0].role;
+  const definir = (uid: string, compte: string, r: string) => comme(uid, "select public.definir_role($1, $2)", [compte, r]);
+  const bloquer = (uid: string, compte: string, b: boolean) => comme(uid, "select public.bloquer_compte($1, $2)", [compte, b]);
+
+  beforeAll(async () => {
+    for (const [id, email] of [[K1, "k1@exemple.ca"], [K2, "k2@exemple.ca"], [P3, "p3@exemple.ca"], [P4, "p4@exemple.ca"]]) await creerCompte(id, email);
+    await db.query("update public.profiles set role = 'prof' where id in ($1, $2)", [P3, P4]);
+    await ecrire(K1, "gachee", "k1g", { id: "k1g" }, null);
+    await ecrire(K1, "resultat", "k1r", { id: "k1r" }, null);
+  });
+
+  it("lister_comptes : réservé à l'enseignant ; comptes, rôles, volume de travail", async () => {
+    const q = "select compte_id, courriel, compte_role, nb_resultats, nb_gachees, bloque_jusqu_a from public.lister_comptes()";
+    await expect(comme(K1, q)).rejects.toMatchObject({ code: "42501" });
+    await expect(comme(null, q)).rejects.toMatchObject({ code: "42501" });
+    const r = await comme<{ compte_id: string; courriel: string; compte_role: string; nb_resultats: number; nb_gachees: number; bloque_jusqu_a: string | null }>(PROF, q);
+    expect(r.rows.find((x) => x.compte_id === K1)).toMatchObject({ courriel: "k1@exemple.ca", compte_role: "etudiant", nb_resultats: 1, nb_gachees: 1, bloque_jusqu_a: null });
+    expect(r.rows.find((x) => x.compte_id === P3)?.compte_role).toBe("prof");
+    // auth.users reste invisible en direct.
+    await expect(comme(PROF, "select id from auth.users")).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("definir_role : par un enseignant, jamais sur soi ; nommé, il lit la classe", async () => {
+    await expect(definir(K2, K1, "prof")).rejects.toMatchObject({ code: "42501" }); // un étudiant ne nomme personne
+    await expect(definir(K1, K1, "prof")).rejects.toMatchObject({ code: "42501" }); // ni lui-même
+    await expect(definir(PROF, PROF, "etudiant")).rejects.toMatchObject({ code: "42501" }); // l'enseignant ne se retire pas
+    await expect(definir(PROF, K1, "admin")).rejects.toMatchObject({ code: "22023" });
+    await expect(definir(PROF, "00000000-0000-4000-8000-00000000dead", "prof")).rejects.toMatchObject({ code: "P0002" });
+    await definir(PROF, K1, "prof");
+    expect(await role(K1)).toBe("prof");
+    await comme(K1, "select * from public.lire_docs_classe(null, null, null, null, 0, 10, false, null)");
+    await definir(PROF, K1, "etudiant");
+    expect(await role(K1)).toBe("etudiant");
+    await expect(comme(K1, "select * from public.lire_docs_classe(null, null, null, null, 0, 10, false, null)")).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("deux enseignants : le premier retire l'autre, qui ne peut plus rien", async () => {
+    await definir(P3, P4, "etudiant");
+    await expect(definir(P4, P3, "etudiant")).rejects.toMatchObject({ code: "42501" });
+    expect(await role(P3)).toBe("prof");
+  });
+
+  it("bloquer_compte : connexion refusée (ban fini), sessions supprimées, réversible", async () => {
+    await db.query("insert into auth.sessions (user_id) values ($1), ($1)", [K2]);
+    await expect(bloquer(K1, K2, true)).rejects.toMatchObject({ code: "42501" }); // un étudiant ne bloque pas
+    await expect(bloquer(PROF, PROF, true)).rejects.toMatchObject({ code: "42501" }); // pas soi-même
+    await expect(bloquer(PROF, P3, true)).rejects.toMatchObject({ code: "42501" }); // pas un enseignant
+    await bloquer(PROF, K2, true);
+    const u = (await db.query<{ ok: boolean; fini: boolean }>(
+      "select banned_until > now() + interval '99 years' as ok, isfinite(banned_until) as fini from auth.users where id = $1", [K2])).rows[0];
+    expect(u).toEqual({ ok: true, fini: true });
+    expect((await db.query("select 1 from auth.sessions where user_id = $1", [K2])).rows).toHaveLength(0);
+    const liste = await comme<{ compte_id: string; bloque_jusqu_a: string | null }>(PROF, "select compte_id, bloque_jusqu_a from public.lister_comptes()");
+    expect(liste.rows.find((x) => x.compte_id === K2)!.bloque_jusqu_a).not.toBeNull();
+    await expect(definir(PROF, K2, "prof")).rejects.toMatchObject({ code: "22023" }); // bloqué : pas de promotion
+    await bloquer(PROF, K2, false);
+    expect((await db.query<{ b: string | null }>("select banned_until as b from auth.users where id = $1", [K2])).rows[0].b).toBeNull();
+    await expect(bloquer(PROF, "00000000-0000-4000-8000-00000000dead", true)).rejects.toMatchObject({ code: "P0002" });
   });
 });

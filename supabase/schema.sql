@@ -307,9 +307,10 @@ alter table public.user_usage        enable row level security;
 alter table public.annotations       enable row level security;
 
 -- profiles : chacun lit le sien ; le prof lit tout (afficher qui a produit quoi).
--- AUCUNE politique insert/update/delete -> rôle modifiable UNIQUEMENT en SQL
--- (anti-escalade : un étudiant ne peut pas se promouvoir prof). Le nom affiché
--- passe par definir_nom(), qui ne touche que cette colonne.
+-- AUCUNE politique insert/update/delete -> le rôle ne change qu'en SQL, ou par
+-- definir_role() (réservée à un enseignant, contrôlée plus bas) : un étudiant
+-- ne peut jamais se promouvoir. Le nom affiché passe par definir_nom(), qui ne
+-- touche que cette colonne.
 drop policy if exists profiles_select on public.profiles;
 create policy profiles_select on public.profiles for select
   to authenticated using (id = auth.uid() or public.is_prof());
@@ -628,6 +629,97 @@ begin
            where a.auteur_id = a.owner_id and a.lu_le is null and not a.deleted);
 end $$;
 
+-- ======================================================================
+--  Comptes (enseignant) : lister, nommer ou retirer un enseignant, bloquer.
+--  Security definer : ces fonctions lisent auth.users et changent un rôle,
+--  ce qu'aucune politique ne permet. Chacune revérifie l'appelant.
+--  La suppression définitive d'un compte reste une procédure SQL
+--  (docs/OPERATIONS.md) : irréversible, elle n'a pas de bouton.
+-- ======================================================================
+
+-- Tous les comptes, avec de quoi décider : inscription, dernière connexion,
+-- blocage, volume de travail en ligne. Colonnes de sortie nommées autrement
+-- que celles des tables (ambiguïté plpgsql).
+create or replace function public.lister_comptes()
+returns table (compte_id uuid, courriel text, nom_affiche text, compte_role text, cree_le timestamptz,
+               derniere_connexion timestamptz, bloque_jusqu_a timestamptz,
+               nb_resultats integer, nb_gachees integer, derniere_activite timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  return query
+    select u.id, u.email::text, p.display_name, coalesce(p.role, 'etudiant'), u.created_at, u.last_sign_in_at,
+           case when u.banned_until > now() then u.banned_until end,
+           coalesce(d.nb_r, 0), coalesce(d.nb_g, 0), d.derniere
+      from auth.users u
+      left join public.profiles p on p.id = u.id
+      left join lateral (select (count(*) filter (where x.kind = 'resultat' and not x.deleted))::integer as nb_r,
+                                (count(*) filter (where x.kind = 'gachee' and not x.deleted))::integer as nb_g,
+                                max(x.updated_at) as derniere
+                           from public.user_docs x where x.user_id = u.id) d on true
+     order by coalesce(p.role, 'etudiant') desc, coalesce(p.display_name, u.email::text);
+end $$;
+
+-- Nommer (p_role = 'prof') ou retirer (p_role = 'etudiant') un enseignant.
+-- Jamais son propre rôle : l'appelant reste enseignant, la classe en garde
+-- donc toujours un. Verrou commun avec bloquer_compte : deux enseignants qui
+-- se retirent l'un l'autre en même temps passent l'un après l'autre, et le
+-- second, revérifié APRÈS le verrou, n'est plus enseignant.
+create or replace function public.definir_role(p_compte uuid, p_role text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if p_role is null or p_role not in ('prof', 'etudiant') then
+    raise exception 'rôle inconnu' using errcode = '22023';
+  end if;
+  perform pg_advisory_xact_lock(hashtext('minebackfill.comptes'));
+  if (select auth.uid()) is null or not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  if p_compte = (select auth.uid()) then
+    raise exception 'on ne change pas son propre rôle' using errcode = '42501';
+  end if;
+  if p_role = 'prof' and exists (select 1 from auth.users u where u.id = p_compte and u.banned_until > now()) then
+    raise exception 'compte bloqué : débloquez-le avant de le nommer enseignant' using errcode = '22023';
+  end if;
+  update public.profiles set role = p_role where id = p_compte;
+  if not found then
+    raise exception 'compte introuvable' using errcode = 'P0002';
+  end if;
+end $$;
+
+-- Bloquer (connexion refusée) ou débloquer un compte étudiant. Même mécanisme
+-- que « Ban user » de Supabase Studio (auth.users.banned_until) : un compte
+-- bloqué d'un côté apparaît bloqué de l'autre. Durée : 876000 h (100 ans),
+-- comme le « ban » de l'API d'administration — jamais 'infinity', que le
+-- serveur d'authentification ne sait pas lire. Ses sessions sont supprimées :
+-- il est déconnecté au plus tard à l'expiration de son jeton (1 h). Rien de
+-- son travail n'est touché.
+create or replace function public.bloquer_compte(p_compte uuid, p_bloquer boolean)
+returns timestamptz language plpgsql security definer set search_path = '' as $$
+declare v_jusqu timestamptz := case when p_bloquer then now() + interval '876000 hours' end;
+begin
+  perform pg_advisory_xact_lock(hashtext('minebackfill.comptes'));
+  if (select auth.uid()) is null or not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  if p_compte = (select auth.uid()) then
+    raise exception 'on ne se bloque pas soi-même' using errcode = '42501';
+  end if;
+  if exists (select 1 from public.profiles p where p.id = p_compte and p.role = 'prof') then
+    raise exception 'retirez d''abord le rôle d''enseignant' using errcode = '42501';
+  end if;
+  update auth.users set banned_until = v_jusqu where id = p_compte;
+  if not found then
+    raise exception 'compte introuvable' using errcode = 'P0002';
+  end if;
+  if p_bloquer then
+    delete from auth.sessions where user_id = p_compte; -- jetons de rafraîchissement : en cascade
+  end if;
+  return v_jusqu;
+end $$;
+
 -- Droits d'exécution : Supabase accorde EXECUTE à anon par défaut.
 revoke execute on function public.ecrire_doc(uuid, text, text, jsonb, bigint, boolean) from public, anon;
 revoke execute on function public.lire_docs(uuid, timestamptz, text, text, integer, integer) from public, anon;
@@ -638,6 +730,9 @@ revoke execute on function public.lire_fil_annotations(uuid, timestamptz, uuid, 
 revoke execute on function public.repondre_annotation(uuid, text, text, bigint, text) from public, anon;
 revoke execute on function public.marquer_annotations_lues(uuid[]) from public, anon;
 revoke execute on function public.nb_reponses_non_lues() from public, anon;
+revoke execute on function public.lister_comptes() from public, anon;
+revoke execute on function public.definir_role(uuid, text) from public, anon;
+revoke execute on function public.bloquer_compte(uuid, boolean) from public, anon;
 grant execute on function public.ecrire_doc(uuid, text, text, jsonb, bigint, boolean) to authenticated;
 grant execute on function public.lire_docs(uuid, timestamptz, text, text, integer, integer) to authenticated;
 grant execute on function public.lire_docs_classe(timestamptz, uuid, text, text, integer, integer, boolean, text) to authenticated;
@@ -647,6 +742,9 @@ grant execute on function public.lire_fil_annotations(uuid, timestamptz, uuid, i
 grant execute on function public.repondre_annotation(uuid, text, text, bigint, text) to authenticated;
 grant execute on function public.marquer_annotations_lues(uuid[]) to authenticated;
 grant execute on function public.nb_reponses_non_lues() to authenticated;
+grant execute on function public.lister_comptes() to authenticated;
+grant execute on function public.definir_role(uuid, text) to authenticated;
+grant execute on function public.bloquer_compte(uuid, boolean) to authenticated;
 
 -- ======================================================================
 --  Reprise unique de saved_results (v1) dans user_docs. Ré-exécutable : un
@@ -666,6 +764,8 @@ on conflict (user_id, kind, id) do nothing;
 --  fois (2e argument pour plus : definir_code_enseignant('LE_CODE', 2)).
 --  Compte déjà créé sans le code :
 --    update public.profiles set role = 'prof' where email = 'prof@exemple.ca';
+--  Ensuite, un enseignant nomme les autres depuis l'application (Classe →
+--  Comptes), sans SQL.
 --
 --  CONTRÔLES après exécution (voir supabase/README.md) :
 --    -- résultats v1 non repris (id hors format) : doit être 0

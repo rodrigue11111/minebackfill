@@ -35,9 +35,10 @@ import { comparerClasse } from "@/lib/classe-comparaison";
 import { alertesClasse } from "@/lib/classe-alertes";
 import { echeancierClasse, icsClasse, lignesCsvEcheancier } from "@/lib/classe-echeancier";
 import OngletEcheancier from "@/components/classe/OngletEcheancier";
+import OngletComptes from "@/components/classe/OngletComptes";
 import CarteAlertes from "@/components/classe/CarteAlertes";
 
-type CleOnglet = "etudiants" | "echeancier" | "comparaison";
+type CleOnglet = "etudiants" | "echeancier" | "comparaison" | "comptes";
 
 export default function ClassePage() {
   const monte = useHydrated();
@@ -270,6 +271,7 @@ export default function ClassePage() {
                   { cle: "etudiants", label: "Étudiants", compte: alertes.length || null },
                   { cle: "echeancier", label: "Échéancier", compte: echeances.filter((x) => x.classe === "retard" || x.classe === "aujourdhui").length || null },
                   { cle: "comparaison", label: "Comparaison", compte: comparaison.groupes.length || null },
+                  { cle: "comptes", label: "Comptes" },
                 ]} />
                 {onglet === "etudiants" && (
                   <>
@@ -287,6 +289,7 @@ export default function ClassePage() {
                   <OngletEcheancier echeances={echeances} onOuvrir={ouvrirDoc} onIcs={exporterIcs} onCsv={exporterCsvEcheancier} />
                 )}
                 {onglet === "comparaison" && <OngletComparaison comparaison={comparaison} onOuvrir={ouvrirDoc} />}
+                {onglet === "comptes" && <OngletComptes moi={session.userId} onChangement={() => void charger()} />}
               </>
             )}
           </>

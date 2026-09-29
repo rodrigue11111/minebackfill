@@ -6,8 +6,9 @@ import {
 } from "./classe";
 import { annotationsDe, fusionnerAnnotations, migrerAnnotationV1, nonLuesDeLEnseignant, type Annotation } from "./annotations";
 import {
-  ErreurClasse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireMesAnnotations, messageErreurClasse, retirerAnnotation,
+  ErreurClasse, lireAnnotationsClasse, lireClasse, lireComptes, lireDocComplet, lireMesAnnotations, messageErreurClasse, retirerAnnotation,
 } from "./classe-reseau";
+import { confirmationAction } from "@/components/classe/OngletComptes";
 import type { Eprouvette } from "./eprouvette";
 
 const A = "aaaaaaaa-0000", B = "bbbbbbbb-0000", P = "pppppppp-0000";
@@ -259,5 +260,24 @@ describe("classe-reseau", () => {
     await expect(lireDocComplet(client(null, { code: "42501", message: "non" }), A, "gachee", "g3")).rejects.toMatchObject({ code: "42501" });
     expect(messageErreurClasse(new ErreurClasse("PGRST202", "Could not find the function"))).toMatch(/schema\.sql/);
     expect(messageErreurClasse(new ErreurClasse("42501", "refusé"))).toBe("refusé");
+  });
+
+  it("comptes : lecture convertie ; droit refusé sur auth → marche à suivre dans Studio", async () => {
+    const { sb } = clientRpc({ lister_comptes: [[{
+      compte_id: "k", courriel: "k@x.ca", nom_affiche: null, compte_role: "prof", cree_le: "c", derniere_connexion: null,
+      bloque_jusqu_a: null, nb_resultats: "2", nb_gachees: 3, derniere_activite: null,
+    }]] });
+    expect(await lireComptes(sb)).toEqual([{ id: "k", courriel: "k@x.ca", nom: null, role: "prof", creeLe: "c", derniereConnexion: null,
+      bloqueJusquA: null, nbResultats: 2, nbGachees: 3, derniereActivite: null }]);
+    expect(messageErreurClasse(new ErreurClasse("42501", "permission denied for table users"))).toMatch(/Ban user/);
+    expect(messageErreurClasse(new ErreurClasse("42501", "on ne se bloque pas soi-même"))).toBe("on ne se bloque pas soi-même");
+  });
+
+  it("comptes : chaque action dit ce qu'elle fait avant de le faire", () => {
+    expect(confirmationAction("nommer", "Alice")).toMatch(/verra le travail de tous les étudiants/);
+    expect(confirmationAction("nommer", "Alice")).toMatch(/ne figurera plus dans la liste des étudiants/);
+    expect(confirmationAction("bloquer", "Alice")).toMatch(/Rien n'est effacé/);
+    expect(confirmationAction("bloquer", "Alice")).toMatch(/dans l'heure/);
+    expect(confirmationAction("retirer", "Alice")).toMatch(/redevient étudiant/);
   });
 });

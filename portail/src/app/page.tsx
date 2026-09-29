@@ -10,6 +10,8 @@ import { useHydrated } from "@/lib/use-hydrated";
 function messageErreur(brut: string): string {
   const m = brut.toLowerCase();
   if (m.includes("invalid login")) return "Courriel ou mot de passe incorrect.";
+  if (m.includes("user is banned") || m.includes("user banned"))
+    return "Ce compte est suspendu. Adressez-vous à l'enseignant.";
   if (m.includes("already registered") || m.includes("already been registered"))
     return "Ce courriel a déjà un compte. Connectez-vous (ou « Mot de passe oublié ? »).";
   if (m.includes("signups not allowed") || m.includes("signups are disabled"))
