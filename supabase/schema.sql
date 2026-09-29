@@ -1,17 +1,32 @@
 -- MineBackfill — schéma Supabase (multi-utilisateur).
--- Idempotent autant que possible : à exécuter dans SQL Editor du projet.
+-- Idempotent : à exécuter (et ré-exécuter) dans SQL Editor du projet.
 -- Sécurité = RLS Postgres (l'anon key est publique par conception).
 -- Voir supabase/README.md pour la marche à suivre complète.
+--
+-- v2 (2026-09) : le travail des étudiants (résultats ET gâchées) vit dans
+-- `user_docs`, avec révisions, suppressions explicites et écriture à contrôle
+-- de version. `saved_results` (v1) est repris une fois puis GELÉ en lecture
+-- seule. Pourquoi v1 ne suffisait pas : docs/HISTORIQUE_EXTENSIBILITE.md.
 
 -- ======================================================================
 --  profils : rôle par utilisateur, créé automatiquement au signup
 -- ======================================================================
 create table if not exists public.profiles (
-  id         uuid primary key references auth.users(id) on delete cascade,
-  email      text,
-  role       text not null default 'etudiant' check (role in ('prof', 'etudiant')),
-  created_at timestamptz not null default now()
+  id           uuid primary key references auth.users(id) on delete cascade,
+  email        text,
+  role         text not null default 'etudiant' check (role in ('prof', 'etudiant')),
+  created_at   timestamptz not null default now(),
+  display_name text
 );
+-- Projets créés avant la v2 : la colonne n'existe pas encore.
+alter table public.profiles add column if not exists display_name text;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_display_name_ck'
+                  and conrelid = 'public.profiles'::regclass) then
+    alter table public.profiles add constraint profiles_display_name_ck
+      check (display_name is null or char_length(display_name) between 1 and 80);
+  end if;
+end $$;
 
 -- PIÈGE : une politique sur profiles qui interroge profiles boucle (récursion
 -- RLS). Solution canonique : fonction security definer (contourne la RLS).
@@ -20,10 +35,14 @@ language sql stable security definer set search_path = public as
 $$ select exists (select 1 from profiles where id = auth.uid() and role = 'prof') $$;
 
 -- Création automatique du profil à l'inscription.
+-- raw_user_meta_data est SAISI PAR L'UTILISATEUR : on n'en lit QUE le nom
+-- affiché, jamais un rôle.
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as
 $$ begin
-     insert into public.profiles (id, email) values (new.id, new.email)
+     insert into public.profiles (id, email, display_name)
+     values (new.id, new.email,
+             nullif(left(btrim(coalesce(new.raw_user_meta_data ->> 'display_name', '')), 80), ''))
      on conflict (id) do nothing;
      return new;
    end $$;
@@ -33,19 +52,41 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- Nom affiché modifiable par l'utilisateur — et RIEN d'autre : il n'existe
+-- toujours AUCUNE politique UPDATE sur profiles (anti-escalade du rôle).
+create or replace function public.definir_nom(p_nom text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare v_nom text := nullif(btrim(coalesce(p_nom, '')), '');
+begin
+  if (select auth.uid()) is null then
+    raise exception 'non authentifié' using errcode = '28000';
+  end if;
+  if char_length(v_nom) > 80 then
+    raise exception 'nom trop long (80 caractères au plus)' using errcode = '22001';
+  end if;
+  update public.profiles set display_name = v_nom where id = (select auth.uid());
+end $$;
+
 -- ======================================================================
 --  catalogues officiels : une ligne par catalogue, data = enveloppe {v,data}
 --  (IDENTIQUE au format persisted.ts côté frontend : réutilise ses migrations)
+--  'sessions' (v2) : la liste des sessions publiée par l'enseignant.
 -- ======================================================================
 create table if not exists public.official_catalogs (
-  id         text primary key check (id in ('liants','residus','granulats','retardateurs','constantes')),
+  id         text primary key check (id in ('liants','residus','granulats','retardateurs','constantes','sessions')),
   data       jsonb not null,
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users(id)
 );
+-- Projets créés avant la v2 : la contrainte (nom par défaut de Postgres pour
+-- un CHECK de colonne) ne connaît pas 'sessions'.
+alter table public.official_catalogs drop constraint if exists official_catalogs_id_check;
+alter table public.official_catalogs add constraint official_catalogs_id_check
+  check (id in ('liants','residus','granulats','retardateurs','constantes','sessions'));
 
 -- ======================================================================
---  résultats : id = l'id client `sr_...` (clé de fusion dédupliquée existante)
+--  résultats v1 : GELÉS (lecture seule). Repris dans user_docs plus bas.
+--  À supprimer un an après l'activation de la v2 (docs/OPERATIONS.md).
 -- ======================================================================
 create table if not exists public.saved_results (
   id         text primary key,
@@ -57,15 +98,144 @@ create index if not exists saved_results_user_idx
   on public.saved_results (user_id, created_at desc);
 
 -- ======================================================================
+--  documents des utilisateurs (v2) : résultats, gâchées, courbes
+-- ======================================================================
+-- rev : tirée d'une séquence GLOBALE par le trigger ci-dessous. Elle sert au
+-- contrôle de version (« j'écris par-dessus la révision que j'ai vue »), pas
+-- à l'ordre de lecture, qui suit updated_at.
+create sequence if not exists public.user_docs_rev_seq;
+
+create table if not exists public.user_docs (
+  -- restrict : supprimer un compte n'emporte JAMAIS son travail par accident
+  -- (procédure d'effacement volontaire : docs/OPERATIONS.md).
+  user_id    uuid        not null references auth.users(id) on delete restrict,
+  kind       text        not null,
+  id         text        not null,
+  rev        bigint      not null default nextval('public.user_docs_rev_seq'),
+  deleted    boolean     not null default false,
+  payload    jsonb,
+  created_at timestamptz not null default clock_timestamp(),
+  updated_at timestamptz not null default clock_timestamp(),
+  -- Clé PAR UTILISATEUR : deux étudiants ne peuvent plus entrer en collision
+  -- sur un id client (v1 : clé globale sur des ids « sr_<ms>_<4 car.> »).
+  primary key (user_id, kind, id),
+  constraint user_docs_kind_ck   check (kind in ('resultat', 'gachee', 'courbe')),
+  constraint user_docs_id_ck     check (id ~ '^[A-Za-z0-9_.:-]{1,100}$'),
+  -- Une suppression EFFACE le contenu (payload null) : supprimer, c'est
+  -- vraiment supprimer. Seule la trace « supprimé » reste, pour que les
+  -- autres appareils l'apprennent.
+  constraint user_docs_etat_ck   check (deleted = (payload is null)),
+  constraint user_docs_taille_ck check (payload is null or octet_length(payload::text) <= 262144)
+);
+create index if not exists user_docs_tirage_idx on public.user_docs (user_id, updated_at, kind, id);
+create index if not exists user_docs_classe_idx on public.user_docs (updated_at, user_id, kind, id);
+
+-- Invariants posés par le SERVEUR, quel que soit le chemin d'écriture (RPC ou
+-- PostgREST direct) : clé immuable, rev et horodatage attribués ici.
+-- clock_timestamp() et non now() : deux écritures d'une même transaction
+-- doivent recevoir des instants distincts, sinon la pagination les confond.
+create or replace function public.user_docs_normaliser() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if tg_op = 'UPDATE' then
+    if (new.user_id, new.kind, new.id) is distinct from (old.user_id, old.kind, old.id) then
+      raise exception 'clé de document immuable' using errcode = '42501';
+    end if;
+    new.created_at := old.created_at;
+  else
+    new.created_at := clock_timestamp();
+  end if;
+  new.rev        := nextval('public.user_docs_rev_seq');
+  new.updated_at := clock_timestamp();
+  if new.deleted then new.payload := null; end if;
+  return new;
+end $$;
+drop trigger if exists user_docs_normaliser on public.user_docs;
+create trigger user_docs_normaliser before insert or update on public.user_docs
+  for each row execute function public.user_docs_normaliser();
+
+-- Quota par utilisateur : l'inscription est ouverte, un compte ne doit pas
+-- pouvoir remplir seul les 500 Mo de l'offre gratuite. 25 Mo par compte, soit
+-- des années de travail d'un étudiant sans les courbes de presse.
+create table if not exists public.user_usage (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  nb_docs integer not null default 0,
+  octets  bigint  not null default 0
+);
+create or replace function public.user_docs_quota() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_delta bigint := coalesce(octet_length(new.payload::text), 0)
+                  - case when tg_op = 'UPDATE' then coalesce(octet_length(old.payload::text), 0) else 0 end;
+  v_total bigint;
+begin
+  insert into public.user_usage as u (user_id, nb_docs, octets)
+  values (new.user_id, case when tg_op = 'INSERT' then 1 else 0 end, v_delta)
+  on conflict (user_id) do update
+     set nb_docs = u.nb_docs + excluded.nb_docs, octets = u.octets + excluded.octets
+  returning u.octets into v_total;
+  if v_delta > 0 and v_total > 25 * 1024 * 1024 then
+    raise exception 'quota de stockage en ligne atteint' using errcode = '53400';
+  end if;
+  return null;
+end $$;
+drop trigger if exists user_docs_quota on public.user_docs;
+create trigger user_docs_quota after insert or update on public.user_docs
+  for each row execute function public.user_docs_quota();
+
+-- ======================================================================
+--  annotations : écrites par l'enseignant, lues par le propriétaire du travail
+-- ======================================================================
+create table if not exists public.annotations (
+  id          uuid        primary key default gen_random_uuid(),
+  owner_id    uuid        not null references auth.users(id) on delete restrict,
+  target_kind text        not null check (target_kind in ('resultat', 'gachee')),
+  target_id   text        not null,
+  -- Révision du document au moment de l'annotation : permet d'afficher
+  -- « annoté sur une version antérieure » si l'étudiant a modifié depuis.
+  target_rev  bigint,
+  -- Endroit précis dans le document (ex. une éprouvette), texte libre borné.
+  ancre       text        check (ancre is null or char_length(ancre) <= 200),
+  auteur_id   uuid        not null references auth.users(id) on delete restrict,
+  texte       text        not null check (char_length(texte) between 1 and 4000),
+  deleted     boolean     not null default false,
+  created_at  timestamptz not null default clock_timestamp(),
+  updated_at  timestamptz not null default clock_timestamp()
+);
+create index if not exists annotations_tirage_idx on public.annotations (owner_id, updated_at, id);
+
+create or replace function public.annotations_normaliser() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if tg_op = 'UPDATE' then
+    if (new.owner_id, new.target_kind, new.target_id, new.auteur_id, new.created_at)
+       is distinct from (old.owner_id, old.target_kind, old.target_id, old.auteur_id, old.created_at) then
+      raise exception 'annotation : seuls le texte et le retrait sont modifiables' using errcode = '42501';
+    end if;
+  else
+    new.created_at := clock_timestamp();
+  end if;
+  new.updated_at := clock_timestamp();
+  return new;
+end $$;
+drop trigger if exists annotations_normaliser on public.annotations;
+create trigger annotations_normaliser before insert or update on public.annotations
+  for each row execute function public.annotations_normaliser();
+
+-- ======================================================================
 --  Row Level Security
 -- ======================================================================
 alter table public.profiles          enable row level security;
 alter table public.official_catalogs enable row level security;
 alter table public.saved_results     enable row level security;
+alter table public.user_docs         enable row level security;
+alter table public.user_usage        enable row level security;
+alter table public.annotations       enable row level security;
 
 -- profiles : chacun lit le sien ; le prof lit tout (afficher qui a produit quoi).
 -- AUCUNE politique insert/update/delete -> rôle modifiable UNIQUEMENT en SQL
--- (anti-escalade : un étudiant ne peut pas se promouvoir prof).
+-- (anti-escalade : un étudiant ne peut pas se promouvoir prof). Le nom affiché
+-- passe par definir_nom(), qui ne touche que cette colonne.
 drop policy if exists profiles_select on public.profiles;
 create policy profiles_select on public.profiles for select
   to authenticated using (id = auth.uid() or public.is_prof());
@@ -82,22 +252,222 @@ drop policy if exists catalogs_upd on public.official_catalogs;
 create policy catalogs_upd on public.official_catalogs for update
   to authenticated using (public.is_prof()) with check (public.is_prof());
 
--- résultats : l'étudiant CRUD les siens ; le prof lit tout (revue pédagogique),
--- ne modifie pas ceux des autres.
+-- résultats v1 : lecture seule (le prof lit tout, chacun lit les siens).
+-- Les politiques d'écriture de la v1 sont retirées : la table est gelée.
 drop policy if exists results_select on public.saved_results;
 create policy results_select on public.saved_results for select
   to authenticated using (user_id = auth.uid() or public.is_prof());
 drop policy if exists results_insert on public.saved_results;
-create policy results_insert on public.saved_results for insert
-  to authenticated with check (user_id = auth.uid());
 drop policy if exists results_update on public.saved_results;
-create policy results_update on public.saved_results for update
-  to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists results_delete on public.saved_results;
-create policy results_delete on public.saved_results for delete
-  to authenticated using (user_id = auth.uid());
+
+-- documents v2 : chacun écrit les siens ; le prof lit tout mais n'écrit rien
+-- chez autrui. AUCUNE politique DELETE : effacer = poser une suppression
+-- (deleted = true), que les autres appareils doivent pouvoir lire.
+drop policy if exists user_docs_select on public.user_docs;
+create policy user_docs_select on public.user_docs for select to authenticated
+  using (user_id = (select auth.uid()) or (select public.is_prof()));
+drop policy if exists user_docs_insert on public.user_docs;
+create policy user_docs_insert on public.user_docs for insert to authenticated
+  with check (user_id = (select auth.uid()));
+drop policy if exists user_docs_update on public.user_docs;
+create policy user_docs_update on public.user_docs for update to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+drop policy if exists usage_select on public.user_usage;
+create policy usage_select on public.user_usage for select to authenticated
+  using (user_id = (select auth.uid()) or (select public.is_prof()));
+
+-- annotations : l'étudiant lit celles qui portent sur SON travail ; seul le
+-- prof écrit, en son nom, sur un document qui existe.
+drop policy if exists annotations_select on public.annotations;
+create policy annotations_select on public.annotations for select to authenticated
+  using (owner_id = (select auth.uid()) or (select public.is_prof()));
+drop policy if exists annotations_insert on public.annotations;
+create policy annotations_insert on public.annotations for insert to authenticated
+  with check ((select public.is_prof()) and auteur_id = (select auth.uid())
+    and exists (select 1 from public.user_docs d where d.user_id = annotations.owner_id
+                  and d.kind = annotations.target_kind and d.id = annotations.target_id));
+drop policy if exists annotations_update on public.annotations;
+create policy annotations_update on public.annotations for update to authenticated
+  using ((select public.is_prof()) and auteur_id = (select auth.uid()))
+  with check ((select public.is_prof()) and auteur_id = (select auth.uid()));
+
+-- Droits de table explicites (défense en profondeur : Supabase accorde tout à
+-- anon par défaut, et seule la RLS le retenait).
+revoke all on public.user_docs, public.user_usage, public.annotations from anon;
+revoke delete, truncate on public.user_docs, public.annotations from authenticated;
+grant select, insert, update on public.user_docs to authenticated;
+grant select on public.user_usage to authenticated;
+grant select, insert, update on public.annotations to authenticated;
+grant usage on sequence public.user_docs_rev_seq to authenticated;
+
+-- ======================================================================
+--  RPC : lecture et écriture des documents
+-- ======================================================================
+
+-- Écriture à contrôle de version. p_base_rev null = création.
+-- En conflit (quelqu'un a écrit depuis), rien n'est écrit et la ligne serveur
+-- est RENDUE, pour que le client décide sans relire.
+-- p_attendu = l'utilisateur que le client croit être : si la session a changé
+-- entre-temps, rien ne s'écrit sous le mauvais compte (28000).
+-- Colonnes de sortie nommées autrement que la table (ambiguïté plpgsql).
+create or replace function public.ecrire_doc(
+  p_attendu uuid, p_kind text, p_id text, p_payload jsonb, p_base_rev bigint,
+  p_supprime boolean default false
+) returns table (ok boolean, rev_serveur bigint, maj_serveur timestamptz,
+                 supprime_serveur boolean, contenu_serveur jsonb)
+language plpgsql security invoker set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_sup boolean := coalesce(p_supprime, false);
+  v_rev bigint;
+  v_maj timestamptz;
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  if p_base_rev is null then
+    insert into public.user_docs as d (user_id, kind, id, payload, deleted)
+    values (v_uid, p_kind, p_id, case when v_sup then null else p_payload end, v_sup)
+    on conflict (user_id, kind, id) do nothing
+    returning d.rev, d.updated_at into v_rev, v_maj;
+  else
+    update public.user_docs as d
+       set payload = case when v_sup then null else p_payload end, deleted = v_sup
+     where d.user_id = v_uid and d.kind = p_kind and d.id = p_id and d.rev = p_base_rev
+    returning d.rev, d.updated_at into v_rev, v_maj;
+  end if;
+  if v_rev is not null then
+    return query select true, v_rev, v_maj, v_sup, null::jsonb;
+  else
+    -- Conflit : rend la ligne actuelle (aucune ligne si le document n'existe pas).
+    return query select false, d.rev, d.updated_at, d.deleted, d.payload
+      from public.user_docs d where d.user_id = v_uid and d.kind = p_kind and d.id = p_id;
+  end if;
+end $$;
+
+-- Lecture incrémentale de SES documents (courbes exclues : lues à la demande).
+-- Le curseur (p_apres_*) est rendu TEL QUEL par le client, jamais converti en
+-- date JavaScript (troncature à la milliseconde -> page relue sans fin).
+-- p_recul_s : relit les N dernières secondes, pour rattraper une écriture
+-- validée APRÈS une lecture mais horodatée AVANT (transaction lente).
+create or replace function public.lire_docs(
+  p_attendu uuid, p_apres_maj timestamptz, p_apres_kind text, p_apres_id text,
+  p_recul_s integer default 0, p_limite integer default 100
+) returns table (doc_kind text, doc_id text, doc_rev bigint, maj_serveur timestamptz,
+                 supprime boolean, contenu jsonb)
+language plpgsql stable security invoker set search_path = '' as $$
+declare v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  return query
+    select d.kind, d.id, d.rev, d.updated_at, d.deleted, d.payload
+      from public.user_docs d
+     where d.user_id = v_uid and d.kind <> 'courbe'
+       and (d.updated_at, d.kind, d.id) >
+           (coalesce(p_apres_maj, '-infinity'::timestamptz)
+              - make_interval(secs => greatest(coalesce(p_recul_s, 0), 0)),
+            coalesce(p_apres_kind, ''), coalesce(p_apres_id, ''))
+     order by d.updated_at, d.kind, d.id
+     limit least(greatest(coalesce(p_limite, 100), 1), 500);
+end $$;
+
+-- Lecture de la classe (enseignant). Projection ALLÉGÉE par défaut : garde ce
+-- qu'affiche le tableau de bord (dont `recipes` et `parametres`, requis par
+-- parametresEffectifs) ; p_complet = document intégral (export de la classe).
+-- p_session : documents de cette session, plus ceux qui n'en portent pas
+-- (antérieurs aux sessions : le client les classe d'après leurs dates).
+create or replace function public.lire_docs_classe(
+  p_apres_maj timestamptz, p_apres_user uuid, p_apres_kind text, p_apres_id text,
+  p_recul_s integer default 0, p_limite integer default 100,
+  p_complet boolean default false, p_session text default null
+) returns table (proprietaire uuid, doc_kind text, doc_id text, doc_rev bigint,
+                 maj_serveur timestamptz, cree_serveur timestamptz, supprime boolean, contenu jsonb)
+language plpgsql stable security invoker set search_path = '' as $$
+begin
+  if not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  return query
+    select d.user_id, d.kind, d.id, d.rev, d.updated_at, d.created_at, d.deleted,
+           case
+             when p_complet           then d.payload
+             when d.kind = 'gachee'   then d.payload - 'protocolesSnapshot' - 'composants' - 'ajustements'
+             when d.kind = 'resultat' then d.payload - 'catalogue_liants' - 'constantes' - 'inputs'
+           end
+      from public.user_docs d
+     where (p_complet or d.kind in ('gachee', 'resultat'))
+       and (p_session is null or d.payload ->> 'sessionId' is null
+            or d.payload ->> 'sessionId' = p_session)
+       and (d.updated_at, d.user_id, d.kind, d.id) >
+           (coalesce(p_apres_maj, '-infinity'::timestamptz)
+              - make_interval(secs => greatest(coalesce(p_recul_s, 0), 0)),
+            coalesce(p_apres_user, '00000000-0000-0000-0000-000000000000'::uuid),
+            coalesce(p_apres_kind, ''), coalesce(p_apres_id, ''))
+     order by d.updated_at, d.user_id, d.kind, d.id
+     limit least(greatest(coalesce(p_limite, 100), 1), 500);
+end $$;
+
+-- Annotations portant sur SON travail, par curseur (mêmes règles que lire_docs).
+create or replace function public.lire_annotations(
+  p_attendu uuid, p_apres_maj timestamptz, p_apres_id uuid,
+  p_recul_s integer default 0, p_limite integer default 100
+) returns table (annotation_id uuid, cible_kind text, cible_id text, cible_rev bigint,
+                 ancre text, texte text, supprime boolean, maj_serveur timestamptz)
+language plpgsql stable security invoker set search_path = '' as $$
+declare v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  return query
+    select a.id, a.target_kind, a.target_id, a.target_rev, a.ancre,
+           case when a.deleted then null else a.texte end, a.deleted, a.updated_at
+      from public.annotations a
+     where a.owner_id = v_uid
+       and (a.updated_at, a.id) >
+           (coalesce(p_apres_maj, '-infinity'::timestamptz)
+              - make_interval(secs => greatest(coalesce(p_recul_s, 0), 0)),
+            coalesce(p_apres_id, '00000000-0000-0000-0000-000000000000'::uuid))
+     order by a.updated_at, a.id
+     limit least(greatest(coalesce(p_limite, 100), 1), 500);
+end $$;
+
+-- Droits d'exécution : Supabase accorde EXECUTE à anon par défaut.
+revoke execute on function public.ecrire_doc(uuid, text, text, jsonb, bigint, boolean) from public, anon;
+revoke execute on function public.lire_docs(uuid, timestamptz, text, text, integer, integer) from public, anon;
+revoke execute on function public.lire_docs_classe(timestamptz, uuid, text, text, integer, integer, boolean, text) from public, anon;
+revoke execute on function public.lire_annotations(uuid, timestamptz, uuid, integer, integer) from public, anon;
+revoke execute on function public.definir_nom(text) from public, anon;
+grant execute on function public.ecrire_doc(uuid, text, text, jsonb, bigint, boolean) to authenticated;
+grant execute on function public.lire_docs(uuid, timestamptz, text, text, integer, integer) to authenticated;
+grant execute on function public.lire_docs_classe(timestamptz, uuid, text, text, integer, integer, boolean, text) to authenticated;
+grant execute on function public.lire_annotations(uuid, timestamptz, uuid, integer, integer) to authenticated;
+grant execute on function public.definir_nom(text) to authenticated;
+
+-- ======================================================================
+--  Reprise unique de saved_results (v1) dans user_docs. Ré-exécutable : un
+--  document déjà repris (ou supprimé depuis par l'étudiant) n'est pas touché.
+-- ======================================================================
+insert into public.user_docs (user_id, kind, id, payload)
+select s.user_id, 'resultat', s.id, s.payload - 'ownerId'
+  from public.saved_results s
+ where s.id ~ '^[A-Za-z0-9_.:-]{1,100}$'
+on conflict (user_id, kind, id) do nothing;
 
 -- ======================================================================
 --  BOOTSTRAP PROF (one-off, après création du compte via /compte) :
 --    update public.profiles set role = 'prof' where email = 'prof@exemple.ca';
+--
+--  CONTRÔLES après exécution (voir supabase/README.md) :
+--    -- résultats v1 non repris (id hors format) : doit être 0
+--    select count(*) from public.saved_results s where not exists (
+--      select 1 from public.user_docs d where d.user_id = s.user_id
+--        and d.kind = 'resultat' and d.id = s.id);
+--    -- volume réel, à relancer chaque session
+--    select kind, count(*), pg_size_pretty(sum(pg_column_size(payload)))
+--      from public.user_docs group by kind;
 -- ======================================================================

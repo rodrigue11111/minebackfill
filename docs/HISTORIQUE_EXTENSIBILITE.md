@@ -89,6 +89,32 @@ initiale les avait ratées — d'où la règle « contre-vérifier toute affirma
 d'absence » de `docs/MAINTENANCE.md`) → densités d'essai au Bw ATTEINT (D95),
 exclusion de test supprimée ; anti-réattribution des résultats (`ownerId`).
 
+## Synchronisation v2 — le travail des étudiants en ligne (2026-09)
+Demande : que chaque étudiant retrouve TOUT son travail (résultats ET gâchées)
+d'un appareil à l'autre et d'une année à l'autre, et que l'enseignant puisse
+le lire et l'annoter. La v1 (`saved_results`) n'a PAS été généralisée : elle
+aurait propagé aux gâchées des défauts qui perdent du travail.
+- Une erreur de lecture était prise pour un cloud VIDE ; aucun retour
+  d'écriture n'était lu (refus et pannes invisibles).
+- Sans trace de suppression, un appareil annulait la suppression faite sur
+  l'autre en re-poussant sa copie.
+- Clé primaire GLOBALE sur des ids clients faibles (`sr_<ms>_<4 car.>`).
+- Chez l'enseignant, toute la classe était versée dans SON stockage local,
+  tronquée à 1 000 lignes.
+
+Décisions v2 (`supabase/schema.sql`), chacune pour une raison :
+- `user_docs`, clé (utilisateur, type, id) : plus de collision entre comptes.
+- Révision attribuée par le SERVEUR (trigger) et écriture conditionnelle
+  (`ecrire_doc` : « j'écris par-dessus la révision que j'ai vue ») : deux
+  appareils ne s'écrasent plus en silence ; un conflit garde les deux copies.
+- Suppression = contenu effacé + trace `deleted` jamais purgée : supprimer
+  supprime vraiment, et les autres appareils l'apprennent.
+- Lecture par curseur rendu tel quel, avec recul de 120 s : ni page relue sans
+  fin, ni écriture tardive manquée.
+- `on delete restrict` : supprimer un compte n'emporte pas son travail par
+  accident.
+- `saved_results` repris une fois puis gelé en lecture seule.
+
 ## Ce que ça implique pour la suite
 - Les golden tests + oracles sont le filet : toute évolution des formules
   passe par eux (recette 6 de `docs/MAINTENANCE.md`).
