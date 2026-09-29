@@ -11,7 +11,11 @@ function messageErreur(brut: string): string {
   const m = brut.toLowerCase();
   if (m.includes("invalid login")) return "Courriel ou mot de passe incorrect.";
   if (m.includes("already registered") || m.includes("already been registered"))
-    return "Ce courriel a déjà un compte. Connectez-vous.";
+    return "Ce courriel a déjà un compte. Connectez-vous (ou « Mot de passe oublié ? »).";
+  if (m.includes("signups not allowed") || m.includes("signups are disabled"))
+    return "Les inscriptions par courriel sont désactivées sur le serveur. Prévenez l'enseignant.";
+  if (m.includes("rate limit") || m.includes("for security purposes"))
+    return "Trop de demandes rapprochées. Patientez une minute, puis réessayez.";
   if (m.includes("password should be at least"))
     return "Le mot de passe doit contenir au moins 6 caractères.";
   if (m.includes("email") && m.includes("invalid")) return "Courriel invalide.";
@@ -342,6 +346,14 @@ export default function PortailPage() {
                 <div style={{ fontSize: 12.5, color: "var(--success)", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "8px 12px" }}>
                   {info}
                 </div>
+              )}
+              {mode === "connexion" && (
+                // Mêmes comptes que MineBackfill : la réinitialisation s'y fait
+                // (une seule page, un seul lien de retour à autoriser dans Supabase).
+                <a href={`${PROJETS.find((p) => p.id === "minebackfill")?.url ?? ""}/compte?oubli=1`}
+                  style={{ fontSize: 12, color: "var(--primary)", textDecoration: "none", marginTop: -4 }}>
+                  Mot de passe oublié ?
+                </a>
               )}
               <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: 4 }}>
                 {loading ? "…" : mode === "connexion" ? "Se connecter" : "Créer le compte"}

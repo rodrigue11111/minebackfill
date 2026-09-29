@@ -49,6 +49,47 @@ aujourd'hui (le lien « Compte » est masqué, aucun appel réseau).
 7. **Réglages** → publier les catalogues officiels et les constantes (seed
    initial ; en l'absence de ligne cloud, chaque client garde ses défauts).
 
+## Mot de passe oublié : serveur de courriel (une fois)
+
+L'application propose « Mot de passe oublié ? » (page Compte, et depuis le
+portail) : un courriel envoie un lien vers `/compte/nouveau-mot-de-passe`, où
+l'on choisit un nouveau mot de passe. Deux réglages Supabase sont requis :
+
+1. **Serveur de courriel (SMTP).** Le serveur intégré de Supabase n'écrit
+   qu'aux membres de l'équipe du projet : sans SMTP, l'application affiche
+   « L'envoi de courriels n'est pas encore configuré ». Exemple avec Resend
+   (gratuit jusqu'à 100 courriels/jour) :
+   - resend.com → Domains → ajouter `progicielbelem.com` → recopier les
+     enregistrements DNS proposés dans Vercel (Domains → progicielbelem.com →
+     DNS Records) → attendre « Verified » ;
+   - Resend → API Keys → créer une clé (droit « Sending access ») ;
+   - Supabase → Authentication → Emails → **SMTP Settings** → activer :
+     hôte `smtp.resend.com`, port `465`, utilisateur `resend`, mot de passe =
+     la clé API, expéditeur `no-reply@progicielbelem.com`, nom `MineBackfill` ;
+   - Authentication → **Rate Limits** : « emails sent per hour » à 30 (au
+     lieu de 2).
+2. **Adresse de retour autorisée.** Authentication → **URL Configuration** :
+   - Site URL : `https://minebackfill.progicielbelem.com`
+   - Redirect URLs : ajouter
+     `https://minebackfill.progicielbelem.com/compte/nouveau-mot-de-passe`
+   Sans cela, le lien du courriel renvoie vers la Site URL et l'étudiant ne
+   voit pas le formulaire.
+3. **Courriel en français** (facultatif mais conseillé) : Authentication →
+   Emails → Templates → **Reset Password** :
+   - Sujet : `MineBackfill — choisir un nouveau mot de passe`
+   - Message :
+     ```html
+     <h2>Nouveau mot de passe</h2>
+     <p>Vous avez demandé à changer le mot de passe de votre compte MineBackfill.</p>
+     <p><a href="{{ .ConfirmationURL }}">Choisir un nouveau mot de passe</a></p>
+     <p>Ce lien ne sert qu'une fois et expire dans une heure. Si vous n'avez rien
+     demandé, ignorez ce courriel : votre mot de passe ne change pas.</p>
+     ```
+
+Vérifier : page Compte → « Mot de passe oublié ? » → votre courriel → le
+courriel arrive → le lien ouvre « Nouveau mot de passe » → enregistrer → vous
+êtes connecté.
+
 ## Quotas & pièges de l'offre gratuite
 
 - **Le projet est mis en pause après ~7 jours d'inactivité** — l'enseignant le
