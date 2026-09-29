@@ -1,7 +1,7 @@
 // Tableau des étudiants de la classe (onglet « Étudiants »).
 
 import type { EtudiantClasse } from "@/lib/classe";
-import type { LigneAnnotation } from "@/lib/classe-reseau";
+import { estReponse, type LigneAnnotation } from "@/lib/classe-reseau";
 import { dateCourte, th } from "./commun";
 
 export default function TableauEtudiants({ etudiants, annotations, selId, onChoisir, couleurDe, alertesParEtudiant }: {
@@ -28,7 +28,8 @@ export default function TableauEtudiants({ etudiants, annotations, selId, onChoi
           {etudiants.length === 0 ? (
             <tr><td colSpan={colonnes.length} style={{ padding: 16, color: "#94a3b8" }}>Aucun compte étudiant pour l&apos;instant.</td></tr>
           ) : etudiants.map((e) => {
-            const nbComm = annotations.filter((a) => a.owner_id === e.id).length;
+            const siens = annotations.filter((a) => a.owner_id === e.id);
+            const nbNonLues = siens.filter((a) => estReponse(a) && !a.lu_le).length;
             const copies = e.gachees.filter((g) => g.conflit).length;
             const actif = e.id === selId;
             return (
@@ -49,7 +50,10 @@ export default function TableauEtudiants({ etudiants, annotations, selId, onChoi
                   {alertesParEtudiant.get(e.id) || "—"}
                 </td>
                 <td style={{ padding: "9px 12px" }}>{dateCourte(e.derniereActivite)}</td>
-                <td style={{ padding: "9px 12px" }}>{nbComm || "—"}</td>
+                <td style={{ padding: "9px 12px" }}>
+                  {siens.length || "—"}
+                  {nbNonLues > 0 && <span style={{ color: "#b45309", fontWeight: 700 }}> · {nbNonLues} réponse{nbNonLues > 1 ? "s" : ""} non lue{nbNonLues > 1 ? "s" : ""}</span>}
+                </td>
               </tr>
             );
           })}

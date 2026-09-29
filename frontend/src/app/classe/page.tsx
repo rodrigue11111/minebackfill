@@ -18,14 +18,15 @@ import { sessionActive, type FiltreSession as FiltreSessionValeur } from "@/lib/
 import FiltreSession from "@/components/FiltreSession";
 import { exportClasse, regrouper, type LigneClasse, type ProfilClasse } from "@/lib/classe";
 import {
-  ajouterAnnotation, lireAnnotationsClasse, lireClasse, lireDocComplet, lireProfils, messageErreurClasse,
-  retirerAnnotation, type LigneAnnotation,
+  ajouterAnnotation, estReponse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireProfils, marquerAnnotationsLues,
+  messageErreurClasse, retirerAnnotation, type LigneAnnotation,
 } from "@/lib/classe-reseau";
+import { rafraichirReponsesNonLues } from "@/lib/sync-client";
 import { nomFichier, telechargerBlob, telechargerTexte, versCsv } from "@/lib/export-fig";
 import { lignesCsvEprouvettes, lignesCsvSynthese } from "@/lib/classe-csv";
 import { COULEURS, type RefDoc } from "@/components/classe/commun";
 import TableauEtudiants from "@/components/classe/TableauEtudiants";
-import DetailEtudiant, { type NouvelleAnnotation } from "@/components/classe/DetailEtudiant";
+import DetailEtudiant, { reponsesNonLues, type ContexteFil, type NouvelleAnnotation } from "@/components/classe/DetailEtudiant";
 import FigureClasse from "@/components/classe/FigureClasse";
 import VueDocument, { type EtatDoc } from "@/components/classe/VueDocument";
 import Onglets from "@/components/classe/Onglets";
@@ -49,6 +50,9 @@ export default function ClassePage() {
   const [lignes, setLignes] = useState<LigneClasse[]>([]);
   const [profils, setProfils] = useState<ProfilClasse[]>([]);
   const [annotations, setAnnotations] = useState<LigneAnnotation[]>([]);
+  // Réponses non lues au chargement : restent en évidence pendant la visite,
+  // même une fois marquées lues.
+  const [nouvelles, setNouvelles] = useState<Set<string>>(() => new Set());
   const [etat, setEtat] = useState<"attente" | "chargement" | "pret" | "erreur">("attente");
   const [erreur, setErreur] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
@@ -81,6 +85,7 @@ export default function ClassePage() {
       setLignes(l);
       setProfils(p);
       setAnnotations(a);
+      setNouvelles(new Set(a.filter((x) => estReponse(x) && !x.lu_le).map((x) => x.id)));
       setEtat("pret");
     } catch (e) {
       // Une lecture en échec n'est JAMAIS montrée comme une classe vide.
@@ -108,10 +113,25 @@ export default function ClassePage() {
   const alertesParEtudiant = new Map<string, number>();
   for (const a of alertes) alertesParEtudiant.set(a.etudiantId, (alertesParEtudiant.get(a.etudiantId) ?? 0) + 1);
 
+  /** Réponses d'étudiants affichées : accusé de lecture (l'étudiant voit « vu »). */
+  const marquerLues = (ids: string[]) => {
+    const sb = getSupabase();
+    if (!sb || ids.length === 0) return;
+    marquerAnnotationsLues(sb, ids)
+      .then((lus) => {
+        const m = new Map(lus.map((x) => [x.id, x.luLe]));
+        if (m.size > 0) setAnnotations((l) => l.map((a) => (m.has(a.id) ? { ...a, lu_le: m.get(a.id) } : a)));
+        void rafraichirReponsesNonLues();
+      })
+      .catch(() => { /* base pas à jour ou réseau : sans conséquence, réessayé à la prochaine ouverture */ });
+  };
+
   /** Ouvre un document en entier : relu en ligne (la classe est allégée). */
   const ouvrirDoc = (ref: RefDoc) => {
     const sb = getSupabase();
     if (!sb) return;
+    marquerLues(reponsesNonLues(annotations.filter((a) =>
+      a.owner_id === ref.etudiantId && a.target_kind === ref.kind && a.target_id === ref.id)));
     const jeton = ++jetonDoc.current;
     setDoc({ ref, etat: "chargement" });
     defilement.current?.scrollTo({ top: 0 });
@@ -121,14 +141,16 @@ export default function ClassePage() {
   };
   const fermerDoc = () => { jetonDoc.current++; setDoc(null); };
 
-  const annoter = (proprietaire: string) => async (a: NouvelleAnnotation) => {
+  const annoter = (proprietaire: string) => async (a: NouvelleAnnotation): Promise<boolean> => {
     const sb = getSupabase();
-    if (!sb || !session) return;
+    if (!sb || !session) return false;
     try {
       const cree = await ajouterAnnotation(sb, { ...a, ownerId: proprietaire, auteurId: session.userId });
       setAnnotations((l) => [...l, cree]);
+      return true;
     } catch (e) {
-      window.alert(`Commentaire non enregistré : ${messageErreurClasse(e)}`);
+      window.alert(`Commentaire non enregistré : ${messageErreurClasse(e)}. Votre texte est conservé.`);
+      return false;
     }
   };
   const retirer = async (id: string) => {
@@ -141,6 +163,8 @@ export default function ClassePage() {
       window.alert(`Retrait impossible : ${messageErreurClasse(e)}`);
     }
   };
+
+  const ctx: ContexteFil = { moi: session?.userId ?? "", nouvelles, onLire: marquerLues, onRetirer: retirer };
 
   const exporter = async () => {
     const sb = getSupabase();
@@ -198,7 +222,7 @@ export default function ClassePage() {
       <div style={conteneur}>
         {doc ? (
           <VueDocument doc={doc} etudiant={etudiants.find((e) => e.id === doc.ref.etudiantId)}
-            annotations={annotations} onAnnoter={annoter(doc.ref.etudiantId)} onRetirer={retirer}
+            annotations={annotations} onAnnoter={annoter(doc.ref.etudiantId)} ctx={ctx}
             onRetour={fermerDoc} maintenant={maintenant} units={units} />
         ) : (
           <>
@@ -254,7 +278,7 @@ export default function ClassePage() {
                       couleurDe={couleurDe} alertesParEtudiant={alertesParEtudiant} />
                     {sel && (
                       <DetailEtudiant etudiant={sel} annotations={annotations} lignes={lignes}
-                        onAnnoter={annoter(sel.id)} onRetirer={retirer} onOuvrir={ouvrirDoc} />
+                        onAnnoter={annoter(sel.id)} ctx={ctx} onOuvrir={ouvrirDoc} />
                     )}
                     <FigureClasse etudiants={etudiants} couleurDe={couleurDe} />
                   </>

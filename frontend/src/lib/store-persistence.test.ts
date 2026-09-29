@@ -12,7 +12,7 @@ class MemStorage {
   get length() { return this.m.size; }
 }
 
-import { useStore } from "./store";
+import { ANNOTATIONS_KEY, loadAnnotationsFromStorage, persistAnnotations, useStore } from "./store";
 import { chargerEtatSync, sauverEtatSync } from "./sync-etat";
 import { etatInitial } from "./sync-moteur";
 
@@ -359,5 +359,31 @@ describe("store — sessions de cours", () => {
     seedResultatRpc();
     useStore.getState().saveCurrentResult("B");
     expect(useStore.getState().savedResults[0].sessionId).toBeUndefined();
+  });
+});
+
+describe("persistance — fil de commentaires (minebackfill_annotations)", () => {
+  const v1 = { id: "a1", cibleKind: "gachee", cibleId: "g1", cibleRev: 3, ancre: null, texte: "Vérifier la cure.", supprime: false, maj: "2026-09-20T10:00:00Z" };
+
+  it("v1 → v2 : curseur remis à zéro (tout est relu), l'enseignant auteur des anciennes entrées", () => {
+    localStorage.setItem(ANNOTATIONS_KEY, JSON.stringify({ v: 1, data: { curseur: { maj: "m", id: "a1" }, annotations: [v1] } }));
+    const e = loadAnnotationsFromStorage();
+    expect(e.curseur).toBeNull();
+    expect(e.annotations[0]).toMatchObject({ ...v1, auteur: "enseignant", creeLe: v1.maj, luLe: null });
+  });
+
+  it("v1 réécrite par un onglet resté sur l'ancien site : les champs v2 déjà là restent", () => {
+    const v2 = { ...v1, auteur: "moi", creeLe: "2026-09-19T00:00:00Z", luLe: "2026-09-21T00:00:00Z" };
+    localStorage.setItem(ANNOTATIONS_KEY, JSON.stringify({ v: 1, data: { curseur: null, annotations: [v2] } }));
+    expect(loadAnnotationsFromStorage().annotations[0]).toMatchObject({ auteur: "moi", creeLe: v2.creeLe, luLe: v2.luLe });
+  });
+
+  it("v2 : écrit et relu tel quel ; illisible → vide", () => {
+    const etat = { curseur: { maj: "m2", id: "a1" }, annotations: [{ ...v1, cibleKind: "gachee" as const, auteur: "enseignant" as const, creeLe: v1.maj, luLe: null }] };
+    expect(persistAnnotations(etat)).toBe(true);
+    expect(JSON.parse(localStorage.getItem(ANNOTATIONS_KEY)!).v).toBe(2);
+    expect(loadAnnotationsFromStorage()).toEqual(etat);
+    localStorage.setItem(ANNOTATIONS_KEY, "{pas du json");
+    expect(loadAnnotationsFromStorage()).toEqual({ curseur: null, annotations: [] });
   });
 });

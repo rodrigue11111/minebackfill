@@ -38,6 +38,7 @@ import { useAujourdhui } from "@/lib/use-aujourdhui";
 import CourbeUCS, { type SerieUCS } from "@/components/labo/CourbeUCS";
 import ImportPresse from "@/components/labo/ImportPresse";
 import AnnotationsDoc from "@/components/AnnotationsDoc";
+import { docsAvecNonLus } from "@/lib/annotations";
 import { courbesAOublier, idsCourbes, nbPointsCourbe } from "@/lib/courbes";
 import { enregistrerCourbes, oublierCourbes } from "@/lib/courbes-client";
 
@@ -881,6 +882,7 @@ export default function LaboPage() {
   // « Aujourd'hui » pour l'échéancier et les badges (voir use-aujourdhui.ts).
   const maintenant = useAujourdhui();
 
+  const nonLus = docsAvecNonLus(useStore((s) => s.annotations));
   const formulations = savedResults.filter((s) => (s.recipes?.length ?? 0) > 0);
   const selection = gachees.find((g) => g.id === selId) ?? null;
 
@@ -1152,6 +1154,12 @@ export default function LaboPage() {
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {nonLus.has(`gachee:${g.id}`) && (
+                      <span title="L'enseignant a commenté cette gâchée : ouvrez-la pour lire et répondre."
+                        style={{ fontSize: 11.5, fontWeight: 700, color: "#3730a3", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 999, padding: "3px 9px" }}>
+                        Commentaire non lu
+                      </span>
+                    )}
                     {g.conflit && (
                       <span title={`Version gardée lors d'un conflit de synchronisation (${new Date(g.conflit.le).toLocaleString("fr-CA")}). Exclue des figures.`}
                         style={{ fontSize: 11.5, fontWeight: 700, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 999, padding: "3px 9px" }}>

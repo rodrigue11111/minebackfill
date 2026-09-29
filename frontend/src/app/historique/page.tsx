@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import FiltreSession from "@/components/FiltreSession";
 import AnnotationsDoc from "@/components/AnnotationsDoc";
+import { docsAvecNonLus } from "@/lib/annotations";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useStore, type SavedResult } from "@/lib/store";
 import { estVersionCourante } from "@/lib/conventions";
@@ -34,6 +35,7 @@ export default function HistoriquePage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const sessions = useStore((s) => s.sessions);
+  const nonLus = docsAvecNonLus(useStore((s) => s.annotations));
   const [filtreSession, setFiltreSession] = useState<FiltreSessionValeur>("toutes");
   const visibles = savedResults.filter((sr) =>
     correspond({ sessionId: sr.sessionId, date: sr.savedAt }, sessions, filtreSession));
@@ -204,6 +206,14 @@ export default function HistoriquePage() {
                           style={{ fontSize: 10, fontWeight: 700, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap", flexShrink: 0 }}
                         >
                           anciennes formules
+                        </span>
+                      )}
+                      {nonLus.has(`resultat:${sr.id}`) && (
+                        <span
+                          title="L'enseignant a commenté ce résultat : dépliez-le pour lire et répondre."
+                          style={{ fontSize: 10, fontWeight: 700, color: "#3730a3", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap", flexShrink: 0 }}
+                        >
+                          commentaire non lu
                         </span>
                       )}
                       {sr.conflit && (

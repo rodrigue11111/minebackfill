@@ -13,10 +13,12 @@ import {
   loadAnnotationsFromStorage, loadGacheesFromStorage, loadSavedFromStorage,
   persistAnnotations, persistGachees, persistSaved, useStore,
 } from "./store";
-import { fusionnerAnnotations } from "./annotations";
-import { lireMesAnnotations } from "./classe-reseau";
+import { fusionnerAnnotations, type Annotation } from "./annotations";
 import {
-  cycle, deciderLiaison, nombreEnAttente,
+  lireMesAnnotations, marquerAnnotationsLues, messageErreurClasse, nbReponsesNonLues, repondreAnnotation, retirerAnnotation,
+} from "./classe-reseau";
+import {
+  cleDoc, cycle, deciderLiaison, nombreEnAttente,
   type Avis, type DepotLocal, type Liaison, type ResultatCycle, type Transport,
 } from "./sync-moteur";
 import {
@@ -50,14 +52,16 @@ export interface InstantaneSync {
   avis: Avis[];
   /** Documents locaux concernés par un rattachement. */
   anonymes: { resultats: number; gachees: number };
-  /** Commentaires de l'enseignant arrivés depuis l'ouverture (bandeau). */
-  nouvellesAnnotations: number;
+  /** Commentaires non lus dont l'étudiant a fermé le bandeau (ids). */
+  commentairesFermes: string[];
+  /** Enseignant : réponses d'étudiants pas encore lues ; null = inconnu. */
+  reponsesNonLues: number | null;
 }
 
 const INITIAL: InstantaneSync = {
   liaison: null, reporte: false, statut: "inactif", enAttente: 0,
   derniereReussite: null, erreur: null, avis: [], anonymes: { resultats: 0, gachees: 0 },
-  nouvellesAnnotations: 0,
+  commentairesFermes: [], reponsesNonLues: null,
 };
 
 let instantane: InstantaneSync = INITIAL;
@@ -84,6 +88,9 @@ export function instantaneSyncServeur(): InstantaneSync {
 interface Courant {
   sb: SupabaseClient;
   uid: string;
+  /** Compte enseignant : compteur de réponses d'étudiants. */
+  prof: boolean;
+  arreterCompteur: () => void;
   depot: DepotLocal;
   transport: Transport;
   planif: Planificateur | null;
@@ -136,19 +143,93 @@ async function rafraichirAnnotations(c: Courant): Promise<void> {
   try {
     const r = await lireMesAnnotations(c.sb, c.uid, avant.curseur);
     if (r.annotations.length === 0) return;
-    const annotations = fusionnerAnnotations(avant.annotations, r.annotations);
-    persistAnnotations({ curseur: r.curseur, annotations });
-    useStore.setState({ annotations });
-    const connues = new Set(avant.annotations.map((a) => a.id));
-    const nouvelles = annotations.filter((a) => !connues.has(a.id)).length;
-    if (nouvelles > 0) publier({ nouvellesAnnotations: instantane.nouvellesAnnotations + nouvelles });
+    enregistrerAnnotations(fusionnerAnnotations(avant.annotations, r.annotations), r.curseur);
   } catch {
     /* lecture en échec : on réessaiera au prochain cycle — jamais « aucune annotation » */
   }
 }
 
-export function vuNouvellesAnnotations(): void {
-  publier({ nouvellesAnnotations: 0 });
+/** Le fil local change (lecture, réponse, accusé) : stockage puis écran. */
+function enregistrerAnnotations(annotations: Annotation[], curseur = loadAnnotationsFromStorage().curseur): void {
+  persistAnnotations({ curseur, annotations });
+  useStore.setState({ annotations });
+}
+
+/** L'étudiant ferme le bandeau : ces commentaires-là ne le relancent plus (jusqu'au rechargement). */
+export function fermerBandeauCommentaires(ids: string[]): void {
+  publier({ commentairesFermes: [...new Set([...instantane.commentairesFermes, ...ids])] });
+}
+
+/** Ids en cours de marquage : un affichage répété n'envoie qu'une demande. */
+const enMarquage = new Set<string>();
+
+/**
+ * L'étudiant a sous les yeux ces commentaires de l'enseignant : accusé de
+ * lecture. Hors ligne ou en échec : rien ne change, on réessaiera au prochain
+ * affichage.
+ */
+export async function marquerCommentairesLus(ids: string[]): Promise<void> {
+  const c = courant;
+  const aFaire = ids.filter((id) => !enMarquage.has(id));
+  if (!c || aFaire.length === 0) return;
+  aFaire.forEach((id) => enMarquage.add(id));
+  try {
+    const lus = new Map((await marquerAnnotationsLues(c.sb, aFaire)).map((x) => [x.id, x.luLe]));
+    if (lus.size === 0 || courant !== c) return;
+    enregistrerAnnotations(loadAnnotationsFromStorage().annotations.map((a) => (lus.has(a.id) ? { ...a, luLe: lus.get(a.id)! } : a)));
+  } catch {
+    /* base pas à jour ou réseau : sans conséquence */
+  } finally {
+    aFaire.forEach((id) => enMarquage.delete(id));
+  }
+}
+
+/** L'étudiant répond sur SON document. Rend un message d'erreur, ou null. */
+export async function repondreCommentaire(kind: "resultat" | "gachee", id: string, texte: string): Promise<string | null> {
+  const c = courant;
+  if (!c) return "connectez-vous pour répondre";
+  try {
+    const rev = chargerEtatSync().docs[cleDoc(kind, id)]?.rev ?? null;
+    const a = await repondreAnnotation(c.sb, { attendu: c.uid, kind, id, rev, texte });
+    if (courant === c) enregistrerAnnotations(fusionnerAnnotations(loadAnnotationsFromStorage().annotations, [a]));
+    return null;
+  } catch (e) {
+    return messageErreurClasse(e);
+  }
+}
+
+/** L'étudiant retire SA réponse. Rend un message d'erreur, ou null. */
+export async function retirerMaReponse(id: string): Promise<string | null> {
+  const c = courant;
+  if (!c) return "connectez-vous pour retirer votre réponse";
+  try {
+    await retirerAnnotation(c.sb, id);
+    if (courant === c) enregistrerAnnotations(loadAnnotationsFromStorage().annotations.filter((a) => a.id !== id));
+    return null;
+  } catch (e) {
+    return messageErreurClasse(e);
+  }
+}
+
+/** Enseignant : relit le nombre de réponses non lues (pastille « Classe »). */
+export async function rafraichirReponsesNonLues(): Promise<void> {
+  const c = courant;
+  if (!c?.prof) return;
+  try {
+    const n = await nbReponsesNonLues(c.sb);
+    if (courant === c) publier({ reponsesNonLues: n });
+  } catch {
+    /* base pas à jour ou réseau : la pastille reste inconnue */
+  }
+}
+
+/** Enseignant : relève périodique du compteur, onglet visible, au même rythme que les annotations. */
+function demarrerCompteur(c: Courant): void {
+  const tick = () => { if (document.visibilityState !== "hidden") void rafraichirReponsesNonLues(); };
+  const id = window.setInterval(tick, PERIODE_ANNOTATIONS_MS);
+  document.addEventListener("visibilitychange", tick);
+  c.arreterCompteur = () => { window.clearInterval(id); document.removeEventListener("visibilitychange", tick); };
+  tick();
 }
 
 function resultatVide(aRelancer: boolean): ResultatCycle {
@@ -232,15 +313,27 @@ function demarrer(c: Courant): void {
  * rafraîchissement de jeton). Décide de la liaison du stockage local et
  * démarre la synchronisation si elle est permise.
  */
-export function connecterSynchro(sb: SupabaseClient, uid: string): void {
+export function connecterSynchro(sb: SupabaseClient, uid: string, o: { prof?: boolean } = {}): void {
   if (!SYNCHRO_ACTIVE || typeof window === "undefined") return;
-  if (courant?.uid === uid) return; // déjà en route (rafraîchissement de jeton)
+  const prof = o.prof === true;
+  if (courant?.uid === uid) {
+    // Déjà en route (rafraîchissement de jeton). Le rôle, lui, a pu changer.
+    if (courant.prof !== prof) {
+      courant.arreterCompteur();
+      courant.arreterCompteur = () => {};
+      courant.prof = prof;
+      if (prof) demarrerCompteur(courant);
+      else publier({ reponsesNonLues: null });
+    }
+    return;
+  }
   deconnecterSynchro();
   const c: Courant = {
-    sb, uid, depot: creerDepot(uid), transport: transportSupabase(sb, () => chargerEtatSync().uid ?? ""),
+    sb, uid, prof, arreterCompteur: () => {}, depot: creerDepot(uid), transport: transportSupabase(sb, () => chargerEtatSync().uid ?? ""),
     planif: null, debrancher: () => {},
   };
   courant = c;
+  if (prof) demarrerCompteur(c);
   // Un autre compte que celui du stockage local : on bascule (son travail
   // est mis de côté ou déjà en ligne, celui de ce compte revient). En cas
   // d'échec (stockage plein), rien n'a bougé et la liaison le signale.
@@ -275,6 +368,7 @@ export function connecterSynchro(sb: SupabaseClient, uid: string): void {
 /** Déconnexion : la synchronisation s'arrête ; les données locales restent. */
 export function deconnecterSynchro(): void {
   courant?.debrancher();
+  courant?.arreterCompteur();
   courant = null;
   derniereLectureAnnotations = -Infinity;
   publier({ ...INITIAL });

@@ -8,7 +8,7 @@ import { marquerSuppressionLocale } from "./sync-etat";
 import type { Gachee } from "./gachee";
 import { protocolesDefaut, type Protocole } from "./protocole";
 import { sessionActive, validerSessions, type Session } from "./sessions";
-import type { Annotation } from "./annotations";
+import { migrerAnnotationV1, type Annotation } from "./annotations";
 import { descriptorFor } from "./method-registry";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
@@ -445,11 +445,15 @@ export function persistSessions(items: Session[]): boolean {
   return persistVersioned(SESSIONS_KEY, SESSIONS_VERSION, items);
 }
 
-// ── Annotations de l'enseignant sur MON travail (lues en ligne) ──
-// Copie locale pour les lire hors ligne. HORS sauvegarde : elles
-// appartiennent au serveur et se relisent à la connexion suivante.
+// ── Fil de commentaires sur MON travail (lu en ligne) ──
+// Copie locale pour le lire hors ligne. HORS sauvegarde : il appartient au
+// serveur et se relit à la connexion suivante.
+// v2 (réponses de l'étudiant, accusés de lecture) : chaque annotation porte
+// son auteur, sa création et sa lecture. Migration v1 -> v2 : curseur remis à
+// zéro (tout est relu avec les nouveaux champs), anciennes entrées réputées
+// de l'enseignant (le seul à écrire en v1).
 export const ANNOTATIONS_KEY = "minebackfill_annotations";
-const ANNOTATIONS_VERSION = 1;
+const ANNOTATIONS_VERSION = 2;
 
 export interface EtatAnnotations {
   curseur: { maj: string; id: string } | null;
@@ -457,8 +461,14 @@ export interface EtatAnnotations {
 }
 
 export function loadAnnotationsFromStorage(): EtatAnnotations {
-  const e = loadVersioned<EtatAnnotations | null>(ANNOTATIONS_KEY, ANNOTATIONS_VERSION, (d) => d as EtatAnnotations, null);
-  return e && Array.isArray(e.annotations) ? e : { curseur: null, annotations: [] };
+  const e = loadVersioned<EtatAnnotations | null>(ANNOTATIONS_KEY, ANNOTATIONS_VERSION, (d, v) => {
+    const x = d as EtatAnnotations | null;
+    if (!x || !Array.isArray(x.annotations)) return null;
+    return v < 2 ? { curseur: null, annotations: x.annotations } : x;
+  }, null);
+  if (!e || !Array.isArray(e.annotations)) return { curseur: null, annotations: [] };
+  // Champs absents (v1, ou v1 réécrite par un onglet resté sur l'ancien site) : complétés.
+  return { curseur: e.curseur ?? null, annotations: e.annotations.map(migrerAnnotationV1) };
 }
 export function persistAnnotations(e: EtatAnnotations): boolean {
   return persistVersioned(ANNOTATIONS_KEY, ANNOTATIONS_VERSION, e);

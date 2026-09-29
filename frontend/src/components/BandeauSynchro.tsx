@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { useStore } from "@/lib/store";
 import type { Avis } from "@/lib/sync-moteur";
+import { nonLuesDeLEnseignant } from "@/lib/annotations";
 import {
-  abonnerSync, annulerSuppressions, confirmerSuppressions, instantaneSync, instantaneSyncServeur,
-  rattacher, reporterRattachement, retirerAvis, vuNouvellesAnnotations,
+  abonnerSync, annulerSuppressions, confirmerSuppressions, fermerBandeauCommentaires, instantaneSync, instantaneSyncServeur,
+  rattacher, reporterRattachement, retirerAvis,
 } from "@/lib/sync-client";
 
 /**
@@ -44,6 +45,9 @@ export default function BandeauSynchro() {
   const s = useSyncExternalStore(abonnerSync, instantaneSync, instantaneSyncServeur);
   const email = useStore((st) => st.session?.email);
   const nomDoc = useNomDoc();
+  const annotations = useStore((st) => st.annotations);
+  const resultats = useStore((st) => st.savedResults);
+  const gachees = useStore((st) => st.gachees);
 
   const elements: React.ReactNode[] = [];
 
@@ -84,16 +88,31 @@ export default function BandeauSynchro() {
     );
   }
 
-  if (s.nouvellesAnnotations > 0) {
-    const n = s.nouvellesAnnotations;
+  // Commentaires de l'enseignant pas encore lus, sur des documents présents
+  // ici (sinon on ne pourrait jamais les afficher, donc jamais les marquer lus).
+  const nonLues = nonLuesDeLEnseignant(annotations, (kind, id) =>
+    kind === "resultat" ? resultats.some((r) => r.id === id) : gachees.some((g) => g.id === id))
+    .filter((a) => !s.commentairesFermes.includes(a.id));
+  if (nonLues.length > 0) {
+    const n = nonLues.length;
+    const docs = [...new Map(nonLues.map((a) => [`${a.cibleKind}:${a.cibleId}`, a])).values()];
+    const noms = docs.slice(0, 3).map((a) =>
+      a.cibleKind === "resultat"
+        ? `le résultat « ${resultats.find((r) => r.id === a.cibleId)?.label ?? a.cibleId} »`
+        : `la gâchée ${gachees.find((g) => g.id === a.cibleId)?.code ?? a.cibleId}`);
+    const reste = docs.length - noms.length;
+    if (reste > 0) noms.push(`${reste} autre${reste > 1 ? "s" : ""} document${reste > 1 ? "s" : ""}`);
+    const liste = noms.length > 1 ? `${noms.slice(0, -1).join(", ")} et ${noms[noms.length - 1]}` : noms[0];
     elements.push(
       <div key="annotations" role="status" style={boite("#eef2ff", "#c7d2fe", "#3730a3")}>
         <span>
-          L&apos;enseignant a laissé {n} nouveau{n > 1 ? "x" : ""} commentaire{n > 1 ? "s" : ""} sur votre
-          travail : ouvrez vos résultats dans l&apos;<Link href="/historique" style={{ color: "inherit", fontWeight: 700 }}>Historique</Link>{" "}
-          ou vos gâchées dans le <Link href="/labo" style={{ color: "inherit", fontWeight: 700 }}>Labo</Link>.
+          L&apos;enseignant a laissé {n} commentaire{n > 1 ? "s" : ""} non lu{n > 1 ? "s" : ""} sur{" "}
+          {liste}.
+          Ouvrez vos gâchées dans le <Link href="/labo" style={{ color: "inherit", fontWeight: 700 }}>Labo</Link>{" "}
+          et vos résultats dans l&apos;<Link href="/historique" style={{ color: "inherit", fontWeight: 700 }}>Historique</Link> :
+          vous pourrez y répondre.
         </span>
-        <button type="button" className="btn-secondary" style={bouton} onClick={() => vuNouvellesAnnotations()}>Fermer</button>
+        <button type="button" className="btn-secondary" style={bouton} onClick={() => fermerBandeauCommentaires(nonLues.map((a) => a.id))}>Fermer</button>
       </div>,
     );
   }

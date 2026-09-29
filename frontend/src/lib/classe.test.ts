@@ -4,8 +4,10 @@ import {
   agesClasse, essaiValide, exportClasse, fusionnerLignes, gacheesRetenues, nomEtudiant, nuageClasse, regrouper,
   type LigneClasse, type ProfilClasse,
 } from "./classe";
-import { annotationsDe, fusionnerAnnotations, type Annotation } from "./annotations";
-import { ErreurClasse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireMesAnnotations, messageErreurClasse } from "./classe-reseau";
+import { annotationsDe, fusionnerAnnotations, migrerAnnotationV1, nonLuesDeLEnseignant, type Annotation } from "./annotations";
+import {
+  ErreurClasse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireMesAnnotations, messageErreurClasse, retirerAnnotation,
+} from "./classe-reseau";
 import type { Eprouvette } from "./eprouvette";
 
 const A = "aaaaaaaa-0000", B = "bbbbbbbb-0000", P = "pppppppp-0000";
@@ -117,7 +119,7 @@ describe("classe — figure", () => {
 
 describe("annotations — fusion", () => {
   const a = (id: string, maj: string, p: Partial<Annotation> = {}): Annotation =>
-    ({ id, cibleKind: "gachee", cibleId: "g1", cibleRev: 1, ancre: null, texte: "t", supprime: false, maj, ...p });
+    ({ id, cibleKind: "gachee", cibleId: "g1", cibleRev: 1, ancre: null, texte: "t", supprime: false, maj, auteur: "enseignant", creeLe: maj, luLe: null, ...p });
 
   it("la version la plus récente gagne ; une annotation retirée disparaît", () => {
     let l = fusionnerAnnotations([], [a("1", "2026-10-01"), a("2", "2026-10-02")]);
@@ -125,6 +127,30 @@ describe("annotations — fusion", () => {
     expect(l.map((x) => [x.id, x.texte])).toEqual([["1", "modifié"]]);
     expect(annotationsDe(l, "gachee", "g1")).toHaveLength(1);
     expect(annotationsDe(l, "resultat", "g1")).toHaveLength(0);
+  });
+});
+
+describe("annotations — fil, lecture, migration", () => {
+  const a = (id: string, p: Partial<Annotation> = {}): Annotation =>
+    ({ id, cibleKind: "gachee", cibleId: "g1", cibleRev: 1, ancre: null, texte: "t", supprime: false, maj: "2026-10-01", auteur: "enseignant", creeLe: "2026-10-01", luLe: null, ...p });
+
+  it("le fil suit la CRÉATION : un message lu (maj qui bouge) ne change pas de place", () => {
+    const l = fusionnerAnnotations([], [
+      a("q", { creeLe: "2026-10-01", maj: "2026-10-05" }), // lu le 5 : maj a bougé
+      a("r", { creeLe: "2026-10-02", maj: "2026-10-02", auteur: "moi" }),
+    ]);
+    expect(l.map((x) => x.id)).toEqual(["q", "r"]);
+  });
+
+  it("non lus : commentaires de l'enseignant sur des documents présents ici seulement", () => {
+    const toutes = [a("1"), a("2", { luLe: "2026-10-02" }), a("3", { auteur: "moi" }), a("4", { cibleId: "disparu" })];
+    expect(nonLuesDeLEnseignant(toutes, (_k, id) => id !== "disparu").map((x) => x.id)).toEqual(["1"]);
+  });
+
+  it("migration v1 : l'enseignant était le seul auteur ; les champs déjà là restent", () => {
+    const v1 = { id: "1", cibleKind: "gachee" as const, cibleId: "g1", cibleRev: null, ancre: null, texte: "t", supprime: false, maj: "m" };
+    expect(migrerAnnotationV1(v1)).toMatchObject({ auteur: "enseignant", creeLe: "m", luLe: null });
+    expect(migrerAnnotationV1({ ...v1, auteur: "moi", creeLe: "c", luLe: "l" })).toMatchObject({ auteur: "moi", creeLe: "c", luLe: "l" });
   });
 });
 
@@ -164,12 +190,40 @@ describe("classe-reseau", () => {
 
   it("annotations de l'étudiant : curseur, recul au premier appel seulement", async () => {
     const x = (id: string, maj: string) => ({ annotation_id: id, cible_kind: "gachee", cible_id: "g1", cible_rev: 2, ancre: null, texte: "t", supprime: false, maj_serveur: maj });
-    const { sb, appels } = clientRpc({ lire_annotations: [[x("a1", "m1")], []] });
+    const { sb, appels } = clientRpc({ lire_fil_annotations: [[x("a1", "m1")], []] });
     const r = await lireMesAnnotations(sb, A, { maj: "m0", id: "a0" });
     expect(r.annotations.map((a) => a.id)).toEqual(["a1"]);
     expect(r.curseur).toEqual({ maj: "m1", id: "a1" });
     expect(appels[0].params).toMatchObject({ p_attendu: A, p_apres_maj: "m0", p_recul_s: 120 });
     expect(appels[1].params).toMatchObject({ p_recul_s: 0 });
+  });
+
+  it("fil : auteur, création et lecture ; base pas à jour → repli sur l'ancienne lecture", async () => {
+    const x = { annotation_id: "a1", cible_kind: "gachee", cible_id: "g1", cible_rev: 2, ancre: null, texte: "t", supprime: false, maj_serveur: "m1",
+      de_moi: true, cree_serveur: "c1", lu_serveur: "l1" };
+    const { sb } = clientRpc({ lire_fil_annotations: [[x], []] });
+    expect((await lireMesAnnotations(sb, A, null)).annotations[0]).toMatchObject({ auteur: "moi", creeLe: "c1", luLe: "l1" });
+
+    const appels: string[] = [];
+    const ancienne = {
+      rpc(fn: string) {
+        appels.push(fn);
+        if (fn === "lire_fil_annotations") return Promise.resolve({ data: null, error: { code: "PGRST202", message: "Could not find the function" } });
+        return Promise.resolve({ data: appels.filter((f) => f === "lire_annotations").length === 1 ? [{ ...x, de_moi: undefined, cree_serveur: undefined, lu_serveur: undefined }] : [], error: null });
+      },
+    } as unknown as SupabaseClient;
+    const r = await lireMesAnnotations(ancienne, A, null);
+    expect(r.annotations[0]).toMatchObject({ auteur: "enseignant", creeLe: "m1", luLe: null });
+    expect(appels).toEqual(["lire_fil_annotations", "lire_annotations", "lire_annotations"]);
+  });
+
+  it("retrait : zéro ligne touchée (message d'autrui) est une ERREUR, pas un succès silencieux", async () => {
+    const client = (data: unknown) => {
+      const chaine = { update: () => chaine, eq: () => chaine, select: () => Promise.resolve({ data, error: null }) };
+      return { from: () => chaine } as unknown as SupabaseClient;
+    };
+    await expect(retirerAnnotation(client([{ id: "a1" }]), "a1")).resolves.toBeUndefined();
+    await expect(retirerAnnotation(client([]), "a1")).rejects.toMatchObject({ code: "aucune_ligne" });
   });
 
   it("annotations de la classe : on avance du nombre de lignes reçues (serveur qui tronque)", async () => {

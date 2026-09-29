@@ -116,25 +116,29 @@ export async function lireProfils(sb: SupabaseClient): Promise<ProfilClasse[]> {
 
 /* ── Annotations ─────────────────────────────────────────────────────────── */
 
+/**
+ * Une ligne de `annotations`, lue en direct par l'enseignant. Lue en
+ * `select("*")` : une colonne ajoutée plus tard (lu_le) manque sur une base
+ * pas encore à jour, sans faire échouer la lecture.
+ */
 export interface LigneAnnotation {
   id: string;
   owner_id: string;
+  auteur_id?: string;
   target_kind: "resultat" | "gachee";
   target_id: string;
   target_rev: number | string | null;
   ancre: string | null;
   texte: string;
   deleted: boolean;
+  created_at?: string;
   updated_at: string;
+  /** Accusé de lecture du destinataire ; absent sur une base pas à jour. */
+  lu_le?: string | null;
 }
 
-export function versAnnotation(l: LigneAnnotation): Annotation {
-  return {
-    id: l.id, cibleKind: l.target_kind, cibleId: l.target_id,
-    cibleRev: l.target_rev === null ? null : Number(l.target_rev),
-    ancre: l.ancre, texte: l.deleted ? null : l.texte, supprime: l.deleted, maj: l.updated_at,
-  };
-}
+/** Une réponse de l'étudiant (il écrit sur son propre travail). */
+export const estReponse = (a: Pick<LigneAnnotation, "auteur_id" | "owner_id">): boolean => a.auteur_id === a.owner_id;
 
 /** Enseignant : toutes les annotations (la RLS lui donne tout). */
 export async function lireAnnotationsClasse(sb: SupabaseClient): Promise<LigneAnnotation[]> {
@@ -143,7 +147,7 @@ export async function lireAnnotationsClasse(sb: SupabaseClient): Promise<LigneAn
   // serveur tronque les pages (max_rows), un pas fixe sauterait des lignes.
   for (let debut = 0, p = 0; p < MAX_PAGES; p++) {
     const { data, error } = await sb.from("annotations")
-      .select("id, owner_id, target_kind, target_id, target_rev, ancre, texte, deleted, updated_at")
+      .select("*")
       .eq("deleted", false)
       .order("created_at", { ascending: true }).order("id", { ascending: true })
       .range(debut, debut + PAGE - 1);
@@ -163,17 +167,67 @@ export async function ajouterAnnotation(sb: SupabaseClient, a: {
   const { data, error } = await sb.from("annotations").insert({
     owner_id: a.ownerId, auteur_id: a.auteurId, target_kind: a.kind, target_id: a.id,
     target_rev: a.rev, ancre: a.ancre, texte: a.texte,
-  }).select("id, owner_id, target_kind, target_id, target_rev, ancre, texte, deleted, updated_at").single();
+  }).select("*").single();
   if (error) throw echec(error);
   return data as LigneAnnotation;
 }
 
+/**
+ * Retire une annotation dont on est l'auteur. La RLS ne lève pas d'erreur sur
+ * une ligne qui ne nous appartient pas : elle n'en modifie aucune. Zéro ligne
+ * touchée est donc un ÉCHEC, jamais un succès silencieux.
+ */
 export async function retirerAnnotation(sb: SupabaseClient, id: string): Promise<void> {
-  const { error } = await sb.from("annotations").update({ deleted: true }).eq("id", id);
+  const { data, error } = await sb.from("annotations").update({ deleted: true }).eq("id", id).select("id");
   if (error) throw echec(error);
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new ErreurClasse("aucune_ligne", "ce message n'a pas été retiré (il n'est pas de vous, ou n'existe plus)");
+  }
 }
 
-/** Étudiant : ses annotations, par curseur (lire_annotations). */
+/** Accusés de lecture : rend les ids réellement marqués et l'heure serveur. */
+export async function marquerAnnotationsLues(sb: SupabaseClient, ids: string[]): Promise<{ id: string; luLe: string }[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await sb.rpc("marquer_annotations_lues", { p_ids: ids.slice(0, 500) });
+  if (error) throw echec(error);
+  return ((Array.isArray(data) ? data : []) as { annotation_id: string; lu_serveur: string }[])
+    .map((x) => ({ id: x.annotation_id, luLe: x.lu_serveur }));
+}
+
+/** Enseignant : réponses d'étudiants pas encore lues. */
+export async function nbReponsesNonLues(sb: SupabaseClient): Promise<number> {
+  const { data, error } = await sb.rpc("nb_reponses_non_lues");
+  if (error) throw echec(error);
+  return Number(data) || 0;
+}
+
+/** Étudiant : répond sur SON document (repondre_annotation fait les contrôles). */
+export async function repondreAnnotation(sb: SupabaseClient, r: {
+  attendu: string; kind: "resultat" | "gachee"; id: string; rev: number | null; texte: string;
+}): Promise<Annotation> {
+  const { data, error } = await sb.rpc("repondre_annotation", {
+    p_attendu: r.attendu, p_kind: r.kind, p_id: r.id, p_rev: r.rev, p_texte: r.texte,
+  });
+  if (error) throw echec(error);
+  const x = (Array.isArray(data) ? data[0] : data) as { annotation_id: string; cree_serveur: string; maj_serveur: string } | undefined;
+  if (!x) throw new ErreurClasse("reseau", "réponse non enregistrée");
+  return {
+    id: x.annotation_id, cibleKind: r.kind, cibleId: r.id, cibleRev: r.rev, ancre: null, texte: r.texte.trim(),
+    supprime: false, maj: x.maj_serveur, auteur: "moi", creeLe: x.cree_serveur, luLe: null,
+  };
+}
+
+interface LigneFil {
+  annotation_id: string; cible_kind: "resultat" | "gachee"; cible_id: string; cible_rev: number | string | null;
+  ancre: string | null; texte: string | null; supprime: boolean; maj_serveur: string;
+  de_moi?: boolean; cree_serveur?: string; lu_serveur?: string | null;
+}
+
+/**
+ * Étudiant : son fil de commentaires, par curseur (lire_fil_annotations).
+ * Base pas encore à jour : repli sur lire_annotations (commentaires de
+ * l'enseignant seulement, sans accusé de lecture).
+ */
 export async function lireMesAnnotations(
   sb: SupabaseClient,
   attendu: string,
@@ -181,16 +235,19 @@ export async function lireMesAnnotations(
 ): Promise<{ annotations: Annotation[]; curseur: { maj: string; id: string } | null }> {
   const r: Annotation[] = [];
   let curseur = apres;
+  let fonction = "lire_fil_annotations";
   for (let p = 0; p < MAX_PAGES; p++) {
-    const { data, error } = await sb.rpc("lire_annotations", {
+    const params = {
       p_attendu: attendu, p_apres_maj: curseur?.maj ?? null, p_apres_id: curseur?.id ?? null,
       p_recul_s: p === 0 && curseur ? 120 : 0, p_limite: PAGE,
-    });
+    };
+    let { data, error } = await sb.rpc(fonction, params);
+    if (error && fonction === "lire_fil_annotations" && schemaPasAJour(error.code)) {
+      fonction = "lire_annotations";
+      ({ data, error } = await sb.rpc(fonction, params));
+    }
     if (error) throw echec(error);
-    const page = (Array.isArray(data) ? data : []) as {
-      annotation_id: string; cible_kind: "resultat" | "gachee"; cible_id: string; cible_rev: number | string | null;
-      ancre: string | null; texte: string | null; supprime: boolean; maj_serveur: string;
-    }[];
+    const page = (Array.isArray(data) ? data : []) as LigneFil[];
     if (page.length === 0) break;
     const d = page[page.length - 1];
     if (curseur && d.maj_serveur === curseur.maj && d.annotation_id === curseur.id) break;
@@ -199,6 +256,7 @@ export async function lireMesAnnotations(
         id: x.annotation_id, cibleKind: x.cible_kind, cibleId: x.cible_id,
         cibleRev: x.cible_rev === null ? null : Number(x.cible_rev),
         ancre: x.ancre, texte: x.texte, supprime: x.supprime, maj: x.maj_serveur,
+        auteur: x.de_moi ? "moi" : "enseignant", creeLe: x.cree_serveur ?? x.maj_serveur, luLe: x.lu_serveur ?? null,
       });
     }
     curseur = { maj: d.maj_serveur, id: d.annotation_id };

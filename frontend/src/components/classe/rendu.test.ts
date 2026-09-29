@@ -51,10 +51,16 @@ const ligne = (kind: "resultat" | "gachee", contenu: { id: string }): LigneClass
   ({ proprietaire: A, kind, id: contenu.id, rev: 7, maj: "2026-09-18T10:00:00.000000+00:00", cree: "x", supprime: false, contenu });
 const rendu = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
 const maintenant = new Date(2026, 8, 29, 9);
-const annotations: LigneAnnotation[] = [{
-  id: "n1", owner_id: A, target_kind: "gachee", target_id: "g1", target_rev: 7, ancre: "G-20260910-01-E02",
-  texte: "Pourquoi exclue ?", deleted: false, updated_at: "2026-09-19T10:00:00Z",
-}];
+const PROF = "pppppppp-0000-4000-8000-00000000000f";
+const annotations: LigneAnnotation[] = [
+  { id: "n1", owner_id: A, auteur_id: PROF, target_kind: "gachee", target_id: "g1", target_rev: 7, ancre: "G-20260910-01-E02",
+    texte: "Pourquoi exclue ?", deleted: false, created_at: "2026-09-19T10:00:00Z", updated_at: "2026-09-20T08:00:00Z", lu_le: "2026-09-20T08:00:00Z" },
+  { id: "n2", owner_id: A, auteur_id: A, target_kind: "gachee", target_id: "g1", target_rev: 7, ancre: null,
+    texte: "Fissure au démoulage.", deleted: false, created_at: "2026-09-20T09:00:00Z", updated_at: "2026-09-20T09:00:00Z", lu_le: null },
+  { id: "n3", owner_id: A, auteur_id: "autre-prof", target_kind: "gachee", target_id: "g1", target_rev: 7, ancre: null,
+    texte: "Voir aussi E01.", deleted: false, created_at: "2026-09-21T09:00:00Z", updated_at: "2026-09-21T09:00:00Z", lu_le: null },
+];
+const ctx = { moi: PROF, nouvelles: new Set(["n2"]), onLire: () => {}, onRetirer: async () => {} };
 
 describe("vues de l'enseignant — rendu", () => {
   const etudiants = regrouper([ligne("resultat", resultat), ligne("gachee", gachee)], profils, [], "toutes");
@@ -91,13 +97,20 @@ describe("vues de l'enseignant — rendu", () => {
   it("vue document : en-tête, document supprimé, commentaires", () => {
     const pret = rendu(createElement(VueDocument, {
       doc: { ref: { etudiantId: A, kind: "gachee", id: "g1" }, etat: "pret", doc: { contenu: gachee, rev: 7, maj: "2026-09-18T10:00:00Z", supprime: false } },
-      etudiant: etudiants[0], annotations, onAnnoter: async () => {}, onRetirer: async () => {}, onRetour: () => {}, maintenant, units: DEFAULT_UNITS,
+      etudiant: etudiants[0], annotations, onAnnoter: async () => true, ctx, onRetour: () => {}, maintenant, units: DEFAULT_UNITS,
     }));
     expect(pret).toContain("Alice Tremblay");
     expect(pret).toContain("Pourquoi exclue ?");
+    // Fil : réponse de l'étudiante en évidence, « vu » sur le commentaire lu, « Retirer » sur SES messages seulement.
+    expect(pret).toContain("Fissure au démoulage.");
+    expect(pret).toContain("nouvelle réponse");
+    expect(pret).toContain("vu par l&#x27;étudiant le");
+    expect(pret).toContain("pas encore vu");
+    expect(pret).toContain("Autre enseignant");
+    expect(pret.match(/>Retirer</g)).toHaveLength(1);
     const supprime = rendu(createElement(VueDocument, {
       doc: { ref: { etudiantId: A, kind: "resultat", id: "r9" }, etat: "absent" },
-      etudiant: etudiants[0], annotations: [], onAnnoter: async () => {}, onRetirer: async () => {}, onRetour: () => {}, maintenant, units: DEFAULT_UNITS,
+      etudiant: etudiants[0], annotations: [], onAnnoter: async () => true, ctx, onRetour: () => {}, maintenant, units: DEFAULT_UNITS,
     }));
     expect(supprime).toContain("n&#x27;existe plus en ligne");
   });
@@ -107,8 +120,10 @@ describe("vues de l'enseignant — rendu", () => {
     const tableau = rendu(createElement(TableauEtudiants, { etudiants, annotations, selId: null, onChoisir: () => {}, couleurDe, alertesParEtudiant: new Map([[A, 2]]) }));
     expect(tableau).toContain("Essais valides");
     expect(tableau).toMatch(/<td[^>]*>1<\/td>/); // un seul essai valide (E02 est exclue)
-    const detail = rendu(createElement(DetailEtudiant, { etudiant: etudiants[0], annotations, lignes: [], onAnnoter: async () => {}, onRetirer: async () => {}, onOuvrir: () => {} }));
+    expect(tableau).toContain("1 réponse non lue");
+    const detail = rendu(createElement(DetailEtudiant, { etudiant: etudiants[0], annotations, lignes: [], onAnnoter: async () => true, ctx, onOuvrir: () => {} }));
     expect(detail).toContain("Ouvrir");
+    expect(detail).toContain("Commentaires (3 · 1 nouvelle réponse)"); // fil replié
     expect(detail).toContain("1/3 essai(s) valide(s)");
     expect(rendu(createElement(FigureClasse, { etudiants, couleurDe }))).toContain("UCS mesurée de la classe");
   });

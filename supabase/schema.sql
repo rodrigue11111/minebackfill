@@ -247,7 +247,9 @@ create trigger user_docs_quota after insert or update on public.user_docs
   for each row execute function public.user_docs_quota();
 
 -- ======================================================================
---  annotations : écrites par l'enseignant, lues par le propriétaire du travail
+--  annotations : écrites par l'enseignant, lues par le propriétaire du travail.
+--  Depuis 2026-10, l'étudiant RÉPOND (fil par document, via
+--  repondre_annotation) et chacun voit si l'autre a lu (lu_le).
 -- ======================================================================
 create table if not exists public.annotations (
   id          uuid        primary key default gen_random_uuid(),
@@ -266,6 +268,11 @@ create table if not exists public.annotations (
   updated_at  timestamptz not null default clock_timestamp()
 );
 create index if not exists annotations_tirage_idx on public.annotations (owner_id, updated_at, id);
+-- Accusé de lecture : posé par le DESTINATAIRE (étudiant pour un commentaire
+-- de l'enseignant, enseignant pour une réponse), seulement par
+-- marquer_annotations_lues — personne ne l'écrit directement (droits de
+-- colonne plus bas).
+alter table public.annotations add column if not exists lu_le timestamptz;
 
 create or replace function public.annotations_normaliser() returns trigger
 language plpgsql set search_path = '' as $$
@@ -275,9 +282,13 @@ begin
        is distinct from (old.owner_id, old.target_kind, old.target_id, old.auteur_id, old.created_at) then
       raise exception 'annotation : seuls le texte et le retrait sont modifiables' using errcode = '42501';
     end if;
+    -- Un texte modifié n'a pas encore été lu.
+    if new.texte is distinct from old.texte then new.lu_le := null; end if;
   else
     new.created_at := clock_timestamp();
+    new.lu_le := null;
   end if;
+  -- Aussi quand l'accusé de lecture change : il voyage par les curseurs.
   new.updated_at := clock_timestamp();
   return new;
 end $$;
@@ -355,6 +366,15 @@ drop policy if exists annotations_update on public.annotations;
 create policy annotations_update on public.annotations for update to authenticated
   using ((select public.is_prof()) and auteur_id = (select auth.uid()))
   with check ((select public.is_prof()) and auteur_id = (select auth.uid()));
+-- L'étudiant retire SA réponse (sur SON travail). La réponse elle-même
+-- s'écrit par repondre_annotation (security definer) : une politique INSERT
+-- qui interrogerait `annotations` ferait échouer TOUTE insertion en
+-- « infinite recursion detected in policy » (42P17), celle de l'enseignant
+-- comprise — la politique SELECT contient des sous-requêtes.
+drop policy if exists annotations_reponse_update on public.annotations;
+create policy annotations_reponse_update on public.annotations for update to authenticated
+  using (owner_id = (select auth.uid()) and auteur_id = (select auth.uid()))
+  with check (owner_id = (select auth.uid()) and auteur_id = (select auth.uid()));
 
 -- Droits de table explicites (défense en profondeur : Supabase accorde tout à
 -- anon par défaut, et seule la RLS le retenait).
@@ -362,7 +382,12 @@ revoke all on public.user_docs, public.user_usage, public.annotations from anon;
 revoke delete, truncate on public.user_docs, public.annotations from authenticated;
 grant select, insert, update on public.user_docs to authenticated;
 grant select on public.user_usage to authenticated;
-grant select, insert, update on public.annotations to authenticated;
+grant select, insert on public.annotations to authenticated;
+-- Mise à jour limitée au texte et au retrait : lu_le ne s'écrit que par
+-- marquer_annotations_lues. L'ordre compte : un REVOKE de table retire aussi
+-- les droits de colonne ; il doit donc précéder le GRANT par colonne.
+revoke update on public.annotations from authenticated;
+grant update (texte, deleted) on public.annotations to authenticated;
 grant usage on sequence public.user_docs_rev_seq to authenticated;
 
 -- ======================================================================
@@ -476,6 +501,9 @@ begin
 end $$;
 
 -- Annotations portant sur SON travail, par curseur (mêmes règles que lire_docs).
+-- Sans les réponses de l'étudiant lui-même : un site resté en cache (antérieur
+-- aux réponses) les afficherait comme des commentaires de l'enseignant. Le
+-- site actuel lit lire_fil_annotations.
 create or replace function public.lire_annotations(
   p_attendu uuid, p_apres_maj timestamptz, p_apres_id uuid,
   p_recul_s integer default 0, p_limite integer default 100
@@ -491,6 +519,35 @@ begin
     select a.id, a.target_kind, a.target_id, a.target_rev, a.ancre,
            case when a.deleted then null else a.texte end, a.deleted, a.updated_at
       from public.annotations a
+     where a.owner_id = v_uid and a.auteur_id <> a.owner_id
+       and (a.updated_at, a.id) >
+           (coalesce(p_apres_maj, '-infinity'::timestamptz)
+              - make_interval(secs => greatest(coalesce(p_recul_s, 0), 0)),
+            coalesce(p_apres_id, '00000000-0000-0000-0000-000000000000'::uuid))
+     order by a.updated_at, a.id
+     limit least(greatest(coalesce(p_limite, 100), 1), 500);
+end $$;
+
+-- Le FIL de commentaires sur SON travail : ceux de l'enseignant et ses propres
+-- réponses, avec l'auteur (de_moi), la date de création (ordre du fil) et
+-- l'accusé de lecture. Même curseur que lire_annotations.
+create or replace function public.lire_fil_annotations(
+  p_attendu uuid, p_apres_maj timestamptz, p_apres_id uuid,
+  p_recul_s integer default 0, p_limite integer default 100
+) returns table (annotation_id uuid, cible_kind text, cible_id text, cible_rev bigint,
+                 ancre text, texte text, supprime boolean, maj_serveur timestamptz,
+                 de_moi boolean, cree_serveur timestamptz, lu_serveur timestamptz)
+language plpgsql stable security invoker set search_path = '' as $$
+declare v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  return query
+    select a.id, a.target_kind, a.target_id, a.target_rev, a.ancre,
+           case when a.deleted then null else a.texte end, a.deleted, a.updated_at,
+           a.auteur_id = v_uid, a.created_at, a.lu_le
+      from public.annotations a
      where a.owner_id = v_uid
        and (a.updated_at, a.id) >
            (coalesce(p_apres_maj, '-infinity'::timestamptz)
@@ -500,17 +557,96 @@ begin
      limit least(greatest(coalesce(p_limite, 100), 1), 500);
 end $$;
 
+-- L'étudiant RÉPOND sur SON document, là où l'enseignant a commenté. Toutes
+-- les vérifications sont ici (security definer : la RLS ne s'applique pas).
+-- Plafond de 500 réponses par compte : l'inscription est ouverte (même
+-- logique que le quota de user_docs).
+create or replace function public.repondre_annotation(
+  p_attendu uuid, p_kind text, p_id text, p_rev bigint, p_texte text
+) returns table (annotation_id uuid, cree_serveur timestamptz, maj_serveur timestamptz)
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_texte text := btrim(coalesce(p_texte, ''));
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  if char_length(v_texte) not between 1 and 4000 then
+    raise exception 'réponse vide ou trop longue (4000 caractères au plus)' using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.user_docs d
+                  where d.user_id = v_uid and d.kind = p_kind and d.id = p_id and not d.deleted) then
+    raise exception 'document introuvable en ligne' using errcode = '42501';
+  end if;
+  if not exists (select 1 from public.annotations a
+                  where a.owner_id = v_uid and a.target_kind = p_kind and a.target_id = p_id
+                    and a.auteur_id <> v_uid and not a.deleted) then
+    raise exception 'aucun commentaire de l''enseignant à qui répondre' using errcode = '42501';
+  end if;
+  if (select count(*) from public.annotations a where a.owner_id = v_uid and a.auteur_id = v_uid) >= 500 then
+    raise exception 'nombre maximal de réponses atteint' using errcode = '53400';
+  end if;
+  return query
+    insert into public.annotations as a (owner_id, target_kind, target_id, target_rev, ancre, auteur_id, texte)
+    values (v_uid, p_kind, p_id, p_rev, null, v_uid, v_texte)
+    returning a.id, a.created_at, a.updated_at;
+end $$;
+
+-- Accusé de lecture, posé par le DESTINATAIRE seulement : l'étudiant pour les
+-- messages d'autrui sur SON travail, l'enseignant pour les réponses des
+-- étudiants. Jamais sur ses propres messages. Un accusé déjà posé reste.
+create or replace function public.marquer_annotations_lues(p_ids uuid[])
+returns table (annotation_id uuid, lu_serveur timestamptz)
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_prof boolean := public.is_prof();
+begin
+  if v_uid is null then
+    raise exception 'non authentifié' using errcode = '28000';
+  end if;
+  if coalesce(cardinality(p_ids), 0) > 500 then
+    raise exception 'trop de commentaires à la fois (500 au plus)' using errcode = '22023';
+  end if;
+  return query
+    update public.annotations a set lu_le = clock_timestamp()
+     where a.id = any(p_ids) and a.lu_le is null and not a.deleted
+       and a.auteur_id <> v_uid
+       and (a.owner_id = v_uid or (v_prof and a.auteur_id = a.owner_id))
+    returning a.id, a.lu_le;
+end $$;
+
+-- Réponses d'étudiants pas encore lues (pastille « Classe » de l'enseignant).
+create or replace function public.nb_reponses_non_lues() returns integer
+language plpgsql stable security invoker set search_path = '' as $$
+begin
+  if not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  return (select count(*)::integer from public.annotations a
+           where a.auteur_id = a.owner_id and a.lu_le is null and not a.deleted);
+end $$;
+
 -- Droits d'exécution : Supabase accorde EXECUTE à anon par défaut.
 revoke execute on function public.ecrire_doc(uuid, text, text, jsonb, bigint, boolean) from public, anon;
 revoke execute on function public.lire_docs(uuid, timestamptz, text, text, integer, integer) from public, anon;
 revoke execute on function public.lire_docs_classe(timestamptz, uuid, text, text, integer, integer, boolean, text) from public, anon;
 revoke execute on function public.lire_annotations(uuid, timestamptz, uuid, integer, integer) from public, anon;
 revoke execute on function public.definir_nom(text) from public, anon;
+revoke execute on function public.lire_fil_annotations(uuid, timestamptz, uuid, integer, integer) from public, anon;
+revoke execute on function public.repondre_annotation(uuid, text, text, bigint, text) from public, anon;
+revoke execute on function public.marquer_annotations_lues(uuid[]) from public, anon;
+revoke execute on function public.nb_reponses_non_lues() from public, anon;
 grant execute on function public.ecrire_doc(uuid, text, text, jsonb, bigint, boolean) to authenticated;
 grant execute on function public.lire_docs(uuid, timestamptz, text, text, integer, integer) to authenticated;
 grant execute on function public.lire_docs_classe(timestamptz, uuid, text, text, integer, integer, boolean, text) to authenticated;
 grant execute on function public.lire_annotations(uuid, timestamptz, uuid, integer, integer) to authenticated;
 grant execute on function public.definir_nom(text) to authenticated;
+grant execute on function public.lire_fil_annotations(uuid, timestamptz, uuid, integer, integer) to authenticated;
+grant execute on function public.repondre_annotation(uuid, text, text, bigint, text) to authenticated;
+grant execute on function public.marquer_annotations_lues(uuid[]) to authenticated;
+grant execute on function public.nb_reponses_non_lues() to authenticated;
 
 -- ======================================================================
 --  Reprise unique de saved_results (v1) dans user_docs. Ré-exécutable : un

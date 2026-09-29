@@ -8,7 +8,7 @@ import type { DocComplet, LigneAnnotation } from "@/lib/classe-reseau";
 import GacheeLecture from "./GacheeLecture";
 import ResultatLecture from "./ResultatLecture";
 import FilCommentaires from "./FilCommentaires";
-import type { NouvelleAnnotation } from "./DetailEtudiant";
+import type { ContexteFil, NouvelleAnnotation } from "./DetailEtudiant";
 import { dateCourte, dateHeure, Pastille, type RefDoc } from "./commun";
 
 export type EtatDoc =
@@ -17,12 +17,13 @@ export type EtatDoc =
   | { ref: RefDoc; etat: "absent" }
   | { ref: RefDoc; etat: "erreur"; message: string };
 
-export default function VueDocument({ doc, etudiant, annotations, onAnnoter, onRetirer, onRetour, maintenant, units }: {
+export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx, onRetour, maintenant, units }: {
   doc: EtatDoc;
   etudiant: EtudiantClasse | undefined;
   annotations: LigneAnnotation[];
-  onAnnoter: (a: NouvelleAnnotation) => Promise<void>;
-  onRetirer: (id: string) => Promise<void>;
+  onAnnoter: (a: NouvelleAnnotation) => Promise<boolean>;
+  /** Les réponses de ce document sont marquées lues à l'ouverture (par la page). */
+  ctx: ContexteFil;
   onRetour: () => void;
   maintenant: Date;
   units: UnitPreferences;
@@ -77,8 +78,8 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, onR
       {contenu !== null && (
         <div className="form-card">
           <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px" }}>Commentaires</h3>
-          <FilCommentaires liste={commentaires} onRetirer={onRetirer}
-            ancres={gachee ? gachee.eprouvettes.map((e) => e.code) : []}
+          <FilCommentaires liste={commentaires} moi={ctx.moi} nomEtudiant={etudiant?.nom ?? "Étudiant"} nouvelles={ctx.nouvelles}
+            onRetirer={ctx.onRetirer} ancres={gachee ? gachee.eprouvettes.map((e) => e.code) : []}
             onAjouter={(texte, ancre) => onAnnoter({ kind: ref.kind, id: ref.id, rev: doc.etat === "pret" ? doc.doc.rev : null, ancre, texte })} />
         </div>
       )}
