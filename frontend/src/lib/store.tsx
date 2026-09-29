@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
-import { loadVersioned, persistVersioned } from "./persisted";
+import { ecrireLocal, loadVersioned, persistVersioned } from "./persisted";
 import type { Gachee } from "./gachee";
 import { protocolesDefaut, type Protocole } from "./protocole";
 import { descriptorFor } from "./method-registry";
@@ -385,14 +385,8 @@ function loadSavedFromStorage(): SavedResult[] {
 }
 
 function persistSaved(items: SavedResult[]): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    localStorage.setItem(SAVED_KEY, JSON.stringify(items));
-    return true;
-  } catch {
-    // quota atteint ou stockage bloqué (navigation privée)
-    return false;
-  }
+  // Échec (quota atteint, stockage bloqué) signalé par ecrireLocal.
+  return ecrireLocal(SAVED_KEY, JSON.stringify(items));
 }
 
 // ── Gâchées réelles (labo) : enveloppe versionnée {v,data} ──
@@ -411,8 +405,8 @@ function migrerGachees(data: unknown): Gachee[] {
 export function loadGacheesFromStorage(): Gachee[] {
   return loadVersioned<Gachee[]>(GACHEES_KEY, GACHEES_VERSION, migrerGachees, []);
 }
-export function persistGachees(items: Gachee[]): void {
-  persistVersioned(GACHEES_KEY, GACHEES_VERSION, items);
+export function persistGachees(items: Gachee[]): boolean {
+  return persistVersioned(GACHEES_KEY, GACHEES_VERSION, items);
 }
 
 // ── Protocoles de laboratoire (éditables, figés par gâchée) ──
@@ -424,8 +418,8 @@ export function loadProtocolesFromStorage(): Protocole[] {
   // (jamais le singleton gelé, pour ne pas risquer sa mutation).
   return loadVersioned<Protocole[]>(PROTOCOLES_KEY, PROTOCOLES_VERSION, (d) => d as Protocole[], protocolesDefaut());
 }
-export function persistProtocoles(items: Protocole[]): void {
-  persistVersioned(PROTOCOLES_KEY, PROTOCOLES_VERSION, items);
+export function persistProtocoles(items: Protocole[]): boolean {
+  return persistVersioned(PROTOCOLES_KEY, PROTOCOLES_VERSION, items);
 }
 
 const UNITS_KEY = "minebackfill_unit_prefs";
@@ -441,10 +435,7 @@ function loadUnitsFromStorage(): UnitPreferences {
 }
 
 function persistUnits(prefs: UnitPreferences) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(UNITS_KEY, JSON.stringify(prefs));
-  } catch { /* silently ignore */ }
+  ecrireLocal(UNITS_KEY, JSON.stringify(prefs));
 }
 
 const BINDER_PRICES_KEY = "minebackfill_binder_prices";
@@ -460,10 +451,7 @@ function loadBinderPricesFromStorage(): BinderPrice[] {
 }
 
 function persistBinderPrices(items: BinderPrice[]) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(BINDER_PRICES_KEY, JSON.stringify(items));
-  } catch { /* silently ignore */ }
+  ecrireLocal(BINDER_PRICES_KEY, JSON.stringify(items));
 }
 
 const PRODUCTION_LOG_KEY = "minebackfill_production_log";
@@ -479,10 +467,7 @@ function loadProductionLogFromStorage(): ProductionLogEntry[] {
 }
 
 function persistProductionLog(items: ProductionLogEntry[]) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(PRODUCTION_LOG_KEY, JSON.stringify(items));
-  } catch { /* silently ignore */ }
+  ecrireLocal(PRODUCTION_LOG_KEY, JSON.stringify(items));
 }
 
 interface AppState {

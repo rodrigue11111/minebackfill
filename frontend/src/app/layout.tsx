@@ -6,6 +6,7 @@ import NavBar from "@/components/NavBar";
 import GlobalInputEnhancer from "@/components/GlobalInputEnhancer";
 import StoreHydrator from "@/components/StoreHydrator";
 import CloudSync from "@/components/CloudSync";
+import AlerteStockage from "@/components/AlerteStockage";
 import { APP_NAME, APP_NAME_VERSION, MODULE_ID, MODULE_LABEL } from "@/lib/branding";
 
 const geistSans = Geist({
@@ -38,6 +39,7 @@ export default function RootLayout({
         <StoreHydrator />
         <CloudSync />
         <NavBar />
+        <AlerteStockage />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
           {children}
         </div>
