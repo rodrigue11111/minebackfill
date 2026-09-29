@@ -248,7 +248,7 @@ export default function HistoriquePage() {
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sr.label}</span>
                       {!estVersionCourante(sr.solverVersion) && (
                         <span
-                          title="Résultat calculé avec une version antérieure des formules (avant l'alignement sur la feuille Intra 2017). Rechargez et relancez le calcul pour des valeurs à jour."
+                          title="Résultat calculé avec une version antérieure des formules. Rechargez et relancez le calcul pour des valeurs à jour."
                           style={{ fontSize: 10, fontWeight: 700, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap", flexShrink: 0 }}
                         >
                           anciennes formules

@@ -89,6 +89,12 @@ même liste — une ligne ajoutée apparaît partout. Tests dans
 `report-schema.test.ts` (unicité par section, gating).
 
 ### 5. Ajouter un pack de conventions
+> **Depuis 2026-09-29, l'interface n'expose plus de choix de convention** :
+> l'application impose la feuille « gramme » (`REGLE_LIANT_ESSAI` dans
+> `store.tsx`). Les packs restent définis dans `conventions.ts` (étiquetage des
+> anciens résultats, badge « anciennes formules »). Réintroduire un choix =
+> remettre un sélecteur dans Réglages ET retirer le forçage de `store.tsx`.
+
 1. Si la variante introduit une **nouvelle règle de calcul** : drapeau
    `Literal` dans `SolverConstants` (défaut = comportement actuel, suite verte
    inchangée), branchement dans `mix_pipeline.py`, propagation déjà assurée

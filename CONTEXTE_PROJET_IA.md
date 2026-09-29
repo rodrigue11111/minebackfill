@@ -97,6 +97,14 @@ Principe impose par l'utilisateur:
      **residu ajoute** (pas au granulat ajoute). Capturee en pack de convention
      via le drapeau `essai_binder_rule` (defaut `solides_totaux` = Intra 2017 ;
      `residu_ajoute` = gramme). Voir Issues.md #4 et l'oracle `excel_twin_gramme.py`.
+   - **Depuis 2026-09-29, l'application n'utilise QUE la variante « gramme »**
+     (decision de l'utilisateur) : le selecteur de convention a ete retire de
+     Reglages et la regle `residu_ajoute` est imposee cote frontend
+     (`REGLE_LIANT_ESSAI` dans `store.tsx`, appliquee au chargement et a chaque
+     modification des constantes). Le backend garde son defaut `solides_totaux`
+     (suite d'or inchangee) : le frontend envoie TOUJOURS le drapeau explicite.
+     Les unites d'affichage (t, kg, g, lb) restent au choix de l'utilisateur :
+     « tonne » et « gramme » designent des classeurs, pas des unites.
 4. **A_m (agregat/co-mixing)**:
    - garde dans la logique (preparation futures methodes), ne pas supprimer
 5. **Champs de sortie**:

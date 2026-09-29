@@ -170,9 +170,8 @@ export default function RpgEssaiForm() {
       {/* ── Info banner ── */}
       <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#15803d" }}>
         <strong>RPG — Essai-erreur (PAF) :</strong> réutilise les données de la méthode RPG de base (Cw% ou E/C).
-        L&apos;ajout d&apos;agrégat modifie A_m. Le liant ajouté suit la convention active :
-        Bw% maintenu sur tous les solides ajoutés (Intra 2017), ou liant sur le résidu ajouté
-        seulement (feuille « gramme » — un ajout de granulat dilue alors le Bw atteint).
+        L&apos;ajout d&apos;agrégat modifie A_m. Le liant ajouté ne suit que le résidu ajouté :
+        un ajout de granulat n&apos;ajoute pas de liant, et dilue donc le Bw atteint.
         L&apos;option « doser le liant par le W/C » (par recette, ci-dessous) fait plutôt suivre
         le liant à l&apos;eau ajoutée — recommandation de Belem et al. 2018 (§3.2.3) quand on
         monte le slump avec de l&apos;eau.
