@@ -6,7 +6,6 @@ import { useStore, CATALOGUE_VERSION, CONSTANTES_VERSION, MATERIALS_VERSION } fr
 import { UNIT_CATEGORIES, unitsForLength, type LengthUnit } from "@/lib/units";
 import type { LiantCatalogueItem } from "@/lib/store";
 import type { MaterialKind } from "@/lib/materials";
-import { CONVENTION_PACKS, packById } from "@/lib/conventions";
 import { getSupabase } from "@/lib/supabase";
 import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
 import { publierCatalogue, type CatalogueCloudId } from "@/lib/cloud";
@@ -94,40 +93,13 @@ export default function ReglagesPage() {
             Ces valeurs sont globales et sont utilisées dans les méthodes Cw%, E/C, Slump et essai-erreur.
           </p>
 
-          {/* ── Pack de convention de calcul ── */}
-          <div style={{ marginBottom: 18, padding: "12px 14px", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", borderRadius: 8 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
-              Convention de calcul
-            </label>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <select
-                className="field-input"
-                style={{ maxWidth: 320 }}
-                value={constantes.pack_id}
-                onChange={(e) => {
-                  const pack = packById(e.target.value as typeof constantes.pack_id);
-                  if (pack) setConstantes(pack.constantes);
-                }}
-              >
-                {CONVENTION_PACKS.map((p) => (
-                  <option key={p.id} value={p.id}>{p.label}</option>
-                ))}
-                {constantes.pack_id === "personnalise" && (
-                  <option value="personnalise">Personnalisé</option>
-                )}
-              </select>
-              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                {constantes.pack_id === "personnalise"
-                  ? "Valeurs modifiées manuellement (hors preset)."
-                  : "Applique un jeu de constantes et de règles d'essai. Voir Issues.md #4."}
-              </span>
-              {isProf && (
-                <button type="button" className="btn-primary" style={{ fontSize: 12, marginLeft: "auto" }} onClick={publierConstantes}>
-                  Publier les constantes
-                </button>
-              )}
+          {isProf && (
+            <div style={{ marginBottom: 16 }}>
+              <button type="button" className="btn-primary" style={{ fontSize: 12 }} onClick={publierConstantes}>
+                Publier les constantes
+              </button>
             </div>
-          </div>
+          )}
 
           <div
             style={{

@@ -170,10 +170,10 @@ describe("store — constantes pré-P4 complétées (revue P3-P5)", () => {
 
     expect(useStore.getState().restoreSavedResult("sr_ancien_prep4")).toBe(true);
     const c = useStore.getState().constantes;
-    // Drapeaux complétés aux défauts intra2017, pack DÉTECTÉ (valeurs = pack).
+    // Drapeaux complétés : la feuille gramme, seule convention de l'application.
     expect(c.essai_gs_convention).toBe("base");
-    expect(c.essai_binder_rule).toBe("solides_totaux");
-    expect(c.pack_id).toBe("intra2017");
+    expect(c.essai_binder_rule).toBe("residu_ajoute");
+    expect(c.pack_id).toBe("gramme");
   });
 
   it("un snapshot pré-P4 PERSONNALISÉ est détecté « personnalise », pas « intra2017 »", () => {
@@ -220,21 +220,42 @@ describe("store — constantes pré-P4 complétées (revue P3-P5)", () => {
 
 describe("store — détection de pack dans setConstantes (revue P4)", () => {
   it("éditer un nombre puis revenir à la valeur du pack ne colle pas « personnalise »", () => {
-    // Part du pack intra2017 (défauts).
+    // Part de la feuille gramme (défauts).
     useStore.getState().loadConstantes();
-    expect(useStore.getState().constantes.pack_id).toBe("intra2017");
+    expect(useStore.getState().constantes.pack_id).toBe("gramme");
     // Dévie…
     useStore.getState().setConstantes({ gravite_m_s2: 9.79 });
     expect(useStore.getState().constantes.pack_id).toBe("personnalise");
     // …puis revient exactement à la valeur du pack : re-détecté.
     useStore.getState().setConstantes({ gravite_m_s2: 9.81 });
-    expect(useStore.getState().constantes.pack_id).toBe("intra2017");
+    expect(useStore.getState().constantes.pack_id).toBe("gramme");
   });
 
   it("retaper la même valeur (édition sans effet) conserve l'étiquette du pack", () => {
     useStore.getState().loadConstantes();
     useStore.getState().setConstantes({ gravite_m_s2: 9.81 }); // no-op
-    expect(useStore.getState().constantes.pack_id).toBe("intra2017");
+    expect(useStore.getState().constantes.pack_id).toBe("gramme");
+  });
+});
+
+describe("store — la feuille gramme est la seule convention (2026-09-29)", () => {
+  it("des réglages enregistrés sous la feuille tonne passent à la règle gramme au chargement", () => {
+    localStorage.setItem("minebackfill_constantes", JSON.stringify({ v: 2, data: {
+      masse_volumique_eau_kg_m3: 1000.0, gravite_m_s2: 9.81, facteur_petit_cone_vers_grand_cone: 2.335,
+      coefficient_modele_slump: 4.95e6, constante_modele_slump: 235.5122,
+      essai_gs_convention: "base", essai_binder_rule: "solides_totaux", pack_id: "intra2017",
+    } }));
+    useStore.getState().loadConstantes();
+    const c = useStore.getState().constantes;
+    expect(c.essai_binder_rule).toBe("residu_ajoute");
+    expect(c.pack_id).toBe("gramme");
+  });
+
+  it("aucune modification ne remet la règle de la feuille tonne", () => {
+    useStore.getState().loadConstantes();
+    useStore.getState().setConstantes({ essai_binder_rule: "solides_totaux", pack_id: "intra2017" });
+    expect(useStore.getState().constantes.essai_binder_rule).toBe("residu_ajoute");
+    expect(useStore.getState().constantes.pack_id).toBe("gramme");
   });
 });
 

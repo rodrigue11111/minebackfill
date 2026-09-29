@@ -152,8 +152,6 @@ const CONSTANTES_NUM_KEYS = [
   "constante_modele_slump",
 ] as const;
 const ESSAI_GS_VALUES: EssaiGsConvention[] = ["base", "recalcule"];
-const ESSAI_BINDER_VALUES: EssaiBinderRule[] = ["solides_totaux", "residu_ajoute"];
-const PACK_ID_VALUES: ConventionPackId[] = ["intra2017", "gramme", "personnalise"];
 
 export interface LiantCatalogueItem {
   id: string;
@@ -695,6 +693,13 @@ const generalDefaut: GeneralInfo = {
   binder3_id: null,
 };
 
+// Convention de calcul : la feuille « gramme » (Belem 2016), et elle seule —
+// décision de l'utilisateur, 2026-09-29. Elle ne diffère de la feuille tonne
+// (Intra 2017) qu'en essai-erreur : un ajout de granulat n'ajoute pas de liant
+// (Issues.md #4). Le choix a été retiré de l'interface ; la règle est imposée
+// au chargement (completerConstantes) et à chaque modification.
+const REGLE_LIANT_ESSAI: EssaiBinderRule = "residu_ajoute";
+
 const constantesDefaut: ConstantesCalcul = {
   masse_volumique_eau_kg_m3: 1000.0,
   gravite_m_s2: 9.81,
@@ -702,8 +707,8 @@ const constantesDefaut: ConstantesCalcul = {
   coefficient_modele_slump: 4.95e6,
   constante_modele_slump: 235.5122,
   essai_gs_convention: "base",
-  essai_binder_rule: "solides_totaux",
-  pack_id: "intra2017",
+  essai_binder_rule: REGLE_LIANT_ESSAI,
+  pack_id: "gramme",
 };
 
 /* ── Persistance versionnée des réglages (catalogue, constantes, projet) ──
@@ -717,7 +722,7 @@ const GENERAL_KEY = "minebackfill_general";
 // Versions scindées (elles partageaient SETTINGS_VERSION) : les constantes
 // gagnent les drapeaux de convention (v2), general reste stable (v1). La
 // migration des constantes est implicite — loadConstantesFromStorage remplit
-// les défauts (intra2017) pour les clés absentes des anciennes sauvegardes.
+// les défauts (gramme) pour les clés absentes des anciennes sauvegardes.
 export const CONSTANTES_VERSION = 2;
 const GENERAL_VERSION = 1;
 const RESIDUS_KEY = "minebackfill_catalogue_residus";
@@ -787,13 +792,11 @@ function completerConstantes(brut: Partial<ConstantesCalcul> | null | undefined)
   }
   if (brut?.essai_gs_convention && ESSAI_GS_VALUES.includes(brut.essai_gs_convention))
     c.essai_gs_convention = brut.essai_gs_convention;
-  if (brut?.essai_binder_rule && ESSAI_BINDER_VALUES.includes(brut.essai_binder_rule))
-    c.essai_binder_rule = brut.essai_binder_rule;
-  if (brut?.pack_id && PACK_ID_VALUES.includes(brut.pack_id)) {
-    c.pack_id = brut.pack_id;
-  } else {
-    c.pack_id = detecterPackId(c);
-  }
+  // Règle du liant en essai : TOUJOURS celle de la feuille gramme, même pour
+  // des réglages ou un résultat enregistrés sous la feuille tonne. L'étiquette
+  // se déduit des valeurs (gramme, ou « personnalise » si un nombre a changé).
+  c.essai_binder_rule = REGLE_LIANT_ESSAI;
+  c.pack_id = detecterPackId(c);
   return c;
 }
 
@@ -871,10 +874,8 @@ export const useStore = create<AppState>((set, get) => ({
       // édition passe par la DÉTECTION : si les valeurs résultantes égalent
       // exactement un pack, on garde son étiquette (retaper « 9,81 » ne rend
       // pas le jeu « personnalisé ») ; sinon « personnalise ».
-      const fusion = { ...state.constantes, ...patch };
-      const constantes = "pack_id" in patch
-        ? fusion
-        : { ...fusion, pack_id: detecterPackId(fusion) };
+      const fusion = { ...state.constantes, ...patch, essai_binder_rule: REGLE_LIANT_ESSAI };
+      const constantes = { ...fusion, pack_id: detecterPackId(fusion) };
       persistConstantes(constantes);
       return { constantes };
     }),

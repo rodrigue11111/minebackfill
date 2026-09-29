@@ -141,8 +141,10 @@ Le backend FastAPI n'est pas concerné (sécurité = RLS Postgres).
 
 ## Notes de conventions
 
-- Convention de calcul : feuille « Intra 2017 » (`Ms = ρd·VT`) — voir `Issues.md` pour
-  l'historique du changement par rapport au Modèle C1b 2005 (`Vr = Vs`).
+- Convention de calcul : recette de base des feuilles du professeur (`Ms = ρd·VT`) — voir
+  `Issues.md` pour l'historique du changement par rapport au Modèle C1b 2005 (`Vr = Vs`).
+  En essai-erreur, l'application suit la feuille « gramme » : le liant ajouté ne suit que
+  le résidu ajouté (`Issues.md` #4). Les unités d'affichage (t, kg, g…) restent au choix.
 - Facteur de sécurité : multiplicateur (1 = aucun surplus ; la feuille du professeur saisit
   un pourcentage : FS % → 1 + FS/100).
 - L'essai-erreur suit la feuille : le volume total croît des volumes ajoutés, Sr reste à la

@@ -199,10 +199,6 @@ export default function DiagnosticPage() {
           <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px" }}>Application</h2>
           <Ligne etiquette="Application" valeur={`${APP_NAME_VERSION} — ${MODULE_ID}`} />
           <Ligne etiquette="Solveur (référence)" valeur={SOLVER_VERSION} />
-          <Ligne
-            etiquette="Pack de convention actif"
-            valeur={hydrated ? `${packLabel} (${constantes.pack_id})` : "…"}
-          />
           <Ligne etiquette="Estampille du solveur actif" valeur={hydrated ? estampille : "…"} />
         </div>
 
