@@ -16,7 +16,7 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { useAujourdhui } from "@/lib/use-aujourdhui";
 import { sessionActive, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import FiltreSession from "@/components/FiltreSession";
-import { exportClasse, regrouper, type LigneClasse, type ProfilClasse } from "@/lib/classe";
+import { exportClasse, regrouper, type EtudiantClasse, type LigneClasse, type ProfilClasse } from "@/lib/classe";
 import {
   ajouterAnnotation, estReponse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireProfils, marquerAnnotationsLues,
   messageErreurClasse, retirerAnnotation, type LigneAnnotation,
@@ -24,6 +24,7 @@ import {
 import { rafraichirReponsesNonLues } from "@/lib/sync-client";
 import { nomFichier, telechargerBlob, telechargerTexte, versCsv } from "@/lib/export-fig";
 import { lignesCsvEprouvettes, lignesCsvSynthese } from "@/lib/classe-csv";
+import { documentRapportClasse, documentRapportEtudiant, type ContexteRapport, type DocumentRapport } from "@/lib/rapport-classe";
 import { COULEURS, type RefDoc } from "@/components/classe/commun";
 import TableauEtudiants from "@/components/classe/TableauEtudiants";
 import DetailEtudiant, { reponsesNonLues, type ContexteFil, type NouvelleAnnotation } from "@/components/classe/DetailEtudiant";
@@ -197,6 +198,22 @@ export default function ClassePage() {
   const exporterCsvEcheancier = () =>
     telechargerTexte(versCsv(lignesCsvEcheancier(echeances)), nomFichier(`MineBackfill_classe_echeances_${filtreEffectif}`, "csv"), "text/csv;charset=utf-8");
 
+  /** Rapport PDF (jsPDF chargé à la demande) : la classe, ou un étudiant. */
+  const exporterPdf = async (e?: EtudiantClasse) => {
+    const ctxRapport: ContexteRapport = {
+      session: filtreEffectif === "toutes" ? "Toutes les sessions" : filtreEffectif === "sans" ? "Sans session"
+        : sessions.find((x) => x.id === filtreEffectif)?.nom ?? filtreEffectif,
+      genereLe: new Date(), alertes, comparaison, annotations, moi: session?.userId ?? "",
+    };
+    const d: DocumentRapport = e ? documentRapportEtudiant(e, ctxRapport) : documentRapportClasse(etudiants, ctxRapport);
+    try {
+      const { telechargerRapportPdf } = await import("@/lib/rapport-classe-pdf");
+      await telechargerRapportPdf(d, nomFichier(e ? `MineBackfill_rapport_${e.nom}` : `MineBackfill_rapport_classe_${filtreEffectif}`, "pdf"));
+    } catch (err) {
+      window.alert(`Rapport impossible : ${messageErreurClasse(err)}`);
+    }
+  };
+
   const conteneur: React.CSSProperties = { maxWidth: 1100, margin: "0 auto", padding: "28px 18px 64px", display: "flex", flexDirection: "column", gap: 16 };
 
   if (!monte) return null;
@@ -255,6 +272,10 @@ export default function ClassePage() {
                 title="Copie de sauvegarde de la classe (JSON). L'offre gratuite de Supabase n'en fait aucune. À ranger hors de GitHub : elle contient des données d'étudiants.">
                 {exportEnCours ? "Export…" : "Classe (JSON)"}
               </button>
+              <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => void exporterPdf()} disabled={etat !== "pret"}
+                title="Synthèse de la classe puis un chapitre par étudiant (documents de la session affichée). Contient des données d'étudiants : à ranger hors de GitHub.">
+                Rapport de session (PDF)
+              </button>
             </div>
 
             <FiltreSession sessions={sessions} valeur={filtreEffectif} onChange={(v) => { setFiltre(v); setSelId(null); }} />
@@ -280,7 +301,7 @@ export default function ClassePage() {
                       couleurDe={couleurDe} alertesParEtudiant={alertesParEtudiant} />
                     {sel && (
                       <DetailEtudiant etudiant={sel} annotations={annotations} lignes={lignes}
-                        onAnnoter={annoter(sel.id)} ctx={ctx} onOuvrir={ouvrirDoc} />
+                        onAnnoter={annoter(sel.id)} ctx={ctx} onOuvrir={ouvrirDoc} onRapport={() => void exporterPdf(sel)} />
                     )}
                     <FigureClasse etudiants={etudiants} couleurDe={couleurDe} />
                   </>

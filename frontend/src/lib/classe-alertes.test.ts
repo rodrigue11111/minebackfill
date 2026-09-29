@@ -99,7 +99,7 @@ describe("alertes « à surveiller »", () => {
     const l = [ligne(A, g("a1", 1000)), ligne(B, g("b1", 1050)), ligne(C, g("c1", 600))];
     const a = alertes(l).filter((x) => x.type === "ecart_groupe");
     expect(a.map((x) => x.etudiant)).toEqual(["Chloé"]);
-    expect(a[0].message).toBe("28 j : 600 kPa, 40 % sous la médiane des gâchées RPC · Cw 75 % · Bw 5 % (1 000 kPa, 3 gâchées).".replace("1 000", (1000).toLocaleString("fr-CA")));
+    expect(a[0].message).toBe("28 j : 600 kPa, 40 % sous la médiane des 3 gâchées RPC · Cw 75 % · Bw 5 %.");
     // Deux gâchées seulement : pas de repère, pas d'alerte.
     expect(alertes([ligne(A, g("a1", 1000)), ligne(C, g("c1", 300))]).filter((x) => x.type === "ecart_groupe")).toEqual([]);
   });

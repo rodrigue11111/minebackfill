@@ -58,20 +58,25 @@ export function revDe(lignes: LigneClasse[], proprietaire: string, kind: "result
   return lignes.find((l) => l.proprietaire === proprietaire && l.kind === kind && l.id === id)?.rev ?? null;
 }
 
-export default function DetailEtudiant({ etudiant, annotations, onAnnoter, ctx, lignes, onOuvrir }: {
+export default function DetailEtudiant({ etudiant, annotations, onAnnoter, ctx, lignes, onOuvrir, onRapport }: {
   etudiant: EtudiantClasse;
   annotations: LigneAnnotation[];
   onAnnoter: (a: NouvelleAnnotation) => Promise<boolean>;
   ctx: ContexteFil;
   lignes: LigneClasse[];
   onOuvrir: (ref: RefDoc) => void;
+  /** Rapport PDF de cet étudiant. */
+  onRapport?: () => void;
 }) {
   const commentaires = (kind: "resultat" | "gachee", id: string) =>
     annotations.filter((a) => a.owner_id === etudiant.id && a.target_kind === kind && a.target_id === id);
 
   return (
     <div className="form-card">
-      <h2 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 12px" }}>{etudiant.nom}</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{etudiant.nom}</h2>
+        {onRapport && <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={onRapport}>Rapport PDF</button>}
+      </div>
 
       <h3 style={{ fontSize: 13, fontWeight: 700, color: "#334155", margin: "0 0 8px" }}>Gâchées ({etudiant.gachees.length})</h3>
       {etudiant.gachees.length === 0 && <p style={{ fontSize: 12.5, color: "#94a3b8" }}>Aucune gâchée.</p>}

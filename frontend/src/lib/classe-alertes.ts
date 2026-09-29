@@ -154,7 +154,9 @@ export function alertesClasse(etudiants: EtudiantClasse[], o: {
         ajouter({
           etudiantId: l.etudiantId, etudiant: nomDe.get(l.etudiantId) ?? l.etudiant, type: "ecart_groupe",
           cible: { kind: "gachee", id: l.gacheeId, code: l.gacheeCode },
-          message: `${bloc.ageJours} j : ${n0(l.moyenneKpa)} kPa, ${n0(Math.abs(l.ecartMedianePct))} % ${l.ecartMedianePct < 0 ? "sous" : "au-dessus de"} la médiane des gâchées ${libelleGroupe(groupe)} (${n0(bloc.repere.medianeKpa)} kPa, ${bloc.repere.nGachees} gâchées).`,
+          // Pas la valeur de la médiane : ce message va aussi dans le rapport PDF,
+          // où elle serait citée comme « l'UCS de la formulation ».
+          message: `${bloc.ageJours} j : ${n0(l.moyenneKpa)} kPa, ${n0(Math.abs(l.ecartMedianePct))} % ${l.ecartMedianePct < 0 ? "sous" : "au-dessus de"} la médiane des ${bloc.repere.nGachees} gâchées ${libelleGroupe(groupe)}.`,
         }, String(bloc.ageJours));
       }
     }
