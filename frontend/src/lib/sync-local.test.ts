@@ -53,6 +53,13 @@ describe("sync-local — forme canonique", () => {
     expect(g.eprouvettes[0].essai?.contrainteKpaSaisie).toBe(196);
   });
 
+  it("la référence d'une courbe rangée hors de la gâchée (courbeInfo) reste locale aussi", () => {
+    const g = gachee("g1");
+    (g.eprouvettes[0].essai as Record<string, unknown>).courbeInfo = { nbPoints: 151 };
+    expect((canoniqueGachee(g) as Gachee).eprouvettes[0].essai).not.toHaveProperty("courbeInfo");
+    expect(empreinte(canoniqueGachee(g))).toBe(empreinte(canoniqueGachee(gachee("g1"))));
+  });
+
   it("ajouter une courbe ne rend pas la gâchée « modifiée »", () => {
     expect(empreinte(canoniqueGachee(gachee("g1", "x", true)))).toBe(empreinte(canoniqueGachee(gachee("g1", "x", false))));
   });
@@ -75,6 +82,16 @@ describe("sync-local — dépôt", () => {
     expect(s.gachees[0].formulationLabel).toBe("serveur");
     expect(s.gachees[0].eprouvettes[0].essai?.courbe).toEqual(courbe);
     expect(s.recharges).toEqual([["gachee"]]);
+  });
+
+  it("une version reçue garde la référence locale de courbe (courbeInfo)", () => {
+    const { s, depot } = stockage();
+    const local = gachee("g1", "local");
+    (local.eprouvettes[0].essai as Record<string, unknown>).courbeInfo = { nbPoints: 151 };
+    s.gachees = [local];
+    const D = depot.lister().get("gachee:g1")!;
+    depot.appliquer([{ type: "ecrire", kind: "gachee", id: "g1", contenu: canoniqueGachee(gachee("g1", "serveur")), attendu: D.empreinte }]);
+    expect(s.gachees[0].eprouvettes[0].essai?.courbeInfo).toEqual({ nbPoints: 151 });
   });
 
   it("un résultat reçu est estampillé au compte lié", () => {

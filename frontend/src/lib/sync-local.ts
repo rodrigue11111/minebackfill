@@ -9,9 +9,10 @@
 //   une version plus récente. D'où aussi : une écriture refusée rend « echec »,
 //   et le moteur n'avance pas.
 // - Forme CANONIQUE = ce qui part en ligne. Sans `ownerId` (information locale)
-//   ni les courbes de presse (lourdes : elles restent sur l'appareil en
-//   attendant leur propre stockage). Écrire une version serveur RÉATTACHE ces
-//   champs locaux, sinon chaque synchronisation effacerait les courbes.
+//   ni les courbes de presse (lourdes : elles restent sur l'appareil, dans la
+//   gâchée ou dans IndexedDB — `courbe` ou sa référence `courbeInfo`). Écrire
+//   une version serveur RÉATTACHE ces champs locaux, sinon chaque
+//   synchronisation effacerait les courbes.
 // - Un résultat estampillé au nom d'un AUTRE compte (ancienne fusion de la v1
 //   chez l'enseignant, sauvegarde importée) n'est jamais envoyé : il reste
 //   local, invisible pour le moteur.
@@ -50,34 +51,42 @@ export function canoniqueResultat(r: SavedResult): unknown {
   return reste;
 }
 
+const aChampsLocaux = (e: { essai?: { courbe?: unknown; courbeInfo?: unknown } }) =>
+  e.essai?.courbe !== undefined || e.essai?.courbeInfo !== undefined;
+
 export function canoniqueGachee(g: Gachee): unknown {
-  if (!(g.eprouvettes ?? []).some((e) => e.essai?.courbe !== undefined)) return g;
+  if (!(g.eprouvettes ?? []).some(aChampsLocaux)) return g;
   return {
     ...g,
     eprouvettes: g.eprouvettes.map((e) => {
-      if (!e.essai || e.essai.courbe === undefined) return e;
+      if (!e.essai || !aChampsLocaux(e)) return e;
       const essai = { ...e.essai };
       delete essai.courbe;
+      delete essai.courbeInfo;
       return { ...e, essai };
     }),
   };
 }
 
-/** Courbes locales par id d'éprouvette. */
-function courbesDe(g: Gachee | undefined): Map<string, PointCourbe[]> {
-  const m = new Map<string, PointCourbe[]>();
-  for (const e of g?.eprouvettes ?? []) if (e.essai?.courbe) m.set(e.id, e.essai.courbe);
+/** Champs locaux de courbe (courbe ou référence) par id d'éprouvette. */
+type ChampsCourbe = { courbe?: PointCourbe[]; courbeInfo?: { nbPoints: number } };
+function courbesDe(g: Gachee | undefined): Map<string, ChampsCourbe> {
+  const m = new Map<string, ChampsCourbe>();
+  for (const e of g?.eprouvettes ?? []) {
+    if (e.essai?.courbe) m.set(e.id, { courbe: e.essai.courbe });
+    else if (e.essai?.courbeInfo) m.set(e.id, { courbeInfo: e.essai.courbeInfo });
+  }
   return m;
 }
 
-/** Réattache les courbes locales aux éprouvettes (même id) d'une gâchée reçue. */
-function avecCourbes(g: Gachee, courbes: Map<string, PointCourbe[]>): Gachee {
+/** Réattache les champs locaux de courbe aux éprouvettes (même id) d'une gâchée reçue. */
+function avecCourbes(g: Gachee, courbes: Map<string, ChampsCourbe>): Gachee {
   if (courbes.size === 0 || !Array.isArray(g.eprouvettes)) return g;
   return {
     ...g,
     eprouvettes: g.eprouvettes.map((e) => {
       const c = courbes.get(e.id);
-      return c && e.essai && e.essai.courbe === undefined ? { ...e, essai: { ...e.essai, courbe: c } } : e;
+      return c && e.essai && !aChampsLocaux(e) ? { ...e, essai: { ...e.essai, ...c } } : e;
     }),
   };
 }
@@ -173,9 +182,12 @@ export function creerDepotLocal(s: SourcesLocales): DepotLocal {
     const copie = { ...(contenu as object), id: nouvelId, conflit: { de: source.id, le } };
     if (kind !== "gachee") return copie;
     // La copie garde les courbes de l'original local (elles ne sont pas en
-    // ligne : sans cela, la version de l'étudiant les perdrait).
+    // ligne : sans cela, la version de l'étudiant les perdrait) — mais
+    // seulement celles rangées DANS la gâchée : une référence au magasin
+    // serait partagée avec l'original, et supprimer la copie l'effacerait.
     const original = s.lireGachees().find((g) => g?.id === source.id);
-    return avecCourbes(copie as unknown as Gachee, courbesDe(original));
+    const enLigne = new Map([...courbesDe(original)].filter(([, c]) => c.courbe));
+    return avecCourbes(copie as unknown as Gachee, enLigne);
   }
 
   return { lister, appliquer, copieDeConflit };

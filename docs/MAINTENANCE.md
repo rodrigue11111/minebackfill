@@ -142,7 +142,8 @@ optionnel+nullable pour les vieux localStorage).
 | `minebackfill_protocoles` | `{v,data}` | 1 | identité + graine `protocolesDefaut()` |
 | `minebackfill_sessions` | `{v,data}` | 1 | `validerSessions` (sessions.ts) — publiées par l'enseignant |
 | `minebackfill_sync` | `{v,data}` | 1 | état de la synchronisation v2 (`sync-etat.ts`) — **hors sauvegarde** |
-| Sauvegarde (fichier) | `backup.ts` | schéma 5 | fusion par id, le local gagne |
+| IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par id d'éprouvette | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` |
+| Sauvegarde (fichier) | `backup.ts` | schéma 6 | fusion par id, le local gagne ; courbes dans `data.courbes` |
 
 Toute évolution de schéma : incrémenter la version de LA clé concernée
 (elles sont indépendantes depuis P4) + migration + test dans

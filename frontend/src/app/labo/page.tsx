@@ -35,6 +35,8 @@ import { snapshotProtocoles, type Protocole, type ProtocoleFige } from "@/lib/pr
 import CourbeUCS, { type SerieUCS } from "@/components/labo/CourbeUCS";
 import ImportPresse from "@/components/labo/ImportPresse";
 import AnnotationsDoc from "@/components/AnnotationsDoc";
+import { courbesAOublier, idsCourbes, nbPointsCourbe } from "@/lib/courbes";
+import { enregistrerCourbes, oublierCourbes } from "@/lib/courbes-client";
 
 const inputStyle: React.CSSProperties = {
   width: "100%", minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 6, padding: "9px 11px",
@@ -279,8 +281,8 @@ function FormEssaiUCS({ eprouvette, onChange }: {
                 )}
               </span>
             )}
-            {es.courbe && es.courbe.length > 0 && (
-              <span>Courbe conservée : <strong>{es.courbe.length} points</strong></span>
+            {nbPointsCourbe(es) > 0 && (
+              <span>Courbe conservée : <strong>{nbPointsCourbe(es)} points</strong></span>
             )}
           </div>
         </div>
@@ -340,7 +342,10 @@ function CarteEprouvettes({ gachee, maintenant, onChange }: {
     onChange(gachee.eprouvettes.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   const majEssai = (id: string, patch: Partial<EssaiUCS>) =>
     onChange(gachee.eprouvettes.map((e) => (e.id === id ? { ...e, essai: { ...(e.essai ?? {}), ...patch } } : e)));
-  const retirer = (id: string) => onChange(gachee.eprouvettes.filter((e) => e.id !== id));
+  const retirer = (id: string) => {
+    onChange(gachee.eprouvettes.filter((e) => e.id !== id));
+    oublierCourbes(courbesAOublier([id], useStore.getState().gachees.filter((x) => x.id !== gachee.id)));
+  };
 
   // Bascule cure <-> écrasée : à l'écrasement, on initialise la date d'essai au jour même.
   const basculerStatut = (e: Eprouvette) =>
@@ -371,11 +376,22 @@ function CarteEprouvettes({ gachee, maintenant, onChange }: {
         {gachee.eprouvettes.length > 0 && (
           <ImportPresse
             eprouvettes={gachee.eprouvettes}
-            onAppliquer={(affectations) => {
+            onAppliquer={async (affectations) => {
+              // Les courbes vont D'ABORD dans IndexedDB ; l'éprouvette n'en
+              // garde qu'une référence. Si l'enregistrement échoue (ou si le
+              // navigateur n'a pas IndexedDB), la courbe reste dans la gâchée,
+              // comme avant : aucune perte.
+              const enregistrees = await enregistrerCourbes(
+                affectations.filter((a) => a.essai.courbe?.length).map((a) => [a.eprouvetteId, a.essai.courbe!]));
               // Un seul onChange pour toutes les affectations : appeler
               // majEssai en boucle repartirait de l'état d'avant et
               // n'en garderait que la dernière.
-              const parId = new Map(affectations.map((a) => [a.eprouvetteId, a.essai]));
+              const parId = new Map(affectations.map((a) => {
+                if (!enregistrees.has(a.eprouvetteId) || !a.essai.courbe) return [a.eprouvetteId, a.essai];
+                const essai = { ...a.essai, courbeInfo: { nbPoints: a.essai.courbe.length } };
+                delete essai.courbe;
+                return [a.eprouvetteId, essai];
+              }));
               onChange(gachee.eprouvettes.map((e) => {
                 const patch = parId.get(e.id);
                 return patch ? { ...e, statut: "ecrase" as const, essai: { ...(e.essai ?? {}), ...patch } } : e;
@@ -1094,7 +1110,7 @@ export default function LaboPage() {
           </Carte>
 
           <div>
-            <button type="button" onClick={() => { if (window.confirm(`Supprimer la gâchée ${g.code} ?`)) { supprimerGachee(g.id); setSelId(null); } }}
+            <button type="button" onClick={() => { if (window.confirm(`Supprimer la gâchée ${g.code} ?`)) { oublierCourbes(courbesAOublier(idsCourbes(g), gachees.filter((x) => x.id !== g.id))); supprimerGachee(g.id); setSelId(null); } }}
               className="btn-secondary" style={{ color: "var(--danger)" }}>Supprimer cette gâchée</button>
           </div>
         </div>

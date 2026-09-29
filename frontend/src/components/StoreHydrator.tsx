@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useStore } from "@/lib/store";
+import { deplacerCourbesStockees } from "@/lib/courbes-client";
 
 /**
  * Hydrate l'état du store depuis localStorage une fois, au montage global de
@@ -38,6 +39,10 @@ export default function StoreHydrator() {
     loadProtocoles();
     loadSessions();
     loadAnnotations();
+    // Courbes de presse encore rangées dans les gâchées (imports antérieurs) :
+    // déplacées dans IndexedDB, ce qui libère le stockage local. Sans effet
+    // si elles le sont déjà, ou si le navigateur n'a pas IndexedDB.
+    void deplacerCourbesStockees();
   }, [
     loadGeneral,
     loadConstantes,
