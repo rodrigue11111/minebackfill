@@ -32,9 +32,11 @@ import Onglets from "@/components/classe/Onglets";
 import OngletComparaison from "@/components/classe/OngletComparaison";
 import { comparerClasse } from "@/lib/classe-comparaison";
 import { alertesClasse } from "@/lib/classe-alertes";
+import { echeancierClasse, icsClasse, lignesCsvEcheancier } from "@/lib/classe-echeancier";
+import OngletEcheancier from "@/components/classe/OngletEcheancier";
 import CarteAlertes from "@/components/classe/CarteAlertes";
 
-type CleOnglet = "etudiants" | "comparaison";
+type CleOnglet = "etudiants" | "echeancier" | "comparaison";
 
 export default function ClassePage() {
   const monte = useHydrated();
@@ -102,6 +104,7 @@ export default function ClassePage() {
     sessionActiveAffichee: enCours !== null && filtreEffectif === enCours.id,
     debutSessionActive: enCours?.debut ?? null,
   }), [etudiants, maintenant, comparaison, enCours, filtreEffectif]);
+  const echeances = useMemo(() => echeancierClasse(etudiants, maintenant), [etudiants, maintenant]);
   const alertesParEtudiant = new Map<string, number>();
   for (const a of alertes) alertesParEtudiant.set(a.etudiantId, (alertesParEtudiant.get(a.etudiantId) ?? 0) + 1);
 
@@ -160,6 +163,14 @@ export default function ClassePage() {
     const lignesCsv = quoi === "eprouvettes" ? lignesCsvEprouvettes(etudiants, sessions) : lignesCsvSynthese(etudiants, sessions);
     telechargerTexte(versCsv(lignesCsv), nomFichier(`MineBackfill_classe_${quoi}_${filtreEffectif}`, "csv"), "text/csv;charset=utf-8");
   };
+
+  const exporterIcs = () => {
+    // Horodatage réel de l'export (dans un gestionnaire : pas de gel par le compilateur).
+    telechargerBlob(new Blob([icsClasse(echeances, new Date())], { type: "text/calendar;charset=utf-8" }),
+      nomFichier(`MineBackfill_classe_echeances_${filtreEffectif}`, "ics"));
+  };
+  const exporterCsvEcheancier = () =>
+    telechargerTexte(versCsv(lignesCsvEcheancier(echeances)), nomFichier(`MineBackfill_classe_echeances_${filtreEffectif}`, "csv"), "text/csv;charset=utf-8");
 
   const conteneur: React.CSSProperties = { maxWidth: 1100, margin: "0 auto", padding: "28px 18px 64px", display: "flex", flexDirection: "column", gap: 16 };
 
@@ -233,7 +244,8 @@ export default function ClassePage() {
               <>
                 <Onglets<CleOnglet> actif={onglet} onChoisir={setOnglet} onglets={[
                   { cle: "etudiants", label: "Étudiants", compte: alertes.length || null },
-                  { cle: "comparaison", label: "Comparaison", compte: comparaison.groupes.length },
+                  { cle: "echeancier", label: "Échéancier", compte: echeances.filter((x) => x.classe === "retard" || x.classe === "aujourdhui").length || null },
+                  { cle: "comparaison", label: "Comparaison", compte: comparaison.groupes.length || null },
                 ]} />
                 {onglet === "etudiants" && (
                   <>
@@ -246,6 +258,9 @@ export default function ClassePage() {
                     )}
                     <FigureClasse etudiants={etudiants} couleurDe={couleurDe} />
                   </>
+                )}
+                {onglet === "echeancier" && (
+                  <OngletEcheancier echeances={echeances} onOuvrir={ouvrirDoc} onIcs={exporterIcs} onCsv={exporterCsvEcheancier} />
                 )}
                 {onglet === "comparaison" && <OngletComparaison comparaison={comparaison} onOuvrir={ouvrirDoc} />}
               </>

@@ -478,7 +478,9 @@ function Echeancier({ gachees, maintenant, onOuvrir }: {
   maintenant: Date;
   onOuvrir: (gacheeId: string) => void;
 }) {
-  const toutes = gachees.flatMap((g) => g.eprouvettes.map((e) => ({ e, g })));
+  // Copies de conflit exclues : elles gardent les éprouvettes de l'original
+  // (mêmes ids) — chaque éprouvette serait sinon listée deux fois.
+  const toutes = gachees.filter((g) => !g.conflit).flatMap((g) => g.eprouvettes.map((e) => ({ e, g })));
   if (toutes.length === 0) return null;
   const enCure = toutes.filter((x) => x.e.statut !== "ecrase");
   const parEcheance = (a: { e: Eprouvette }, b: { e: Eprouvette }) => dateEcheance(a.e).getTime() - dateEcheance(b.e).getTime();

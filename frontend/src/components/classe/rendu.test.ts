@@ -18,6 +18,8 @@ import OngletComparaison from "./OngletComparaison";
 import { comparerClasse } from "@/lib/classe-comparaison";
 import { alertesClasse } from "@/lib/classe-alertes";
 import CarteAlertes from "./CarteAlertes";
+import OngletEcheancier from "./OngletEcheancier";
+import { echeancierClasse } from "@/lib/classe-echeancier";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";
 const profils: ProfilClasse[] = [{ id: A, email: "alice@x.ca", display_name: "Alice Tremblay", role: "etudiant" }];
@@ -132,5 +134,13 @@ describe("vues de l'enseignant — rendu", () => {
     expect(html).toContain("Pesée hors tolérance");
     expect(html).toContain("valeurs par défaut, à valider");
     expect(rendu(createElement(CarteAlertes, { alertes: [], onOuvrir: () => {} }))).toContain("Rien à signaler");
+  });
+
+  it("échéancier : sections, éprouvette en cure listée avec l'étudiant", () => {
+    const html = rendu(createElement(OngletEcheancier, { echeances: echeancierClasse(etudiants, maintenant), onOuvrir: () => {}, onIcs: () => {}, onCsv: () => {} }));
+    expect(html).toContain("En retard (0)");
+    expect(html).toContain("Plus tard (1)"); // E03 attendue le 8 octobre, dans 9 j
+    expect(html).toContain("G-20260910-01-E03");
+    expect(html).toContain("Alice Tremblay");
   });
 });

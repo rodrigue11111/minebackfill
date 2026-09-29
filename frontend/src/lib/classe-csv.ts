@@ -24,7 +24,8 @@ export function texteCsvSur(s: string): string {
   return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
 }
 
-function securiser(lignes: CelluleCsv[][]): CelluleCsv[][] {
+/** Applique texteCsvSur à toutes les cellules texte. */
+export function securiserCsv(lignes: CelluleCsv[][]): CelluleCsv[][] {
   return lignes.map((l) => l.map((c) => (typeof c === "string" ? texteCsvSur(c) : c)));
 }
 
@@ -86,7 +87,7 @@ export function lignesCsvEprouvettes(etudiants: EtudiantClasse[], sessions: Sess
       ]);
     }
   }
-  return securiser(lignes);
+  return securiserCsv(lignes);
 }
 
 export const EN_TETES_SYNTHESE = [
@@ -108,5 +109,5 @@ export function lignesCsvSynthese(etudiants: EtudiantClasse[], sessions: Session
       lignes.push([...tete(c), a.ageJours, a.n, a.nExclus, arrondi(a.moyenneKpa, 1), arrondi(a.ecartTypeKpa, 1), arrondi(a.cvPct, 1), hors]);
     }
   }
-  return securiser(lignes);
+  return securiserCsv(lignes);
 }
