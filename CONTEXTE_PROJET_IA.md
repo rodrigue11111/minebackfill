@@ -73,7 +73,16 @@ Principe impose par l'utilisateur:
 - `frontend/src/components/mix/rpc/SlumpForm.tsx`
 - `frontend/src/components/mix/rpc/EssaiForm.tsx`
 - `frontend/src/components/mix/ResultsPanel.tsx`
-  - affichage unifie des resultats
+  - affichage unifie des resultats (sections : `components/mix/SectionsRapport.tsx`,
+    rendu du schema unique `lib/report-schema.ts`)
+- `frontend/src/app/classe/page.tsx` + `frontend/src/components/classe/*`
+  - tableau de bord de l'enseignant : etudiants, alertes, echeancier,
+    comparaison, comptes, document d'etudiant en lecture seule, fil de
+    commentaires, exports (CSV, JSON, rapport PDF)
+- `frontend/src/lib/classe*.ts`, `lib/rapport-classe*.ts`
+  - logique PURE du tableau de bord (regle de comptage `essaiValide`,
+    comparaison, alertes et `SEUILS_ALERTES`, echeancier, CSV, rapport) ;
+    `classe-reseau.ts` = seul module reseau (Supabase injecte)
 
 ## 4) Conventions de calcul (a respecter)
 

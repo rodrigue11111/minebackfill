@@ -115,6 +115,51 @@ Décisions v2 (`supabase/schema.sql`), chacune pour une raison :
   accident.
 - `saved_results` repris une fois puis gelé en lecture seule.
 
+## Tableau de bord de l'enseignant (2026-10)
+Demande : donner à l'enseignant les outils du quotidien — ouvrir le travail
+d'un étudiant en entier, comparer, exporter, repérer les problèmes, planifier
+la presse, dialoguer, gérer les comptes, archiver la session. Décisions :
+- **Une règle de comptage** (`essaiValide`, `lib/classe.ts`) pour tout le
+  tableau de bord : éprouvette écrasée, mesurée, non exclue — ce que
+  `agregerParAge` retient. Copies de conflit exclues partout : elles gardent
+  les éprouvettes de l'original (mêmes ids) et doubleraient les essais.
+- **Comparaison « même formulation »** = même catégorie, Cw et Bw arrondis au
+  demi-point (décision de l'enseignant). Une ligne par gâchée, jamais de
+  moyenne entre gâchées (même raison que `ucs-formulation.ts` : lots,
+  opérateurs, protocoles différents). La médiane n'est qu'un repère de
+  dispersion, à partir de 3 gâchées (avec 2, ce serait leur moyenne), jamais
+  tracée ni imprimée : un rapport circule, une médiane y serait citée comme
+  « l'UCS de la formulation ».
+- **Alertes** : heuristiques de contrôle qualité, pas des formules du cours ;
+  seuils dans UNE constante (`SEUILS_ALERTES`), affichés comme valeurs par
+  défaut à valider par l'enseignant.
+- **Réponses de l'étudiant par une fonction** (`repondre_annotation`, security
+  definer), pas par une politique INSERT : une politique sur `annotations`
+  qui interroge `annotations` fait échouer TOUTE insertion (« infinite
+  recursion detected in policy », 42P17), commentaires de l'enseignant
+  compris, parce que la politique SELECT contient des sous-requêtes
+  `(select auth.uid())`. Vérifié sur le vrai schéma dans PGlite.
+- **Accusés de lecture** (`lu_le`) posés seulement par le destinataire, via
+  `marquer_annotations_lues` ; les droits UPDATE sur `annotations` sont
+  limités aux colonnes `texte` et `deleted`. `lire_annotations` est gardée
+  (sites en cache) mais ne rend plus les réponses : un ancien site les
+  prendrait pour des commentaires de l'enseignant. Le nouveau lit
+  `lire_fil_annotations`. Le fil suit la date de CRÉATION (`maj` bouge quand
+  un message est lu).
+- **Comptes** : le rôle change par `definir_role` (enseignant seulement,
+  jamais le sien : il reste toujours un enseignant ; verrou consultatif
+  commun avec le blocage, appelant revérifié après le verrou). Le blocage est
+  le « ban » de Supabase (`auth.users.banned_until`, 876000 h comme l'API
+  d'administration — jamais `'infinity'`, illisible pour le serveur
+  d'authentification) : un compte bloqué dans Studio apparaît bloqué dans
+  l'application, et inversement. La suppression définitive reste une
+  procédure SQL : irréversible, elle n'a pas de bouton. Aucune clé
+  service_role n'est introduite.
+- **Compatibilité dans les deux sens** : le SQL est additif (l'ancien site
+  marche avec la nouvelle base) ; le nouveau site tolère une base pas à jour
+  (lecture `select("*")`, repli sur l'ancienne fonction, message « exécutez
+  supabase/schema.sql »).
+
 ## Ce que ça implique pour la suite
 - Les golden tests + oracles sont le filet : toute évolution des formules
   passe par eux (recette 6 de `docs/MAINTENANCE.md`).
