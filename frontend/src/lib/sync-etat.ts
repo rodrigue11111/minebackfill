@@ -10,6 +10,7 @@
 
 import { loadVersioned, persistVersioned } from "./persisted";
 import { etatInitial, marquerSuppression, type EtatSync, type Kind } from "./sync-moteur";
+import type { MiseDeCote } from "./sync-bascule";
 
 export const CLE_ETAT_SYNC = "minebackfill_sync";
 const VERSION_ETAT = 1;
@@ -54,4 +55,22 @@ export function marquerSuppressionLocale(kind: Kind, id: string): void {
   const e = chargerEtatSync();
   if (e.uid === null) return;
   sauverEtatSync(marquerSuppression(e, kind, id));
+}
+
+/* ── Mises de côté (changement de compte, sync-bascule.ts) ──────────────────
+ * Une clé par compte : `minebackfill_compte_<uid>`. Hors sauvegarde, comme
+ * l'état de synchronisation : c'est le travail d'un compte en attente d'être
+ * retrouvé sur CET appareil. */
+const PREFIXE_MISE_DE_COTE = "minebackfill_compte_";
+
+export function lireMiseDeCote(uid: string): MiseDeCote | null {
+  const m = loadVersioned<MiseDeCote | null>(PREFIXE_MISE_DE_COTE + uid, 1, (d) => d as MiseDeCote, null);
+  return m && Array.isArray(m.resultats) && Array.isArray(m.gachees) && m.etat ? m : null;
+}
+export function ecrireMiseDeCote(uid: string, m: MiseDeCote): boolean {
+  return persistVersioned(PREFIXE_MISE_DE_COTE + uid, 1, m);
+}
+export function supprimerMiseDeCote(uid: string): void {
+  if (typeof window === "undefined") return;
+  try { localStorage.removeItem(PREFIXE_MISE_DE_COTE + uid); } catch { /* stockage bloqué : sans conséquence */ }
 }

@@ -19,7 +19,10 @@ import {
   cycle, deciderLiaison, etatInitial, nombreEnAttente,
   type Avis, type DepotLocal, type Liaison, type ResultatCycle, type Transport,
 } from "./sync-moteur";
-import { chargerEtatSync, reporterSuppressions, sauverEtatSync } from "./sync-etat";
+import {
+  chargerEtatSync, ecrireMiseDeCote, lireMiseDeCote, reporterSuppressions, sauverEtatSync, supprimerMiseDeCote,
+} from "./sync-etat";
+import { basculerCompte } from "./sync-bascule";
 import { creerDepotLocal } from "./sync-local";
 import { transportSupabase } from "./sync-supabase";
 import { creerPlanificateur, type Planificateur, type StatutSync } from "./sync-planificateur";
@@ -238,6 +241,24 @@ export function connecterSynchro(sb: SupabaseClient, uid: string): void {
     planif: null, debrancher: () => {},
   };
   courant = c;
+  // Un autre compte que celui du stockage local : on bascule (son travail
+  // est mis de côté ou déjà en ligne, celui de ce compte revient). En cas
+  // d'échec (stockage plein), rien n'a bougé et la liaison le signale.
+  if (chargerEtatSync().uid !== null && chargerEtatSync().uid !== uid) {
+    const r = basculerCompte({
+      lireEtat: chargerEtatSync, ecrireEtat: sauverEtatSync,
+      lireResultats: loadSavedFromStorage, ecrireResultats: persistSaved,
+      lireGachees: loadGacheesFromStorage, ecrireGachees: persistGachees,
+      lireMiseDeCote, ecrireMiseDeCote, supprimerMiseDeCote,
+      viderAnnotations: () => { persistAnnotations({ curseur: null, annotations: [] }); },
+    }, uid);
+    if (r.ok && r.change) {
+      const s = useStore.getState();
+      s.loadSavedResults();
+      s.loadGachees();
+      s.loadAnnotations();
+    }
+  }
   const etat = chargerEtatSync();
   const anonymes = compterAnonymes(c.depot);
   const liaison = deciderLiaison(etat.uid, uid, anonymes.resultats + anonymes.gachees > 0);

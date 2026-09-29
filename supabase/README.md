@@ -146,11 +146,14 @@ Le pourquoi de chaque choix : `docs/HISTORIQUE_EXTENSIBILITE.md`, section
   saisie. Envoi 5 s après la dernière modification (30 s au plus), tout de
   suite quand on quitte l'onglet ; une lecture au retour sur l'onglet et
   toutes les 10 minutes.
-- **Stockage lié à un compte** : à la première connexion, les données créées
-  sans compte sont rattachées **sur confirmation** (bandeau « Rattacher »). Un
-  autre compte dans le même navigateur : synchronisation refusée, avec
-  explication ; « Délier ce navigateur » (page Compte) permet de changer de
-  compte une fois tout envoyé.
+- **Toujours sauvegardé pour le compte connecté** : à la première connexion,
+  les données créées sans compte sont rattachées **sur confirmation**
+  (bandeau « Rattacher »). Un autre compte se connecte dans le même
+  navigateur : le travail du compte précédent quitte l'écran (déjà en ligne ;
+  s'il reste des modifications non envoyées ou des courbes de presse, il est
+  **mis de côté** sur l'appareil, clé `minebackfill_compte_<uid>`, et retrouvé
+  à sa prochaine connexion ici), et celui du nouveau compte revient.
+  Jamais le travail d'un compte n'est envoyé sous un autre.
 - **Suppressions explicites** : supprimer un résultat ou une gâchée pose une
   suppression transmise en ligne. Un document simplement absent (clé vidée,
   import partiel) n'est JAMAIS pris pour une suppression : il est restauré.
@@ -202,8 +205,9 @@ contre le projet de préproduction, avec un aperçu Vercel où
 5. **Suppression** : supprimer d'un côté → disparaît de l'autre ; jamais de
    retour.
 6. **Hors ligne** : pastille grise, puis rattrapage au retour du réseau.
-7. **Autre compte** dans le même navigateur → bandeau d'explication, aucune
-   écriture.
+7. **Changement de compte** dans le même navigateur : le travail du premier
+   compte disparaît de l'écran, celui du second apparaît ; revenir au premier
+   le fait réapparaître. Rien ne passe d'un compte à l'autre (Table Editor).
 8. **Publication enseignant** : éditer un liant officiel dans Réglages →
    « Publier en ligne » → un étudiant recharge → catalogue à jour.
 9. **RLS** (SQL Editor, voir `schema-sql.test.ts` pour la liste complète) :
