@@ -16,7 +16,7 @@ import {
 import { fusionnerAnnotations } from "./annotations";
 import { lireMesAnnotations } from "./classe-reseau";
 import {
-  cycle, deciderLiaison, etatInitial, nombreEnAttente,
+  cycle, deciderLiaison, nombreEnAttente,
   type Avis, type DepotLocal, type Liaison, type ResultatCycle, type Transport,
 } from "./sync-moteur";
 import {
@@ -315,34 +315,4 @@ export function annulerSuppressions(): void {
 
 export function retirerAvis(filtre: (a: Avis) => boolean): void {
   publier({ avis: instantane.avis.filter((a) => !filtre(a)) });
-}
-
-/**
- * « Délier ce navigateur » : pour changer de compte sur cet appareil. Refusé
- * tant qu'une modification n'est pas en ligne. Retire alors les copies
- * locales du travail (toutes en ligne) et oublie la liaison. Les documents
- * étrangers au moteur (autre compte, ids hors format) restent.
- */
-export function delier(): { ok: true } | { ok: false; raison: string } {
-  const e = chargerEtatSync();
-  if (e.uid === null) return { ok: false, raison: "Ce navigateur n'est lié à aucun compte." };
-  const depot = creerDepot(e.uid);
-  const local = depot.lister();
-  const attente = nombreEnAttente(e, local);
-  if (attente > 0) {
-    return { ok: false, raison: `${attente} modification${attente > 1 ? "s ne sont" : " n'est"} pas encore en ligne. Synchronisez d'abord.` };
-  }
-  const enLigne = new Set(local.keys());
-  const okR = persistSaved(loadSavedFromStorage().filter((r) => !enLigne.has(`resultat:${r.id}`)));
-  const okG = persistGachees(loadGacheesFromStorage().filter((g) => !enLigne.has(`gachee:${g.id}`)));
-  if (!okR || !okG) return { ok: false, raison: "Le stockage du navigateur a refusé l'écriture." };
-  sauverEtatSync(etatInitial());
-  // Les annotations appartiennent au compte délié.
-  persistAnnotations({ curseur: null, annotations: [] });
-  const s = useStore.getState();
-  s.loadSavedResults();
-  s.loadGachees();
-  s.loadAnnotations();
-  deconnecterSynchro();
-  return { ok: true };
 }

@@ -7,16 +7,18 @@ import { getSupabase, cloudConfigure } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
 import { messageErreurAuth } from "@/lib/auth-messages";
 import {
-  abonnerSync, delier, instantaneSync, instantaneSyncServeur, synchroniserMaintenant,
-  type InstantaneSync,
+  abonnerSync, instantaneSync, instantaneSyncServeur, type InstantaneSync,
 } from "@/lib/sync-client";
 
+// La sauvegarde est AUTOMATIQUE : quelques secondes après chaque modification,
+// tout de suite en quittant l'onglet, et toutes les 10 minutes. On n'affiche
+// donc qu'un état, sans bouton : un bouton laisserait croire qu'il faut agir.
 const LIBELLES_STATUT: Record<InstantaneSync["statut"], string> = {
   inactif: "Inactive",
   a_jour: "À jour",
-  en_attente: "Modifications en attente d'envoi",
-  en_cours: "Synchronisation en cours…",
-  hors_ligne: "Hors ligne — nouvel essai automatique",
+  en_attente: "Envoi dans quelques secondes",
+  en_cours: "Envoi en cours…",
+  hors_ligne: "Hors ligne — tout partira au retour du réseau",
   erreur: "Erreur",
   pause: "En pause (activité anormale) — reprise automatique dans 10 min",
 };
@@ -125,10 +127,9 @@ function NomAffiche() {
   );
 }
 
-/** État de la sauvegarde en ligne du travail, et ses deux commandes. */
+/** État de la sauvegarde en ligne (automatique) du travail. */
 function EtatSynchro() {
   const s = useSyncExternalStore(abonnerSync, instantaneSync, instantaneSyncServeur);
-  const [message, setMessage] = useState<string | null>(null);
 
   if (s.liaison === "autre_compte") {
     return (
@@ -141,33 +142,19 @@ function EtatSynchro() {
   }
   if (s.liaison !== "synchroniser") return null;
 
-  const faireDelier = () => {
-    if (!window.confirm(
-      "Délier ce navigateur retire de cet appareil les résultats et gâchées déjà sauvegardés en ligne " +
-      "(ils restent dans votre compte), puis arrête la synchronisation ici. Utile avant de changer de compte. Continuer ?",
-    )) return;
-    const r = delier();
-    setMessage(r.ok ? "Navigateur délié. Vous pouvez vous déconnecter et vous connecter avec un autre compte." : r.raison);
-  };
-
+  const pastille = s.statut === "a_jour" ? "#22c55e"
+    : s.statut === "hors_ligne" ? "#94a3b8"
+      : s.statut === "erreur" || s.statut === "pause" ? "#f87171" : "#fbbf24";
   return (
     <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>Sauvegarde en ligne du travail</div>
-      <p style={{ fontSize: 12.5, color: "var(--muted-foreground)", margin: 0 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>Sauvegarde en ligne automatique</div>
+      <p style={{ fontSize: 12.5, color: "var(--muted-foreground)", margin: 0, display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+        <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: pastille, flexShrink: 0 }} />
         {LIBELLES_STATUT[s.statut]}
-        {s.statut === "en_attente" && s.enAttente > 0 ? ` (${s.enAttente})` : ""}
-        {s.derniereReussite ? ` · dernière réussite à ${new Date(s.derniereReussite).toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}` : ""}
-        {s.erreur && s.statut !== "a_jour" ? ` · code ${s.erreur.code}` : ""}
+        {s.statut === "en_attente" && s.enAttente > 0 ? ` (${s.enAttente} modification${s.enAttente > 1 ? "s" : ""})` : ""}
+        {s.derniereReussite ? ` · dernière sauvegarde à ${new Date(s.derniereReussite).toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}` : ""}
+        {s.erreur && s.statut === "erreur" ? ` · code ${s.erreur.code}` : ""}
       </p>
-      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-        <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => synchroniserMaintenant()}>
-          Synchroniser maintenant
-        </button>
-        <button type="button" className="btn-secondary" style={{ fontSize: 12.5, color: "#64748b" }} onClick={faireDelier}>
-          Délier ce navigateur
-        </button>
-      </div>
-      {message && <p style={{ fontSize: 12.5, color: "#334155", marginTop: 8 }}>{message}</p>}
     </div>
   );
 }
