@@ -32,14 +32,24 @@ supabase.com → le projet → bouton « Restore » / « Resume ». Deux minutes
 tard tout refonctionne. (Une tâche automatique hebdomadaire réduit ce risque —
 voir « Anti-pause » plus bas — mais le réflexe reste bon.)
 
-### Nommer un autre enseignant (rôle prof)
-La personne crée d'abord son compte via la page « Compte » du site, puis :
-supabase.com → SQL Editor →
+### Nommer un enseignant (rôle prof)
+**Automatique, avec un code** : supabase.com → SQL Editor →
+```sql
+select public.definir_code_enseignant('UN_CODE_DIFFICILE_A_DEVINER');
+```
+puis la personne s'inscrit (page « Compte » → Inscription → « Je suis
+l'enseignant ») avec ce code : son compte est « prof » d'emblée. Le code ne
+sert qu'**une fois** ; pour un nouvel enseignant, en poser un nouveau. Ne
+jamais l'écrire dans le dépôt GitHub (public), ni un code qui se devine (nom
+de l'enseignant, du cours) : quiconque le trouve avant l'enseignant lirait
+tout le travail des étudiants.
+
+**Compte déjà créé** : SQL Editor →
 ```sql
 update public.profiles set role = 'prof' where email = 'SON_EMAIL';
 ```
-Elle se déconnecte/reconnecte. (Le rôle n'est modifiable QUE par ce SQL —
-c'est voulu, aucun étudiant ne peut se promouvoir.)
+Elle se déconnecte/reconnecte. (Le rôle ne se change QUE par ce SQL ou un
+code vérifié par le serveur — aucun étudiant ne peut se promouvoir.)
 
 ### Un étudiant a oublié son mot de passe
 Connecté, chacun change son mot de passe depuis la page « Compte ». Pour un

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PGlite, type Transaction } from "@electric-sql/pglite";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { empreinte } from "./sync-empreinte";
 import {
@@ -25,6 +26,7 @@ import { FauxDepot } from "./sync-faux-serveur";
 const SCHEMA = readFileSync(fileURLToPath(new URL("../../../supabase/schema.sql", import.meta.url)), "utf8");
 
 const SUPABASE_MINIMAL = `
+  create schema extensions;
   create role anon nologin;
   create role authenticated nologin;
   create role service_role nologin;
@@ -82,7 +84,7 @@ async function creerCompte(id: string, email: string, meta: unknown = {}) {
 }
 
 beforeAll(async () => {
-  db = new PGlite();
+  db = new PGlite({ extensions: { pgcrypto } });
   await db.exec(SUPABASE_MINIMAL);
   await db.exec("set timezone = 'UTC'");
   await db.exec(SCHEMA);
@@ -109,6 +111,45 @@ describe("schema.sql — inscription et profils", () => {
     const r = await db.query<{ role: string; display_name: string }>(
       "select role, display_name from public.profiles where id = $1", [B]);
     expect(r.rows[0]).toEqual({ role: "etudiant", display_name: "Bruno" });
+  });
+});
+
+describe("schema.sql — code enseignant", () => {
+  // Code de TEST : le vrai code n'est jamais écrit dans le dépôt.
+  const CODE = "Code-De-Test-2026";
+  const meta = (id: string) => db.query<{ m: Record<string, unknown> }>(
+    "select raw_user_meta_data as m from auth.users where id = $1", [id]);
+  const role = async (id: string) => (await db.query<{ role: string }>(
+    "select role from public.profiles where id = $1", [id])).rows[0]?.role;
+
+  it("le bon code donne « prof », une seule fois ; le code ne reste pas sur le compte", async () => {
+    await db.query("select public.definir_code_enseignant($1)", [CODE]);
+    const P1 = "00000000-0000-4000-8000-0000000000e1";
+    const P2 = "00000000-0000-4000-8000-0000000000e2";
+    await creerCompte(P1, "prof1@exemple.ca", { display_name: "Prof", code_enseignant: CODE });
+    expect(await role(P1)).toBe("prof");
+    expect((await meta(P1)).rows[0].m).toEqual({ display_name: "Prof" });
+    // Déjà utilisé : le même code ne sert plus.
+    await creerCompte(P2, "prof2@exemple.ca", { code_enseignant: CODE });
+    expect(await role(P2)).toBe("etudiant");
+  });
+
+  it("un mauvais code (ou un rôle glissé dans les métadonnées) donne « etudiant »", async () => {
+    await db.query("select public.definir_code_enseignant($1, 2)", [CODE]);
+    const E1 = "00000000-0000-4000-8000-0000000000e3";
+    await creerCompte(E1, "e1@exemple.ca", { code_enseignant: "Mauvais-Code-1", role: "prof" });
+    expect(await role(E1)).toBe("etudiant");
+    expect((await meta(E1)).rows[0].m).not.toHaveProperty("code_enseignant");
+    const r = await db.query<{ n: number }>("select utilisations_restantes as n from public.code_enseignant");
+    expect(r.rows[0].n).toBe(2); // un essai raté ne consomme rien
+  });
+
+  it("ni l'application ni un anonyme ne peuvent lire ou poser le code", async () => {
+    for (const qui of [A, null]) {
+      await expect(comme(qui, "select * from public.code_enseignant")).rejects.toMatchObject({ code: "42501" });
+      await expect(comme(qui, "select public.definir_code_enseignant('Nouveau-Code-99')")).rejects.toMatchObject({ code: "42501" });
+    }
+    await expect(db.query("select public.definir_code_enseignant('court')")).rejects.toMatchObject({ code: "22023" });
   });
 });
 
