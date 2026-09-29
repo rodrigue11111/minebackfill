@@ -54,9 +54,34 @@ aujourd'hui (le lien « Compte » est masqué, aucun appel réseau).
 
 | Table | Contenu | RLS |
 |---|---|---|
-| `profiles` | rôle (`prof`/`etudiant`) par utilisateur | chacun lit le sien, le prof lit tout ; **rôle modifiable en SQL uniquement** |
-| `official_catalogs` | catalogues officiels (`liants`, `residus`, `granulats`, `retardateurs`, `constantes`), `data` = enveloppe `{v,data}` comme `persisted.ts` | lecture publique ; écriture **prof** |
-| `saved_results` | résultats sauvegardés (`id` = id client `sr_...`) | l'étudiant CRUD les siens ; le prof lit tout (revue) |
+| `profiles` | rôle (`prof`/`etudiant`) et nom affiché par utilisateur | chacun lit le sien, le prof lit tout ; **rôle modifiable en SQL uniquement** ; nom via `definir_nom()` |
+| `official_catalogs` | catalogues officiels (`liants`, `residus`, `granulats`, `retardateurs`, `constantes`, `sessions`), `data` = enveloppe `{v,data}` comme `persisted.ts` | lecture publique ; écriture **prof** |
+| `user_docs` (v2) | travail des utilisateurs : `resultat`, `gachee` (puis `courbe`) ; clé (utilisateur, type, id), révision, suppression tracée | chacun écrit les siens ; le prof lit tout, n'écrit rien chez autrui ; **aucune suppression physique** |
+| `user_usage` (v2) | volume en ligne par compte (quota de 25 Mo) | chacun lit le sien, le prof lit tout ; tenu par trigger |
+| `annotations` (v2) | commentaires de l'enseignant sur un résultat ou une gâchée | l'étudiant lit celles sur SON travail ; seul le prof écrit |
+| `saved_results` (v1) | résultats de la v1, **gelés en lecture seule** après reprise dans `user_docs` | lecture seule ; à supprimer un an après l'activation de la v2 |
+
+Écritures et lectures du travail passent par des fonctions (RPC) :
+`ecrire_doc` (écriture conditionnelle à la révision vue), `lire_docs` (lecture
+incrémentale par curseur), `lire_docs_classe` (enseignant), `lire_annotations`.
+Le pourquoi de chaque choix : `docs/HISTORIQUE_EXTENSIBILITE.md`, section
+« Synchronisation v2 ».
+
+## Passage à la v2 (une fois par projet)
+
+1. **D'abord sur un projet de préproduction** (second projet gratuit) :
+   SQL Editor → coller et exécuter `schema.sql`. Le script est ré-exécutable.
+2. Contrôles, dans SQL Editor :
+   ```sql
+   -- résultats v1 non repris (id hors format) : doit être 0
+   select count(*) from public.saved_results s where not exists (
+     select 1 from public.user_docs d where d.user_id = s.user_id
+       and d.kind = 'resultat' and d.id = s.id);
+   ```
+   puis **Advisors → Security** : aucune alerte sur les nouvelles tables.
+3. Puis sur le projet de production. **Laisser le mode test actif** tant que
+   l'application n'utilise pas la v2 : la synchronisation v1 ne peut plus
+   écrire (table gelée), c'est voulu.
 
 ## Limites connues (v1)
 
