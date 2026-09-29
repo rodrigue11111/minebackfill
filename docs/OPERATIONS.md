@@ -33,7 +33,13 @@ tard tout refonctionne. (Une tâche automatique hebdomadaire réduit ce risque �
 voir « Anti-pause » plus bas — mais le réflexe reste bon.)
 
 ### Nommer un enseignant (rôle prof)
-**Automatique, avec un code** : supabase.com → SQL Editor →
+**Le plus simple, une fois un premier enseignant en place** : page **Classe →
+Comptes** → « Nommer enseignant » sur la ligne de la personne. Il verra tout le
+travail des étudiants : ne nommer que des personnes de confiance. « Retirer le
+rôle enseignant » fait l'inverse (jamais sur soi-même : il reste toujours un
+enseignant).
+
+**Le premier enseignant, automatiquement, avec un code** : supabase.com → SQL Editor →
 ```sql
 select public.definir_code_enseignant('UN_CODE_DIFFICILE_A_DEVINER');
 ```
@@ -48,8 +54,32 @@ tout le travail des étudiants.
 ```sql
 update public.profiles set role = 'prof' where email = 'SON_EMAIL';
 ```
-Elle se déconnecte/reconnecte. (Le rôle ne se change QUE par ce SQL ou un
-code vérifié par le serveur — aucun étudiant ne peut se promouvoir.)
+Elle se déconnecte/reconnecte. (Le rôle ne se change QUE par ce SQL, un code
+vérifié par le serveur, ou un enseignant dans Classe → Comptes — aucun
+étudiant ne peut se promouvoir.)
+
+### Bloquer un compte
+Page **Classe → Comptes** → « Bloquer » : la connexion est refusée (message
+« compte suspendu ») ; si la personne est connectée, elle est déconnectée au
+plus tard dans l'heure. **Rien n'est effacé** ; « Débloquer » rétablit tout.
+Un enseignant ne se bloque pas lui-même et ne bloque pas un autre enseignant
+(lui retirer d'abord le rôle).
+
+C'est le même blocage que Supabase Studio (Authentication → Users → l'étudiant
+→ « Ban user ») : un compte bloqué d'un côté apparaît bloqué de l'autre.
+
+**Avant la première utilisation** (ou si le bouton répond « le serveur refuse
+de modifier les comptes de connexion »), vérifier que la base peut écrire dans
+les comptes de connexion — SQL Editor, sans aucun effet :
+```sql
+begin;
+update auth.users set banned_until = banned_until where id = '00000000-0000-0000-0000-000000000000';
+delete from auth.sessions where user_id = '00000000-0000-0000-0000-000000000000';
+rollback;
+```
+Aucune erreur → le bouton fonctionne. « permission denied » → Supabase a
+retiré ce droit : bloquer par « Ban user » dans Studio (le reste de la page
+Comptes fonctionne).
 
 ### Un étudiant a oublié son mot de passe
 **Il se débrouille seul** : page Compte → « Mot de passe oublié ? » → il reçoit
@@ -102,8 +132,11 @@ navigateur et dans SA sauvegarde locale (Réglages → Données locales → Expo
   « Publier en ligne ». Tout ce qui sera créé pendant cette session la
   portera. Si le projet Supabase est en pause (été), le restaurer d'abord
   (voir « Impossible de se connecter »).
-- **Fin** : faire les deux sauvegardes ci-dessus. Rien à effacer : l'historique
-  pluriannuel est le but ; le tableau de bord se filtre par session.
+- **Fin** : faire les deux sauvegardes ci-dessus, puis, page **Classe** filtrée
+  sur la session : « Rapport de session (PDF) » (synthèse + un chapitre par
+  étudiant) et « Éprouvettes (CSV) » / « Synthèse (CSV) » pour Excel. À ranger
+  avec les sauvegardes, hors de GitHub (données d'étudiants). Rien à effacer :
+  l'historique pluriannuel est le but ; le tableau de bord se filtre par session.
 
 ### Surveiller le volume (une fois par session)
 supabase.com → le projet → **Usage** : « Database size » (limite gratuite :
@@ -117,8 +150,10 @@ un avis ; son travail reste sur son appareil).
 
 ### Effacer le compte d'un étudiant (sur demande)
 Le travail d'un étudiant n'est jamais effacé par accident : supprimer son
-compte est **refusé** tant que son travail existe (c'est voulu). Pour un
-effacement demandé :
+compte est **refusé** tant que son travail existe (c'est voulu). Pour une
+simple mise à l'écart, **bloquer** suffit (réversible, voir plus haut). Pour un
+effacement demandé — vérifier d'abord le bon compte dans Classe → Comptes
+(courriel, volume de travail) :
 1. Exporter d'abord la classe (au cas où) ;
 2. SQL Editor, en remplaçant le courriel :
 ```sql

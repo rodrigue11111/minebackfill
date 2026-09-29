@@ -110,16 +110,26 @@ courriel arrive → le lien ouvre « Nouveau mot de passe » → enregistrer →
 
 | Table | Contenu | RLS |
 |---|---|---|
-| `profiles` | rôle (`prof`/`etudiant`) et nom affiché par utilisateur | chacun lit le sien, le prof lit tout ; **rôle modifiable en SQL uniquement** ; nom via `definir_nom()` |
+| `profiles` | rôle (`prof`/`etudiant`) et nom affiché par utilisateur | chacun lit le sien, le prof lit tout ; **rôle modifiable en SQL, ou par un enseignant via `definir_role()`** (jamais le sien) ; nom via `definir_nom()` |
 | `official_catalogs` | catalogues officiels (`liants`, `residus`, `granulats`, `retardateurs`, `constantes`, `sessions`), `data` = enveloppe `{v,data}` comme `persisted.ts` | lecture publique ; écriture **prof** |
 | `user_docs` (v2) | travail des utilisateurs : `resultat`, `gachee` (puis `courbe`) ; clé (utilisateur, type, id), révision, suppression tracée | chacun écrit les siens ; le prof lit tout, n'écrit rien chez autrui ; **aucune suppression physique** |
 | `user_usage` (v2) | volume en ligne par compte (quota de 25 Mo) | chacun lit le sien, le prof lit tout ; tenu par trigger |
-| `annotations` (v2) | commentaires de l'enseignant sur un résultat ou une gâchée | l'étudiant lit celles sur SON travail ; seul le prof écrit |
+| `annotations` (v2) | fil de commentaires sur un résultat ou une gâchée : ceux de l'enseignant et les **réponses** de l'étudiant ; `lu_le` = accusé de lecture du destinataire | l'étudiant lit le fil de SON travail ; le prof écrit par INSERT, l'étudiant répond par `repondre_annotation()` ; mise à jour limitée au texte et au retrait (droits de colonne) ; `lu_le` posé seulement par `marquer_annotations_lues()` |
 | `saved_results` (v1) | résultats de la v1, **gelés en lecture seule** après reprise dans `user_docs` | lecture seule ; à supprimer un an après l'activation de la v2 |
 
 Écritures et lectures du travail passent par des fonctions (RPC) :
 `ecrire_doc` (écriture conditionnelle à la révision vue), `lire_docs` (lecture
-incrémentale par curseur), `lire_docs_classe` (enseignant), `lire_annotations`.
+incrémentale par curseur), `lire_docs_classe` (enseignant), `lire_annotations`
+(sites antérieurs aux réponses : sans les réponses) et `lire_fil_annotations`
+(le fil complet). Commentaires : `repondre_annotation`,
+`marquer_annotations_lues`, `nb_reponses_non_lues`. Comptes (enseignant) :
+`lister_comptes`, `definir_role`, `bloquer_compte`.
+
+Les fonctions `security definer` exécutables par `authenticated`
+(`repondre_annotation`, `marquer_annotations_lues`, `lister_comptes`,
+`definir_role`, `bloquer_compte`) peuvent être signalées par **Advisors →
+Security** : c'est voulu, chacune revérifie l'appelant (session, rôle, propriété
+du document) avant d'agir.
 Le pourquoi de chaque choix : `docs/HISTORIQUE_EXTENSIBILITE.md`, section
 « Synchronisation v2 ».
 
@@ -213,6 +223,15 @@ contre le projet de préproduction, avec un aperçu Vercel où
 9. **RLS** (SQL Editor, voir `schema-sql.test.ts` pour la liste complète) :
    Advisors → Security sans alerte.
 10. **Déconnexion** → les données locales restent intactes.
+11. **Commentaires** : l'enseignant commente une gâchée → l'étudiant la voit
+    (au plus 5 min, ou « Synchroniser maintenant »), l'ouvre → l'enseignant
+    voit « vu par l'étudiant le … » (Actualiser). L'étudiant répond → pastille
+    « Classe (1) » chez l'enseignant (au plus 5 min) → ouvrir le fil la marque
+    lue → l'étudiant voit « vu par l'enseignant ».
+12. **Comptes** (Classe → Comptes) : nommer puis rétrograder un compte de test ;
+    le bloquer → connexion refusée avec le message « compte suspendu » ; le
+    débloquer. Avant la première fois, la **sonde de droits**
+    (docs/OPERATIONS.md, « Bloquer un compte »).
 
 Non testable en CI : auth réelle, délivrabilité email, pause du projet.
 
@@ -224,7 +243,9 @@ Non testable en CI : auth réelle, délivrabilité email, pause du projet.
   conditionnelle et révisions, suppressions, contraintes et quota, **RLS**
   (un étudiant ne voit ni ne touche le travail d'un autre, aucun rôle lu dans
   les métadonnées, anonyme sans accès), lecture par curseur, lecture de la
-  classe, annotations, reprise de `saved_results`, ré-exécution du script. Et
+  classe, annotations, réponses et accusés de lecture (dont la garde contre
+  la récursion RLS 42P17), comptes (liste, rôle, blocage), reprise de
+  `saved_results`, ré-exécution du script. Et
   le **moteur de synchronisation contre ce vrai SQL** (deux navigateurs, puis
   150 opérations aléatoires sur trois). Hors de portée : PostgREST lui-même
   (format JSON, `max_rows`), couvert par le faux serveur des tests du moteur.

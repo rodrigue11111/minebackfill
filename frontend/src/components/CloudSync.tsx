@@ -77,7 +77,7 @@ export default function CloudSync() {
       // elle-même de la liaison du stockage local à ce compte, et ne fait rien
       // si elle tourne déjà (rafraîchissement de jeton). Chez l'enseignant, ce
       // sont SES documents : ceux de la classe se lisent ailleurs, en mémoire.
-      connecterSynchro(sb, userId);
+      connecterSynchro(sb, userId, { prof: role === "prof" });
     };
 
     const { data: sub } = sb.auth.onAuthStateChange((event, sessionSb) => {

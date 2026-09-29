@@ -33,7 +33,14 @@ const SUPABASE_MINIMAL = `
   create schema auth;
   create table auth.users (
     id uuid primary key, email text,
-    raw_user_meta_data jsonb not null default '{}'::jsonb
+    raw_user_meta_data jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    last_sign_in_at timestamptz,
+    banned_until timestamptz
+  );
+  create table auth.sessions (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade
   );
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
@@ -286,7 +293,7 @@ describe("schema.sql — enseignant et annotations", () => {
     const r = await comme<{ proprietaire: string; doc_id: string; contenu: Record<string, unknown> }>(PROF, q, [false, null]);
     const gb = r.rows.find((x) => x.doc_id === "gb")!;
     expect(gb.proprietaire).toBe(B);
-    expect(Object.keys(gb.contenu).sort()).toEqual(["id", "parametres", "sessionId"]);
+    expect(Object.keys(gb.contenu).sort()).toEqual(["composants", "id", "parametres", "sessionId"]); // pesées : alertes de tolérance
     const rb = r.rows.find((x) => x.doc_id === "rb")!;
     expect(Object.keys(rb.contenu).sort()).toEqual(["id", "recipes"]);
     expect(r.rows.map((x) => x.doc_id)).toContain("ra"); // tous les étudiants
@@ -468,4 +475,169 @@ describe("moteur de synchronisation contre le vrai SQL", () => {
       expect((await nav.sync()).envoyes).toBe(0);
     }
   }, 60000);
+});
+
+describe("schema.sql — réponses et accusés de lecture", () => {
+  // Comptes propres à ce bloc : les tests précédents dépendent de leur ordre.
+  const E1 = "00000000-0000-4000-8000-0000000000f1";
+  const E2 = "00000000-0000-4000-8000-0000000000f2";
+  const ins = "insert into public.annotations (owner_id, target_kind, target_id, auteur_id, texte) values ($1, 'gachee', $2, $3, $4) returning id";
+  const repondre = (uid: string, id: string, texte: string, attendu = uid) =>
+    comme<{ annotation_id: string }>(uid, "select annotation_id from public.repondre_annotation($1, 'gachee', $2, 1, $3)", [attendu, id, texte]);
+  const fil = (uid: string) => comme<{ annotation_id: string; texte: string | null; de_moi: boolean; lu_serveur: string | null; cree_serveur: string }>(
+    uid, "select annotation_id, texte, de_moi, lu_serveur::text, cree_serveur::text from public.lire_fil_annotations($1, null, null, 0, 100)", [uid]);
+  const marquer = (uid: string, ids: string[]) =>
+    comme<{ annotation_id: string }>(uid, "select annotation_id from public.marquer_annotations_lues($1::uuid[])", [`{${ids.join(",")}}`]);
+  let commentaire = "";
+  let reponse = "";
+
+  beforeAll(async () => {
+    await creerCompte(E1, "e1@exemple.ca");
+    await creerCompte(E2, "e2@exemple.ca");
+    await ecrire(E1, "gachee", "g1", { id: "g1" }, null);
+    await ecrire(E1, "gachee", "g2", { id: "g2" }, null);
+  });
+
+  it("répondre : seulement sur son document, après un commentaire de l'enseignant", async () => {
+    await expect(repondre(E1, "g1", "Avant tout commentaire")).rejects.toMatchObject({ code: "42501" });
+    commentaire = (await comme<{ id: string }>(PROF, ins, [E1, "g1", PROF, "Pourquoi 31 j ?"])).rows[0].id; // garde 42P17 : toujours accepté
+    reponse = (await repondre(E1, "g1", "  La presse était en panne.  ")).rows[0].annotation_id;
+    expect((await db.query<{ texte: string; auteur_id: string; ancre: string | null }>(
+      "select texte, auteur_id, ancre from public.annotations where id = $1", [reponse])).rows[0])
+      .toEqual({ texte: "La presse était en panne.", auteur_id: E1, ancre: null });
+    await expect(repondre(E2, "g1", "Chez un autre")).rejects.toMatchObject({ code: "42501" });
+    await expect(repondre(E1, "g2", "Pas de commentaire ici")).rejects.toMatchObject({ code: "42501" });
+    await expect(repondre(E1, "g1", "   ")).rejects.toMatchObject({ code: "22023" });
+    await expect(repondre(E1, "g1", "x", E2)).rejects.toMatchObject({ code: "28000" });
+    await expect(comme(null, "select * from public.repondre_annotation($1, 'gachee', 'g1', 1, 'x')", [E1])).rejects.toMatchObject({ code: "42501" });
+    // L'insertion directe reste refusée à l'étudiant (RLS).
+    await expect(comme(E1, ins, [E1, "g1", E1, "direct"])).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("document supprimé : plus de réponse ; plafond de réponses", async () => {
+    await ecrire(E1, "gachee", "g3", { id: "g3" }, null);
+    await comme(PROF, ins, [E1, "g3", PROF, "Commentaire"]);
+    await db.query("update public.user_docs set deleted = true where user_id = $1 and id = 'g3'", [E1]);
+    await expect(repondre(E1, "g3", "Trop tard")).rejects.toMatchObject({ code: "42501" });
+    await db.query(`insert into public.annotations (owner_id, target_kind, target_id, auteur_id, texte)
+                    select $1, 'gachee', 'g2', $1, 'bourrage ' || i from generate_series(1, 500) i`, [E2]);
+    await ecrire(E2, "gachee", "g9", { id: "g9" }, null);
+    await comme(PROF, ins, [E2, "g9", PROF, "Commentaire"]);
+    await expect(repondre(E2, "g9", "501e")).rejects.toMatchObject({ code: "53400" });
+    await db.query("delete from public.annotations where owner_id = $1", [E2]);
+  });
+
+  it("fil : l'ancienne lecture ne voit jamais les réponses ; la nouvelle voit tout, avec l'auteur", async () => {
+    const ancienne = await comme<{ annotation_id: string }>(E1, "select annotation_id from public.lire_annotations($1, null, null, 0, 100)", [E1]);
+    expect(ancienne.rows.map((x) => x.annotation_id)).toContain(commentaire);
+    expect(ancienne.rows.map((x) => x.annotation_id)).not.toContain(reponse);
+    const f = (await fil(E1)).rows;
+    expect(f.find((x) => x.annotation_id === commentaire)).toMatchObject({ de_moi: false, lu_serveur: null });
+    expect(f.find((x) => x.annotation_id === reponse)).toMatchObject({ de_moi: true, lu_serveur: null });
+  });
+
+  it("accusés de lecture : posés par le destinataire seulement, jamais à la main", async () => {
+    const maj = async (id: string) => (await db.query<{ m: string }>("select updated_at::text as m from public.annotations where id = $1", [id])).rows[0].m;
+    // L'étudiant marque le commentaire de l'enseignant, pas sa propre réponse.
+    const avant = await maj(commentaire);
+    expect((await marquer(E1, [commentaire, reponse])).rows.map((x) => x.annotation_id)).toEqual([commentaire]);
+    expect(await maj(commentaire) > avant).toBe(true); // l'accusé voyage par les curseurs
+    // Un autre étudiant ne marque rien ; l'enseignant marque la réponse, pas son commentaire.
+    expect((await marquer(E2, [commentaire, reponse])).rows).toEqual([]);
+    expect((await comme<{ n: number }>(PROF, "select public.nb_reponses_non_lues() as n")).rows[0].n).toBeGreaterThanOrEqual(1);
+    expect((await marquer(PROF, [commentaire, reponse])).rows.map((x) => x.annotation_id)).toEqual([reponse]);
+    expect((await marquer(PROF, [reponse])).rows).toEqual([]); // déjà lu : l'accusé reste
+    await expect(comme(E1, "select public.nb_reponses_non_lues()")).rejects.toMatchObject({ code: "42501" });
+    // Personne ne pose l'accusé directement (droit de colonne).
+    await expect(comme(PROF, "update public.annotations set lu_le = now() where id = $1", [commentaire])).rejects.toMatchObject({ code: "42501" });
+    await expect(comme(E1, "update public.annotations set lu_le = null where id = $1", [reponse])).rejects.toMatchObject({ code: "42501" });
+    const f = (await fil(E1)).rows;
+    expect(f.find((x) => x.annotation_id === reponse)!.lu_serveur).not.toBeNull();
+    // Un texte modifié redevient non lu.
+    await comme(PROF, "update public.annotations set texte = 'Pourquoi 31 j au lieu de 28 ?' where id = $1", [commentaire]);
+    expect((await db.query<{ lu_le: string | null }>("select lu_le from public.annotations where id = $1", [commentaire])).rows[0].lu_le).toBeNull();
+    await expect(comme(PROF, "select * from public.marquer_annotations_lues(array_fill(gen_random_uuid(), array[501]))")).rejects.toMatchObject({ code: "22023" });
+  });
+
+  it("retrait : l'étudiant retire SA réponse, rien d'autre ; l'enseignant ne retire pas la réponse", async () => {
+    const retirer = (uid: string, id: string) => comme(uid, "update public.annotations set deleted = true where id = $1", [id]);
+    expect((await retirer(PROF, reponse)).affectedRows).toBe(0);
+    expect((await retirer(E1, commentaire)).affectedRows).toBe(0);
+    expect((await retirer(E2, reponse)).affectedRows).toBe(0);
+    expect((await retirer(E1, reponse)).affectedRows).toBe(1);
+    expect((await fil(E1)).rows.find((x) => x.annotation_id === reponse)!.texte).toBeNull();
+  });
+
+  it("ré-exécution du schéma : colonne et droits de colonne intacts", async () => {
+    await db.exec(SCHEMA);
+    await expect(comme(PROF, "update public.annotations set lu_le = now() where id = $1", [commentaire])).rejects.toMatchObject({ code: "42501" });
+    expect((await comme(PROF, "update public.annotations set deleted = false where id = $1", [commentaire])).affectedRows).toBe(1);
+  });
+});
+
+describe("schema.sql — comptes (enseignant)", () => {
+  // Comptes propres à ce bloc ; PROF n'y change jamais de rôle ni n'est bloqué.
+  const K1 = "00000000-0000-4000-8000-0000000000f5";
+  const K2 = "00000000-0000-4000-8000-0000000000f6";
+  const P3 = "00000000-0000-4000-8000-0000000000f3";
+  const P4 = "00000000-0000-4000-8000-0000000000f4";
+  const role = async (id: string) => (await db.query<{ role: string }>("select role from public.profiles where id = $1", [id])).rows[0].role;
+  const definir = (uid: string, compte: string, r: string) => comme(uid, "select public.definir_role($1, $2)", [compte, r]);
+  const bloquer = (uid: string, compte: string, b: boolean) => comme(uid, "select public.bloquer_compte($1, $2)", [compte, b]);
+
+  beforeAll(async () => {
+    for (const [id, email] of [[K1, "k1@exemple.ca"], [K2, "k2@exemple.ca"], [P3, "p3@exemple.ca"], [P4, "p4@exemple.ca"]]) await creerCompte(id, email);
+    await db.query("update public.profiles set role = 'prof' where id in ($1, $2)", [P3, P4]);
+    await ecrire(K1, "gachee", "k1g", { id: "k1g" }, null);
+    await ecrire(K1, "resultat", "k1r", { id: "k1r" }, null);
+  });
+
+  it("lister_comptes : réservé à l'enseignant ; comptes, rôles, volume de travail", async () => {
+    const q = "select compte_id, courriel, compte_role, nb_resultats, nb_gachees, bloque_jusqu_a from public.lister_comptes()";
+    await expect(comme(K1, q)).rejects.toMatchObject({ code: "42501" });
+    await expect(comme(null, q)).rejects.toMatchObject({ code: "42501" });
+    const r = await comme<{ compte_id: string; courriel: string; compte_role: string; nb_resultats: number; nb_gachees: number; bloque_jusqu_a: string | null }>(PROF, q);
+    expect(r.rows.find((x) => x.compte_id === K1)).toMatchObject({ courriel: "k1@exemple.ca", compte_role: "etudiant", nb_resultats: 1, nb_gachees: 1, bloque_jusqu_a: null });
+    expect(r.rows.find((x) => x.compte_id === P3)?.compte_role).toBe("prof");
+    // auth.users reste invisible en direct.
+    await expect(comme(PROF, "select id from auth.users")).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("definir_role : par un enseignant, jamais sur soi ; nommé, il lit la classe", async () => {
+    await expect(definir(K2, K1, "prof")).rejects.toMatchObject({ code: "42501" }); // un étudiant ne nomme personne
+    await expect(definir(K1, K1, "prof")).rejects.toMatchObject({ code: "42501" }); // ni lui-même
+    await expect(definir(PROF, PROF, "etudiant")).rejects.toMatchObject({ code: "42501" }); // l'enseignant ne se retire pas
+    await expect(definir(PROF, K1, "admin")).rejects.toMatchObject({ code: "22023" });
+    await expect(definir(PROF, "00000000-0000-4000-8000-00000000dead", "prof")).rejects.toMatchObject({ code: "P0002" });
+    await definir(PROF, K1, "prof");
+    expect(await role(K1)).toBe("prof");
+    await comme(K1, "select * from public.lire_docs_classe(null, null, null, null, 0, 10, false, null)");
+    await definir(PROF, K1, "etudiant");
+    expect(await role(K1)).toBe("etudiant");
+    await expect(comme(K1, "select * from public.lire_docs_classe(null, null, null, null, 0, 10, false, null)")).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("deux enseignants : le premier retire l'autre, qui ne peut plus rien", async () => {
+    await definir(P3, P4, "etudiant");
+    await expect(definir(P4, P3, "etudiant")).rejects.toMatchObject({ code: "42501" });
+    expect(await role(P3)).toBe("prof");
+  });
+
+  it("bloquer_compte : connexion refusée (ban fini), sessions supprimées, réversible", async () => {
+    await db.query("insert into auth.sessions (user_id) values ($1), ($1)", [K2]);
+    await expect(bloquer(K1, K2, true)).rejects.toMatchObject({ code: "42501" }); // un étudiant ne bloque pas
+    await expect(bloquer(PROF, PROF, true)).rejects.toMatchObject({ code: "42501" }); // pas soi-même
+    await expect(bloquer(PROF, P3, true)).rejects.toMatchObject({ code: "42501" }); // pas un enseignant
+    await bloquer(PROF, K2, true);
+    const u = (await db.query<{ ok: boolean; fini: boolean }>(
+      "select banned_until > now() + interval '99 years' as ok, isfinite(banned_until) as fini from auth.users where id = $1", [K2])).rows[0];
+    expect(u).toEqual({ ok: true, fini: true });
+    expect((await db.query("select 1 from auth.sessions where user_id = $1", [K2])).rows).toHaveLength(0);
+    const liste = await comme<{ compte_id: string; bloque_jusqu_a: string | null }>(PROF, "select compte_id, bloque_jusqu_a from public.lister_comptes()");
+    expect(liste.rows.find((x) => x.compte_id === K2)!.bloque_jusqu_a).not.toBeNull();
+    await expect(definir(PROF, K2, "prof")).rejects.toMatchObject({ code: "22023" }); // bloqué : pas de promotion
+    await bloquer(PROF, K2, false);
+    expect((await db.query<{ b: string | null }>("select banned_until as b from auth.users where id = $1", [K2])).rows[0].b).toBeNull();
+    await expect(bloquer(PROF, "00000000-0000-4000-8000-00000000dead", true)).rejects.toMatchObject({ code: "P0002" });
+  });
 });

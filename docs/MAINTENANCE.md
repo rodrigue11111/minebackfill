@@ -149,6 +149,7 @@ optionnel+nullable pour les vieux localStorage).
 | `minebackfill_sessions` | `{v,data}` | 1 | `validerSessions` (sessions.ts) — publiées par l'enseignant |
 | `minebackfill_sync` | `{v,data}` | 1 | état de la synchronisation v2 (`sync-etat.ts`) — **hors sauvegarde** |
 | `minebackfill_compte_<uid>` | `{v,data}` | 1 | travail d'un compte mis de côté au changement de compte (`sync-bascule.ts`) — **hors sauvegarde** |
+| `minebackfill_annotations` | `{v,data}` | 2 | fil de commentaires lu en ligne ; v1 → v2 : curseur remis à zéro (tout est relu), `auteur`/`creeLe`/`luLe` complétés en gardant ceux déjà présents (`migrerAnnotationV1`) — **hors sauvegarde** |
 | IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par id d'éprouvette | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` |
 | Sauvegarde (fichier) | `backup.ts` | schéma 6 | fusion par id, le local gagne ; courbes dans `data.courbes` |
 
@@ -156,9 +157,11 @@ Toute évolution de schéma : incrémenter la version de LA clé concernée
 (elles sont indépendantes depuis P4) + migration + test dans
 `store-persistence.test.ts`.
 
-**Une clé ajoutée doit AUSSI entrer dans `backup.ts`** — sauf `minebackfill_sync`,
-exclue exprès : restaurée sur un autre appareil, elle ferait croire que des
-documents sont déjà en ligne. Les deux clés du labo
+**Une clé ajoutée doit AUSSI entrer dans `backup.ts`** — sauf les clés du lien
+en ligne, exclues exprès : `minebackfill_sync` (restaurée sur un autre
+appareil, elle ferait croire que des documents sont déjà en ligne),
+`minebackfill_compte_<uid>` (travail d'un autre compte) et
+`minebackfill_annotations` (propriété du serveur, relue à la connexion). Les deux clés du labo
 y ont manqué du jour de leur création jusqu'au schéma 4 : les gâchées, les
 éprouvettes et les essais UCS n'étaient ni exportés ni importés, et rien ne le
 signalait. Leur cas est particulier et sert de modèle : parce qu'elles sont en
@@ -274,6 +277,41 @@ Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`, « Synchronisation v2 ».
 **Ne jamais** : prendre une erreur de lecture pour « rien en ligne » ; déduire
 une suppression d'une absence ; convertir le curseur en `Date` (perte des
 microsecondes) ; écrire sans `base_rev` un document déjà connu.
+
+### 12. Tableau de bord de l'enseignant (/classe)
+
+Logique PURE, testée en node : `lib/classe.ts` (regroupement, règle de
+comptage `essaiValide`, normalisation des documents lus en ligne),
+`classe-comparaison.ts`, `classe-alertes.ts`, `classe-echeancier.ts`,
+`classe-csv.ts`, `rapport-classe.ts` (modèle) ; `classe-reseau.ts` est le seul
+module réseau ; `rapport-classe-pdf.ts` dessine le rapport (jsPDF). Les
+composants (`components/classe/`) sont minces ; leur rendu est testé par
+`components/classe/rendu.test.ts` (sans navigateur : ces pages exigent une
+connexion enseignant). Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
+« Tableau de bord de l'enseignant ».
+
+- **Changer un seuil d'alerte** : `SEUILS_ALERTES` (`classe-alertes.ts`) ; le
+  texte affiché suit (`libellesSeuils`). Adapter `classe-alertes.test.ts`.
+- **Ajouter une alerte** : un type dans `TypeAlerte` + `LIBELLES_ALERTES`, la
+  règle dans `alertesClasse` (jamais sur une copie de conflit : partir de
+  `gacheesRetenues`), une ligne dans `libellesSeuils`, un test positif ET
+  négatif.
+- **Compter des essais** : toujours `essaiValide` — ne pas réécrire une règle
+  voisine (le tableau, la figure et les exports doivent dire la même chose).
+- **Jamais de moyenne entre gâchées**, et pas de valeur de médiane dans ce qui
+  s'exporte (CSV, PDF, messages d'alerte). Voir l'en-tête de
+  `classe-comparaison.ts`.
+- **Texte d'un PDF** : toujours par `pourPdf` (police intégrée WinAnsi : un seul
+  caractère hors table rend la ligne illisible) ; nombres par `nombrePdf`.
+- **CSV** : cellules texte par `securiserCsv` (garde contre les formules),
+  nombres bruts (virgule décimale à l'écriture, `celluleCsv`).
+- **Annotations, côté SQL** : une colonne que les clients doivent modifier
+  s'ajoute au `grant update (texte, deleted)` ; ne JAMAIS écrire une politique
+  sur `annotations` qui interroge `annotations` (récursion 42P17 : passer par
+  une fonction security definer, comme `repondre_annotation`).
+- **Banc PGlite** (`schema-sql.test.ts`) : les blocs anciens dépendent de leur
+  ordre ; un nouveau bloc crée SES comptes et ne change jamais le rôle de
+  `PROF`.
 
 ## Pièges connus
 

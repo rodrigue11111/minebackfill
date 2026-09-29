@@ -171,6 +171,22 @@ export function joursRestants(e: Eprouvette, ref: Date): number {
   return Math.round((dateEcheance(e).getTime() - jourLocal(ref).getTime()) / MS_JOUR);
 }
 
+/**
+ * Âge RÉEL de l'éprouvette à l'essai (jours) : le temps de cure relevé par la
+ * presse s'il existe, sinon l'écart entre le jour de coulée et le jour de
+ * l'essai (jours locaux). null si l'essai n'est pas daté — l'import de presse
+ * peut laisser la date vide. L'âge CIBLE (`ageJours`) reste celui du classement.
+ */
+export function ageReelJours(e: Eprouvette): number | null {
+  const t = e.essai?.tempsDeCureReelJours;
+  if (typeof t === "number" && Number.isFinite(t)) return t;
+  const iso = e.essai?.date;
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.round((jourLocal(d).getTime() - dateCoulee(e).getTime()) / MS_JOUR);
+}
+
 export type ClasseEcheance = "fait" | "retard" | "aujourdhui" | "proche" | "planifie";
 
 /**

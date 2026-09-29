@@ -17,6 +17,11 @@ describe("messages d'erreur Supabase Auth, en français", () => {
     expect(messageErreurAuth("New password should be different from the old password.", "same_password")).toMatch(/différer/);
   });
 
+  it("compte bloqué par l'enseignant", () => {
+    expect(messageErreurAuth("User is banned", "user_banned")).toMatch(/suspendu/);
+    expect(messageErreurAuth("Invalid Refresh Token: User Banned")).toMatch(/suspendu/);
+  });
+
   it("message inconnu : rendu tel quel", () => {
     expect(messageErreurAuth("Something unexpected")).toBe("Something unexpected");
   });

@@ -247,7 +247,9 @@ create trigger user_docs_quota after insert or update on public.user_docs
   for each row execute function public.user_docs_quota();
 
 -- ======================================================================
---  annotations : écrites par l'enseignant, lues par le propriétaire du travail
+--  annotations : écrites par l'enseignant, lues par le propriétaire du travail.
+--  Depuis 2026-10, l'étudiant RÉPOND (fil par document, via
+--  repondre_annotation) et chacun voit si l'autre a lu (lu_le).
 -- ======================================================================
 create table if not exists public.annotations (
   id          uuid        primary key default gen_random_uuid(),
@@ -266,6 +268,11 @@ create table if not exists public.annotations (
   updated_at  timestamptz not null default clock_timestamp()
 );
 create index if not exists annotations_tirage_idx on public.annotations (owner_id, updated_at, id);
+-- Accusé de lecture : posé par le DESTINATAIRE (étudiant pour un commentaire
+-- de l'enseignant, enseignant pour une réponse), seulement par
+-- marquer_annotations_lues — personne ne l'écrit directement (droits de
+-- colonne plus bas).
+alter table public.annotations add column if not exists lu_le timestamptz;
 
 create or replace function public.annotations_normaliser() returns trigger
 language plpgsql set search_path = '' as $$
@@ -275,9 +282,13 @@ begin
        is distinct from (old.owner_id, old.target_kind, old.target_id, old.auteur_id, old.created_at) then
       raise exception 'annotation : seuls le texte et le retrait sont modifiables' using errcode = '42501';
     end if;
+    -- Un texte modifié n'a pas encore été lu.
+    if new.texte is distinct from old.texte then new.lu_le := null; end if;
   else
     new.created_at := clock_timestamp();
+    new.lu_le := null;
   end if;
+  -- Aussi quand l'accusé de lecture change : il voyage par les curseurs.
   new.updated_at := clock_timestamp();
   return new;
 end $$;
@@ -296,9 +307,10 @@ alter table public.user_usage        enable row level security;
 alter table public.annotations       enable row level security;
 
 -- profiles : chacun lit le sien ; le prof lit tout (afficher qui a produit quoi).
--- AUCUNE politique insert/update/delete -> rôle modifiable UNIQUEMENT en SQL
--- (anti-escalade : un étudiant ne peut pas se promouvoir prof). Le nom affiché
--- passe par definir_nom(), qui ne touche que cette colonne.
+-- AUCUNE politique insert/update/delete -> le rôle ne change qu'en SQL, ou par
+-- definir_role() (réservée à un enseignant, contrôlée plus bas) : un étudiant
+-- ne peut jamais se promouvoir. Le nom affiché passe par definir_nom(), qui ne
+-- touche que cette colonne.
 drop policy if exists profiles_select on public.profiles;
 create policy profiles_select on public.profiles for select
   to authenticated using (id = auth.uid() or public.is_prof());
@@ -355,6 +367,15 @@ drop policy if exists annotations_update on public.annotations;
 create policy annotations_update on public.annotations for update to authenticated
   using ((select public.is_prof()) and auteur_id = (select auth.uid()))
   with check ((select public.is_prof()) and auteur_id = (select auth.uid()));
+-- L'étudiant retire SA réponse (sur SON travail). La réponse elle-même
+-- s'écrit par repondre_annotation (security definer) : une politique INSERT
+-- qui interrogerait `annotations` ferait échouer TOUTE insertion en
+-- « infinite recursion detected in policy » (42P17), celle de l'enseignant
+-- comprise — la politique SELECT contient des sous-requêtes.
+drop policy if exists annotations_reponse_update on public.annotations;
+create policy annotations_reponse_update on public.annotations for update to authenticated
+  using (owner_id = (select auth.uid()) and auteur_id = (select auth.uid()))
+  with check (owner_id = (select auth.uid()) and auteur_id = (select auth.uid()));
 
 -- Droits de table explicites (défense en profondeur : Supabase accorde tout à
 -- anon par défaut, et seule la RLS le retenait).
@@ -362,7 +383,12 @@ revoke all on public.user_docs, public.user_usage, public.annotations from anon;
 revoke delete, truncate on public.user_docs, public.annotations from authenticated;
 grant select, insert, update on public.user_docs to authenticated;
 grant select on public.user_usage to authenticated;
-grant select, insert, update on public.annotations to authenticated;
+grant select, insert on public.annotations to authenticated;
+-- Mise à jour limitée au texte et au retrait : lu_le ne s'écrit que par
+-- marquer_annotations_lues. L'ordre compte : un REVOKE de table retire aussi
+-- les droits de colonne ; il doit donc précéder le GRANT par colonne.
+revoke update on public.annotations from authenticated;
+grant update (texte, deleted) on public.annotations to authenticated;
 grant usage on sequence public.user_docs_rev_seq to authenticated;
 
 -- ======================================================================
@@ -440,7 +466,8 @@ end $$;
 
 -- Lecture de la classe (enseignant). Projection ALLÉGÉE par défaut : garde ce
 -- qu'affiche le tableau de bord (dont `recipes` et `parametres`, requis par
--- parametresEffectifs) ; p_complet = document intégral (export de la classe).
+-- parametresEffectifs, et `composants` — les pesées, pour les alertes de
+-- tolérance) ; p_complet = document intégral (export de la classe).
 -- p_session : documents de cette session, plus ceux qui n'en portent pas
 -- (antérieurs aux sessions : le client les classe d'après leurs dates).
 create or replace function public.lire_docs_classe(
@@ -458,7 +485,7 @@ begin
     select d.user_id, d.kind, d.id, d.rev, d.updated_at, d.created_at, d.deleted,
            case
              when p_complet           then d.payload
-             when d.kind = 'gachee'   then d.payload - 'protocolesSnapshot' - 'composants' - 'ajustements'
+             when d.kind = 'gachee'   then d.payload - 'protocolesSnapshot' - 'ajustements'
              when d.kind = 'resultat' then d.payload - 'catalogue_liants' - 'constantes' - 'inputs'
            end
       from public.user_docs d
@@ -475,6 +502,9 @@ begin
 end $$;
 
 -- Annotations portant sur SON travail, par curseur (mêmes règles que lire_docs).
+-- Sans les réponses de l'étudiant lui-même : un site resté en cache (antérieur
+-- aux réponses) les afficherait comme des commentaires de l'enseignant. Le
+-- site actuel lit lire_fil_annotations.
 create or replace function public.lire_annotations(
   p_attendu uuid, p_apres_maj timestamptz, p_apres_id uuid,
   p_recul_s integer default 0, p_limite integer default 100
@@ -490,6 +520,35 @@ begin
     select a.id, a.target_kind, a.target_id, a.target_rev, a.ancre,
            case when a.deleted then null else a.texte end, a.deleted, a.updated_at
       from public.annotations a
+     where a.owner_id = v_uid and a.auteur_id <> a.owner_id
+       and (a.updated_at, a.id) >
+           (coalesce(p_apres_maj, '-infinity'::timestamptz)
+              - make_interval(secs => greatest(coalesce(p_recul_s, 0), 0)),
+            coalesce(p_apres_id, '00000000-0000-0000-0000-000000000000'::uuid))
+     order by a.updated_at, a.id
+     limit least(greatest(coalesce(p_limite, 100), 1), 500);
+end $$;
+
+-- Le FIL de commentaires sur SON travail : ceux de l'enseignant et ses propres
+-- réponses, avec l'auteur (de_moi), la date de création (ordre du fil) et
+-- l'accusé de lecture. Même curseur que lire_annotations.
+create or replace function public.lire_fil_annotations(
+  p_attendu uuid, p_apres_maj timestamptz, p_apres_id uuid,
+  p_recul_s integer default 0, p_limite integer default 100
+) returns table (annotation_id uuid, cible_kind text, cible_id text, cible_rev bigint,
+                 ancre text, texte text, supprime boolean, maj_serveur timestamptz,
+                 de_moi boolean, cree_serveur timestamptz, lu_serveur timestamptz)
+language plpgsql stable security invoker set search_path = '' as $$
+declare v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  return query
+    select a.id, a.target_kind, a.target_id, a.target_rev, a.ancre,
+           case when a.deleted then null else a.texte end, a.deleted, a.updated_at,
+           a.auteur_id = v_uid, a.created_at, a.lu_le
+      from public.annotations a
      where a.owner_id = v_uid
        and (a.updated_at, a.id) >
            (coalesce(p_apres_maj, '-infinity'::timestamptz)
@@ -499,17 +558,193 @@ begin
      limit least(greatest(coalesce(p_limite, 100), 1), 500);
 end $$;
 
+-- L'étudiant RÉPOND sur SON document, là où l'enseignant a commenté. Toutes
+-- les vérifications sont ici (security definer : la RLS ne s'applique pas).
+-- Plafond de 500 réponses par compte : l'inscription est ouverte (même
+-- logique que le quota de user_docs).
+create or replace function public.repondre_annotation(
+  p_attendu uuid, p_kind text, p_id text, p_rev bigint, p_texte text
+) returns table (annotation_id uuid, cree_serveur timestamptz, maj_serveur timestamptz)
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_texte text := btrim(coalesce(p_texte, ''));
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  if char_length(v_texte) not between 1 and 4000 then
+    raise exception 'réponse vide ou trop longue (4000 caractères au plus)' using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.user_docs d
+                  where d.user_id = v_uid and d.kind = p_kind and d.id = p_id and not d.deleted) then
+    raise exception 'document introuvable en ligne' using errcode = '42501';
+  end if;
+  if not exists (select 1 from public.annotations a
+                  where a.owner_id = v_uid and a.target_kind = p_kind and a.target_id = p_id
+                    and a.auteur_id <> v_uid and not a.deleted) then
+    raise exception 'aucun commentaire de l''enseignant à qui répondre' using errcode = '42501';
+  end if;
+  if (select count(*) from public.annotations a where a.owner_id = v_uid and a.auteur_id = v_uid) >= 500 then
+    raise exception 'nombre maximal de réponses atteint' using errcode = '53400';
+  end if;
+  return query
+    insert into public.annotations as a (owner_id, target_kind, target_id, target_rev, ancre, auteur_id, texte)
+    values (v_uid, p_kind, p_id, p_rev, null, v_uid, v_texte)
+    returning a.id, a.created_at, a.updated_at;
+end $$;
+
+-- Accusé de lecture, posé par le DESTINATAIRE seulement : l'étudiant pour les
+-- messages d'autrui sur SON travail, l'enseignant pour les réponses des
+-- étudiants. Jamais sur ses propres messages. Un accusé déjà posé reste.
+create or replace function public.marquer_annotations_lues(p_ids uuid[])
+returns table (annotation_id uuid, lu_serveur timestamptz)
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_prof boolean := public.is_prof();
+begin
+  if v_uid is null then
+    raise exception 'non authentifié' using errcode = '28000';
+  end if;
+  if coalesce(cardinality(p_ids), 0) > 500 then
+    raise exception 'trop de commentaires à la fois (500 au plus)' using errcode = '22023';
+  end if;
+  return query
+    update public.annotations a set lu_le = clock_timestamp()
+     where a.id = any(p_ids) and a.lu_le is null and not a.deleted
+       and a.auteur_id <> v_uid
+       and (a.owner_id = v_uid or (v_prof and a.auteur_id = a.owner_id))
+    returning a.id, a.lu_le;
+end $$;
+
+-- Réponses d'étudiants pas encore lues (pastille « Classe » de l'enseignant).
+create or replace function public.nb_reponses_non_lues() returns integer
+language plpgsql stable security invoker set search_path = '' as $$
+begin
+  if not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  return (select count(*)::integer from public.annotations a
+           where a.auteur_id = a.owner_id and a.lu_le is null and not a.deleted);
+end $$;
+
+-- ======================================================================
+--  Comptes (enseignant) : lister, nommer ou retirer un enseignant, bloquer.
+--  Security definer : ces fonctions lisent auth.users et changent un rôle,
+--  ce qu'aucune politique ne permet. Chacune revérifie l'appelant.
+--  La suppression définitive d'un compte reste une procédure SQL
+--  (docs/OPERATIONS.md) : irréversible, elle n'a pas de bouton.
+-- ======================================================================
+
+-- Tous les comptes, avec de quoi décider : inscription, dernière connexion,
+-- blocage, volume de travail en ligne. Colonnes de sortie nommées autrement
+-- que celles des tables (ambiguïté plpgsql).
+create or replace function public.lister_comptes()
+returns table (compte_id uuid, courriel text, nom_affiche text, compte_role text, cree_le timestamptz,
+               derniere_connexion timestamptz, bloque_jusqu_a timestamptz,
+               nb_resultats integer, nb_gachees integer, derniere_activite timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  return query
+    select u.id, u.email::text, p.display_name, coalesce(p.role, 'etudiant'), u.created_at, u.last_sign_in_at,
+           case when u.banned_until > now() then u.banned_until end,
+           coalesce(d.nb_r, 0), coalesce(d.nb_g, 0), d.derniere
+      from auth.users u
+      left join public.profiles p on p.id = u.id
+      left join lateral (select (count(*) filter (where x.kind = 'resultat' and not x.deleted))::integer as nb_r,
+                                (count(*) filter (where x.kind = 'gachee' and not x.deleted))::integer as nb_g,
+                                max(x.updated_at) as derniere
+                           from public.user_docs x where x.user_id = u.id) d on true
+     order by coalesce(p.role, 'etudiant') desc, coalesce(p.display_name, u.email::text);
+end $$;
+
+-- Nommer (p_role = 'prof') ou retirer (p_role = 'etudiant') un enseignant.
+-- Jamais son propre rôle : l'appelant reste enseignant, la classe en garde
+-- donc toujours un. Verrou commun avec bloquer_compte : deux enseignants qui
+-- se retirent l'un l'autre en même temps passent l'un après l'autre, et le
+-- second, revérifié APRÈS le verrou, n'est plus enseignant.
+create or replace function public.definir_role(p_compte uuid, p_role text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if p_role is null or p_role not in ('prof', 'etudiant') then
+    raise exception 'rôle inconnu' using errcode = '22023';
+  end if;
+  perform pg_advisory_xact_lock(hashtext('minebackfill.comptes'));
+  if (select auth.uid()) is null or not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  if p_compte = (select auth.uid()) then
+    raise exception 'on ne change pas son propre rôle' using errcode = '42501';
+  end if;
+  if p_role = 'prof' and exists (select 1 from auth.users u where u.id = p_compte and u.banned_until > now()) then
+    raise exception 'compte bloqué : débloquez-le avant de le nommer enseignant' using errcode = '22023';
+  end if;
+  update public.profiles set role = p_role where id = p_compte;
+  if not found then
+    raise exception 'compte introuvable' using errcode = 'P0002';
+  end if;
+end $$;
+
+-- Bloquer (connexion refusée) ou débloquer un compte étudiant. Même mécanisme
+-- que « Ban user » de Supabase Studio (auth.users.banned_until) : un compte
+-- bloqué d'un côté apparaît bloqué de l'autre. Durée : 876000 h (100 ans),
+-- comme le « ban » de l'API d'administration — jamais 'infinity', que le
+-- serveur d'authentification ne sait pas lire. Ses sessions sont supprimées :
+-- il est déconnecté au plus tard à l'expiration de son jeton (1 h). Rien de
+-- son travail n'est touché.
+create or replace function public.bloquer_compte(p_compte uuid, p_bloquer boolean)
+returns timestamptz language plpgsql security definer set search_path = '' as $$
+declare v_jusqu timestamptz := case when p_bloquer then now() + interval '876000 hours' end;
+begin
+  perform pg_advisory_xact_lock(hashtext('minebackfill.comptes'));
+  if (select auth.uid()) is null or not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  if p_compte = (select auth.uid()) then
+    raise exception 'on ne se bloque pas soi-même' using errcode = '42501';
+  end if;
+  if exists (select 1 from public.profiles p where p.id = p_compte and p.role = 'prof') then
+    raise exception 'retirez d''abord le rôle d''enseignant' using errcode = '42501';
+  end if;
+  update auth.users set banned_until = v_jusqu where id = p_compte;
+  if not found then
+    raise exception 'compte introuvable' using errcode = 'P0002';
+  end if;
+  if p_bloquer then
+    delete from auth.sessions where user_id = p_compte; -- jetons de rafraîchissement : en cascade
+  end if;
+  return v_jusqu;
+end $$;
+
 -- Droits d'exécution : Supabase accorde EXECUTE à anon par défaut.
 revoke execute on function public.ecrire_doc(uuid, text, text, jsonb, bigint, boolean) from public, anon;
 revoke execute on function public.lire_docs(uuid, timestamptz, text, text, integer, integer) from public, anon;
 revoke execute on function public.lire_docs_classe(timestamptz, uuid, text, text, integer, integer, boolean, text) from public, anon;
 revoke execute on function public.lire_annotations(uuid, timestamptz, uuid, integer, integer) from public, anon;
 revoke execute on function public.definir_nom(text) from public, anon;
+revoke execute on function public.lire_fil_annotations(uuid, timestamptz, uuid, integer, integer) from public, anon;
+revoke execute on function public.repondre_annotation(uuid, text, text, bigint, text) from public, anon;
+revoke execute on function public.marquer_annotations_lues(uuid[]) from public, anon;
+revoke execute on function public.nb_reponses_non_lues() from public, anon;
+revoke execute on function public.lister_comptes() from public, anon;
+revoke execute on function public.definir_role(uuid, text) from public, anon;
+revoke execute on function public.bloquer_compte(uuid, boolean) from public, anon;
 grant execute on function public.ecrire_doc(uuid, text, text, jsonb, bigint, boolean) to authenticated;
 grant execute on function public.lire_docs(uuid, timestamptz, text, text, integer, integer) to authenticated;
 grant execute on function public.lire_docs_classe(timestamptz, uuid, text, text, integer, integer, boolean, text) to authenticated;
 grant execute on function public.lire_annotations(uuid, timestamptz, uuid, integer, integer) to authenticated;
 grant execute on function public.definir_nom(text) to authenticated;
+grant execute on function public.lire_fil_annotations(uuid, timestamptz, uuid, integer, integer) to authenticated;
+grant execute on function public.repondre_annotation(uuid, text, text, bigint, text) to authenticated;
+grant execute on function public.marquer_annotations_lues(uuid[]) to authenticated;
+grant execute on function public.nb_reponses_non_lues() to authenticated;
+grant execute on function public.lister_comptes() to authenticated;
+grant execute on function public.definir_role(uuid, text) to authenticated;
+grant execute on function public.bloquer_compte(uuid, boolean) to authenticated;
 
 -- ======================================================================
 --  Reprise unique de saved_results (v1) dans user_docs. Ré-exécutable : un
@@ -529,6 +764,8 @@ on conflict (user_id, kind, id) do nothing;
 --  fois (2e argument pour plus : definir_code_enseignant('LE_CODE', 2)).
 --  Compte déjà créé sans le code :
 --    update public.profiles set role = 'prof' where email = 'prof@exemple.ca';
+--  Ensuite, un enseignant nomme les autres depuis l'application (Classe →
+--  Comptes), sans SQL.
 --
 --  CONTRÔLES après exécution (voir supabase/README.md) :
 --    -- résultats v1 non repris (id hors format) : doit être 0

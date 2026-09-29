@@ -200,6 +200,12 @@ export default function NavBar() {
                   </span>
                 )}
                 {link.label}
+                {link.href === "/classe" && (synchro.reponsesNonLues ?? 0) > 0 && (
+                  <span title="Réponses d'étudiants pas encore lues"
+                    style={{ fontSize: 10.5, fontWeight: 800, color: "#1e3a8a", background: "#fde68a", borderRadius: 999, padding: "0 6px", lineHeight: "16px" }}>
+                    {synchro.reponsesNonLues}
+                  </span>
+                )}
               </Link>
             </div>
           );

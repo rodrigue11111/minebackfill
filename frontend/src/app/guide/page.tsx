@@ -755,16 +755,23 @@ export default function GuidePage() {
                 la bonne, supprimez l&apos;autre.
               </p>
               <p style={{ margin: 0 }}>
-                <strong>Commentaires de l&apos;enseignant</strong> : ils apparaissent sous le résultat
-                (Historique) ou la gâchée (Labo) concernés, visibles de vous seul.
+                <strong>Échanges avec l&apos;enseignant</strong> : ses commentaires apparaissent sous le
+                résultat (Historique) ou la gâchée (Labo) concernés, visibles de vous seul, avec une
+                pastille « commentaire non lu » dans la liste. Vous pouvez y <strong>répondre</strong> ;
+                chacun voit si l&apos;autre a lu (« vu le … »).
+              </p>
+              <p style={{ margin: 0 }}>
+                <strong>Compte suspendu ?</strong> L&apos;enseignant peut bloquer un compte : la connexion
+                est refusée, mais le travail enregistré dans votre navigateur y reste.
               </p>
               <p style={{ margin: 0 }}>
                 <strong>Les courbes de presse restent sur l&apos;appareil</strong> (elles sont volumineuses) :
                 exportez régulièrement une sauvegarde locale (Réglages → Données locales).
               </p>
               <p style={{ margin: 0 }}>
-                <strong>Mot de passe oublié ?</strong> Adressez-vous à l&apos;enseignant. Votre travail n&apos;est
-                pas en danger : il est dans votre navigateur et dans votre compte.
+                <strong>Mot de passe oublié ?</strong> Page Compte → « Mot de passe oublié ? » : un lien
+                arrive par courriel. Votre travail n&apos;est pas en danger : il est dans votre navigateur
+                et dans votre compte.
               </p>
             </div>
           </Card>

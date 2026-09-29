@@ -6,7 +6,7 @@
 
 import type { Gachee } from "./gachee";
 import type { SavedResult } from "./store";
-import { contrainteKpa } from "./eprouvette";
+import { contrainteKpa, type Eprouvette } from "./eprouvette";
 import { nuageUcs, type AxeFormulation, type PointNuage } from "./ucs-formulation";
 import { correspond, type FiltreSession, type Session } from "./sessions";
 
@@ -35,10 +35,37 @@ export interface EtudiantClasse {
   email: string | null;
   resultats: SavedResult[];
   gachees: Gachee[];
-  /** Éprouvettes dont la mesure UCS est exploitable. */
+  /** Essais valides (voir essaiValide), copies de conflit exclues. */
   nbEssais: number;
   /** Dernière écriture en ligne (horodatage serveur), null si aucune. */
   derniereActivite: string | null;
+}
+
+/**
+ * LA règle de comptage du tableau de bord (tableau, figure, alertes,
+ * comparaison, CSV, rapport) : une éprouvette ÉCRASÉE, à mesure exploitable,
+ * non exclue — exactement ce que agregerParAge retient dans la moyenne.
+ */
+export function essaiValide(ep: Eprouvette): boolean {
+  return ep.statut === "ecrase" && !ep.essai?.exclu && contrainteKpa(ep.essai) !== null;
+}
+
+/**
+ * Gâchées prises en compte : sans les copies de conflit (elles gardent les
+ * éprouvettes de l'original, mêmes ids : les compter doublerait les essais).
+ */
+export function gacheesRetenues(e: Pick<EtudiantClasse, "gachees">): Gachee[] {
+  return e.gachees.filter((g) => !g.conflit);
+}
+
+/**
+ * Un document lu en ligne n'est pas migré comme le stockage local : la
+ * projection allégée retire des champs, et un très ancien document peut en
+ * manquer. On normalise UNE fois ici, pour que rien en aval ne plante.
+ */
+export function normaliserGachee(contenu: unknown): Gachee {
+  const g = contenu as Gachee;
+  return { ...g, composants: g.composants ?? [], eprouvettes: g.eprouvettes ?? [], ajustements: g.ajustements ?? [] };
 }
 
 export function cleLigne(l: Pick<LigneClasse, "proprietaire" | "kind" | "id">): string {
@@ -93,11 +120,11 @@ export function regrouper(
       e.resultats.push(r);
       if (!e.derniereActivite || l.maj > e.derniereActivite) e.derniereActivite = l.maj;
     } else {
-      const g = l.contenu as Gachee;
+      const g = normaliserGachee(l.contenu);
       if (!correspond({ sessionId: g.sessionId, date: g.creeLe }, sessions, filtre)) continue;
       const e = obtenir(l.proprietaire);
       e.gachees.push(g);
-      e.nbEssais += (g.eprouvettes ?? []).filter((ep) => contrainteKpa(ep.essai) !== null).length;
+      if (!g.conflit) e.nbEssais += g.eprouvettes.filter(essaiValide).length;
       if (!e.derniereActivite || l.maj > e.derniereActivite) e.derniereActivite = l.maj;
     }
   }
@@ -127,7 +154,7 @@ export function nuageClasse(
   const points: PointClasse[] = [];
   const ecartees: { etudiant: string; code: string; raison: string }[] = [];
   for (const e of etudiants) {
-    const gachees = e.gachees.filter((g) => !g.conflit);
+    const gachees = gacheesRetenues(e);
     if (gachees.length === 0) continue;
     const n = nuageUcs(gachees, e.resultats.map((r) => ({ id: r.id, recipes: r.recipes ?? [] })), axe, ageJours);
     for (const p of n.points) points.push({ ...p, id: `${e.id}:${p.id}`, etudiantId: e.id, etudiant: e.nom });
@@ -136,11 +163,11 @@ export function nuageClasse(
   return { points, ecartees };
 }
 
-/** Âges de cure présents dans les gâchées de la classe (triés). */
+/** Âges de cure ayant au moins un essai valide dans la classe (triés). */
 export function agesClasse(etudiants: EtudiantClasse[]): number[] {
   const s = new Set<number>();
-  for (const e of etudiants) for (const g of e.gachees) for (const ep of g.eprouvettes ?? []) {
-    if (contrainteKpa(ep.essai) !== null) s.add(ep.ageJours);
+  for (const e of etudiants) for (const g of gacheesRetenues(e)) for (const ep of g.eprouvettes) {
+    if (essaiValide(ep)) s.add(ep.ageJours);
   }
   return [...s].sort((a, b) => a - b);
 }
