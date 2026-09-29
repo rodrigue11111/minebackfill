@@ -31,6 +31,8 @@ import VueDocument, { type EtatDoc } from "@/components/classe/VueDocument";
 import Onglets from "@/components/classe/Onglets";
 import OngletComparaison from "@/components/classe/OngletComparaison";
 import { comparerClasse } from "@/lib/classe-comparaison";
+import { alertesClasse } from "@/lib/classe-alertes";
+import CarteAlertes from "@/components/classe/CarteAlertes";
 
 type CleOnglet = "etudiants" | "comparaison";
 
@@ -57,7 +59,8 @@ export default function ClassePage() {
   const estProf = session?.role === "prof";
   // Par défaut : la session active (sinon toutes). Choisi une fois les
   // sessions connues ; ensuite, c'est l'enseignant qui décide.
-  const filtreEffectif: FiltreSessionValeur = filtre ?? (sessionActive(sessions, new Date())?.id ?? "toutes");
+  const enCours = sessionActive(sessions, maintenant);
+  const filtreEffectif: FiltreSessionValeur = filtre ?? (enCours?.id ?? "toutes");
   const sessionServeur = filtreEffectif === "toutes" || filtreEffectif === "sans" ? null : filtreEffectif;
 
   useEffect(() => { loadUnits(); }, [loadUnits]);
@@ -94,6 +97,13 @@ export default function ClassePage() {
   );
   const couleurDe = new Map(etudiants.map((e, i) => [e.id, COULEURS[i % COULEURS.length]]));
   const comparaison = useMemo(() => comparerClasse(etudiants), [etudiants]);
+  const alertes = useMemo(() => alertesClasse(etudiants, {
+    maintenant, comparaison,
+    sessionActiveAffichee: enCours !== null && filtreEffectif === enCours.id,
+    debutSessionActive: enCours?.debut ?? null,
+  }), [etudiants, maintenant, comparaison, enCours, filtreEffectif]);
+  const alertesParEtudiant = new Map<string, number>();
+  for (const a of alertes) alertesParEtudiant.set(a.etudiantId, (alertesParEtudiant.get(a.etudiantId) ?? 0) + 1);
 
   /** Ouvre un document en entier : relu en ligne (la classe est allégée). */
   const ouvrirDoc = (ref: RefDoc) => {
@@ -222,12 +232,14 @@ export default function ClassePage() {
             {etat === "pret" && (
               <>
                 <Onglets<CleOnglet> actif={onglet} onChoisir={setOnglet} onglets={[
-                  { cle: "etudiants", label: "Étudiants", compte: etudiants.length },
+                  { cle: "etudiants", label: "Étudiants", compte: alertes.length || null },
                   { cle: "comparaison", label: "Comparaison", compte: comparaison.groupes.length },
                 ]} />
                 {onglet === "etudiants" && (
                   <>
-                    <TableauEtudiants etudiants={etudiants} annotations={annotations} selId={selId} onChoisir={setSelId} couleurDe={couleurDe} />
+                    <CarteAlertes alertes={alertes} onOuvrir={ouvrirDoc} />
+                    <TableauEtudiants etudiants={etudiants} annotations={annotations} selId={selId} onChoisir={setSelId}
+                      couleurDe={couleurDe} alertesParEtudiant={alertesParEtudiant} />
                     {sel && (
                       <DetailEtudiant etudiant={sel} annotations={annotations} lignes={lignes}
                         onAnnoter={annoter(sel.id)} onRetirer={retirer} onOuvrir={ouvrirDoc} />

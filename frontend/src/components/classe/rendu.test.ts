@@ -16,6 +16,8 @@ import DetailEtudiant from "./DetailEtudiant";
 import FigureClasse from "./FigureClasse";
 import OngletComparaison from "./OngletComparaison";
 import { comparerClasse } from "@/lib/classe-comparaison";
+import { alertesClasse } from "@/lib/classe-alertes";
+import CarteAlertes from "./CarteAlertes";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";
 const profils: ProfilClasse[] = [{ id: A, email: "alice@x.ca", display_name: "Alice Tremblay", role: "etudiant" }];
@@ -100,7 +102,7 @@ describe("vues de l'enseignant — rendu", () => {
 
   it("tableau, détail et figure de la classe", () => {
     const couleurDe = new Map([[A, "#2563eb"]]);
-    const tableau = rendu(createElement(TableauEtudiants, { etudiants, annotations, selId: null, onChoisir: () => {}, couleurDe }));
+    const tableau = rendu(createElement(TableauEtudiants, { etudiants, annotations, selId: null, onChoisir: () => {}, couleurDe, alertesParEtudiant: new Map([[A, 2]]) }));
     expect(tableau).toContain("Essais valides");
     expect(tableau).toMatch(/<td[^>]*>1<\/td>/); // un seul essai valide (E02 est exclue)
     const detail = rendu(createElement(DetailEtudiant, { etudiant: etudiants[0], annotations, lignes: [], onAnnoter: async () => {}, onRetirer: async () => {}, onOuvrir: () => {} }));
@@ -120,5 +122,15 @@ describe("vues de l'enseignant — rendu", () => {
     expect(html).toContain("pas de repère de dispersion");
     const vide = rendu(createElement(OngletComparaison, { comparaison: comparerClasse(etudiants), onOuvrir: () => {} }));
     expect(vide).toContain("au moins deux étudiants");
+  });
+
+  it("alertes : groupées par étudiant, seuils affichés ; aucune : message", () => {
+    const a = alertesClasse(etudiants, { maintenant: new Date(2026, 10, 20), comparaison: comparerClasse(etudiants), sessionActiveAffichee: false });
+    const html = rendu(createElement(CarteAlertes, { alertes: a, onOuvrir: () => {} }));
+    expect(html).toContain("À surveiller (");
+    expect(html).toContain("Écrasement en retard"); // E03 (28 j) attendue le 8 octobre
+    expect(html).toContain("Pesée hors tolérance");
+    expect(html).toContain("valeurs par défaut, à valider");
+    expect(rendu(createElement(CarteAlertes, { alertes: [], onOuvrir: () => {} }))).toContain("Rien à signaler");
   });
 });

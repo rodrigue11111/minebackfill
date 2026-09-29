@@ -4,14 +4,15 @@ import type { EtudiantClasse } from "@/lib/classe";
 import type { LigneAnnotation } from "@/lib/classe-reseau";
 import { dateCourte, th } from "./commun";
 
-export default function TableauEtudiants({ etudiants, annotations, selId, onChoisir, couleurDe }: {
+export default function TableauEtudiants({ etudiants, annotations, selId, onChoisir, couleurDe, alertesParEtudiant }: {
   etudiants: EtudiantClasse[];
+  alertesParEtudiant: Map<string, number>;
   annotations: LigneAnnotation[];
   selId: string | null;
   onChoisir: (id: string | null) => void;
   couleurDe: Map<string, string>;
 }) {
-  const colonnes = ["Étudiant", "Résultats", "Gâchées", "Essais valides", "Dernière activité", "Commentaires"];
+  const colonnes = ["Étudiant", "Résultats", "Gâchées", "Essais valides", "Alertes", "Dernière activité", "Commentaires"];
   return (
     <div className="form-card" style={{ padding: 0, overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
@@ -44,6 +45,9 @@ export default function TableauEtudiants({ etudiants, annotations, selId, onChoi
                   {copies > 0 && <span style={{ color: "#92400e", fontSize: 12 }}> (+{copies} copie{copies > 1 ? "s" : ""} de conflit)</span>}
                 </td>
                 <td style={{ padding: "9px 12px" }}>{e.nbEssais}</td>
+                <td style={{ padding: "9px 12px", color: alertesParEtudiant.get(e.id) ? "#b45309" : undefined, fontWeight: alertesParEtudiant.get(e.id) ? 700 : 400 }}>
+                  {alertesParEtudiant.get(e.id) || "—"}
+                </td>
                 <td style={{ padding: "9px 12px" }}>{dateCourte(e.derniereActivite)}</td>
                 <td style={{ padding: "9px 12px" }}>{nbComm || "—"}</td>
               </tr>

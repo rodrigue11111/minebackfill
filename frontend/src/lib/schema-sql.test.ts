@@ -286,7 +286,7 @@ describe("schema.sql — enseignant et annotations", () => {
     const r = await comme<{ proprietaire: string; doc_id: string; contenu: Record<string, unknown> }>(PROF, q, [false, null]);
     const gb = r.rows.find((x) => x.doc_id === "gb")!;
     expect(gb.proprietaire).toBe(B);
-    expect(Object.keys(gb.contenu).sort()).toEqual(["id", "parametres", "sessionId"]);
+    expect(Object.keys(gb.contenu).sort()).toEqual(["composants", "id", "parametres", "sessionId"]); // pesées : alertes de tolérance
     const rb = r.rows.find((x) => x.doc_id === "rb")!;
     expect(Object.keys(rb.contenu).sort()).toEqual(["id", "recipes"]);
     expect(r.rows.map((x) => x.doc_id)).toContain("ra"); // tous les étudiants

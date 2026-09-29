@@ -440,7 +440,8 @@ end $$;
 
 -- Lecture de la classe (enseignant). Projection ALLÉGÉE par défaut : garde ce
 -- qu'affiche le tableau de bord (dont `recipes` et `parametres`, requis par
--- parametresEffectifs) ; p_complet = document intégral (export de la classe).
+-- parametresEffectifs, et `composants` — les pesées, pour les alertes de
+-- tolérance) ; p_complet = document intégral (export de la classe).
 -- p_session : documents de cette session, plus ceux qui n'en portent pas
 -- (antérieurs aux sessions : le client les classe d'après leurs dates).
 create or replace function public.lire_docs_classe(
@@ -458,7 +459,7 @@ begin
     select d.user_id, d.kind, d.id, d.rev, d.updated_at, d.created_at, d.deleted,
            case
              when p_complet           then d.payload
-             when d.kind = 'gachee'   then d.payload - 'protocolesSnapshot' - 'composants' - 'ajustements'
+             when d.kind = 'gachee'   then d.payload - 'protocolesSnapshot' - 'ajustements'
              when d.kind = 'resultat' then d.payload - 'catalogue_liants' - 'constantes' - 'inputs'
            end
       from public.user_docs d

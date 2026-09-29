@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import { libelleGroupe, MIN_GACHEES_REPERE, type Comparaison, type GroupeComparaison } from "@/lib/classe-comparaison";
+import { SEUILS_ALERTES } from "@/lib/classe-alertes";
 import { dateCourte, lienBouton, nombre, td, tdNum, th, type RefDoc } from "./commun";
 
 function CarteGroupe({ groupe, onOuvrir }: { groupe: GroupeComparaison; onOuvrir: (ref: RefDoc) => void }) {
@@ -57,7 +58,7 @@ function CarteGroupe({ groupe, onOuvrir }: { groupe: GroupeComparaison; onOuvrir
                   <td style={tdNum}>{nombre(l.ecartTypeKpa, 0)}</td>
                   <td style={tdNum}>{l.n}{l.nExclus > 0 && <span style={{ color: "#94a3b8" }}> (+{l.nExclus} exclue{l.nExclus > 1 ? "s" : ""})</span>}</td>
                   <td style={tdNum}>{l.cvPct === null ? "—" : `${nombre(l.cvPct, 1)} %`}</td>
-                  <td style={{ ...tdNum, color: l.ecartMedianePct === null ? "#cbd5e1" : Math.abs(l.ecartMedianePct) > 30 ? "#dc2626" : "#334155" }}>
+                  <td style={{ ...tdNum, color: l.ecartMedianePct === null ? "#cbd5e1" : Math.abs(l.ecartMedianePct) > SEUILS_ALERTES.ecartMedianePct ? "#dc2626" : "#334155" }}>
                     {l.ecartMedianePct === null ? "—" : `${l.ecartMedianePct > 0 ? "+" : ""}${nombre(l.ecartMedianePct, 0)} %`}
                   </td>
                 </tr>
