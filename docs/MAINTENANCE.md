@@ -163,8 +163,13 @@ le monde voit la vue enseignant, la couche Supabase (comptes, rôles, synchro,
 publication) est désactivée. **La publication en ligne est indisponible dans ce
 mode** (elle exige un vrai compte prof), le reste fonctionne 100 % en local.
 
-- Le drapeau : `MODE_TEST_SANS_COMPTE` dans **`frontend/src/lib/mode-test.ts`**
-  ET **`portail/src/lib/mode-test.ts`** (garder les deux identiques).
+- Le drapeau : la variable d'environnement **`NEXT_PUBLIC_MODE_TEST_SANS_COMPTE`**,
+  lue par `frontend/src/lib/mode-test.ts` ET `portail/src/lib/mode-test.ts`.
+  **Absente = mode test actif** ; seule la valeur `false` le désactive (une
+  faute de frappe laisse l'état sûr). Elle se règle sur Vercel, **dans les deux
+  projets** (MineBackfill et portail), et par environnement : on peut ouvrir
+  les comptes sur les aperçus (Preview, reliés à un projet Supabase de
+  préproduction) en gardant la production en mode test.
 - **Assistant IA** : en mode test, la page `/assistant` (et son lien dans
   Réglages) est OUVERTE sans compte — la route `/api/assistant` saute la
   vérification du rôle dans ce mode uniquement (bandeau affiché sur la page).
@@ -172,10 +177,12 @@ mode** (elle exige un vrai compte prof), le reste fonctionne 100 % en local.
   `ASSISTANT_GITHUB_REPO` ne sont pas définies sur Vercel. Conséquence
   assumée : quiconque connaît l'URL peut créer une issue GitHub pendant la
   fenêtre de test ; repasser le drapeau à `false` referme l'accès.
-- **Réactiver les comptes à la fin du projet** : mettre les DEUX à `false`,
-  vérifier les portes (`pnpm typecheck && pnpm lint && pnpm test && pnpm build`),
-  PR + merge → les variables Supabase déjà présentes reprennent effet
-  (connexion, rôles, publication). Aucune autre modification nécessaire.
+- **Réactiver les comptes** : Vercel → chaque projet → Settings →
+  Environment Variables → `NEXT_PUBLIC_MODE_TEST_SANS_COMPTE` = `false` pour
+  l'environnement voulu → **Redeploy** (variable inlinée au build). Aucune
+  modification de code. Les variables Supabase déjà présentes reprennent effet
+  (connexion, rôles, publication). Retour arrière : supprimer la variable (ou
+  la remettre à autre chose que `false`) puis redéployer.
 - Mécanique : `getSupabase()` renvoie `null` quand le drapeau est vrai — même
   chemin que « variables Supabase absentes », d'où la désactivation propre de
   toute l'UI compte/cloud sans toucher chaque appelant.

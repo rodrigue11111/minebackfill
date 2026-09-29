@@ -33,6 +33,10 @@ ouvre le portail et MineBackfill.
 - Avec `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (les memes
   valeurs que MineBackfill, voir son `supabase/README.md`) : l'acces aux
   projets exige un compte. Inscription possible depuis le portail.
+- `NEXT_PUBLIC_MODE_TEST_SANS_COMPTE` : absente = mode test (acces libre, Supabase
+  desactive, meme avec les deux variables ci-dessus) ; `false` = connexion
+  exigee. Meme valeur que dans le projet Vercel de MineBackfill (recette 9 de
+  `docs/MAINTENANCE.md`).
 
 Nota : la connexion protege le PORTAIL (l'annuaire). Les applications elles-
 memes restent accessibles par leur URL directe — MineBackfill gere sa propre
