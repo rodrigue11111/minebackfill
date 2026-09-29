@@ -136,6 +136,16 @@ email, pause du projet) : couvert par cette checklist.
 
 ## Ce qui est testé automatiquement (vitest, sans réseau)
 
+- `schema-sql.test.ts` : **`schema.sql` exécuté pour de vrai** dans PostgreSQL
+  (PGlite, Postgres compilé en WebAssembly), avec un environnement Supabase
+  minimal (rôles `anon` / `authenticated`, `auth.uid()`). Couvre : écriture
+  conditionnelle et révisions, suppressions, contraintes et quota, **RLS**
+  (un étudiant ne voit ni ne touche le travail d'un autre, aucun rôle lu dans
+  les métadonnées, anonyme sans accès), lecture par curseur, lecture de la
+  classe, annotations, reprise de `saved_results`, ré-exécution du script. Et
+  le **moteur de synchronisation contre ce vrai SQL** (deux navigateurs, puis
+  150 opérations aléatoires sur trois). Hors de portée : PostgREST lui-même
+  (format JSON, `max_rows`), couvert par le faux serveur des tests du moteur.
 - `supabase.test.ts` : sans env → `getSupabase()` renvoie `null`.
 - `cloud.test.ts` : `fusionnerResultats` (dédup par id, priorité locale, tri,
   `aPousser`) et les fonctions à client injecté (faux client en mémoire).
