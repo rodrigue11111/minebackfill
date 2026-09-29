@@ -164,4 +164,18 @@ describe("backup — import du laboratoire", () => {
     const res = await importerDonnees(fichier({ application: "Autre", schema: 4, data: {} }));
     expect(res.ok).toBe(false);
   });
+
+  it("stockage plein : l'échec des gâchées est rapporté, pas « Import réussi »", async () => {
+    // Avant, persistGachees avalait l'erreur de quota et l'import annonçait
+    // un succès alors que rien n'avait été enregistré.
+    const plein = new MemStorage();
+    plein.setItem = (k: string) => { if (k === "minebackfill_gachees") throw new Error("QuotaExceededError"); };
+    g.localStorage = plein;
+    const res = await importerDonnees(fichier({
+      application: "MineBackfill", schema: 4, exportedAt: "x",
+      data: { gachees: [gachee("g1")] },
+    }));
+    expect(res.ok).toBe(false);
+    expect(res.message).toContain("quota");
+  });
 });

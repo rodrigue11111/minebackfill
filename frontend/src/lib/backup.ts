@@ -11,6 +11,14 @@ import {
 } from "./store";
 import type { Gachee } from "./gachee";
 import type { Protocole } from "./protocole";
+import { ecrireLocal } from "./persisted";
+
+/** Un échec d'écriture interrompt l'import, qui le rapporte (voir le catch).
+ *  Avant, l'échec des gâchées était avalé : « Import réussi » s'affichait
+ *  alors que rien n'avait été enregistré. */
+function ecrireOuEchouer(ok: boolean): void {
+  if (!ok) throw new Error("écriture refusée par le stockage local");
+}
 
 const CLES = {
   saved_results: "minebackfill_saved_results",
@@ -27,7 +35,7 @@ const CLES = {
   protocoles: "minebackfill_protocoles",
 } as const;
 
-// Clés du laboratoire : elles ne passent PAS par lire()/localStorage.setItem.
+// Clés du laboratoire : elles ne passent PAS par lire()/ecrireLocal().
 // Raison : elles sont stockées en enveloppe versionnée {v,data}. lire()
 // renverrait l'enveloppe, donc `Array.isArray` serait faux et la fusion par id
 // impossible. On passe par les accesseurs du store, qui rendent des données
@@ -148,12 +156,12 @@ export async function importerDonnees(fichier: File): Promise<ResultatImport> {
           const nouveaux = (items as Gachee[]).filter(
             (g) => g && typeof g === "object" && !idsExistants.has(g.id),
           );
-          persistGachees([...nouveaux, ...existant]);
+          ecrireOuEchouer(persistGachees([...nouveaux, ...existant]));
           fusionnes += nouveaux.length;
         } else {
           // Les protocoles sont des procédures décidées par l'enseignant :
           // remplacement, comme les autres réglages.
-          persistProtocoles(items as Protocole[]);
+          ecrireOuEchouer(persistProtocoles(items as Protocole[]));
           remplaces += 1;
         }
         continue;
@@ -164,10 +172,10 @@ export async function importerDonnees(fichier: File): Promise<ResultatImport> {
         const nouveaux = importe.filter(
           (e: { id?: string }) => e && typeof e === "object" && !idsExistants.has(e.id),
         );
-        localStorage.setItem(cle, JSON.stringify([...nouveaux, ...existant]));
+        ecrireOuEchouer(ecrireLocal(cle, JSON.stringify([...nouveaux, ...existant])));
         fusionnes += nouveaux.length;
       } else {
-        localStorage.setItem(cle, JSON.stringify(importe));
+        ecrireOuEchouer(ecrireLocal(cle, JSON.stringify(importe)));
         remplaces += 1;
       }
     }

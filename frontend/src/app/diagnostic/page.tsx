@@ -120,6 +120,7 @@ export default function DiagnosticPage() {
     () => (hydrated ? lireStockageLocal() : []),
     [hydrated]
   );
+  const totalKo = Math.round(stockage.reduce((t, e) => t + e.taille_ko, 0) * 10) / 10;
   const navigateur = useMemo(
     () =>
       hydrated
@@ -163,6 +164,7 @@ export default function DiagnosticPage() {
         latence_ms: latenceMs,
       },
       stockage_local: stockage,
+      stockage_total_ko: totalKo,
       navigateur,
     };
     navigator.clipboard
@@ -267,6 +269,11 @@ export default function DiagnosticPage() {
                   ))}
                 </tbody>
               </table>
+              <p style={{ color: "var(--muted-foreground)", fontSize: 12.5, margin: "8px 0 0" }}>
+                Total : <strong>{totalKo.toFixed(1)} Ko</strong>. La plupart des navigateurs
+                plafonnent vers 5 000 Ko par site ; au-delà, les modifications ne sont plus
+                enregistrées et un bandeau rouge l&apos;annonce.
+              </p>
             </div>
           )}
         </div>
