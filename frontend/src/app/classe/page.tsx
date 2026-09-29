@@ -21,7 +21,8 @@ import {
   ajouterAnnotation, lireAnnotationsClasse, lireClasse, lireDocComplet, lireProfils, messageErreurClasse,
   retirerAnnotation, type LigneAnnotation,
 } from "@/lib/classe-reseau";
-import { nomFichier, telechargerBlob } from "@/lib/export-fig";
+import { nomFichier, telechargerBlob, telechargerTexte, versCsv } from "@/lib/export-fig";
+import { lignesCsvEprouvettes, lignesCsvSynthese } from "@/lib/classe-csv";
 import { COULEURS, type RefDoc } from "@/components/classe/commun";
 import TableauEtudiants from "@/components/classe/TableauEtudiants";
 import DetailEtudiant, { type NouvelleAnnotation } from "@/components/classe/DetailEtudiant";
@@ -144,6 +145,12 @@ export default function ClassePage() {
     }
   };
 
+  /** CSV depuis la classe déjà lue (valeurs mesurées ; copies de conflit exclues). */
+  const exporterCsv = (quoi: "eprouvettes" | "synthese") => {
+    const lignesCsv = quoi === "eprouvettes" ? lignesCsvEprouvettes(etudiants, sessions) : lignesCsvSynthese(etudiants, sessions);
+    telechargerTexte(versCsv(lignesCsv), nomFichier(`MineBackfill_classe_${quoi}_${filtreEffectif}`, "csv"), "text/csv;charset=utf-8");
+  };
+
   const conteneur: React.CSSProperties = { maxWidth: 1100, margin: "0 auto", padding: "28px 18px 64px", display: "flex", flexDirection: "column", gap: 16 };
 
   if (!monte) return null;
@@ -186,11 +193,22 @@ export default function ClassePage() {
                 <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => void charger()} disabled={etat === "chargement"}>
                   {etat === "chargement" ? "Lecture…" : "Actualiser"}
                 </button>
-                <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => void exporter()} disabled={exportEnCours || etat !== "pret"}
-                  title="Copie de sauvegarde de la classe (JSON). L'offre gratuite de Supabase n'en fait aucune. À ranger hors de GitHub : elle contient des données d'étudiants.">
-                  {exportEnCours ? "Export…" : "Exporter la classe (JSON)"}
-                </button>
               </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 12.5, color: "#475569" }}>
+              <span style={{ fontWeight: 600 }}>Exporter :</span>
+              <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => exporterCsv("eprouvettes")} disabled={etat !== "pret"}
+                title="Une ligne par éprouvette (valeurs mesurées), pour Excel. Contient des données d'étudiants : à ranger hors de GitHub.">
+                Éprouvettes (CSV)
+              </button>
+              <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => exporterCsv("synthese")} disabled={etat !== "pret"}
+                title="Une ligne par gâchée et par âge : n, moyenne, écart-type, CV des essais retenus de CETTE gâchée.">
+                Synthèse (CSV)
+              </button>
+              <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => void exporter()} disabled={exportEnCours || etat !== "pret"}
+                title="Copie de sauvegarde de la classe (JSON). L'offre gratuite de Supabase n'en fait aucune. À ranger hors de GitHub : elle contient des données d'étudiants.">
+                {exportEnCours ? "Export…" : "Classe (JSON)"}
+              </button>
             </div>
 
             <FiltreSession sessions={sessions} valeur={filtreEffectif} onChange={(v) => { setFiltre(v); setSelId(null); }} />
