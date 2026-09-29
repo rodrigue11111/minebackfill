@@ -1,5 +1,12 @@
 // src/app/guide/page.tsx
 import Link from "next/link";
+import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
+
+// Section « Sauvegarde en ligne » : seulement quand les comptes sont OUVERTS.
+// Page rendue au build, comme ces variables : la section apparaît au
+// redéploiement qui ouvre les comptes (MAINTENANCE.md, recette 9), jamais
+// avant — on ne décrit pas aux étudiants une fonction qu'ils n'ont pas.
+const COMPTES_OUVERTS = !MODE_TEST_SANS_COMPTE && !!process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 /* ── Reusable primitives ── */
 
@@ -265,6 +272,7 @@ export default function GuidePage() {
               ["6", "Lecture des résultats"],
               ["7", "Export Excel"],
               ["8", "Page Formules"],
+              ...(COMPTES_OUVERTS ? [["9", "Sauvegarde en ligne et compte"]] : []),
             ].map(([num, title]) => (
               <div key={num} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", minWidth: 18 }}>{num}.</span>
@@ -716,6 +724,51 @@ export default function GuidePage() {
             Ouvrir la page Formules
           </Link>
         </Card>
+
+        {COMPTES_OUVERTS && (
+          <Card>
+            <SectionTitle>9. Sauvegarde en ligne et compte</SectionTitle>
+            <div style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.65, display: "flex", flexDirection: "column", gap: 10 }}>
+              <p style={{ margin: 0 }}>
+                Avec un compte, <strong>tout votre travail est sauvegardé en ligne</strong> : résultats
+                sauvegardés et gâchées du laboratoire. Vous le retrouvez sur un autre appareil, d&apos;une
+                session à l&apos;autre, et l&apos;enseignant peut le consulter et le commenter.
+              </p>
+              <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
+                <li>
+                  Page <Link href="/compte" style={{ color: "var(--primary)" }}>Compte</Link> → Inscription, avec
+                  votre <strong>prénom et nom</strong> : c&apos;est sous ce nom que l&apos;enseignant voit votre travail.
+                </li>
+                <li>
+                  À la première connexion, si l&apos;appareil contient déjà du travail fait sans compte, un
+                  bandeau propose de le <strong>rattacher</strong> à votre compte : acceptez pour le sauvegarder.
+                </li>
+                <li>
+                  Ensuite, rien à faire : chaque modification part quelques secondes plus tard. La pastille
+                  du bouton Compte indique l&apos;état — <strong>verte</strong> : à jour ; <strong>jaune</strong> : en
+                  attente ; <strong>grise</strong> : hors ligne (tout partira au retour du réseau).
+                </li>
+              </ol>
+              <p style={{ margin: 0 }}>
+                <strong>Deux appareils modifient la même chose en même temps ?</strong> Les deux versions sont
+                gardées ; la vôtre est marquée « copie de conflit » et n&apos;entre pas dans les figures. Gardez
+                la bonne, supprimez l&apos;autre.
+              </p>
+              <p style={{ margin: 0 }}>
+                <strong>Commentaires de l&apos;enseignant</strong> : ils apparaissent sous le résultat
+                (Historique) ou la gâchée (Labo) concernés, visibles de vous seul.
+              </p>
+              <p style={{ margin: 0 }}>
+                <strong>Les courbes de presse restent sur l&apos;appareil</strong> (elles sont volumineuses) :
+                exportez régulièrement une sauvegarde locale (Réglages → Données locales).
+              </p>
+              <p style={{ margin: 0 }}>
+                <strong>Mot de passe oublié ?</strong> Adressez-vous à l&apos;enseignant. Votre travail n&apos;est
+                pas en danger : il est dans votre navigateur et dans votre compte.
+              </p>
+            </div>
+          </Card>
+        )}
 
         {/* ── Footer ── */}
         <div
