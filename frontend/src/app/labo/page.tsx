@@ -6,7 +6,7 @@
 // (slump, température, w, Cw — persistées) et ajustements de l'essai-erreur.
 // Auto-sauvegarde : chaque saisie est persistée immédiatement (localStorage).
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import FiltreSession from "@/components/FiltreSession";
@@ -26,12 +26,15 @@ import {
 import { telechargerTexte, celluleCsv, nomFichier } from "@/lib/export-fig";
 import type { Recipe } from "@/lib/types";
 import {
-  AGES_CURE_DEFAUT, dateCoulee, dateEcheance, joursRestants, classeEcheance,
+  AGES_CURE_DEFAUT, dateCoulee, dateEcheance, classeEcheance,
   genererCodeEprouvette, construireIcs, etiquettesHtml,
   contrainteKpa, agregerParAge,
-  type Eprouvette, type EssaiUCS, type ClasseEcheance, type EvenementIcs, type EtiquetteEprouvette,
+  type Eprouvette, type EssaiUCS, type EvenementIcs, type EtiquetteEprouvette,
 } from "@/lib/eprouvette";
-import { snapshotProtocoles, type Protocole, type ProtocoleFige } from "@/lib/protocole";
+import { snapshotProtocoles, type Protocole } from "@/lib/protocole";
+import { Carte, CarteProtocolesFiges } from "@/components/labo/Carte";
+import { badgeEcheance, fmtDate } from "@/lib/echeance-affichage";
+import { useAujourdhui } from "@/lib/use-aujourdhui";
 import CourbeUCS, { type SerieUCS } from "@/components/labo/CourbeUCS";
 import ImportPresse from "@/components/labo/ImportPresse";
 import AnnotationsDoc from "@/components/AnnotationsDoc";
@@ -82,18 +85,6 @@ function NumInput({
   );
 }
 
-function Carte({ titre, extra, children }: { titre: string; extra?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b" }}>{titre}</span>
-        {extra}
-      </div>
-      <div style={{ padding: "16px" }}>{children}</div>
-    </div>
-  );
-}
-
 function Champ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
@@ -110,13 +101,6 @@ function nouvelId(): string {
   } catch {
     return "g_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
-}
-
-const p2 = (n: number) => String(n).padStart(2, "0");
-
-/** Date affichée AAAA-MM-JJ (non ambigu, local). */
-function fmtDate(d: Date): string {
-  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 }
 
 /** ISO -> valeur d'un <input type="date"> (AAAA-MM-JJ, date LOCALE). */
@@ -169,26 +153,6 @@ function imprimerHtml(html: string): void {
     // pas (Safari iOS, certains webviews) — sinon fuite DOM à chaque impression.
     setTimeout(nettoyer, 60_000);
   }, 200);
-}
-
-const COULEUR_ECHEANCE: Record<ClasseEcheance, string> = {
-  retard: "#dc2626",
-  aujourdhui: "#d97706",
-  proche: "#2563eb",
-  planifie: "#64748b",
-  fait: "#16a34a",
-};
-
-/** Libellé + couleur de l'état d'échéance d'une éprouvette. */
-function badgeEcheance(e: Eprouvette, ref: Date): { texte: string; couleur: string } {
-  const c = classeEcheance(e, ref);
-  const j = joursRestants(e, ref);
-  const texte =
-    c === "fait" ? "écrasée"
-    : c === "aujourdhui" ? "à écraser aujourd'hui"
-    : c === "retard" ? `en retard de ${-j} j`
-    : `dans ${j} j`;
-  return { texte, couleur: COULEUR_ECHEANCE[c] };
 }
 
 /** Saisie de l'essai UCS d'une éprouvette écrasée (contrainte mesurée). */
@@ -896,23 +860,6 @@ function ProtocolesEditeur({ protocoles, onAjouter, onModifier, onSupprimer, onR
   );
 }
 
-/** Protocole FIGÉ d'une gâchée (lecture seule) : la procédure réellement suivie. */
-function CarteProtocolesFiges({ snapshot }: { snapshot: ProtocoleFige[] | undefined }) {
-  if (!snapshot || snapshot.length === 0) return null;
-  return (
-    <Carte titre="Protocole suivi (figé à la création)">
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {snapshot.map((p, i) => (
-          <div key={i}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 3 }}>{p.titre}</div>
-            <div style={{ fontSize: 12.5, color: "#475569", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{p.contenu}</div>
-          </div>
-        ))}
-      </div>
-    </Carte>
-  );
-}
-
 export default function LaboPage() {
   const monte = useHydrated();
   const { gachees, ajouterGachee, modifierGachee, supprimerGachee, savedResults,
@@ -929,26 +876,8 @@ export default function LaboPage() {
   const gacheesSession = gachees.filter((g) =>
     correspond({ sessionId: g.sessionId, date: g.creeLe }, sessions, filtreSession));
 
-  // « Aujourd'hui » pour l'échéancier et les badges. En état (pas en plein
-  // rendu) : le React Compiler figerait un `new Date()` de rendu au premier
-  // appel et l'horloge ne changerait jamais de jour. On ne re-rend qu'au
-  // changement de jour (échéances au jour près), au focus et au retour d'onglet.
-  const [maintenant, setMaintenant] = useState<Date>(() => new Date());
-  useEffect(() => {
-    const tick = () =>
-      setMaintenant((prev) => {
-        const n = new Date();
-        return n.toDateString() === prev.toDateString() ? prev : n;
-      });
-    const id = window.setInterval(tick, 60_000);
-    window.addEventListener("focus", tick);
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      window.clearInterval(id);
-      window.removeEventListener("focus", tick);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, []);
+  // « Aujourd'hui » pour l'échéancier et les badges (voir use-aujourdhui.ts).
+  const maintenant = useAujourdhui();
 
   const formulations = savedResults.filter((s) => (s.recipes?.length ?? 0) > 0);
   const selection = gachees.find((g) => g.id === selId) ?? null;

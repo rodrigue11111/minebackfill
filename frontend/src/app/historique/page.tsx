@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import FiltreSession from "@/components/FiltreSession";
 import AnnotationsDoc from "@/components/AnnotationsDoc";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
-import { useStore, lireBinders, type SavedResult, type RpcMethod } from "@/lib/store";
+import { useStore, type SavedResult } from "@/lib/store";
 import { estVersionCourante } from "@/lib/conventions";
+import { exporterResultat } from "@/lib/exports-resultat";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
 import BackupButtons from "@/components/BackupButtons";
@@ -23,61 +24,12 @@ export default function HistoriquePage() {
   const router = useRouter();
   const { savedResults, loadSavedResults, deleteSavedResult, restoreSavedResult, units, loadUnits } = useStore();
 
-  const binderNameFor = (sr: SavedResult) => (n: number): string =>
-    lireBinders(sr.general)[n - 1]?.code || `Ciment ${n}`;
-
   const recharger = (sr: SavedResult) => {
     if (restoreSavedResult(sr.id)) router.push("/mix");
   };
-  // Avertit avant d'exporter un resultat calcule avec d'anciennes formules
-  // (masses potentiellement incorrectes, cf. correctif (1+Bv)).
-  const confirmerExportObsolete = (sr: SavedResult): boolean => {
-    // Un solverVersion absent = sauvegarde antérieure à l'estampillage (les
-    // plus anciennes, donc les plus suspectes) : on avertit aussi, comme le
-    // badge « anciennes formules » plus bas. Les estampilles des packs
-    // ACTUELS (« intra2017-1.0 », « gramme-1.0 », variantes -personnalise)
-    // sont toutes légitimes — un résultat gramme frais n'est pas obsolète.
-    if (!estVersionCourante(sr.solverVersion)) {
-      return window.confirm(
-        "Ce résultat a été calculé avec une version antérieure des formules ; " +
-        "ses masses peuvent être incorrectes. Exporter quand même ?",
-      );
-    }
-    return true;
-  };
-  const exporterExcel = async (sr: SavedResult) => {
-    if (!confirmerExportObsolete(sr)) return;
-    if (sr.category === "RRC") {
-      if (!sr.rrc) return;
-      const { exportRrcExcel } = await import("@/lib/rrc-export");
-      exportRrcExcel(sr.rrc.result.recipes, sr.general, units);
-      return;
-    }
-    const { exportToExcel } = await import("@/components/mix/ResultsPanel");
-    exportToExcel(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method as RpcMethod, units);
-  };
-  const exporterPdf = async (sr: SavedResult) => {
-    if (!confirmerExportObsolete(sr)) return;
-    if (sr.category === "RRC") {
-      if (!sr.rrc) return;
-      const { exportRrcPdf } = await import("@/lib/rrc-export");
-      exportRrcPdf(sr.rrc.result.recipes, sr.general, units);
-      return;
-    }
-    const { exportToPdf } = await import("@/lib/pdf-report");
-    exportToPdf(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method as RpcMethod, units);
-  };
-  const exporterFeuilleLabo = async (sr: SavedResult) => {
-    if (!confirmerExportObsolete(sr)) return;
-    if (sr.category === "RRC") {
-      if (!sr.rrc) return;
-      const { exportRrcPdf } = await import("@/lib/rrc-export");
-      exportRrcPdf(sr.rrc.result.recipes, sr.general, units);
-      return;
-    }
-    const { exportPreparationPdf } = await import("@/lib/preparation-sheet");
-    exportPreparationPdf(sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method as RpcMethod, units);
-  };
+  const exporterExcel = (sr: SavedResult) => exporterResultat(sr, "excel", units);
+  const exporterPdf = (sr: SavedResult) => exporterResultat(sr, "pdf", units);
+  const exporterFeuilleLabo = (sr: SavedResult) => exporterResultat(sr, "feuille", units);
   const massLabel = MASS_LABELS[units?.mass as keyof typeof MASS_LABELS] ?? "kg";
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
