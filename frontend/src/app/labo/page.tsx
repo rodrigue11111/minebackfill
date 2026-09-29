@@ -1125,7 +1125,17 @@ export default function LaboPage() {
         </div>
 
         {vue === "resultats" ? (
-          <ResultatsUCS gachees={gachees} formulations={formulations} />
+          <>
+            {/* Une copie de conflit est la MÊME gâchée en deux versions : la
+                compter dans les figures doublerait sa mesure. */}
+            {gachees.some((g) => g.conflit) && (
+              <p style={{ fontSize: 12.5, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "8px 12px", margin: "0 0 12px" }}>
+                {gachees.filter((g) => g.conflit).length} copie(s) de conflit exclue(s) des figures : gardez la bonne
+                version de chaque gâchée et supprimez l&apos;autre.
+              </p>
+            )}
+            <ResultatsUCS gachees={gachees.filter((g) => !g.conflit)} formulations={formulations} />
+          </>
         ) : vue === "protocoles" ? (
           <ProtocolesEditeur protocoles={protocoles} onAjouter={ajouterProtocole} onModifier={modifierProtocole} onSupprimer={supprimerProtocole} onReinitialiser={reinitialiserProtocoles} />
         ) : (
@@ -1178,6 +1188,12 @@ export default function LaboPage() {
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {g.conflit && (
+                      <span title={`Version gardée lors d'un conflit de synchronisation (${new Date(g.conflit.le).toLocaleString("fr-CA")}). Exclue des figures.`}
+                        style={{ fontSize: 11.5, fontWeight: 700, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 999, padding: "3px 9px" }}>
+                        Copie de conflit
+                      </span>
+                    )}
                     {hors > 0 && (
                       <span style={{ fontSize: 11.5, fontWeight: 700, color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 999, padding: "3px 9px" }}>
                         {hors} écart{hors > 1 ? "s" : ""} hors tolérance

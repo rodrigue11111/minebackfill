@@ -243,6 +243,14 @@ export default function HistoriquePage() {
                           anciennes formules
                         </span>
                       )}
+                      {sr.conflit && (
+                        <span
+                          title={`Version gardée lors d'un conflit de synchronisation (${new Date(sr.conflit.le).toLocaleString("fr-CA")}) : ce résultat avait été modifié sur deux appareils. Gardez la bonne version et supprimez l'autre.`}
+                          style={{ fontSize: 10, fontWeight: 700, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap", flexShrink: 0 }}
+                        >
+                          copie de conflit
+                        </span>
+                      )}
                     </span>
                     <span
                       style={{

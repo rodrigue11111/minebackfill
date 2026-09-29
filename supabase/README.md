@@ -3,7 +3,8 @@
 MineBackfill fonctionne **à 100 % en local** sans aucune configuration : tout
 est enregistré dans le navigateur (localStorage). Cette couche Supabase ajoute,
 **si elle est configurée**, des comptes étudiants, des catalogues officiels
-publiés par l'enseignant, et la sauvegarde des résultats en ligne.
+publiés par l'enseignant, et la sauvegarde en ligne du travail de chaque
+étudiant (résultats et gâchées), lisible par l'enseignant.
 
 Sans les variables d'environnement `NEXT_PUBLIC_SUPABASE_URL` /
 `NEXT_PUBLIC_SUPABASE_ANON_KEY`, l'application est strictement identique à
@@ -83,20 +84,38 @@ Le pourquoi de chaque choix : `docs/HISTORIQUE_EXTENSIBILITE.md`, section
    l'application n'utilise pas la v2 : la synchronisation v1 ne peut plus
    écrire (table gelée), c'est voulu.
 
-## Limites connues (v1)
+## Synchronisation du travail (v2) — comportement
 
-- **Pas de tombstones de suppression** : supprimer un résultat hors-ligne peut
-  le voir réapparaître à la fusion suivante (le localStorage reste la vérité UI,
-  donc jamais de perte de données). Cas particulier : quand l'**enseignant**
-  supprime de son Historique le résultat d'un étudiant, la suppression est
-  locale seulement (la RLS interdit de toucher aux lignes d'autrui) — il
-  réapparaîtra à la synchronisation suivante.
-- **`production_log` (journal industrie) n'est pas synchronisé** : valeur cloud
-  faible ; la mécanique `saved_results` se généralisera si le besoin se confirme.
-- La couche cloud est **local-first** : toute écriture réussit d'abord en
-  localStorage ; l'échec réseau est silencieux (jamais bloquant).
+- **Local d'abord** : tout s'enregistre d'abord dans le navigateur ; la
+  synchronisation rapproche ensuite local et serveur, sans jamais bloquer la
+  saisie. Envoi 5 s après la dernière modification (30 s au plus), tout de
+  suite quand on quitte l'onglet ; une lecture au retour sur l'onglet et
+  toutes les 10 minutes.
+- **Stockage lié à un compte** : à la première connexion, les données créées
+  sans compte sont rattachées **sur confirmation** (bandeau « Rattacher »). Un
+  autre compte dans le même navigateur : synchronisation refusée, avec
+  explication ; « Délier ce navigateur » (page Compte) permet de changer de
+  compte une fois tout envoyé.
+- **Suppressions explicites** : supprimer un résultat ou une gâchée pose une
+  suppression transmise en ligne. Un document simplement absent (clé vidée,
+  import partiel) n'est JAMAIS pris pour une suppression : il est restauré.
+  Plus de 10 suppressions d'un coup (et plus de 20 % des documents) : elles
+  attendent une confirmation.
+- **Conflits** : modifié sur deux appareils en même temps → les **deux
+  versions** sont gardées ; la copie porte une marque « copie de conflit » et
+  est **exclue des figures** du Labo.
+- **Courbes de presse** : restent sur l'appareil (lourdes). Une version venue
+  d'un autre appareil ne les efface pas.
+- **Déconnexion** : les données locales restent ; les modifications en
+  attente partiront à la prochaine connexion sur cet appareil.
+- **Interrupteur de secours** : `NEXT_PUBLIC_SYNCHRO_V2=false` (Vercel, puis
+  redéployer) coupe la synchronisation du travail sans rien perdre : les
+  données restent sur chaque appareil.
+- **Hors synchronisation** : réglages, constantes, unités, protocoles, journal
+  de production (chaque résultat fige déjà son contexte, chaque gâchée ses
+  protocoles).
 
-## Garde-fous de synchronisation
+## Garde-fous des catalogues officiels
 
 - **L'enseignant est la source des catalogues officiels** : chez lui, la
   synchronisation ne ré-applique PAS la copie cloud (ses modifications locales
@@ -105,34 +124,38 @@ Le pourquoi de chaque choix : `docs/HISTORIQUE_EXTENSIBILITE.md`, section
 - **Publications invalides ignorées** : une ligne de catalogue vide, malformée
   ou écrite par une version PLUS RÉCENTE de l'application n'est pas appliquée
   par les clients (validation + migration par version de l'enveloppe `{v,data}`).
-- **Anti-réattribution** : chaque résultat porte son propriétaire (`ownerId`) ;
-  un résultat appartenant à quelqu'un d'autre (navigateur partagé, import de
-  sauvegarde, revue de l'enseignant) n'est jamais poussé sous le compte courant.
-- **Lecture bornée à 5 000 résultats** par synchronisation (PostgREST tronque
-  silencieusement à 1 000 sans limite explicite).
 
-## Vérification manuelle (checklist)
+## Vérification manuelle (checklist, sur la préproduction)
 
 La CI est hermétique (aucune env Supabase → tous les chemins cloud sont morts,
-`pnpm build` prouve le mode 100 % local à chaque exécution). Les scénarios
-réseau ci-dessous se vérifient à la main contre un projet Supabase réel :
+`pnpm build` prouve le mode 100 % local à chaque exécution). Le moteur et le
+SQL sont testés automatiquement (ci-dessous) ; restent à vérifier à la main,
+contre le projet de préproduction, avec un aperçu Vercel où
+`NEXT_PUBLIC_MODE_TEST_SANS_COMPTE=false` :
 
-1. **Sans env** → l'application est strictement identique à aujourd'hui (lien
-   « Compte » masqué, aucun appel réseau).
-2. **Inscription étudiant** → sauvegarder un résultat → il apparaît dans
-   *Table Editor → saved_results*.
-3. **Second navigateur** (autre session) → connexion → les résultats du premier
-   apparaissent (fusion), et inversement.
-4. **Publication enseignant** : éditer un liant officiel dans Réglages →
-   « Publier en ligne » → un étudiant recharge → catalogue à jour, ses entrées
-   perso intactes.
-5. **RLS** : un étudiant tente un `update` sur `official_catalogs` via la console
-   JS (`supabase.from('official_catalogs').update(...)`) → 0 ligne affectée.
-6. **Suppression** d'un résultat → disparu localement ET dans `saved_results`.
-7. **Déconnexion** → les données locales restent intactes (mode local intégral).
+1. **Sans env** → l'application est strictement identique (lien « Compte »
+   masqué, aucun appel réseau).
+2. **Rattachement** : créer un résultat et une gâchée sans compte, puis se
+   connecter → bandeau « Rattacher » → ils apparaissent dans *Table Editor →
+   user_docs*.
+3. **Deux navigateurs, même compte** : une modification faite dans l'un
+   apparaît dans l'autre (au retour sur l'onglet ou via « Synchroniser
+   maintenant »).
+4. **Conflit** : couper le réseau des deux côtés (outils de développement →
+   Network → Offline), modifier la même gâchée, rétablir → deux versions,
+   l'une marquée « copie de conflit », absente des figures du Labo.
+5. **Suppression** : supprimer d'un côté → disparaît de l'autre ; jamais de
+   retour.
+6. **Hors ligne** : pastille grise, puis rattrapage au retour du réseau.
+7. **Autre compte** dans le même navigateur → bandeau d'explication, aucune
+   écriture.
+8. **Publication enseignant** : éditer un liant officiel dans Réglages →
+   « Publier en ligne » → un étudiant recharge → catalogue à jour.
+9. **RLS** (SQL Editor, voir `schema-sql.test.ts` pour la liste complète) :
+   Advisors → Security sans alerte.
+10. **Déconnexion** → les données locales restent intactes.
 
-Non testable en CI (auth réelle, effectivité des politiques RLS, délivrabilité
-email, pause du projet) : couvert par cette checklist.
+Non testable en CI : auth réelle, délivrabilité email, pause du projet.
 
 ## Ce qui est testé automatiquement (vitest, sans réseau)
 
@@ -147,5 +170,10 @@ email, pause du projet) : couvert par cette checklist.
   150 opérations aléatoires sur trois). Hors de portée : PostgREST lui-même
   (format JSON, `max_rows`), couvert par le faux serveur des tests du moteur.
 - `supabase.test.ts` : sans env → `getSupabase()` renvoie `null`.
-- `cloud.test.ts` : `fusionnerResultats` (dédup par id, priorité locale, tri,
-  `aPousser`) et les fonctions à client injecté (faux client en mémoire).
+- `sync-moteur.test.ts` : le moteur de synchronisation contre un faux serveur
+  qui reproduit `schema.sql` (conflits, suppressions, réponses perdues,
+  pagination, propriété sur 300 opérations aléatoires).
+- `sync-local.test.ts`, `sync-supabase.test.ts`, `sync-planificateur.test.ts`,
+  `sync-etat.test.ts` : stockage local (courbes gardées), appels RPC et
+  classement des erreurs, calendrier des cycles, état persistant.
+- `cloud.test.ts` : catalogues officiels (lecture, publication).

@@ -41,6 +41,21 @@ update public.profiles set role = 'prof' where email = 'SON_EMAIL';
 Elle se déconnecte/reconnecte. (Le rôle n'est modifiable QUE par ce SQL —
 c'est voulu, aucun étudiant ne peut se promouvoir.)
 
+### Un étudiant a oublié son mot de passe
+Connecté, chacun change son mot de passe depuis la page « Compte ». Pour un
+mot de passe **oublié**, le lien de réinitialisation par courriel exige un
+serveur de courriel (SMTP) configuré dans Supabase : le serveur intégré
+n'écrit qu'aux membres de l'équipe du projet. Tant qu'il n'y en a pas,
+dépannage par l'enseignant : supabase.com → SQL Editor →
+```sql
+update auth.users
+   set encrypted_password = extensions.crypt('MotDePasseTemporaire-2026', extensions.gen_salt('bf'))
+ where email = 'COURRIEL_DE_L_ETUDIANT';
+```
+Communiquer ce mot de passe temporaire en personne ; l'étudiant le change
+aussitôt depuis « Compte ». **Son travail n'est jamais en danger** : il reste
+dans son navigateur, et en ligne dans son compte.
+
 ### Publier des matériaux/constantes à la classe
 Connecté avec un compte enseignant : Réglages → modifier les entrées
 officielles → « Publier en ligne » sur chaque carte. Les étudiants reçoivent

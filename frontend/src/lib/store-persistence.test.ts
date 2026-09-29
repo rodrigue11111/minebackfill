@@ -13,6 +13,8 @@ class MemStorage {
 }
 
 import { useStore } from "./store";
+import { chargerEtatSync, sauverEtatSync } from "./sync-etat";
+import { etatInitial } from "./sync-moteur";
 
 function resetTout() {
   (globalThis as unknown as { window: unknown }).window = globalThis;
@@ -294,5 +296,25 @@ describe("store — gâchées et protocoles (persistance labo)", () => {
     useStore.getState().loadProtocoles();
     expect(useStore.getState().protocoles.find((x) => x.id === id)?.contenu)
       .toBe("Procédure révisée 2026.");
+  });
+});
+
+describe("store — suppressions transmises à la synchronisation v2", () => {
+  it("compte lié : supprimer un résultat ou une gâchée pose une suppression explicite", () => {
+    sauverEtatSync({ ...etatInitial(), uid: "u1" });
+    seedResultatRpc();
+    useStore.getState().saveCurrentResult("A");
+    const id = useStore.getState().savedResults[0].id;
+    useStore.getState().deleteSavedResult(id);
+    useStore.getState().ajouterGachee({ id: "g1", code: "G-1", creeLe: "x", statut: "brouillon", formulationLabel: "", categorie: "RPC", recetteIndex: 0, composants: [], tolerancePct: 2, ajustements: [], eprouvettes: [] });
+    useStore.getState().supprimerGachee("g1");
+    expect(chargerEtatSync().suppressions).toEqual({ [`resultat:${id}`]: true, "gachee:g1": true });
+  });
+
+  it("sans compte lié : supprimer reste purement local", () => {
+    seedResultatRpc();
+    useStore.getState().saveCurrentResult("A");
+    useStore.getState().deleteSavedResult(useStore.getState().savedResults[0].id);
+    expect(chargerEtatSync().suppressions).toEqual({});
   });
 });

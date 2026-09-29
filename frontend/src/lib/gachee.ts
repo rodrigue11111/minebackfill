@@ -78,6 +78,11 @@ export interface Gachee {
 
   // Instantané FIGÉ des protocoles suivis (procédures au moment de la gâchée).
   protocolesSnapshot?: ProtocoleFige[];
+
+  // Copie de conflit (synchronisation v2) : modifiée ici pendant qu'un autre
+  // appareil la modifiait aussi. Les deux versions sont gardées ; celle-ci est
+  // EXCLUE des figures (sinon la même gâchée compterait deux fois).
+  conflit?: { de: string; le: string };
 }
 
 function num(v: number | null | undefined): number {

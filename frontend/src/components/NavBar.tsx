@@ -2,10 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSyncExternalStore } from "react";
 import { APP_NAME, PORTAIL_LABEL, PORTAIL_URL } from "@/lib/branding";
 import { useStore } from "@/lib/store";
 import { cloudConfigure } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
+import { abonnerSync, instantaneSync, instantaneSyncServeur, type InstantaneSync } from "@/lib/sync-client";
+
+/** Pastille de la sauvegarde en ligne : couleur et libellé (infobulle). */
+function pastilleSynchro(s: InstantaneSync): { couleur: string; libelle: string } | null {
+  if (s.liaison !== "synchroniser") return null;
+  switch (s.statut) {
+    case "a_jour": return { couleur: "#22c55e", libelle: "Sauvegarde en ligne : à jour" };
+    case "en_cours": return { couleur: "#60a5fa", libelle: "Sauvegarde en ligne : en cours" };
+    case "en_attente": return { couleur: "#fbbf24", libelle: `Sauvegarde en ligne : ${s.enAttente} modification(s) en attente` };
+    case "hors_ligne": return { couleur: "#94a3b8", libelle: "Hors ligne : vos modifications partiront au retour du réseau" };
+    case "pause": return { couleur: "#f87171", libelle: "Sauvegarde en ligne en pause (activité anormale), reprise automatique" };
+    case "erreur": return { couleur: "#f87171", libelle: "Sauvegarde en ligne : erreur — voir la page Compte" };
+    default: return null;
+  }
+}
 
 // Le module Industrie (« /industrie ») a été retiré de la navigation le
 // 2026-09-27, à la demande de l'enseignant. La page et ses composants restent
@@ -33,6 +49,8 @@ export default function NavBar() {
   // qu'après l'hydratation client, et seulement si la synchronisation en ligne
   // est configurée.
   const afficherCompte = useHydrated() && cloudConfigure();
+  const synchro = useSyncExternalStore(abonnerSync, instantaneSync, instantaneSyncServeur);
+  const pastille = session ? pastilleSynchro(synchro) : null;
 
   return (
     <nav
@@ -243,7 +261,9 @@ export default function NavBar() {
       {afficherCompte && (
         <Link
           href="/compte"
-          title={session ? `${session.email} (${session.role === "prof" ? "Enseignant" : "Étudiant"})` : "Se connecter"}
+          title={session
+            ? `${session.email} (${session.role === "prof" ? "Enseignant" : "Étudiant"})${pastille ? ` — ${pastille.libelle}` : ""}`
+            : "Se connecter"}
           style={{
             display: "flex", alignItems: "center", gap: 7, marginLeft: 12,
             padding: "4px 10px 4px 6px", borderRadius: 999,
@@ -265,6 +285,10 @@ export default function NavBar() {
           <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.8)", whiteSpace: "nowrap" }}>
             {session ? (session.role === "prof" ? "Prof" : "Compte") : "Compte"}
           </span>
+          {pastille && (
+            <span aria-label={pastille.libelle}
+              style={{ width: 8, height: 8, borderRadius: "50%", background: pastille.couleur, flexShrink: 0 }} />
+          )}
         </Link>
       )}
     </nav>
