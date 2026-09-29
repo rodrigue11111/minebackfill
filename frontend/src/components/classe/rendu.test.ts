@@ -14,6 +14,8 @@ import VueDocument from "./VueDocument";
 import TableauEtudiants from "./TableauEtudiants";
 import DetailEtudiant from "./DetailEtudiant";
 import FigureClasse from "./FigureClasse";
+import OngletComparaison from "./OngletComparaison";
+import { comparerClasse } from "@/lib/classe-comparaison";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";
 const profils: ProfilClasse[] = [{ id: A, email: "alice@x.ca", display_name: "Alice Tremblay", role: "etudiant" }];
@@ -105,5 +107,18 @@ describe("vues de l'enseignant — rendu", () => {
     expect(detail).toContain("Ouvrir");
     expect(detail).toContain("1/3 essai(s) valide(s)");
     expect(rendu(createElement(FigureClasse, { etudiants, couleurDe }))).toContain("UCS mesurée de la classe");
+  });
+
+  it("comparaison : une ligne par gâchée, repère étiqueté, sinon message", () => {
+    const B = "bbbbbbbb-0000-4000-8000-000000000002";
+    const g2 = { ...gachee, id: "g2", code: "G-20260911-01", parametres: { cwPct: 75.2, bwPct: 5 }, eprouvettes: [{ ...gachee.eprouvettes[0], id: "x1", code: "G-20260911-01-E01", essai: { contrainteKpaSaisie: 500 } }] };
+    const classe = regrouper([ligne("resultat", resultat), ligne("gachee", gachee), { ...ligne("gachee", g2), proprietaire: B }],
+      [...profils, { id: B, email: null, display_name: "Bruno", role: "etudiant" }], [], "toutes");
+    const html = rendu(createElement(OngletComparaison, { comparaison: comparerClasse(classe), onOuvrir: () => {} }));
+    expect(html).toContain("RPC · Cw 75 % · Bw 5 %");
+    expect(html).toContain("G-20260911-01");
+    expect(html).toContain("pas de repère de dispersion");
+    const vide = rendu(createElement(OngletComparaison, { comparaison: comparerClasse(etudiants), onOuvrir: () => {} }));
+    expect(vide).toContain("au moins deux étudiants");
   });
 });

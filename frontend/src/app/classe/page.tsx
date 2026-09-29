@@ -27,6 +27,11 @@ import TableauEtudiants from "@/components/classe/TableauEtudiants";
 import DetailEtudiant, { type NouvelleAnnotation } from "@/components/classe/DetailEtudiant";
 import FigureClasse from "@/components/classe/FigureClasse";
 import VueDocument, { type EtatDoc } from "@/components/classe/VueDocument";
+import Onglets from "@/components/classe/Onglets";
+import OngletComparaison from "@/components/classe/OngletComparaison";
+import { comparerClasse } from "@/lib/classe-comparaison";
+
+type CleOnglet = "etudiants" | "comparaison";
 
 export default function ClassePage() {
   const monte = useHydrated();
@@ -44,6 +49,7 @@ export default function ClassePage() {
   const [selId, setSelId] = useState<string | null>(null);
   const [exportEnCours, setExportEnCours] = useState(false);
   const [doc, setDoc] = useState<EtatDoc | null>(null);
+  const [onglet, setOnglet] = useState<CleOnglet>("etudiants");
   const jetonDoc = useRef(0);
   const defilement = useRef<HTMLDivElement>(null);
 
@@ -86,6 +92,7 @@ export default function ClassePage() {
     [lignes, profils, sessions, filtreEffectif],
   );
   const couleurDe = new Map(etudiants.map((e, i) => [e.id, COULEURS[i % COULEURS.length]]));
+  const comparaison = useMemo(() => comparerClasse(etudiants), [etudiants]);
 
   /** Ouvre un document en entier : relu en ligne (la classe est allégée). */
   const ouvrirDoc = (ref: RefDoc) => {
@@ -196,12 +203,21 @@ export default function ClassePage() {
 
             {etat === "pret" && (
               <>
-                <TableauEtudiants etudiants={etudiants} annotations={annotations} selId={selId} onChoisir={setSelId} couleurDe={couleurDe} />
-                {sel && (
-                  <DetailEtudiant etudiant={sel} annotations={annotations} lignes={lignes}
-                    onAnnoter={annoter(sel.id)} onRetirer={retirer} onOuvrir={ouvrirDoc} />
+                <Onglets<CleOnglet> actif={onglet} onChoisir={setOnglet} onglets={[
+                  { cle: "etudiants", label: "Étudiants", compte: etudiants.length },
+                  { cle: "comparaison", label: "Comparaison", compte: comparaison.groupes.length },
+                ]} />
+                {onglet === "etudiants" && (
+                  <>
+                    <TableauEtudiants etudiants={etudiants} annotations={annotations} selId={selId} onChoisir={setSelId} couleurDe={couleurDe} />
+                    {sel && (
+                      <DetailEtudiant etudiant={sel} annotations={annotations} lignes={lignes}
+                        onAnnoter={annoter(sel.id)} onRetirer={retirer} onOuvrir={ouvrirDoc} />
+                    )}
+                    <FigureClasse etudiants={etudiants} couleurDe={couleurDe} />
+                  </>
                 )}
-                <FigureClasse etudiants={etudiants} couleurDe={couleurDe} />
+                {onglet === "comparaison" && <OngletComparaison comparaison={comparaison} onOuvrir={ouvrirDoc} />}
               </>
             )}
           </>
