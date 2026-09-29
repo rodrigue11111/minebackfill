@@ -13,6 +13,8 @@ import { publierCatalogue, type CatalogueCloudId } from "@/lib/cloud";
 import { estOfficiel } from "@/lib/materials";
 import MaterialCatalogueCard from "@/components/MaterialCatalogueCard";
 import BackupButtons from "@/components/BackupButtons";
+import SessionsCard from "@/components/SessionsCard";
+import type { Session } from "@/lib/sessions";
 
 export default function ReglagesPage() {
   const {
@@ -55,6 +57,12 @@ export default function ReglagesPage() {
     const items = catalogue_liants.filter((l) => l.origine === "officiel");
     const { error } = await publierCatalogue(sb, "liants", { v: CATALOGUE_VERSION, data: items }, session.userId);
     window.alert(error ? `Publication impossible : ${error}` : "Catalogue de liants publié en ligne.");
+  };
+  const publierSessions = async (sessions: Session[]) => {
+    const sb = getSupabase();
+    if (!sb || !session) return;
+    const { error } = await publierCatalogue(sb, "sessions", { v: 1, data: sessions }, session.userId);
+    window.alert(error ? `Publication impossible : ${error}` : "Sessions publiées en ligne.");
   };
   const publierConstantes = async () => {
     const sb = getSupabase();
@@ -358,6 +366,8 @@ export default function ReglagesPage() {
             { key: "dosage_d0_ml_100kg", label: "Dosage D0 (ml/100 kg)", type: "number" },
           ]}
         />
+
+        <SessionsCard vueAdmin={vueAdmin} peutPublier={isProf} onPublier={publierSessions} />
 
         {/* ── Unit preferences ── */}
         <div className="form-card" style={{ marginTop: 20 }}>

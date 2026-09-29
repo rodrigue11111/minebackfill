@@ -83,6 +83,9 @@ export interface Gachee {
   // appareil la modifiait aussi. Les deux versions sont gardées ; celle-ci est
   // EXCLUE des figures (sinon la même gâchée compterait deux fois).
   conflit?: { de: string; le: string };
+
+  // Session de cours active à la création (sessions publiées par l'enseignant).
+  sessionId?: string;
 }
 
 function num(v: number | null | undefined): number {

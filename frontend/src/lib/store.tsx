@@ -7,6 +7,8 @@ import { ecrireLocal, loadVersioned, persistVersioned } from "./persisted";
 import { marquerSuppressionLocale } from "./sync-etat";
 import type { Gachee } from "./gachee";
 import { protocolesDefaut, type Protocole } from "./protocole";
+import { sessionActive, validerSessions, type Session } from "./sessions";
+import type { Annotation } from "./annotations";
 import { descriptorFor } from "./method-registry";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
@@ -377,6 +379,8 @@ export interface SavedResult {
    * l'instant du conflit. Absent = document ordinaire.
    */
   conflit?: { de: string; le: string };
+  /** Session de cours active à la sauvegarde (sessions publiées par l'enseignant). */
+  sessionId?: string;
 }
 
 /* ── localStorage helpers (SSR-safe) ── */
@@ -430,6 +434,36 @@ export function loadProtocolesFromStorage(): Protocole[] {
 }
 export function persistProtocoles(items: Protocole[]): boolean {
   return persistVersioned(PROTOCOLES_KEY, PROTOCOLES_VERSION, items);
+}
+
+// ── Sessions de cours (publiées par l'enseignant ; sessions.ts) ──
+const SESSIONS_KEY = "minebackfill_sessions";
+const SESSIONS_VERSION = 1;
+
+export function loadSessionsFromStorage(): Session[] {
+  return validerSessions(loadVersioned<unknown>(SESSIONS_KEY, SESSIONS_VERSION, (d) => d, []));
+}
+export function persistSessions(items: Session[]): boolean {
+  return persistVersioned(SESSIONS_KEY, SESSIONS_VERSION, items);
+}
+
+// ── Annotations de l'enseignant sur MON travail (lues en ligne) ──
+// Copie locale pour les lire hors ligne. HORS sauvegarde : elles
+// appartiennent au serveur et se relisent à la connexion suivante.
+export const ANNOTATIONS_KEY = "minebackfill_annotations";
+const ANNOTATIONS_VERSION = 1;
+
+export interface EtatAnnotations {
+  curseur: { maj: string; id: string } | null;
+  annotations: Annotation[];
+}
+
+export function loadAnnotationsFromStorage(): EtatAnnotations {
+  const e = loadVersioned<EtatAnnotations | null>(ANNOTATIONS_KEY, ANNOTATIONS_VERSION, (d) => d as EtatAnnotations, null);
+  return e && Array.isArray(e.annotations) ? e : { curseur: null, annotations: [] };
+}
+export function persistAnnotations(e: EtatAnnotations): boolean {
+  return persistVersioned(ANNOTATIONS_KEY, ANNOTATIONS_VERSION, e);
 }
 
 const UNITS_KEY = "minebackfill_unit_prefs";
@@ -603,6 +637,16 @@ interface AppState {
   ajouterGachee: (g: Gachee) => void;
   modifierGachee: (id: string, patch: Partial<Gachee>) => void;
   supprimerGachee: (id: string) => void;
+
+  // Annotations de l'enseignant sur mon travail (copie locale, lecture seule).
+  annotations: Annotation[];
+  loadAnnotations: () => void;
+
+  // Sessions de cours : rangent le travail d'une année à l'autre.
+  sessions: Session[];
+  loadSessions: () => void;
+  /** Remplace la liste (édition par l'enseignant, ou copie publiée reçue). */
+  definirSessions: (items: Session[]) => void;
 
   // Protocoles de laboratoire (éditables, figés par gâchée).
   protocoles: Protocole[];
@@ -1339,9 +1383,13 @@ export const useStore = create<AppState>((set, get) => ({
   loadGachees: () => set({ gachees: loadGacheesFromStorage() }),
   ajouterGachee: (g) =>
     set(() => {
+      // Une nouvelle gâchée prend la session de cours active (si l'enseignant
+      // en a publié une qui couvre aujourd'hui).
+      const avecSession = g.sessionId !== undefined ? g
+        : { ...g, sessionId: sessionActive(loadSessionsFromStorage(), new Date())?.id };
       // Défensif : on repart du stockage juste avant d'écrire (jamais partir
       // d'un état mémoire non hydraté -> perte de données).
-      const updated = [g, ...loadGacheesFromStorage().filter((x) => x.id !== g.id)];
+      const updated = [avecSession, ...loadGacheesFromStorage().filter((x) => x.id !== g.id)];
       persistGachees(updated);
       return { gachees: updated };
     }),
@@ -1356,6 +1404,18 @@ export const useStore = create<AppState>((set, get) => ({
       const updated = loadGacheesFromStorage().filter((g) => g.id !== id);
       if (persistGachees(updated)) marquerSuppressionLocale("gachee", id);
       return { gachees: updated };
+    }),
+
+  annotations: [],
+  loadAnnotations: () => set({ annotations: loadAnnotationsFromStorage().annotations }),
+
+  sessions: [],
+  loadSessions: () => set({ sessions: loadSessionsFromStorage() }),
+  definirSessions: (items) =>
+    set(() => {
+      const valides = validerSessions(items);
+      persistSessions(valides);
+      return { sessions: valides };
     }),
 
   protocoles: protocolesDefaut(),
@@ -1433,8 +1493,10 @@ export const useStore = create<AppState>((set, get) => ({
       // Version estampillée selon le pack de convention actif (le snapshot
       // `constantes` reste la vraie garantie de reproductibilité).
       solverVersion: solverVersionActive(state.constantes),
-      // Propriétaire cloud si connecté (anti-réattribution à la fusion).
+      // Propriétaire cloud si connecté (information locale, jamais envoyée).
       ownerId: state.session?.userId,
+      // Session de cours active (range le travail d'une année à l'autre).
+      sessionId: sessionActive(loadSessionsFromStorage(), new Date())?.id,
       catalogue_liants: state.catalogue_liants.map((l) => ({ ...l })),
       constantes: { ...state.constantes },
       selectedMaterials: materiauxUtilises(),

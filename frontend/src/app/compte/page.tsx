@@ -82,6 +82,48 @@ function ChangerMotDePasse() {
   );
 }
 
+/** Nom affiché, modifiable (via definir_nom : cette colonne et rien d'autre). */
+function NomAffiche() {
+  const session = useStore((s) => s.session);
+  const setSession = useStore((s) => s.setSession);
+  const [edition, setEdition] = useState<string | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+  if (!session) return null;
+
+  const enregistrer = async () => {
+    const sb = getSupabase();
+    if (!sb || edition === null) return;
+    const valeur = edition.trim();
+    if (valeur.length > 80) { setErreur("80 caractères au plus."); return; }
+    const { error } = await sb.rpc("definir_nom", { p_nom: valeur });
+    if (error) { setErreur(`Enregistrement impossible (${error.code ?? error.message}).`); return; }
+    setSession({ ...session, displayName: valeur || null });
+    setEdition(null);
+    setErreur(null);
+  };
+
+  if (edition === null) {
+    return (
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+        <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>{session.displayName || "Nom non renseigné"}</p>
+        <button type="button" onClick={() => setEdition(session.displayName ?? "")}
+          style={{ fontSize: 12, color: "var(--primary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+          Modifier
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <input type="text" className="field-input" style={{ flex: "1 1 180px" }} maxLength={80} value={edition}
+        onChange={(e) => setEdition(e.target.value)} placeholder="Prénom Nom" autoComplete="name" />
+      <button type="button" className="btn-primary" style={{ fontSize: 12.5 }} onClick={() => void enregistrer()}>Enregistrer</button>
+      <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => { setEdition(null); setErreur(null); }}>Annuler</button>
+      {erreur && <div style={{ fontSize: 12.5, color: "var(--danger)", width: "100%" }}>{erreur}</div>}
+    </div>
+  );
+}
+
 /** État de la sauvegarde en ligne du travail, et ses deux commandes. */
 function EtatSynchro() {
   const s = useSyncExternalStore(abonnerSync, instantaneSync, instantaneSyncServeur);
@@ -146,6 +188,7 @@ export default function ComptePage() {
   const monte = useHydrated();
   const [mode, setMode] = useState<"connexion" | "inscription">("connexion");
   const [email, setEmail] = useState("");
+  const [nom, setNom] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -164,7 +207,11 @@ export default function ComptePage() {
     setInfo(null);
     try {
       if (mode === "inscription") {
-        const { error } = await sb.auth.signUp({ email, password: motDePasse });
+        // Le nom part dans les métadonnées d'inscription ; le serveur n'en lit
+        // QUE ce champ (handle_new_user), jamais un rôle.
+        const { error } = await sb.auth.signUp({
+          email, password: motDePasse, options: { data: { display_name: nom.trim() } },
+        });
         if (error) throw error;
         setInfo("Compte créé. Vous pouvez vous connecter.");
         setMode("connexion");
@@ -229,7 +276,8 @@ export default function ComptePage() {
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
               Connecté
             </div>
-            <p style={{ fontSize: 15, fontWeight: 600 }}>{session.email}</p>
+            <NomAffiche />
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>{session.email}</p>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>
               Rôle : {session.role === "prof" ? "Enseignant" : "Étudiant"}
             </p>
@@ -267,6 +315,15 @@ export default function ComptePage() {
               ))}
             </div>
             <form onSubmit={soumettre} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {mode === "inscription" && (
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
+                    Prénom et nom (visible par l&apos;enseignant)
+                  </label>
+                  <input type="text" required maxLength={80} className="field-input" value={nom}
+                    autoComplete="name" onChange={(e) => setNom(e.target.value)} placeholder="Prénom Nom" />
+                </div>
+              )}
               <div>
                 <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>Courriel</label>
                 <input type="email" required className="field-input" value={email}

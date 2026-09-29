@@ -33,6 +33,7 @@ const CLES = {
   catalogue_retardateurs: "minebackfill_catalogue_retardateurs",
   gachees: "minebackfill_gachees",
   protocoles: "minebackfill_protocoles",
+  sessions: "minebackfill_sessions",
 } as const;
 
 // Clés du laboratoire : elles ne passent PAS par lire()/ecrireLocal().
@@ -65,9 +66,11 @@ function deballer(x: unknown): unknown[] | null {
 // v4 : laboratoire — gâchées (avec éprouvettes et essais UCS) et protocoles.
 //      Jusqu'ici ces mesures n'étaient NI exportées NI synchronisées : une
 //      campagne d'écrasements sur 91 jours n'avait aucune copie.
+// v5 : sessions de cours publiées par l'enseignant (réglage : remplacé à
+//      l'import, comme les protocoles).
 // Une sauvegarde d'une version antérieure reste importable — les clés absentes
 // sont simplement ignorées (voir importerDonnees).
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 interface Backup {
   application: string;

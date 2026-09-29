@@ -318,3 +318,25 @@ describe("store — suppressions transmises à la synchronisation v2", () => {
     expect(chargerEtatSync().suppressions).toEqual({});
   });
 });
+
+describe("store — sessions de cours", () => {
+  it("un nouveau résultat et une nouvelle gâchée portent la session active", () => {
+    const auj = new Date();
+    const jour = (d: Date) => d.toISOString().slice(0, 10);
+    const debut = new Date(auj.getTime() - 30 * 86400000);
+    const fin = new Date(auj.getTime() + 30 * 86400000);
+    useStore.getState().definirSessions([{ id: "S1", nom: "Session test", debut: jour(debut), fin: jour(fin) }]);
+    seedResultatRpc();
+    useStore.getState().saveCurrentResult("A");
+    expect(useStore.getState().savedResults[0].sessionId).toBe("S1");
+    useStore.getState().ajouterGachee({ id: "g9", code: "G-9", creeLe: auj.toISOString(), statut: "brouillon", formulationLabel: "", categorie: "RPC", recetteIndex: 0, composants: [], tolerancePct: 2, ajustements: [], eprouvettes: [] });
+    expect(useStore.getState().gachees[0].sessionId).toBe("S1");
+  });
+
+  it("sans session active : aucun champ ajouté", () => {
+    useStore.getState().definirSessions([]);
+    seedResultatRpc();
+    useStore.getState().saveCurrentResult("B");
+    expect(useStore.getState().savedResults[0].sessionId).toBeUndefined();
+  });
+});

@@ -51,6 +51,10 @@ export default function NavBar() {
   const afficherCompte = useHydrated() && cloudConfigure();
   const synchro = useSyncExternalStore(abonnerSync, instantaneSync, instantaneSyncServeur);
   const pastille = session ? pastilleSynchro(synchro) : null;
+  // Le tableau de bord de la classe n'existe que pour l'enseignant connecté.
+  const liens = session?.role === "prof"
+    ? [...NAV_LINKS.slice(0, 6), { href: "/classe", label: "Classe", step: null }, ...NAV_LINKS.slice(6)]
+    : NAV_LINKS;
 
   return (
     <nav
@@ -132,12 +136,12 @@ export default function NavBar() {
 
       {/* ── Navigation links ── */}
       <div className="nav-links" style={{ display: "flex", gap: 2, alignItems: "center", flex: 1 }}>
-        {NAV_LINKS.map((link, idx) => {
+        {liens.map((link, idx) => {
           const active = pathname === link.href;
           const isWorkflow = link.step !== null;
 
           // Divider before utility links
-          const prevIsWorkflow = idx > 0 && NAV_LINKS[idx - 1].step !== null;
+          const prevIsWorkflow = idx > 0 && liens[idx - 1].step !== null;
           const showDivider = !isWorkflow && prevIsWorkflow;
 
           return (

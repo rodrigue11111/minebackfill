@@ -9,7 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CatalogueCloudId =
-  | "liants" | "residus" | "granulats" | "retardateurs" | "constantes";
+  | "liants" | "residus" | "granulats" | "retardateurs" | "constantes" | "sessions";
 
 /** Enveloppe versionnée, identique au format de persisted.ts. */
 export interface EnveloppeVersionnee<T = unknown> {

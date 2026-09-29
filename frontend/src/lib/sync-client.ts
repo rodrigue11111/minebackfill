@@ -10,8 +10,11 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  loadGacheesFromStorage, loadSavedFromStorage, persistGachees, persistSaved, useStore,
+  loadAnnotationsFromStorage, loadGacheesFromStorage, loadSavedFromStorage,
+  persistAnnotations, persistGachees, persistSaved, useStore,
 } from "./store";
+import { fusionnerAnnotations } from "./annotations";
+import { lireMesAnnotations } from "./classe-reseau";
 import {
   cycle, deciderLiaison, etatInitial, nombreEnAttente,
   type Avis, type DepotLocal, type Liaison, type ResultatCycle, type Transport,
@@ -44,11 +47,14 @@ export interface InstantaneSync {
   avis: Avis[];
   /** Documents locaux concernés par un rattachement. */
   anonymes: { resultats: number; gachees: number };
+  /** Commentaires de l'enseignant arrivés depuis l'ouverture (bandeau). */
+  nouvellesAnnotations: number;
 }
 
 const INITIAL: InstantaneSync = {
   liaison: null, reporte: false, statut: "inactif", enAttente: 0,
   derniereReussite: null, erreur: null, avis: [], anonymes: { resultats: 0, gachees: 0 },
+  nouvellesAnnotations: 0,
 };
 
 let instantane: InstantaneSync = INITIAL;
@@ -117,6 +123,31 @@ function compterAnonymes(depot: DepotLocal): InstantaneSync["anonymes"] {
   return { resultats, gachees };
 }
 
+/** Annotations : au plus une lecture toutes les 5 minutes (quota gratuit). */
+const PERIODE_ANNOTATIONS_MS = 300000;
+let derniereLectureAnnotations = -Infinity;
+
+async function rafraichirAnnotations(c: Courant): Promise<void> {
+  derniereLectureAnnotations = Date.now();
+  const avant = loadAnnotationsFromStorage();
+  try {
+    const r = await lireMesAnnotations(c.sb, c.uid, avant.curseur);
+    if (r.annotations.length === 0) return;
+    const annotations = fusionnerAnnotations(avant.annotations, r.annotations);
+    persistAnnotations({ curseur: r.curseur, annotations });
+    useStore.setState({ annotations });
+    const connues = new Set(avant.annotations.map((a) => a.id));
+    const nouvelles = annotations.filter((a) => !connues.has(a.id)).length;
+    if (nouvelles > 0) publier({ nouvellesAnnotations: instantane.nouvellesAnnotations + nouvelles });
+  } catch {
+    /* lecture en échec : on réessaiera au prochain cycle — jamais « aucune annotation » */
+  }
+}
+
+export function vuNouvellesAnnotations(): void {
+  publier({ nouvellesAnnotations: 0 });
+}
+
 function resultatVide(aRelancer: boolean): ResultatCycle {
   return { etat: chargerEtatSync(), avis: [], erreur: null, lus: 0, envoyes: 0, aRelancer };
 }
@@ -139,6 +170,9 @@ async function executerCycle(c: Courant, budget: number): Promise<ResultatCycle>
       enAttente: nombreEnAttente(fin, c.depot.lister()),
       ...(r.avis.length > 0 ? { avis: [...instantane.avis, ...r.avis].slice(-20) } : {}),
     });
+    if (!r.erreur && Date.now() - derniereLectureAnnotations >= PERIODE_ANNOTATIONS_MS) {
+      await rafraichirAnnotations(c);
+    }
     return { ...r, etat: fin };
   };
   // Un seul onglet synchronise à la fois. Simple économie : la justesse
@@ -221,6 +255,7 @@ export function connecterSynchro(sb: SupabaseClient, uid: string): void {
 export function deconnecterSynchro(): void {
   courant?.debrancher();
   courant = null;
+  derniereLectureAnnotations = -Infinity;
   publier({ ...INITIAL });
 }
 
@@ -281,9 +316,12 @@ export function delier(): { ok: true } | { ok: false; raison: string } {
   const okG = persistGachees(loadGacheesFromStorage().filter((g) => !enLigne.has(`gachee:${g.id}`)));
   if (!okR || !okG) return { ok: false, raison: "Le stockage du navigateur a refusé l'écriture." };
   sauverEtatSync(etatInitial());
+  // Les annotations appartiennent au compte délié.
+  persistAnnotations({ curseur: null, annotations: [] });
   const s = useStore.getState();
   s.loadSavedResults();
   s.loadGachees();
+  s.loadAnnotations();
   deconnecterSynchro();
   return { ok: true };
 }

@@ -68,11 +68,11 @@ function exporte(): { schema: number; data: Record<string, unknown> } {
   return JSON.parse(texteExporte);
 }
 
-describe("backup — export du laboratoire (schéma 4)", () => {
+describe("backup — export du laboratoire (schémas 4 et 5)", () => {
   it("le fichier porte les gâchées et les protocoles", () => {
     localStorage.setItem("minebackfill_gachees", JSON.stringify({ v: 2, data: [gachee("g1")] }));
     const b = exporte();
-    expect(b.schema).toBe(4);
+    expect(b.schema).toBe(5);
     expect(Array.isArray(b.data.gachees)).toBe(true);
     expect((b.data.gachees as { id: string }[])[0].id).toBe("g1");
     // Les protocoles sont semés par défaut quand la clé est absente.
@@ -177,5 +177,18 @@ describe("backup — import du laboratoire", () => {
     }));
     expect(res.ok).toBe(false);
     expect(res.message).toContain("quota");
+  });
+});
+
+describe("backup — sessions de cours (schéma 5)", () => {
+  it("exportées puis restaurées telles quelles", async () => {
+    const env = { v: 1, data: [{ id: "A2026", nom: "Automne 2026", debut: "2026-09-01", fin: "2026-12-23" }] };
+    localStorage.setItem("minebackfill_sessions", JSON.stringify(env));
+    const b = exporte();
+    expect(b.data.sessions).toEqual(env);
+    localStorage.removeItem("minebackfill_sessions");
+    const res = await importerDonnees(fichier({ application: "MineBackfill", schema: 5, exportedAt: "x", data: { sessions: env } }));
+    expect(res.ok).toBe(true);
+    expect(JSON.parse(localStorage.getItem("minebackfill_sessions")!)).toEqual(env);
   });
 });

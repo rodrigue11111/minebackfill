@@ -9,6 +9,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import FiltreSession from "@/components/FiltreSession";
+import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useHydrated } from "@/lib/use-hydrated";
 import { fmt } from "@/lib/format";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
@@ -32,6 +34,7 @@ import {
 import { snapshotProtocoles, type Protocole, type ProtocoleFige } from "@/lib/protocole";
 import CourbeUCS, { type SerieUCS } from "@/components/labo/CourbeUCS";
 import ImportPresse from "@/components/labo/ImportPresse";
+import AnnotationsDoc from "@/components/AnnotationsDoc";
 
 const inputStyle: React.CSSProperties = {
   width: "100%", minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 6, padding: "9px 11px",
@@ -903,6 +906,12 @@ export default function LaboPage() {
   const [formId, setFormId] = useState<string>("");
   const [recIndex, setRecIndex] = useState(0);
   const [vue, setVue] = useState<"gachees" | "resultats" | "protocoles">("gachees");
+  // Filtre de session : la liste et les figures. L'échéancier, lui, montre
+  // TOUTES les éprouvettes à écraser — on ne doit en manquer aucune.
+  const sessions = useStore((s) => s.sessions);
+  const [filtreSession, setFiltreSession] = useState<FiltreSessionValeur>("toutes");
+  const gacheesSession = gachees.filter((g) =>
+    correspond({ sessionId: g.sessionId, date: g.creeLe }, sessions, filtreSession));
 
   // « Aujourd'hui » pour l'échéancier et les badges. En état (pas en plein
   // rendu) : le React Compiler figerait un `new Date()` de rendu au premier
@@ -995,6 +1004,7 @@ export default function LaboPage() {
               Formulation : <strong>{g.formulationLabel}</strong> · {g.categorie}
               {g.solverVersion ? ` · solveur ${g.solverVersion}` : ""}
             </p>
+            <AnnotationsDoc kind="gachee" id={g.id} />
           </div>
 
           {/* Pesées cibles vs réelles */}
@@ -1109,6 +1119,11 @@ export default function LaboPage() {
           )}
         </div>
 
+        {vue !== "protocoles" && (
+          <FiltreSession sessions={sessions} valeur={filtreSession} onChange={setFiltreSession}
+            compte={filtreSession === "toutes" ? undefined : `${gacheesSession.length} gâchée(s) sur ${gachees.length}`} />
+        )}
+
         {/* Sélecteur de vue */}
         <div style={{ display: "flex", gap: 6, background: "#eef2f7", padding: 4, borderRadius: 10, alignSelf: "flex-start", flexWrap: "wrap" }}>
           {([["gachees", "Gâchées"], ["resultats", "Résultats UCS"], ["protocoles", "Protocoles"]] as const).map(([cle, label]) => {
@@ -1128,13 +1143,13 @@ export default function LaboPage() {
           <>
             {/* Une copie de conflit est la MÊME gâchée en deux versions : la
                 compter dans les figures doublerait sa mesure. */}
-            {gachees.some((g) => g.conflit) && (
+            {gacheesSession.some((g) => g.conflit) && (
               <p style={{ fontSize: 12.5, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "8px 12px", margin: "0 0 12px" }}>
-                {gachees.filter((g) => g.conflit).length} copie(s) de conflit exclue(s) des figures : gardez la bonne
+                {gacheesSession.filter((g) => g.conflit).length} copie(s) de conflit exclue(s) des figures : gardez la bonne
                 version de chaque gâchée et supprimez l&apos;autre.
               </p>
             )}
-            <ResultatsUCS gachees={gachees.filter((g) => !g.conflit)} formulations={formulations} />
+            <ResultatsUCS gachees={gacheesSession.filter((g) => !g.conflit)} formulations={formulations} />
           </>
         ) : vue === "protocoles" ? (
           <ProtocolesEditeur protocoles={protocoles} onAjouter={ajouterProtocole} onModifier={modifierProtocole} onSupprimer={supprimerProtocole} onReinitialiser={reinitialiserProtocoles} />
@@ -1172,11 +1187,13 @@ export default function LaboPage() {
 
         <Echeancier gachees={gachees} maintenant={maintenant} onOuvrir={(id) => setSelId(id)} />
 
-        {gachees.length === 0 ? (
-          <p style={{ fontSize: 13.5, color: "#94a3b8", textAlign: "center", padding: "24px 0" }}>Aucune gâchée pour l&apos;instant.</p>
+        {gacheesSession.length === 0 ? (
+          <p style={{ fontSize: 13.5, color: "#94a3b8", textAlign: "center", padding: "24px 0" }}>
+            {gachees.length === 0 ? "Aucune gâchée pour l'instant." : "Aucune gâchée dans cette session."}
+          </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {gachees.map((g, i) => {
+            {gacheesSession.map((g, i) => {
               const hors = nbHorsTolerance(g);
               return (
                 <button key={g.id} type="button" onClick={() => setSelId(g.id)}

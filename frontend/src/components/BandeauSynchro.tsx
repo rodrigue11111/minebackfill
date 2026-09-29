@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store";
 import type { Avis } from "@/lib/sync-moteur";
 import {
   abonnerSync, annulerSuppressions, confirmerSuppressions, instantaneSync, instantaneSyncServeur,
-  rattacher, reporterRattachement, retirerAvis,
+  rattacher, reporterRattachement, retirerAvis, vuNouvellesAnnotations,
 } from "@/lib/sync-client";
 
 /**
@@ -77,6 +77,20 @@ export default function BandeauSynchro() {
           reconnectez-vous avec le compte d&apos;origine, puis « Délier ce navigateur » dans{" "}
           <Link href="/compte" style={{ color: "inherit", fontWeight: 700 }}>Compte</Link>.
         </span>
+      </div>,
+    );
+  }
+
+  if (s.nouvellesAnnotations > 0) {
+    const n = s.nouvellesAnnotations;
+    elements.push(
+      <div key="annotations" role="status" style={boite("#eef2ff", "#c7d2fe", "#3730a3")}>
+        <span>
+          L&apos;enseignant a laissé {n} nouveau{n > 1 ? "x" : ""} commentaire{n > 1 ? "s" : ""} sur votre
+          travail : ouvrez vos résultats dans l&apos;<Link href="/historique" style={{ color: "inherit", fontWeight: 700 }}>Historique</Link>{" "}
+          ou vos gâchées dans le <Link href="/labo" style={{ color: "inherit", fontWeight: 700 }}>Labo</Link>.
+        </span>
+        <button type="button" className="btn-secondary" style={bouton} onClick={() => vuNouvellesAnnotations()}>Fermer</button>
       </div>,
     );
   }

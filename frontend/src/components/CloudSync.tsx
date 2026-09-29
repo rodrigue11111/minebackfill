@@ -6,6 +6,7 @@ import type { MaterialKind } from "@/lib/materials";
 import { getSupabase, type UserRole } from "@/lib/supabase";
 import { fetchCatalogueOfficiel, type CatalogueCloudId } from "@/lib/cloud";
 import { connecterSynchro, deconnecterSynchro } from "@/lib/sync-client";
+import { validerSessions } from "@/lib/sessions";
 
 const MATERIAL_KINDS: { id: CatalogueCloudId; kind: MaterialKind }[] = [
   { id: "residus", kind: "residus" },
@@ -31,13 +32,14 @@ export default function CloudSync() {
       // « etudiant » (jamais d'escalade), mais on le SIGNALE en console :
       // un échec silencieux ici a déjà coûté un long diagnostic.
       const { data: profil, error: erreurProfil } = await sb
-        .from("profiles").select("role").eq("id", userId).maybeSingle();
+        .from("profiles").select("role, display_name").eq("id", userId).maybeSingle();
       if (erreurProfil) {
         console.warn("MineBackfill : lecture du profil impossible —", erreurProfil.message);
       }
-      const role = ((profil as { role?: UserRole } | null)?.role ?? "etudiant") as UserRole;
+      const p = profil as { role?: UserRole; display_name?: string | null } | null;
+      const role = (p?.role ?? "etudiant") as UserRole;
       if (annule) return;
-      useStore.getState().setSession({ userId, email, role });
+      useStore.getState().setSession({ userId, email, role, displayName: p?.display_name ?? null });
 
       // 2) Catalogues officiels : remplacent la couche officielle locale.
       // - PAS pour le prof : il est la SOURCE des officiels — ré-appliquer la
@@ -56,6 +58,13 @@ export default function CloudSync() {
             const items = migrerMateriauxCloud(await fetchCatalogueOfficiel(sb, id));
             if (annule) return;
             if (items) useStore.getState().hydraterMateriauxOfficielsCloud(kind, items);
+          }
+          // Sessions de cours : la liste publiée remplace la copie locale. Une
+          // enveloppe d'une version inconnue (client plus récent) est ignorée.
+          const sessions = await fetchCatalogueOfficiel(sb, "sessions");
+          if (annule) return;
+          if (sessions?.v === 1 && Array.isArray(sessions.data)) {
+            useStore.getState().definirSessions(validerSessions(sessions.data));
           }
         } catch {
           /* catalogue illisible : on continue — le travail reste synchronisé */

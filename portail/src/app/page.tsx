@@ -84,6 +84,7 @@ export default function PortailPage() {
   const [pret, setPret] = useState(false); // session initiale résolue
   const [mode, setMode] = useState<"connexion" | "inscription">("connexion");
   const [email, setEmail] = useState("");
+  const [nom, setNom] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -113,7 +114,11 @@ export default function PortailPage() {
     setInfo(null);
     try {
       if (mode === "inscription") {
-        const { error } = await sb.auth.signUp({ email, password: motDePasse });
+        // Même compte que MineBackfill : le nom affiché est celui que voit
+        // l'enseignant. Le serveur ne lit QUE ce champ des métadonnées.
+        const { error } = await sb.auth.signUp({
+          email, password: motDePasse, options: { data: { display_name: nom.trim() } },
+        });
         if (error) throw error;
         setInfo("Compte créé. Vous pouvez vous connecter.");
         setMode("connexion");
@@ -260,6 +265,23 @@ export default function PortailPage() {
               ))}
             </div>
             <form onSubmit={soumettre} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {mode === "inscription" && (
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>
+                    Prénom et nom (visible par l&apos;enseignant)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={80}
+                    className="field-input"
+                    value={nom}
+                    autoComplete="name"
+                    onChange={(e) => setNom(e.target.value)}
+                    placeholder="Prénom Nom"
+                  />
+                </div>
+              )}
               <div>
                 <label style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>
                   Courriel
