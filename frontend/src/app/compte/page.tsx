@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { getSupabase, cloudConfigure } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
+import { messageErreurAuth } from "@/lib/auth-messages";
 import {
   abonnerSync, delier, instantaneSync, instantaneSyncServeur, synchroniserMaintenant,
   type InstantaneSync,
@@ -170,23 +171,19 @@ function EtatSynchro() {
   );
 }
 
-// Traduction des messages d'erreur Supabase les plus courants.
-function messageErreur(brut: string): string {
-  const m = brut.toLowerCase();
-  if (m.includes("invalid login")) return "Courriel ou mot de passe incorrect.";
-  if (m.includes("already registered") || m.includes("already been registered"))
-    return "Ce courriel a déjà un compte. Connectez-vous.";
-  if (m.includes("password should be at least"))
-    return "Le mot de passe doit contenir au moins 6 caractères.";
-  if (m.includes("email") && m.includes("invalid")) return "Courriel invalide.";
-  if (m.includes("confirm")) return "Compte à confirmer (vérifiez la configuration « Confirm email »).";
-  return brut;
+// Traduction des messages d'erreur de Supabase (auth-messages.ts, testé).
+function messageErreur(brut: string, code?: string | null): string {
+  return messageErreurAuth(brut, code);
 }
 
 export default function ComptePage() {
   const session = useStore((s) => s.session);
   const monte = useHydrated();
-  const [mode, setMode] = useState<"connexion" | "inscription">("connexion");
+  // « oubli » : demande d'un lien de réinitialisation. Le portail y renvoie
+  // avec ?oubli=1 (mêmes comptes). Lu au premier rendu CLIENT : cette partie
+  // de la page n'est affichée qu'après l'hydratation, pas de décalage serveur.
+  const [mode, setMode] = useState<"connexion" | "inscription" | "oubli">(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).has("oubli") ? "oubli" : "connexion");
   const [email, setEmail] = useState("");
   const [nom, setNom] = useState("");
   const [enseignant, setEnseignant] = useState(false);
@@ -208,7 +205,16 @@ export default function ComptePage() {
     setErreur(null);
     setInfo(null);
     try {
-      if (mode === "inscription") {
+      if (mode === "oubli") {
+        // Le lien ramène sur une page de l'application, où l'on choisit le
+        // nouveau mot de passe. Même réponse qu'un compte existe ou non : on
+        // ne révèle pas quelles adresses ont un compte.
+        const { error } = await sb.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/compte/nouveau-mot-de-passe`,
+        });
+        if (error) throw error;
+        setInfo("Si un compte existe pour cette adresse, un courriel vient d'être envoyé avec un lien pour choisir un nouveau mot de passe. Pensez à regarder dans les courriels indésirables.");
+      } else if (mode === "inscription") {
         // Le nom part dans les métadonnées d'inscription ; le serveur n'en lit
         // QUE ce champ (handle_new_user), jamais un rôle.
         // Code enseignant : vérifié par le SERVEUR (empreinte en base), puis
@@ -226,7 +232,8 @@ export default function ComptePage() {
         // La session/rôle sont renseignés par CloudSync (onAuthStateChange).
       }
     } catch (err) {
-      setErreur(messageErreur(err instanceof Error ? err.message : String(err)));
+      const code = (err as { code?: string } | null)?.code ?? null;
+      setErreur(messageErreur(err instanceof Error ? err.message : String(err), code));
     } finally {
       setLoading(false);
     }
@@ -309,7 +316,7 @@ export default function ComptePage() {
                   onClick={() => { setMode(m); setErreur(null); setInfo(null); }}
                   style={{
                     flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 13, fontWeight: 600,
-                    border: `1.5px solid ${mode === m ? "var(--primary)" : "var(--border)"}`,
+                    border: `1.5px solid ${mode === m || (mode === "oubli" && m === "connexion") ? "var(--primary)" : "var(--border)"}`,
                     background: mode === m ? "var(--primary)" : "#fff",
                     color: mode === m ? "#fff" : "#374151", cursor: "pointer",
                   }}
@@ -319,6 +326,12 @@ export default function ComptePage() {
               ))}
             </div>
             <form onSubmit={soumettre} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {mode === "oubli" && (
+                <p style={{ fontSize: 13, color: "#475569", margin: 0, lineHeight: 1.5 }}>
+                  Mot de passe oublié : indiquez votre courriel, vous recevrez un lien pour en
+                  choisir un nouveau. Votre travail n&apos;est pas touché.
+                </p>
+              )}
               {mode === "inscription" && (
                 <div>
                   <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
@@ -348,12 +361,20 @@ export default function ComptePage() {
                   autoComplete="email"
                   onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.ca" />
               </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>Mot de passe</label>
-                <input type="password" required className="field-input" value={motDePasse}
-                  autoComplete={mode === "inscription" ? "new-password" : "current-password"}
-                  onChange={(e) => setMotDePasse(e.target.value)} placeholder="••••••••" />
-              </div>
+              {mode !== "oubli" && (
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>Mot de passe</label>
+                  <input type="password" required className="field-input" value={motDePasse}
+                    autoComplete={mode === "inscription" ? "new-password" : "current-password"}
+                    onChange={(e) => setMotDePasse(e.target.value)} placeholder="••••••••" />
+                  {mode === "connexion" && (
+                    <button type="button" onClick={() => { setMode("oubli"); setErreur(null); setInfo(null); }}
+                      style={{ marginTop: 6, background: "none", border: "none", padding: 0, fontSize: 12, color: "var(--primary)", cursor: "pointer" }}>
+                      Mot de passe oublié ?
+                    </button>
+                  )}
+                </div>
+              )}
               {erreur && (
                 <div style={{ fontSize: 12.5, color: "var(--danger)", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "8px 12px" }}>
                   {erreur}
@@ -365,8 +386,14 @@ export default function ComptePage() {
                 </div>
               )}
               <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: 4 }}>
-                {loading ? "…" : mode === "connexion" ? "Se connecter" : "Créer le compte"}
+                {loading ? "…" : mode === "connexion" ? "Se connecter" : mode === "oubli" ? "Envoyer le lien" : "Créer le compte"}
               </button>
+              {mode === "oubli" && (
+                <button type="button" onClick={() => { setMode("connexion"); setErreur(null); setInfo(null); }}
+                  style={{ background: "none", border: "none", padding: 0, fontSize: 12.5, color: "var(--primary)", cursor: "pointer" }}>
+                  ← Retour à la connexion
+                </button>
+              )}
             </form>
           </div>
         )}

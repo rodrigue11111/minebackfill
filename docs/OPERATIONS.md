@@ -52,11 +52,15 @@ Elle se déconnecte/reconnecte. (Le rôle ne se change QUE par ce SQL ou un
 code vérifié par le serveur — aucun étudiant ne peut se promouvoir.)
 
 ### Un étudiant a oublié son mot de passe
-Connecté, chacun change son mot de passe depuis la page « Compte ». Pour un
-mot de passe **oublié**, le lien de réinitialisation par courriel exige un
-serveur de courriel (SMTP) configuré dans Supabase : le serveur intégré
-n'écrit qu'aux membres de l'équipe du projet. Tant qu'il n'y en a pas,
-dépannage par l'enseignant : supabase.com → SQL Editor →
+**Il se débrouille seul** : page Compte → « Mot de passe oublié ? » → il reçoit
+un courriel avec un lien pour en choisir un nouveau. Condition : le serveur de
+courriel (SMTP) configuré dans Supabase, une fois pour toutes (voir
+`supabase/README.md`, « Mot de passe oublié ») ; sans lui, l'application
+annonce que l'envoi n'est pas configuré. Connecté, chacun change aussi son mot
+de passe depuis la page Compte.
+
+Dépannage sans courriel (SMTP pas encore en place, adresse erronée) :
+supabase.com → SQL Editor →
 ```sql
 update auth.users
    set encrypted_password = extensions.crypt('MotDePasseTemporaire-2026', extensions.gen_salt('bf'))
