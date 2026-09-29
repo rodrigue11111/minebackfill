@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useStore } from "@/lib/store";
+import { deplacerCourbesStockees } from "@/lib/courbes-client";
 
 /**
  * Hydrate l'état du store depuis localStorage une fois, au montage global de
@@ -21,6 +22,8 @@ export default function StoreHydrator() {
     loadProductionLog,
     loadGachees,
     loadProtocoles,
+    loadSessions,
+    loadAnnotations,
   } = useStore();
 
   useEffect(() => {
@@ -34,6 +37,12 @@ export default function StoreHydrator() {
     loadProductionLog();
     loadGachees();
     loadProtocoles();
+    loadSessions();
+    loadAnnotations();
+    // Courbes de presse encore rangées dans les gâchées (imports antérieurs) :
+    // déplacées dans IndexedDB, ce qui libère le stockage local. Sans effet
+    // si elles le sont déjà, ou si le navigateur n'a pas IndexedDB.
+    void deplacerCourbesStockees();
   }, [
     loadGeneral,
     loadConstantes,
@@ -45,6 +54,8 @@ export default function StoreHydrator() {
     loadProductionLog,
     loadGachees,
     loadProtocoles,
+    loadSessions,
+    loadAnnotations,
   ]);
 
   // Synchronisation multi-onglets : l'événement `storage` ne se déclenche que
@@ -56,6 +67,8 @@ export default function StoreHydrator() {
         case "minebackfill_saved_results": loadSavedResults(); break;
         case "minebackfill_gachees": loadGachees(); break;
         case "minebackfill_protocoles": loadProtocoles(); break;
+        case "minebackfill_sessions": loadSessions(); break;
+        case "minebackfill_annotations": loadAnnotations(); break;
         case "minebackfill_binder_prices": loadBinderPrices(); break;
         case "minebackfill_production_log": loadProductionLog(); break;
         case "minebackfill_unit_prefs": loadUnits(); break;
@@ -80,6 +93,8 @@ export default function StoreHydrator() {
     loadProductionLog,
     loadGachees,
     loadProtocoles,
+    loadSessions,
+    loadAnnotations,
   ]);
 
   return null;

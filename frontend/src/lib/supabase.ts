@@ -183,4 +183,6 @@ export interface CloudSession {
   userId: string;
   email: string | null;
   role: UserRole;
+  /** Nom affiché (profiles.display_name) : c'est lui que voit l'enseignant. */
+  displayName?: string | null;
 }

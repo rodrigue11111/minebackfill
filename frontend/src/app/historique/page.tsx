@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import FiltreSession from "@/components/FiltreSession";
+import AnnotationsDoc from "@/components/AnnotationsDoc";
+import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useStore, lireBinders, type SavedResult, type RpcMethod } from "@/lib/store";
 import { estVersionCourante } from "@/lib/conventions";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
@@ -78,6 +81,10 @@ export default function HistoriquePage() {
   const massLabel = MASS_LABELS[units?.mass as keyof typeof MASS_LABELS] ?? "kg";
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const sessions = useStore((s) => s.sessions);
+  const [filtreSession, setFiltreSession] = useState<FiltreSessionValeur>("toutes");
+  const visibles = savedResults.filter((sr) =>
+    correspond({ sessionId: sr.sessionId, date: sr.savedAt }, sessions, filtreSession));
 
   useEffect(() => {
     loadSavedResults();
@@ -178,6 +185,10 @@ export default function HistoriquePage() {
           </div>
         ) : (
           <div className="historique-table">
+          <div style={{ marginBottom: 12 }}>
+            <FiltreSession sessions={sessions} valeur={filtreSession} onChange={setFiltreSession}
+              compte={filtreSession === "toutes" ? undefined : `${visibles.length} sur ${savedResults.length}`} />
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {/* ── Table header ── */}
             <div
@@ -203,7 +214,7 @@ export default function HistoriquePage() {
             </div>
 
             {/* ── Rows ── */}
-            {savedResults.map((sr: SavedResult) => {
+            {visibles.map((sr: SavedResult) => {
               const isExpanded = expandedId === sr.id;
               const date = new Date(sr.savedAt);
               const dateStr = date.toLocaleDateString("fr-CA");
@@ -241,6 +252,14 @@ export default function HistoriquePage() {
                           style={{ fontSize: 10, fontWeight: 700, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap", flexShrink: 0 }}
                         >
                           anciennes formules
+                        </span>
+                      )}
+                      {sr.conflit && (
+                        <span
+                          title={`Version gardée lors d'un conflit de synchronisation (${new Date(sr.conflit.le).toLocaleString("fr-CA")}) : ce résultat avait été modifié sur deux appareils. Gardez la bonne version et supprimez l'autre.`}
+                          style={{ fontSize: 10, fontWeight: 700, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap", flexShrink: 0 }}
+                        >
+                          copie de conflit
                         </span>
                       )}
                     </span>
@@ -330,6 +349,7 @@ export default function HistoriquePage() {
                         padding: 16,
                       }}
                     >
+                      <AnnotationsDoc kind="resultat" id={sr.id} />
                       {/* Actions */}
                       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
                         <button className="btn-primary" style={{ padding: "6px 14px", fontSize: 12.5 }}

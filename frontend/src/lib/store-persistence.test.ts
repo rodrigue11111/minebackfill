@@ -13,6 +13,8 @@ class MemStorage {
 }
 
 import { useStore } from "./store";
+import { chargerEtatSync, sauverEtatSync } from "./sync-etat";
+import { etatInitial } from "./sync-moteur";
 
 function resetTout() {
   (globalThis as unknown as { window: unknown }).window = globalThis;
@@ -294,5 +296,47 @@ describe("store — gâchées et protocoles (persistance labo)", () => {
     useStore.getState().loadProtocoles();
     expect(useStore.getState().protocoles.find((x) => x.id === id)?.contenu)
       .toBe("Procédure révisée 2026.");
+  });
+});
+
+describe("store — suppressions transmises à la synchronisation v2", () => {
+  it("compte lié : supprimer un résultat ou une gâchée pose une suppression explicite", () => {
+    sauverEtatSync({ ...etatInitial(), uid: "u1" });
+    seedResultatRpc();
+    useStore.getState().saveCurrentResult("A");
+    const id = useStore.getState().savedResults[0].id;
+    useStore.getState().deleteSavedResult(id);
+    useStore.getState().ajouterGachee({ id: "g1", code: "G-1", creeLe: "x", statut: "brouillon", formulationLabel: "", categorie: "RPC", recetteIndex: 0, composants: [], tolerancePct: 2, ajustements: [], eprouvettes: [] });
+    useStore.getState().supprimerGachee("g1");
+    expect(chargerEtatSync().suppressions).toEqual({ [`resultat:${id}`]: true, "gachee:g1": true });
+  });
+
+  it("sans compte lié : supprimer reste purement local", () => {
+    seedResultatRpc();
+    useStore.getState().saveCurrentResult("A");
+    useStore.getState().deleteSavedResult(useStore.getState().savedResults[0].id);
+    expect(chargerEtatSync().suppressions).toEqual({});
+  });
+});
+
+describe("store — sessions de cours", () => {
+  it("un nouveau résultat et une nouvelle gâchée portent la session active", () => {
+    const auj = new Date();
+    const jour = (d: Date) => d.toISOString().slice(0, 10);
+    const debut = new Date(auj.getTime() - 30 * 86400000);
+    const fin = new Date(auj.getTime() + 30 * 86400000);
+    useStore.getState().definirSessions([{ id: "S1", nom: "Session test", debut: jour(debut), fin: jour(fin) }]);
+    seedResultatRpc();
+    useStore.getState().saveCurrentResult("A");
+    expect(useStore.getState().savedResults[0].sessionId).toBe("S1");
+    useStore.getState().ajouterGachee({ id: "g9", code: "G-9", creeLe: auj.toISOString(), statut: "brouillon", formulationLabel: "", categorie: "RPC", recetteIndex: 0, composants: [], tolerancePct: 2, ajustements: [], eprouvettes: [] });
+    expect(useStore.getState().gachees[0].sessionId).toBe("S1");
+  });
+
+  it("sans session active : aucun champ ajouté", () => {
+    useStore.getState().definirSessions([]);
+    seedResultatRpc();
+    useStore.getState().saveCurrentResult("B");
+    expect(useStore.getState().savedResults[0].sessionId).toBeUndefined();
   });
 });

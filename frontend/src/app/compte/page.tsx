@@ -1,10 +1,174 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { getSupabase, cloudConfigure } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
+import {
+  abonnerSync, delier, instantaneSync, instantaneSyncServeur, synchroniserMaintenant,
+  type InstantaneSync,
+} from "@/lib/sync-client";
+
+const LIBELLES_STATUT: Record<InstantaneSync["statut"], string> = {
+  inactif: "Inactive",
+  a_jour: "À jour",
+  en_attente: "Modifications en attente d'envoi",
+  en_cours: "Synchronisation en cours…",
+  hors_ligne: "Hors ligne — nouvel essai automatique",
+  erreur: "Erreur",
+  pause: "En pause (activité anormale) — reprise automatique dans 10 min",
+};
+
+/**
+ * Changer son mot de passe, connecté. (« Mot de passe oublié » exige un
+ * serveur de courriel configuré dans Supabase : le serveur intégré n'écrit
+ * qu'aux membres de l'équipe du projet. Voir docs/OPERATIONS.md.)
+ */
+function ChangerMotDePasse() {
+  const [ouvert, setOuvert] = useState(false);
+  const [mdp, setMdp] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [etat, setEtat] = useState<{ type: "ok" | "erreur"; texte: string } | null>(null);
+  const [occupe, setOccupe] = useState(false);
+
+  const soumettre = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEtat(null);
+    if (mdp.length < 8) { setEtat({ type: "erreur", texte: "Au moins 8 caractères." }); return; }
+    if (mdp !== confirmation) { setEtat({ type: "erreur", texte: "Les deux saisies ne correspondent pas." }); return; }
+    const sb = getSupabase();
+    if (!sb) return;
+    setOccupe(true);
+    const { error } = await sb.auth.updateUser({ password: mdp });
+    setOccupe(false);
+    if (error) {
+      const m = error.message.toLowerCase();
+      setEtat({
+        type: "erreur",
+        texte: m.includes("reauthentication") || m.includes("recent")
+          ? "Par sécurité, reconnectez-vous puis réessayez."
+          : m.includes("different") || m.includes("same")
+            ? "Le nouveau mot de passe doit différer de l'ancien."
+            : messageErreur(error.message),
+      });
+      return;
+    }
+    setMdp(""); setConfirmation("");
+    setEtat({ type: "ok", texte: "Mot de passe changé." });
+  };
+
+  if (!ouvert) {
+    return (
+      <button type="button" className="btn-secondary" style={{ fontSize: 12.5, marginTop: 10 }} onClick={() => setOuvert(true)}>
+        Changer le mot de passe
+      </button>
+    );
+  }
+  return (
+    <form onSubmit={soumettre} style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+      <input type="password" className="field-input" placeholder="Nouveau mot de passe" autoComplete="new-password"
+        value={mdp} onChange={(e) => setMdp(e.target.value)} />
+      <input type="password" className="field-input" placeholder="Confirmer le nouveau mot de passe" autoComplete="new-password"
+        value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
+      {etat && (
+        <div style={{ fontSize: 12.5, color: etat.type === "ok" ? "var(--success)" : "var(--danger)" }}>{etat.texte}</div>
+      )}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="submit" className="btn-primary" style={{ fontSize: 12.5 }} disabled={occupe}>{occupe ? "…" : "Enregistrer"}</button>
+        <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => { setOuvert(false); setEtat(null); }}>Annuler</button>
+      </div>
+    </form>
+  );
+}
+
+/** Nom affiché, modifiable (via definir_nom : cette colonne et rien d'autre). */
+function NomAffiche() {
+  const session = useStore((s) => s.session);
+  const setSession = useStore((s) => s.setSession);
+  const [edition, setEdition] = useState<string | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+  if (!session) return null;
+
+  const enregistrer = async () => {
+    const sb = getSupabase();
+    if (!sb || edition === null) return;
+    const valeur = edition.trim();
+    if (valeur.length > 80) { setErreur("80 caractères au plus."); return; }
+    const { error } = await sb.rpc("definir_nom", { p_nom: valeur });
+    if (error) { setErreur(`Enregistrement impossible (${error.code ?? error.message}).`); return; }
+    setSession({ ...session, displayName: valeur || null });
+    setEdition(null);
+    setErreur(null);
+  };
+
+  if (edition === null) {
+    return (
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+        <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>{session.displayName || "Nom non renseigné"}</p>
+        <button type="button" onClick={() => setEdition(session.displayName ?? "")}
+          style={{ fontSize: 12, color: "var(--primary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+          Modifier
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <input type="text" className="field-input" style={{ flex: "1 1 180px" }} maxLength={80} value={edition}
+        onChange={(e) => setEdition(e.target.value)} placeholder="Prénom Nom" autoComplete="name" />
+      <button type="button" className="btn-primary" style={{ fontSize: 12.5 }} onClick={() => void enregistrer()}>Enregistrer</button>
+      <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => { setEdition(null); setErreur(null); }}>Annuler</button>
+      {erreur && <div style={{ fontSize: 12.5, color: "var(--danger)", width: "100%" }}>{erreur}</div>}
+    </div>
+  );
+}
+
+/** État de la sauvegarde en ligne du travail, et ses deux commandes. */
+function EtatSynchro() {
+  const s = useSyncExternalStore(abonnerSync, instantaneSync, instantaneSyncServeur);
+  const [message, setMessage] = useState<string | null>(null);
+
+  if (s.liaison === "autre_compte") {
+    return (
+      <p style={{ fontSize: 12.5, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 7, padding: "8px 12px", marginTop: 14, lineHeight: 1.5 }}>
+        Ce navigateur est lié à un autre compte : la sauvegarde en ligne de votre travail est
+        désactivée ici. Vos données locales ne sont pas touchées.
+      </p>
+    );
+  }
+  if (s.liaison !== "synchroniser") return null;
+
+  const faireDelier = () => {
+    if (!window.confirm(
+      "Délier ce navigateur retire de cet appareil les résultats et gâchées déjà sauvegardés en ligne " +
+      "(ils restent dans votre compte), puis arrête la synchronisation ici. Utile avant de changer de compte. Continuer ?",
+    )) return;
+    const r = delier();
+    setMessage(r.ok ? "Navigateur délié. Vous pouvez vous déconnecter et vous connecter avec un autre compte." : r.raison);
+  };
+
+  return (
+    <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>Sauvegarde en ligne du travail</div>
+      <p style={{ fontSize: 12.5, color: "var(--muted-foreground)", margin: 0 }}>
+        {LIBELLES_STATUT[s.statut]}
+        {s.statut === "en_attente" && s.enAttente > 0 ? ` (${s.enAttente})` : ""}
+        {s.derniereReussite ? ` · dernière réussite à ${new Date(s.derniereReussite).toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}` : ""}
+        {s.erreur && s.statut !== "a_jour" ? ` · code ${s.erreur.code}` : ""}
+      </p>
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => synchroniserMaintenant()}>
+          Synchroniser maintenant
+        </button>
+        <button type="button" className="btn-secondary" style={{ fontSize: 12.5, color: "#64748b" }} onClick={faireDelier}>
+          Délier ce navigateur
+        </button>
+      </div>
+      {message && <p style={{ fontSize: 12.5, color: "#334155", marginTop: 8 }}>{message}</p>}
+    </div>
+  );
+}
 
 // Traduction des messages d'erreur Supabase les plus courants.
 function messageErreur(brut: string): string {
@@ -24,6 +188,7 @@ export default function ComptePage() {
   const monte = useHydrated();
   const [mode, setMode] = useState<"connexion" | "inscription">("connexion");
   const [email, setEmail] = useState("");
+  const [nom, setNom] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -42,7 +207,11 @@ export default function ComptePage() {
     setInfo(null);
     try {
       if (mode === "inscription") {
-        const { error } = await sb.auth.signUp({ email, password: motDePasse });
+        // Le nom part dans les métadonnées d'inscription ; le serveur n'en lit
+        // QUE ce champ (handle_new_user), jamais un rôle.
+        const { error } = await sb.auth.signUp({
+          email, password: motDePasse, options: { data: { display_name: nom.trim() } },
+        });
         if (error) throw error;
         setInfo("Compte créé. Vous pouvez vous connecter.");
         setMode("connexion");
@@ -62,6 +231,13 @@ export default function ComptePage() {
   const deconnexion = async () => {
     const sb = getSupabase();
     if (!sb) return;
+    // On ne bloque jamais la déconnexion : les modifications en attente restent
+    // sur cet appareil et partiront à la prochaine connexion ici.
+    const attente = instantaneSync().enAttente;
+    if (attente > 0 && !window.confirm(
+      `${attente} modification${attente > 1 ? "s ne sont" : " n'est"} pas encore en ligne. ` +
+      "Elles restent sur cet appareil et partiront à votre prochaine connexion ici. Se déconnecter quand même ?",
+    )) return;
     setLoading(true);
     await sb.auth.signOut();
     setLoading(false);
@@ -100,15 +276,21 @@ export default function ComptePage() {
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
               Connecté
             </div>
-            <p style={{ fontSize: 15, fontWeight: 600 }}>{session.email}</p>
+            <NomAffiche />
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>{session.email}</p>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>
               Rôle : {session.role === "prof" ? "Enseignant" : "Étudiant"}
             </p>
             <p style={{ fontSize: 12.5, color: "var(--muted-foreground)", marginTop: 14, lineHeight: 1.5 }}>
-              Vos résultats sauvegardés sont synchronisés en ligne et visibles par
-              l&apos;enseignant. Les catalogues officiels publiés par l&apos;enseignant
-              sont appliqués automatiquement (vos matériaux personnels sont conservés).
+              Vos résultats sauvegardés et vos gâchées sont sauvegardés en ligne et
+              visibles par l&apos;enseignant ; les courbes de presse restent sur cet
+              appareil. Les catalogues officiels publiés par l&apos;enseignant sont
+              appliqués automatiquement (vos matériaux personnels sont conservés).
             </p>
+            <EtatSynchro />
+            <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+              <ChangerMotDePasse />
+            </div>
             <button type="button" className="btn-secondary" onClick={deconnexion} disabled={loading} style={{ marginTop: 18 }}>
               {loading ? "…" : "Se déconnecter"}
             </button>
@@ -133,6 +315,15 @@ export default function ComptePage() {
               ))}
             </div>
             <form onSubmit={soumettre} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {mode === "inscription" && (
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
+                    Prénom et nom (visible par l&apos;enseignant)
+                  </label>
+                  <input type="text" required maxLength={80} className="field-input" value={nom}
+                    autoComplete="name" onChange={(e) => setNom(e.target.value)} placeholder="Prénom Nom" />
+                </div>
+              )}
               <div>
                 <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>Courriel</label>
                 <input type="email" required className="field-input" value={email}

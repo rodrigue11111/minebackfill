@@ -4,8 +4,11 @@ import { create } from "zustand";
 import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
 import { ecrireLocal, loadVersioned, persistVersioned } from "./persisted";
+import { marquerSuppressionLocale } from "./sync-etat";
 import type { Gachee } from "./gachee";
 import { protocolesDefaut, type Protocole } from "./protocole";
+import { sessionActive, validerSessions, type Session } from "./sessions";
+import type { Annotation } from "./annotations";
 import { descriptorFor } from "./method-registry";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
@@ -369,12 +372,23 @@ export interface SavedResult {
    * import de sauvegarde, revue du prof). Absent = résultat local anonyme.
    */
   ownerId?: string;
+  /**
+   * Copie de conflit (synchronisation v2) : ce navigateur avait modifié le
+   * résultat pendant qu'un autre appareil le modifiait aussi. Les deux
+   * versions sont gardées ; celle-ci porte l'id du document d'origine et
+   * l'instant du conflit. Absent = document ordinaire.
+   */
+  conflit?: { de: string; le: string };
+  /** Session de cours active à la sauvegarde (sessions publiées par l'enseignant). */
+  sessionId?: string;
 }
 
 /* ── localStorage helpers (SSR-safe) ── */
 const SAVED_KEY = "minebackfill_saved_results";
 
-function loadSavedFromStorage(): SavedResult[] {
+// Exportés pour la synchronisation (sync-local.ts) : elle lit et écrit le
+// stockage PERSISTÉ, jamais l'état mémoire.
+export function loadSavedFromStorage(): SavedResult[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(SAVED_KEY);
@@ -384,7 +398,7 @@ function loadSavedFromStorage(): SavedResult[] {
   }
 }
 
-function persistSaved(items: SavedResult[]): boolean {
+export function persistSaved(items: SavedResult[]): boolean {
   // Échec (quota atteint, stockage bloqué) signalé par ecrireLocal.
   return ecrireLocal(SAVED_KEY, JSON.stringify(items));
 }
@@ -420,6 +434,36 @@ export function loadProtocolesFromStorage(): Protocole[] {
 }
 export function persistProtocoles(items: Protocole[]): boolean {
   return persistVersioned(PROTOCOLES_KEY, PROTOCOLES_VERSION, items);
+}
+
+// ── Sessions de cours (publiées par l'enseignant ; sessions.ts) ──
+const SESSIONS_KEY = "minebackfill_sessions";
+const SESSIONS_VERSION = 1;
+
+export function loadSessionsFromStorage(): Session[] {
+  return validerSessions(loadVersioned<unknown>(SESSIONS_KEY, SESSIONS_VERSION, (d) => d, []));
+}
+export function persistSessions(items: Session[]): boolean {
+  return persistVersioned(SESSIONS_KEY, SESSIONS_VERSION, items);
+}
+
+// ── Annotations de l'enseignant sur MON travail (lues en ligne) ──
+// Copie locale pour les lire hors ligne. HORS sauvegarde : elles
+// appartiennent au serveur et se relisent à la connexion suivante.
+export const ANNOTATIONS_KEY = "minebackfill_annotations";
+const ANNOTATIONS_VERSION = 1;
+
+export interface EtatAnnotations {
+  curseur: { maj: string; id: string } | null;
+  annotations: Annotation[];
+}
+
+export function loadAnnotationsFromStorage(): EtatAnnotations {
+  const e = loadVersioned<EtatAnnotations | null>(ANNOTATIONS_KEY, ANNOTATIONS_VERSION, (d) => d as EtatAnnotations, null);
+  return e && Array.isArray(e.annotations) ? e : { curseur: null, annotations: [] };
+}
+export function persistAnnotations(e: EtatAnnotations): boolean {
+  return persistVersioned(ANNOTATIONS_KEY, ANNOTATIONS_VERSION, e);
 }
 
 const UNITS_KEY = "minebackfill_unit_prefs";
@@ -507,8 +551,6 @@ interface AppState {
   // l'enseignant (la couche perso locale est intégralement conservée).
   hydraterLiantsOfficielsCloud: (officiels: LiantCatalogueItem[]) => void;
   hydraterMateriauxOfficielsCloud: (kind: MaterialKind, officiels: MaterialItem[]) => void;
-  // Cloud : remplace l'historique local par la fusion locale+cloud déjà calculée.
-  remplacerResultats: (resultats: SavedResult[]) => void;
 
   // Traçabilité : id du matériau choisi via un préréglage (snapshoté par résultat).
   selectedMaterials: { residueId?: string; aggregateId?: string; retarderId?: string };
@@ -595,6 +637,16 @@ interface AppState {
   ajouterGachee: (g: Gachee) => void;
   modifierGachee: (id: string, patch: Partial<Gachee>) => void;
   supprimerGachee: (id: string) => void;
+
+  // Annotations de l'enseignant sur mon travail (copie locale, lecture seule).
+  annotations: Annotation[];
+  loadAnnotations: () => void;
+
+  // Sessions de cours : rangent le travail d'une année à l'autre.
+  sessions: Session[];
+  loadSessions: () => void;
+  /** Remplace la liste (édition par l'enseignant, ou copie publiée reçue). */
+  definirSessions: (items: Session[]) => void;
 
   // Protocoles de laboratoire (éditables, figés par gâchée).
   protocoles: Protocole[];
@@ -792,29 +844,6 @@ export function migrerMateriauxCloud(env: { v: number; data: unknown } | null | 
   if (!Array.isArray(data) || data.length === 0) return null;
   if (!data.every((i) => i && typeof (i as { id?: unknown }).id === "string")) return null;
   return data as MaterialItem[];
-}
-
-// Écritures cloud fire-and-forget : n'ont lieu que si une session existe ET que
-// le client Supabase est configuré. Toute erreur réseau est avalée (le
-// localStorage reste la vérité UI). Import paresseux pour ne pas coupler le
-// store au module cloud au chargement.
-function pousserResultatCloud(session: CloudSession | null, entry: SavedResult) {
-  if (!session) return;
-  Promise.all([import("./supabase"), import("./cloud")])
-    .then(([{ getSupabase }, { upsertResultatCloud }]) => {
-      const sb = getSupabase();
-      if (sb) return upsertResultatCloud(sb, session.userId, entry);
-    })
-    .catch(() => {});
-}
-function retirerResultatCloud(session: CloudSession | null, id: string) {
-  if (!session) return;
-  Promise.all([import("./supabase"), import("./cloud")])
-    .then(([{ getSupabase }, { supprimerResultatCloud }]) => {
-      const sb = getSupabase();
-      if (sb) return supprimerResultatCloud(sb, id);
-    })
-    .catch(() => {});
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -1018,12 +1047,6 @@ export const useStore = create<AppState>((set, get) => ({
       persistMaterials(kind, items);
       return { [slice]: items } as Partial<AppState>;
     }),
-  remplacerResultats: (resultats) =>
-    set(() => {
-      persistSaved(resultats);
-      return { savedResults: resultats };
-    }),
-
   selectedMaterials: {},
   setSelectedMaterial: (role, id) =>
     set((state) => ({ selectedMaterials: { ...state.selectedMaterials, [role]: id } })),
@@ -1360,9 +1383,13 @@ export const useStore = create<AppState>((set, get) => ({
   loadGachees: () => set({ gachees: loadGacheesFromStorage() }),
   ajouterGachee: (g) =>
     set(() => {
+      // Une nouvelle gâchée prend la session de cours active (si l'enseignant
+      // en a publié une qui couvre aujourd'hui).
+      const avecSession = g.sessionId !== undefined ? g
+        : { ...g, sessionId: sessionActive(loadSessionsFromStorage(), new Date())?.id };
       // Défensif : on repart du stockage juste avant d'écrire (jamais partir
       // d'un état mémoire non hydraté -> perte de données).
-      const updated = [g, ...loadGacheesFromStorage().filter((x) => x.id !== g.id)];
+      const updated = [avecSession, ...loadGacheesFromStorage().filter((x) => x.id !== g.id)];
       persistGachees(updated);
       return { gachees: updated };
     }),
@@ -1375,8 +1402,20 @@ export const useStore = create<AppState>((set, get) => ({
   supprimerGachee: (id) =>
     set(() => {
       const updated = loadGacheesFromStorage().filter((g) => g.id !== id);
-      persistGachees(updated);
+      if (persistGachees(updated)) marquerSuppressionLocale("gachee", id);
       return { gachees: updated };
+    }),
+
+  annotations: [],
+  loadAnnotations: () => set({ annotations: loadAnnotationsFromStorage().annotations }),
+
+  sessions: [],
+  loadSessions: () => set({ sessions: loadSessionsFromStorage() }),
+  definirSessions: (items) =>
+    set(() => {
+      const valides = validerSessions(items);
+      persistSessions(valides);
+      return { sessions: valides };
     }),
 
   protocoles: protocolesDefaut(),
@@ -1454,8 +1493,10 @@ export const useStore = create<AppState>((set, get) => ({
       // Version estampillée selon le pack de convention actif (le snapshot
       // `constantes` reste la vraie garantie de reproductibilité).
       solverVersion: solverVersionActive(state.constantes),
-      // Propriétaire cloud si connecté (anti-réattribution à la fusion).
+      // Propriétaire cloud si connecté (information locale, jamais envoyée).
       ownerId: state.session?.userId,
+      // Session de cours active (range le travail d'une année à l'autre).
+      sessionId: sessionActive(loadSessionsFromStorage(), new Date())?.id,
       catalogue_liants: state.catalogue_liants.map((l) => ({ ...l })),
       constantes: { ...state.constantes },
       selectedMaterials: materiauxUtilises(),
@@ -1498,9 +1539,8 @@ export const useStore = create<AppState>((set, get) => ({
     const updated = [entry, ...stored.filter((s) => s.id !== entry.id)];
     const persisted = persistSaved(updated);
     set({ savedResults: updated });
-    // Écriture cloud fire-and-forget (le localStorage reste la vérité UI ; un
-    // échec réseau est silencieux, jamais de perte).
-    pousserResultatCloud(state.session, entry);
+    // La synchronisation en ligne (v2) détecte seule le nouveau document :
+    // rien à faire ici (sync-client.ts observe le magasin).
     return persisted;
   },
   restoreSavedResult: (id) => {
@@ -1565,18 +1605,15 @@ export const useStore = create<AppState>((set, get) => ({
     return true;
   },
   deleteSavedResult: (id) =>
-    set((state) => {
+    set(() => {
       // Relire le stockage avant de filtrer, pour la même raison que
       // saveCurrentResult : ne pas partir d'un état mémoire non hydraté.
       const stored = loadSavedFromStorage();
-      const cible = stored.find((s) => s.id === id);
       const updated = stored.filter((s) => s.id !== id);
-      persistSaved(updated);
-      // Suppression cloud seulement pour SES résultats : celle d'un résultat
-      // étranger (revue du prof) serait de toute façon refusée par la RLS, et
-      // il réapparaîtra à la prochaine fusion (documenté, pas de tombstones).
-      if (!cible?.ownerId || cible.ownerId === state.session?.userId) {
-        retirerResultatCloud(state.session, id);
+      if (persistSaved(updated)) {
+        // Suppression EXPLICITE à transmettre en ligne (sans compte lié :
+        // aucun effet). Seulement si l'écriture locale a réussi.
+        marquerSuppressionLocale("resultat", id);
       }
       return { savedResults: updated };
     }),

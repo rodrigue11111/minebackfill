@@ -47,6 +47,10 @@ export interface EssaiUCS {
    *  local plafonne vers 5 Mo. Seuls des points RÉELLEMENT MESURÉS sont
    *  gardés, jamais de moyenne. */
   courbe?: { tempsS: number; chargeN: number; deplacementMm: number; contrainteKpa: number; deformationPct: number }[];
+  /** La courbe est rangée HORS de la gâchée (IndexedDB, courbes.ts), sous
+   *  l'id de l'éprouvette ; ne reste ici que sa taille. Présent à la place de
+   *  `courbe`, jamais avec. Information locale : jamais synchronisée. */
+  courbeInfo?: { nbPoints: number };
 }
 
 export interface Eprouvette {

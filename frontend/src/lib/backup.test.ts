@@ -16,6 +16,7 @@ class MemStorage {
 }
 
 import { exporterDonnees, importerDonnees } from "./backup";
+import { creerMagasinMemoire, encoderCourbe, type MagasinCourbes } from "./courbes";
 
 type Global = Record<string, unknown>;
 const g = globalThis as unknown as Global;
@@ -63,37 +64,37 @@ function fichier(objet: unknown): File {
   return new File([JSON.stringify(objet)], "sauvegarde.json", { type: "application/json" });
 }
 
-function exporte(): { schema: number; data: Record<string, unknown> } {
-  exporterDonnees();
+async function exporte(m: MagasinCourbes | null = null): Promise<{ schema: number; data: Record<string, unknown> }> {
+  await exporterDonnees(m);
   return JSON.parse(texteExporte);
 }
 
-describe("backup — export du laboratoire (schéma 4)", () => {
-  it("le fichier porte les gâchées et les protocoles", () => {
+describe("backup — export du laboratoire (schémas 4 à 6)", () => {
+  it("le fichier porte les gâchées et les protocoles", async () => {
     localStorage.setItem("minebackfill_gachees", JSON.stringify({ v: 2, data: [gachee("g1")] }));
-    const b = exporte();
-    expect(b.schema).toBe(4);
+    const b = await exporte();
+    expect(b.schema).toBe(6);
     expect(Array.isArray(b.data.gachees)).toBe(true);
     expect((b.data.gachees as { id: string }[])[0].id).toBe("g1");
     // Les protocoles sont semés par défaut quand la clé est absente.
     expect(Array.isArray(b.data.protocoles)).toBe(true);
   });
 
-  it("les gâchées sont écrites en tableau nu, pas en enveloppe", () => {
+  it("les gâchées sont écrites en tableau nu, pas en enveloppe", async () => {
     // C'est le point technique du schéma 4 : lire() rendrait l'enveloppe
     // {v,data}, ce qui rendrait la fusion par id impossible à la relecture.
     localStorage.setItem("minebackfill_gachees", JSON.stringify({ v: 2, data: [gachee("g1")] }));
-    const b = exporte();
+    const b = await exporte();
     expect(b.data.gachees).not.toHaveProperty("v");
     expect(b.data.gachees).not.toHaveProperty("data");
   });
 
-  it("une gâchée v1 sans éprouvettes est exportée migrée", () => {
+  it("une gâchée v1 sans éprouvettes est exportée migrée", async () => {
     localStorage.setItem(
       "minebackfill_gachees",
       JSON.stringify({ v: 1, data: [{ id: "vieille", code: "G-1", statut: "terminee" }] }),
     );
-    const b = exporte();
+    const b = await exporte();
     expect((b.data.gachees as { eprouvettes: unknown[] }[])[0].eprouvettes).toEqual([]);
   });
 });
@@ -177,5 +178,67 @@ describe("backup — import du laboratoire", () => {
     }));
     expect(res.ok).toBe(false);
     expect(res.message).toContain("quota");
+  });
+});
+
+describe("backup — sessions de cours (schéma 5)", () => {
+  it("exportées puis restaurées telles quelles", async () => {
+    const env = { v: 1, data: [{ id: "A2026", nom: "Automne 2026", debut: "2026-09-01", fin: "2026-12-23" }] };
+    localStorage.setItem("minebackfill_sessions", JSON.stringify(env));
+    const b = await exporte();
+    expect(b.data.sessions).toEqual(env);
+    localStorage.removeItem("minebackfill_sessions");
+    const res = await importerDonnees(fichier({ application: "MineBackfill", schema: 5, exportedAt: "x", data: { sessions: env } }));
+    expect(res.ok).toBe(true);
+    expect(JSON.parse(localStorage.getItem("minebackfill_sessions")!)).toEqual(env);
+  });
+});
+
+describe("backup — courbes de presse hors des gâchées (schéma 6)", () => {
+  const pts = [{ tempsS: 0, chargeN: 0, deplacementMm: 0, contrainteKpa: 0, deformationPct: 0 },
+    { tempsS: 1, chargeN: 890, deplacementMm: 0.4, contrainteKpa: 196.3, deformationPct: 1.1 }];
+  const gAvecRef = () => {
+    const g = gachee("gc") as ReturnType<typeof gachee> & { eprouvettes: { essai: Record<string, unknown> }[] };
+    g.eprouvettes[0].essai = { ...g.eprouvettes[0].essai, courbeInfo: { nbPoints: 2 } };
+    return g;
+  };
+
+  it("l'export porte les courbes rangées dans le magasin", async () => {
+    const m = creerMagasinMemoire();
+    await m.ecrire([["e-gc", encoderCourbe(pts)]]);
+    localStorage.setItem("minebackfill_gachees", JSON.stringify({ v: 2, data: [gAvecRef()] }));
+    const b = await exporte(m);
+    expect(b.data.courbes).toEqual({ "e-gc": encoderCourbe(pts) });
+  });
+
+  it("à l'import, les courbes vont dans le magasin et la référence reste", async () => {
+    const m = creerMagasinMemoire();
+    const res = await importerDonnees(fichier({
+      application: "MineBackfill", schema: 6, exportedAt: "x",
+      data: { gachees: [gAvecRef()], courbes: { "e-gc": encoderCourbe(pts) } },
+    }), m);
+    expect(res.ok).toBe(true);
+    expect(m.contenu.get("e-gc")).toEqual(encoderCourbe(pts));
+    const g = JSON.parse(localStorage.getItem("minebackfill_gachees")!).data[0];
+    expect(g.eprouvettes[0].essai.courbeInfo).toEqual({ nbPoints: 2 });
+  });
+
+  it("sans magasin, la courbe est remise dans la gâchée : rien ne se perd", async () => {
+    await importerDonnees(fichier({
+      application: "MineBackfill", schema: 6, exportedAt: "x",
+      data: { gachees: [gAvecRef()], courbes: { "e-gc": encoderCourbe(pts) } },
+    }), null);
+    const g = JSON.parse(localStorage.getItem("minebackfill_gachees")!).data[0];
+    expect(g.eprouvettes[0].essai.courbeInfo).toBeUndefined();
+    expect(g.eprouvettes[0].essai.courbe).toEqual(pts);
+  });
+
+  it("une référence sans courbe dans le fichier est retirée", async () => {
+    await importerDonnees(fichier({
+      application: "MineBackfill", schema: 6, exportedAt: "x", data: { gachees: [gAvecRef()] },
+    }), creerMagasinMemoire());
+    const g = JSON.parse(localStorage.getItem("minebackfill_gachees")!).data[0];
+    expect(g.eprouvettes[0].essai.courbeInfo).toBeUndefined();
+    expect(g.eprouvettes[0].essai.courbe).toBeUndefined();
   });
 });

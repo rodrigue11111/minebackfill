@@ -10,7 +10,7 @@ code**. Pour la mise en place initiale de la synchronisation en ligne, voir
 |---|---|---|---|
 | Application (site) | Vercel | pages + calculs relayés | rien ne s'affiche |
 | Calculateur (backend) | Vercel (mêmes déploiements) | formules RPC/RPG/RRC | « erreur réseau » au calcul |
-| Synchronisation (optionnelle) | Supabase | comptes, catalogues publiés, résultats en ligne | l'app FONCTIONNE quand même (mode local) |
+| Synchronisation (optionnelle) | Supabase | comptes, catalogues et sessions publiés, travail des étudiants en ligne (résultats, gâchées), commentaires de l'enseignant | l'app FONCTIONNE quand même (mode local) : chaque étudiant garde son travail dans son navigateur |
 
 ## Symptôme → action
 
@@ -41,6 +41,21 @@ update public.profiles set role = 'prof' where email = 'SON_EMAIL';
 Elle se déconnecte/reconnecte. (Le rôle n'est modifiable QUE par ce SQL —
 c'est voulu, aucun étudiant ne peut se promouvoir.)
 
+### Un étudiant a oublié son mot de passe
+Connecté, chacun change son mot de passe depuis la page « Compte ». Pour un
+mot de passe **oublié**, le lien de réinitialisation par courriel exige un
+serveur de courriel (SMTP) configuré dans Supabase : le serveur intégré
+n'écrit qu'aux membres de l'équipe du projet. Tant qu'il n'y en a pas,
+dépannage par l'enseignant : supabase.com → SQL Editor →
+```sql
+update auth.users
+   set encrypted_password = extensions.crypt('MotDePasseTemporaire-2026', extensions.gen_salt('bf'))
+ where email = 'COURRIEL_DE_L_ETUDIANT';
+```
+Communiquer ce mot de passe temporaire en personne ; l'étudiant le change
+aussitôt depuis « Compte ». **Son travail n'est jamais en danger** : il reste
+dans son navigateur, et en ligne dans son compte.
+
 ### Publier des matériaux/constantes à la classe
 Connecté avec un compte enseignant : Réglages → modifier les entrées
 officielles → « Publier en ligne » sur chaque carte. Les étudiants reçoivent
@@ -51,11 +66,63 @@ conservées).
 vercel.com → projet → Settings → Environment Variables → modifier → **puis
 Redeploy** (les variables sont figées au moment du build).
 
-### Sauvegarde des données en ligne (recommandé 1 fois/mois)
-supabase.com → Table Editor → `saved_results` puis `official_catalogs` →
-« Export CSV ». Conserver les fichiers. (L'offre gratuite n'a pas de
-restauration automatique.) Chaque étudiant peut aussi exporter SA sauvegarde
-locale : Réglages → Sauvegarde.
+### Sauvegarde des données en ligne (1 fois par mois, et en fin de session)
+**L'offre gratuite de Supabase ne fait AUCUNE sauvegarde** : la base elle-même
+est la seule copie en ligne. Deux gestes, à faire vous-même :
+
+1. **Chaque mois** : MineBackfill → **Classe** → session « Toutes » →
+   « Exporter la classe (JSON) ». Le fichier contient le travail de tous les
+   étudiants (résultats et gâchées, documents complets).
+2. **En fin de session**, en plus : supabase.com → Table Editor →
+   `user_docs`, `annotations`, `profiles`, `official_catalogs` → « Export
+   CSV » pour chacune.
+
+**Où ranger ces fichiers : PAS sur GitHub** (le dépôt est public, ce sont des
+données d'étudiants). Un espace de stockage de l'établissement convient. Les
+courbes de presse ne sont pas en ligne : chaque étudiant les garde dans son
+navigateur et dans SA sauvegarde locale (Réglages → Données locales → Exporter).
+
+### Début et fin de session
+- **Début** : Réglages → **Sessions de cours** → ajouter la session (ex.
+  « Automne 2027 », du 1er septembre au 23 décembre) → Enregistrer →
+  « Publier en ligne ». Tout ce qui sera créé pendant cette session la
+  portera. Si le projet Supabase est en pause (été), le restaurer d'abord
+  (voir « Impossible de se connecter »).
+- **Fin** : faire les deux sauvegardes ci-dessus. Rien à effacer : l'historique
+  pluriannuel est le but ; le tableau de bord se filtre par session.
+
+### Surveiller le volume (une fois par session)
+supabase.com → le projet → **Usage** : « Database size » (limite gratuite :
+500 Mo) et « Egress » (5 Go par mois). Mesure détaillée, SQL Editor :
+```sql
+select kind, count(*), pg_size_pretty(sum(pg_column_size(payload)))
+  from public.user_docs group by kind;
+```
+Chaque compte est plafonné à 25 Mo en ligne (un étudiant qui l'atteint voit
+un avis ; son travail reste sur son appareil).
+
+### Effacer le compte d'un étudiant (sur demande)
+Le travail d'un étudiant n'est jamais effacé par accident : supprimer son
+compte est **refusé** tant que son travail existe (c'est voulu). Pour un
+effacement demandé :
+1. Exporter d'abord la classe (au cas où) ;
+2. SQL Editor, en remplaçant le courriel :
+```sql
+with u as (select id from auth.users where email = 'COURRIEL_DE_L_ETUDIANT')
+delete from public.annotations where owner_id in (select id from u);
+with u as (select id from auth.users where email = 'COURRIEL_DE_L_ETUDIANT')
+delete from public.user_docs where user_id in (select id from u);
+with u as (select id from auth.users where email = 'COURRIEL_DE_L_ETUDIANT')
+delete from public.saved_results where user_id in (select id from u);
+```
+3. Authentication → Users → l'étudiant → « Delete user ».
+Ses copies locales restent dans SON navigateur : c'est à lui de les effacer.
+
+### Un an après l'ouverture des comptes : retirer l'ancienne table
+La table `saved_results` (synchronisation v1) est gelée en lecture seule et
+reprise dans `user_docs`. Un an après l'ouverture des comptes aux étudiants,
+vérifier le contrôle « résultats v1 non repris = 0 » (supabase/README.md),
+puis : `drop table public.saved_results;`
 
 ## Anti-pause Supabase (automatique)
 

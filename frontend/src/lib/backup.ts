@@ -12,6 +12,10 @@ import {
 import type { Gachee } from "./gachee";
 import type { Protocole } from "./protocole";
 import { ecrireLocal } from "./persisted";
+import {
+  estCourbeColonnes, resoudreCourbesImportees, type CourbeColonnes, type MagasinCourbes,
+} from "./courbes";
+import { magasinCourbes } from "./courbes-client";
 
 /** Un échec d'écriture interrompt l'import, qui le rapporte (voir le catch).
  *  Avant, l'échec des gâchées était avalé : « Import réussi » s'affichait
@@ -33,6 +37,7 @@ const CLES = {
   catalogue_retardateurs: "minebackfill_catalogue_retardateurs",
   gachees: "minebackfill_gachees",
   protocoles: "minebackfill_protocoles",
+  sessions: "minebackfill_sessions",
 } as const;
 
 // Clés du laboratoire : elles ne passent PAS par lire()/ecrireLocal().
@@ -65,15 +70,19 @@ function deballer(x: unknown): unknown[] | null {
 // v4 : laboratoire — gâchées (avec éprouvettes et essais UCS) et protocoles.
 //      Jusqu'ici ces mesures n'étaient NI exportées NI synchronisées : une
 //      campagne d'écrasements sur 91 jours n'avait aucune copie.
+// v5 : sessions de cours publiées par l'enseignant (réglage : remplacé à
+//      l'import, comme les protocoles).
+// v6 : courbes de presse rangées HORS des gâchées (IndexedDB) : le fichier
+//      les porte dans `courbes` (par id d'éprouvette, en colonnes).
 // Une sauvegarde d'une version antérieure reste importable — les clés absentes
 // sont simplement ignorées (voir importerDonnees).
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 6;
 
 interface Backup {
   application: string;
   schema: number;
   exportedAt: string;
-  data: Partial<Record<keyof typeof CLES, unknown>>;
+  data: Partial<Record<keyof typeof CLES, unknown>> & { courbes?: Record<string, CourbeColonnes> };
 }
 
 function lire(cle: string): unknown {
@@ -85,8 +94,20 @@ function lire(cle: string): unknown {
   }
 }
 
-/** Télécharge un fichier JSON contenant toutes les données locales. */
-export function exporterDonnees(): void {
+/**
+ * Télécharge un fichier JSON contenant toutes les données locales, courbes de
+ * presse comprises (lues dans le magasin : sans elles, une sauvegarde
+ * restaurée ailleurs les perdrait).
+ */
+export async function exporterDonnees(magasin: MagasinCourbes | null = magasinCourbes()): Promise<void> {
+  const courbes: Record<string, CourbeColonnes> = {};
+  if (magasin) {
+    for (const g of loadGacheesFromStorage()) for (const e of g.eprouvettes ?? []) {
+      if (!e.essai?.courbeInfo) continue;
+      const c = await magasin.lire(e.id).catch(() => null);
+      if (c) courbes[e.id] = c;
+    }
+  }
   const backup: Backup = {
     application: "MineBackfill",
     schema: SCHEMA_VERSION,
@@ -100,6 +121,7 @@ export function exporterDonnees(): void {
       ]),
     ),
   };
+  backup.data.courbes = courbes;
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -124,7 +146,10 @@ export interface ResultatImport {
  * Recharger les données dans le store après import (loadSavedResults,
  * loadGachees, loadProtocoles, etc.).
  */
-export async function importerDonnees(fichier: File): Promise<ResultatImport> {
+export async function importerDonnees(
+  fichier: File,
+  magasin: MagasinCourbes | null = magasinCourbes(),
+): Promise<ResultatImport> {
   let backup: Backup;
   try {
     backup = JSON.parse(await fichier.text());
@@ -153,9 +178,26 @@ export async function importerDonnees(fichier: File): Promise<ResultatImport> {
           // sauvegarde plus ancienne portant le même id.
           const existant = loadGacheesFromStorage();
           const idsExistants = new Set(existant.map((g) => g?.id));
-          const nouveaux = (items as Gachee[]).filter(
+          let nouveaux = (items as Gachee[]).filter(
             (g) => g && typeof g === "object" && !idsExistants.has(g.id),
           );
+          // Courbes du fichier (schéma 6) : dans le magasin d'abord ; à défaut,
+          // remises dans la gâchée. Jamais de référence vers une courbe absente.
+          const brutes = backup.data?.courbes;
+          const courbesFichier: Record<string, CourbeColonnes> = {};
+          if (brutes && typeof brutes === "object") {
+            for (const [id, c] of Object.entries(brutes)) if (estCourbeColonnes(c)) courbesFichier[id] = c;
+          }
+          const voulues = nouveaux.flatMap((g) => (g.eprouvettes ?? [])
+            .filter((e) => e.essai?.courbeInfo && courbesFichier[e.id]).map((e) => e.id));
+          let enregistrees = new Set<string>();
+          if (magasin && voulues.length > 0) {
+            try {
+              await magasin.ecrire(voulues.map((id) => [id, courbesFichier[id]]));
+              enregistrees = new Set(voulues);
+            } catch { /* magasin indisponible : courbes remises dans les gâchées */ }
+          }
+          nouveaux = resoudreCourbesImportees(nouveaux, courbesFichier, enregistrees);
           ecrireOuEchouer(persistGachees([...nouveaux, ...existant]));
           fusionnes += nouveaux.length;
         } else {

@@ -140,13 +140,18 @@ optionnel+nullable pour les vieux localStorage).
 | `minebackfill_catalogue_residus/granulats/retardateurs` | `{v,data}` | 1 | identité |
 | `minebackfill_gachees` | `{v,data}` | 2 | `migrerGachees` (registre d'éprouvettes) |
 | `minebackfill_protocoles` | `{v,data}` | 1 | identité + graine `protocolesDefaut()` |
-| Sauvegarde (fichier) | `backup.ts` | schéma 4 | fusion par id, le local gagne |
+| `minebackfill_sessions` | `{v,data}` | 1 | `validerSessions` (sessions.ts) — publiées par l'enseignant |
+| `minebackfill_sync` | `{v,data}` | 1 | état de la synchronisation v2 (`sync-etat.ts`) — **hors sauvegarde** |
+| IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par id d'éprouvette | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` |
+| Sauvegarde (fichier) | `backup.ts` | schéma 6 | fusion par id, le local gagne ; courbes dans `data.courbes` |
 
 Toute évolution de schéma : incrémenter la version de LA clé concernée
 (elles sont indépendantes depuis P4) + migration + test dans
 `store-persistence.test.ts`.
 
-**Une clé ajoutée doit AUSSI entrer dans `backup.ts`.** Les deux clés du labo
+**Une clé ajoutée doit AUSSI entrer dans `backup.ts`** — sauf `minebackfill_sync`,
+exclue exprès : restaurée sur un autre appareil, elle ferait croire que des
+documents sont déjà en ligne. Les deux clés du labo
 y ont manqué du jour de leur création jusqu'au schéma 4 : les gâchées, les
 éprouvettes et les essais UCS n'étaient ni exportés ni importés, et rien ne le
 signalait. Leur cas est particulier et sert de modèle : parce qu'elles sont en
@@ -237,6 +242,31 @@ modèle. Les mesures restent donc dans `/labo`, avec deux liens croisés.
 `src/**/*.test.ts` en environnement `node`. La règle est d'extraire la
 logique en modules purs de `src/lib` et de la tester là —
 `courbe-analyse.ts`, `analyse-fixe.ts`, `composition.ts` suivent ce patron.
+
+### 11. Synchronisation du travail (v2)
+
+Toute la logique vit dans des modules PURS, testés en node :
+`sync-moteur.ts` (décisions, cycle), `sync-empreinte.ts`, `sync-planificateur.ts`,
+`sync-local.ts` (dépôt local), `sync-supabase.ts` (seul module réseau),
+`sync-etat.ts` (clé `minebackfill_sync`). `sync-client.ts` ne fait que brancher.
+Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`, « Synchronisation v2 ».
+
+**Ajouter un type de document** (ex. un nouveau registre du labo) :
+1. SQL : ajouter le type à la contrainte `user_docs_kind_ck` de
+   `supabase/schema.sql` (idempotent), et à la projection de `lire_docs_classe`
+   si le tableau de bord doit l'alléger.
+2. Moteur : l'ajouter au type `Kind` de `sync-moteur.ts`.
+3. Dépôt local : le lister et l'appliquer dans `sync-local.ts` (forme
+   canonique : retirer ce qui ne doit pas partir en ligne, et le RÉATTACHER à
+   l'écriture) ; le brancher dans `sync-client.ts` (lecture/écriture du
+   magasin, abonnement aux changements).
+4. Suppression : l'action du magasin appelle `marquerSuppressionLocale`
+   SEULEMENT si l'écriture locale a réussi.
+5. Tests : `sync-local.test.ts` (aller-retour), `schema-sql.test.ts` (contrainte).
+
+**Ne jamais** : prendre une erreur de lecture pour « rien en ligne » ; déduire
+une suppression d'une absence ; convertir le curseur en `Date` (perte des
+microsecondes) ; écrire sans `base_rev` un document déjà connu.
 
 ## Pièges connus
 
