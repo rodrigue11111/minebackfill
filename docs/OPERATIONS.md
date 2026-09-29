@@ -63,7 +63,24 @@ Le dépôt contient `.github/workflows/supabase-keepalive.yml` : deux fois par
 semaine, GitHub interroge la base pour la maintenir active. À activer une
 fois : GitHub → dépôt → Settings → Secrets and variables → Actions → ajouter
 `SUPABASE_URL` et `SUPABASE_ANON_KEY` (les mêmes valeurs que dans Vercel).
-Sans ces secrets, la tâche s'ignore poliment.
+
+**Sans ces secrets, la tâche échoue** (croix rouge dans l'onglet Actions, et
+GitHub envoie un courriel). C'est voulu : jusqu'en septembre 2026 elle
+s'ignorait « poliment » — 22 exécutions vertes, aucune n'avait touché la base.
+Elle échoue aussi si la clé est refusée (HTTP 4xx) ou si le projet est en
+pause.
+
+**Vérifier qu'elle tourne vraiment** : GitHub → Actions → « Supabase
+keep-alive » → dernière exécution → étape « Requete de maintien d'activite » :
+elle doit afficher `HTTP 200`. Bouton « Run workflow » pour la lancer à la
+main.
+
+**Limite de GitHub à connaître** : dans un dépôt public, GitHub **désactive**
+les tâches planifiées après **60 jours sans activité** sur le dépôt (aucun
+commit). Typiquement l'été. GitHub prévient par courriel ; pour réactiver :
+Actions → « Supabase keep-alive » → « Enable workflow ». Sinon, en début de
+session : supabase.com → le projet → « Restore » (un projet en pause reste
+restaurable pendant un an).
 
 ## Faire évoluer l'application sans développeur attitré
 
