@@ -133,8 +133,9 @@ function EtatSynchro() {
   if (s.liaison === "autre_compte") {
     return (
       <p style={{ fontSize: 12.5, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 7, padding: "8px 12px", marginTop: 14, lineHeight: 1.5 }}>
-        Ce navigateur est lié à un autre compte : la sauvegarde en ligne de votre travail est
-        désactivée ici. Vos données locales ne sont pas touchées.
+        La sauvegarde en ligne n&apos;a pas pu démarrer : le stockage du navigateur est plein
+        (le travail de l&apos;autre compte n&apos;a pas pu être mis de côté). Rien n&apos;est perdu ;
+        libérez de la place, puis rechargez la page.
       </p>
     );
   }

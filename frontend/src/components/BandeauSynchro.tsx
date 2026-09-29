@@ -69,13 +69,16 @@ export default function BandeauSynchro() {
   }
 
   if (s.liaison === "autre_compte") {
+    // Ne survient plus qu'en cas d'échec du changement de compte : le
+    // stockage du navigateur a refusé de mettre de côté l'autre compte.
     elements.push(
-      <div key="autre" role="status" style={boite("#fffbeb", "#fde68a", "#92400e")}>
+      <div key="autre" role="alert" style={boite("#fffbeb", "#fde68a", "#92400e")}>
         <span>
-          Ce navigateur est lié à un <strong>autre compte</strong> : la sauvegarde en ligne est désactivée
-          ici pour {email ?? "ce compte"}. Vos données locales ne sont pas touchées. Pour changer de compte :
-          reconnectez-vous avec le compte d&apos;origine, puis « Délier ce navigateur » dans{" "}
-          <Link href="/compte" style={{ color: "inherit", fontWeight: 700 }}>Compte</Link>.
+          La sauvegarde en ligne n&apos;a pas pu démarrer pour {email ?? "ce compte"} : le stockage du
+          navigateur est plein, le travail de l&apos;autre compte n&apos;a pas pu être mis de côté. Rien
+          n&apos;est perdu. Libérez de la place (voir le{" "}
+          <Link href="/diagnostic" style={{ color: "inherit", fontWeight: 700 }}>Diagnostic</Link>), puis
+          rechargez la page.
         </span>
       </div>,
     );
