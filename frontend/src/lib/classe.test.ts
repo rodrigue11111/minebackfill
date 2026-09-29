@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  agesClasse, exportClasse, fusionnerLignes, nomEtudiant, nuageClasse, regrouper,
+  agesClasse, essaiValide, exportClasse, fusionnerLignes, gacheesRetenues, nomEtudiant, nuageClasse, regrouper,
   type LigneClasse, type ProfilClasse,
 } from "./classe";
 import { annotationsDe, fusionnerAnnotations, type Annotation } from "./annotations";
-import { lireAnnotationsClasse, lireClasse, lireMesAnnotations } from "./classe-reseau";
+import { ErreurClasse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireMesAnnotations, messageErreurClasse } from "./classe-reseau";
+import type { Eprouvette } from "./eprouvette";
 
 const A = "aaaaaaaa-0000", B = "bbbbbbbb-0000", P = "pppppppp-0000";
 const profils: ProfilClasse[] = [
@@ -53,6 +54,29 @@ describe("classe — regroupement", () => {
     ];
     expect(regrouper(l, profils, sessions, "A2026")[0].gachees.map((g) => g.id)).toEqual(["g1"]);
     expect(regrouper(l, profils, sessions, "sans")[0].gachees.map((g) => g.id)).toEqual(["g0"]);
+  });
+
+  it("une seule règle de comptage : écrasée, mesurée, non exclue ; copies de conflit à part", () => {
+    const ep = (p: Partial<Eprouvette>): Eprouvette => ({ id: "e", code: "E", couleLe: "x", ageJours: 7, statut: "ecrase", essai: { contrainteKpaSaisie: 500 }, ...p });
+    expect(essaiValide(ep({}))).toBe(true);
+    expect(essaiValide(ep({ statut: "en_cure" }))).toBe(false); // remise en cure : l'essai reste, hors statistiques
+    expect(essaiValide(ep({ essai: { contrainteKpaSaisie: 500, exclu: true } }))).toBe(false);
+    expect(essaiValide(ep({ essai: {} }))).toBe(false);
+
+    const g = gachee("g1", 5, [400, 420]);
+    g.eprouvettes.push({ id: "g1-e9", code: "G-g1-E09", couleLe: "2026-10-01T12:00:00.000Z", ageJours: 7, statut: "ecrase", essai: { contrainteKpaSaisie: 1, exclu: true } } as never);
+    const copie = gachee("g1c", 5, [400, 420], { conflit: { de: "g1", le: "2026-10-03T00:00:00Z" } });
+    const [e] = regrouper([ligne(A, "gachee", g), ligne(A, "gachee", copie)], profils, [], "toutes");
+    expect(e.gachees).toHaveLength(2); // la copie reste visible dans le détail…
+    expect(gacheesRetenues(e).map((x) => x.id)).toEqual(["g1"]); // … mais ne compte pas
+    expect(e.nbEssais).toBe(2);
+    expect(agesClasse([e])).toEqual([28]); // 7 j n'a qu'un essai exclu : pas d'âge à proposer
+  });
+
+  it("documents allégés normalisés : jamais de tableau manquant", () => {
+    const leger = { id: "gl", code: "G-gl", creeLe: "2026-10-01T12:00:00.000Z", categorie: "RPC" };
+    const [e] = regrouper([ligne(A, "gachee", leger)], profils, [], "toutes");
+    expect(e.gachees[0]).toMatchObject({ composants: [], eprouvettes: [], ajustements: [] });
   });
 
   it("lectures répétées : la révision la plus haute gagne", () => {
@@ -162,5 +186,24 @@ describe("classe-reseau", () => {
     const r = await lireAnnotationsClasse(sb);
     expect(r.map((x) => x.id)).toEqual(lignes.map((x) => x.id));
     expect(plages.map((p) => p[0])).toEqual([0, 3, 6, 7]);
+  });
+
+  it("document intégral : ligne lue, absent = null, erreur levée ; schéma absent expliqué", async () => {
+    const filtres: [string, unknown][] = [];
+    const client = (data: unknown, error: unknown = null) => {
+      const chaine = {
+        select: () => chaine,
+        eq: (c: string, v: unknown) => { filtres.push([c, v]); return chaine; },
+        maybeSingle: () => Promise.resolve({ data, error }),
+      };
+      return { from: () => chaine } as unknown as SupabaseClient;
+    };
+    const d = await lireDocComplet(client({ payload: { id: "g1" }, rev: "12", updated_at: "m", deleted: false }), A, "gachee", "g1");
+    expect(d).toEqual({ contenu: { id: "g1" }, rev: 12, maj: "m", supprime: false });
+    expect(filtres).toEqual([["user_id", A], ["kind", "gachee"], ["id", "g1"]]);
+    expect(await lireDocComplet(client(null), A, "gachee", "g2")).toBeNull();
+    await expect(lireDocComplet(client(null, { code: "42501", message: "non" }), A, "gachee", "g3")).rejects.toMatchObject({ code: "42501" });
+    expect(messageErreurClasse(new ErreurClasse("PGRST202", "Could not find the function"))).toMatch(/schema\.sql/);
+    expect(messageErreurClasse(new ErreurClasse("42501", "refusé"))).toBe("refusé");
   });
 });

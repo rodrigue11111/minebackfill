@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   dateEcheance, joursRestants, classeEcheance, genererCodeEprouvette,
   construireIcs, etiquettesHtml,
-  contrainteKpa, moyenne, ecartTypeEch, agregerParAge,
+  contrainteKpa, moyenne, ecartTypeEch, agregerParAge, ageReelJours,
   type Eprouvette, type EssaiUCS,
 } from "./eprouvette";
 
@@ -38,6 +38,17 @@ describe("joursRestants / classeEcheance", () => {
   it("écrasée -> toujours « fait » même en retard", () => {
     const e = ep({ couleLe: "2026-07-24T00:00:00", ageJours: 28, statut: "ecrase" });
     expect(classeEcheance(e, new Date(2026, 8, 30))).toBe("fait");
+  });
+});
+
+describe("ageReelJours", () => {
+  it("temps de cure relevé par la presse d'abord, sinon coulée → jour de l'essai, sinon null", () => {
+    const essai = (p: Partial<EssaiUCS>) => ep({ statut: "ecrase", essai: p });
+    expect(ageReelJours(essai({ tempsDeCureReelJours: 29, date: "2026-08-30T12:00:00" }))).toBe(29);
+    // Coulée le 24 juillet 9 h, écrasée le 21 août à midi : 28 jours (jours locaux).
+    expect(ageReelJours(essai({ date: new Date(2026, 7, 21, 12).toISOString() }))).toBe(28);
+    expect(ageReelJours(essai({}))).toBeNull();
+    expect(ageReelJours(ep({}))).toBeNull();
   });
 });
 

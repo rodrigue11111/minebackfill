@@ -21,6 +21,19 @@ function echec(e: { code?: string; message?: string } | null | undefined): Erreu
   return new ErreurClasse(e?.code || "reseau", e?.message || "Lecture impossible");
 }
 
+/** Fonction ou colonne inconnue du serveur : la base n'a pas le schéma de ce site. */
+export function schemaPasAJour(code: string | undefined): boolean {
+  return code === "PGRST202" || code === "42883" || code === "42703" || code === "PGRST204";
+}
+
+/** Message d'une erreur réseau pour l'enseignant (schéma absent : quoi faire). */
+export function messageErreurClasse(e: unknown): string {
+  if (e instanceof ErreurClasse && schemaPasAJour(e.code)) {
+    return "la base de données n'est pas à jour pour cette version du site : exécutez supabase/schema.sql dans SQL Editor (voir docs/OPERATIONS.md)";
+  }
+  return e instanceof Error ? e.message : String(e);
+}
+
 interface LigneLue {
   proprietaire: string;
   doc_kind: string;
@@ -70,6 +83,29 @@ export async function lireClasse(
     apres = d;
   }
   return toutes;
+}
+
+export interface DocComplet {
+  contenu: unknown;
+  rev: number;
+  maj: string;
+  supprime: boolean;
+}
+
+/**
+ * Un document INTÉGRAL d'un étudiant (la lecture de la classe est allégée).
+ * Lecture directe de user_docs : la RLS l'accorde à l'enseignant. null = le
+ * document n'existe pas (ou plus) en ligne.
+ */
+export async function lireDocComplet(
+  sb: SupabaseClient, proprietaire: string, kind: "resultat" | "gachee", id: string,
+): Promise<DocComplet | null> {
+  const { data, error } = await sb.from("user_docs").select("payload, rev, updated_at, deleted")
+    .eq("user_id", proprietaire).eq("kind", kind).eq("id", id).maybeSingle();
+  if (error) throw echec(error);
+  if (!data) return null;
+  const d = data as { payload: unknown; rev: number | string; updated_at: string; deleted: boolean };
+  return { contenu: d.payload, rev: Number(d.rev), maj: d.updated_at, supprime: d.deleted };
 }
 
 export async function lireProfils(sb: SupabaseClient): Promise<ProfilClasse[]> {
