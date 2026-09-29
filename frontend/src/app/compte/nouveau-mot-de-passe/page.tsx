@@ -1,17 +1,25 @@
 "use client";
 
-// Page d'arrivée du lien « Mot de passe oublié ». Le lien du courriel ramène
-// ici avec un jeton que le client Supabase lit dans l'adresse (fragment #…) :
-// l'utilisateur est alors connecté le temps de choisir un nouveau mot de passe.
-// Un lien expiré ou déjà utilisé revient avec #error=… : message en français.
+// Page d'arrivée du lien « Mot de passe oublié ».
+//
+// Lien recommandé (modèle de courriel, supabase/README.md) :
+//   /compte/nouveau-mot-de-passe?token_hash=…&type=recovery
+// Le jeton n'est vérifié QU'AU CLIC sur « Enregistrer ». Pourquoi : les
+// messageries universitaires (Microsoft 365, « Safe Links ») ouvrent chaque
+// lien d'un courriel pour l'analyser. Un lien qui consomme le jeton dès
+// l'ouverture arrivait donc « expiré » chez l'étudiant ; un analyseur, lui,
+// ne remplit jamais de formulaire.
+//
+// Ancien lien (jeton déjà vérifié par Supabase, session dans le fragment #…)
+// encore accepté ; un lien expiré revient avec #error=… : message en français.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
 import { messageErreurAuth } from "@/lib/auth-messages";
 
-/** Erreur renvoyée par Supabase dans le fragment de l'adresse (lien expiré…). */
+/** Erreur renvoyée par Supabase dans l'adresse (lien expiré…). */
 function erreurDuLien(): string | null {
   if (typeof window === "undefined") return null;
   const h = new URLSearchParams(window.location.hash.slice(1));
@@ -22,24 +30,37 @@ function erreurDuLien(): string | null {
     h.get("error_code") ?? q.get("error_code"));
 }
 
+/** Jeton du lien recommandé (?token_hash=…&type=recovery), ou null. */
+function jetonDuLien(): string | null {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search);
+  const t = q.get("token_hash");
+  return t && (q.get("type") ?? "recovery") === "recovery" ? t : null;
+}
+
 export default function NouveauMotDePassePage() {
   const monte = useHydrated();
-  // Lu au premier rendu client ; cette partie n'est affichée qu'après
+  // Lus au premier rendu client ; cette partie n'est affichée qu'après
   // l'hydratation, donc sans décalage avec le rendu serveur.
   const [erreurLien] = useState<string | null>(erreurDuLien);
-  const [etat, setEtat] = useState<"verification" | "pret" | "sansSession" | "fait">("verification");
+  const [jeton] = useState<string | null>(jetonDuLien);
+  const [etat, setEtat] = useState<"verification" | "pret" | "sansSession" | "fait">(() =>
+    jetonDuLien() ? "pret" : "verification");
   const [mdp, setMdp] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
   const [occupe, setOccupe] = useState(false);
+  // Le jeton ne sert qu'une fois : vérifié, on ne le renvoie plus (un
+  // nouvel essai de mot de passe réutilise la session obtenue).
+  const jetonVerifie = useRef(false);
 
   useEffect(() => {
-    if (erreurLien) return;
+    if (erreurLien || jeton) return;
     const sb = getSupabase();
     if (!sb) return;
-    // getSession() attend que le client ait lu le jeton du lien.
+    // Ancien lien : getSession() attend que le client ait lu la session du fragment.
     void sb.auth.getSession().then(({ data }) => setEtat(data.session ? "pret" : "sansSession"));
-  }, [erreurLien]);
+  }, [erreurLien, jeton]);
 
   const soumettre = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,11 +70,21 @@ export default function NouveauMotDePassePage() {
     const sb = getSupabase();
     if (!sb) return;
     setOccupe(true);
-    const { error } = await sb.auth.updateUser({ password: mdp });
-    setOccupe(false);
-    if (error) { setErreur(messageErreurAuth(error.message, error.code)); return; }
-    setMdp(""); setConfirmation("");
-    setEtat("fait");
+    try {
+      if (jeton && !jetonVerifie.current) {
+        const { error } = await sb.auth.verifyOtp({ token_hash: jeton, type: "recovery" });
+        if (error) { setErreur(messageErreurAuth(error.message, error.code)); return; }
+        jetonVerifie.current = true;
+        // Le jeton n'a plus rien à faire dans l'adresse (historique, partage).
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+      const { error } = await sb.auth.updateUser({ password: mdp });
+      if (error) { setErreur(messageErreurAuth(error.message, error.code)); return; }
+      setMdp(""); setConfirmation("");
+      setEtat("fait");
+    } finally {
+      setOccupe(false);
+    }
   };
 
   const carte: React.CSSProperties = {
@@ -107,6 +138,7 @@ export default function NouveauMotDePassePage() {
                 {erreur && (
                   <div style={{ fontSize: 12.5, color: "var(--danger)", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "8px 12px" }}>
                     {erreur}
+                    {/expiré/.test(erreur) && <div style={{ marginTop: 6 }}>{lienCompte}</div>}
                   </div>
                 )}
                 <button type="submit" className="btn-primary" disabled={occupe}>{occupe ? "…" : "Enregistrer le mot de passe"}</button>

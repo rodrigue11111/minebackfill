@@ -74,17 +74,23 @@ l'on choisit un nouveau mot de passe. Deux réglages Supabase sont requis :
      `https://minebackfill.progicielbelem.com/compte/nouveau-mot-de-passe`
    Sans cela, le lien du courriel renvoie vers la Site URL et l'étudiant ne
    voit pas le formulaire.
-3. **Courriel en français** (facultatif mais conseillé) : Authentication →
-   Emails → Templates → **Reset Password** :
+3. **Modèle du courriel — OBLIGATOIRE** : Authentication → Emails →
+   Templates → **Reset Password**. Le lien par défaut de Supabase consomme le
+   jeton dès qu'il est OUVERT ; or les messageries universitaires
+   (Microsoft 365, « Safe Links ») ouvrent chaque lien pour l'analyser : le
+   lien arrivait « expiré » chez l'étudiant. Ce modèle mène à la page de
+   l'application, qui ne vérifie le jeton qu'au clic sur « Enregistrer » :
    - Sujet : `MineBackfill — choisir un nouveau mot de passe`
    - Message :
      ```html
      <h2>Nouveau mot de passe</h2>
      <p>Vous avez demandé à changer le mot de passe de votre compte MineBackfill.</p>
-     <p><a href="{{ .ConfirmationURL }}">Choisir un nouveau mot de passe</a></p>
+     <p><a href="https://minebackfill.progicielbelem.com/compte/nouveau-mot-de-passe?token_hash={{ .TokenHash }}&type=recovery">Choisir un nouveau mot de passe</a></p>
      <p>Ce lien ne sert qu'une fois et expire dans une heure. Si vous n'avez rien
      demandé, ignorez ce courriel : votre mot de passe ne change pas.</p>
      ```
+   Avec ce modèle, l'étape 2 (adresse de retour) n'est plus indispensable,
+   mais elle ne nuit pas.
 
 Vérifier : page Compte → « Mot de passe oublié ? » → votre courriel → le
 courriel arrive → le lien ouvre « Nouveau mot de passe » → enregistrer → vous

@@ -193,6 +193,17 @@ export default function ComptePage() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  // Changer de mode efface les messages, et retire ?oubli=1 de l'adresse en
+  // quittant ce mode (sinon l'adresse annonce « oubli » sur une autre vue).
+  const changerMode = (m: "connexion" | "inscription" | "oubli") => {
+    setMode(m);
+    setErreur(null);
+    setInfo(null);
+    if (m !== "oubli" && window.location.search.includes("oubli")) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  };
+
   // Anti-mismatch d'hydratation : on ne décide de l'affichage qu'après
   // l'hydratation client (configuré ou non, connecté ou non).
   const configure = monte && cloudConfigure();
@@ -308,15 +319,18 @@ export default function ComptePage() {
           </div>
         ) : (
           <div style={card}>
+            {mode === "oubli" ? (
+              <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 14px" }}>Mot de passe oublié</h2>
+            ) : (
             <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
               {(["connexion", "inscription"] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
-                  onClick={() => { setMode(m); setErreur(null); setInfo(null); }}
+                  onClick={() => changerMode(m)}
                   style={{
                     flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 13, fontWeight: 600,
-                    border: `1.5px solid ${mode === m || (mode === "oubli" && m === "connexion") ? "var(--primary)" : "var(--border)"}`,
+                    border: `1.5px solid ${mode === m ? "var(--primary)" : "var(--border)"}`,
                     background: mode === m ? "var(--primary)" : "#fff",
                     color: mode === m ? "#fff" : "#374151", cursor: "pointer",
                   }}
@@ -325,11 +339,12 @@ export default function ComptePage() {
                 </button>
               ))}
             </div>
+            )}
             <form onSubmit={soumettre} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {mode === "oubli" && (
                 <p style={{ fontSize: 13, color: "#475569", margin: 0, lineHeight: 1.5 }}>
-                  Mot de passe oublié : indiquez votre courriel, vous recevrez un lien pour en
-                  choisir un nouveau. Votre travail n&apos;est pas touché.
+                  Indiquez le courriel de votre compte : vous recevrez un lien pour choisir un
+                  nouveau mot de passe. Votre travail n&apos;est pas touché.
                 </p>
               )}
               {mode === "inscription" && (
@@ -368,7 +383,7 @@ export default function ComptePage() {
                     autoComplete={mode === "inscription" ? "new-password" : "current-password"}
                     onChange={(e) => setMotDePasse(e.target.value)} placeholder="••••••••" />
                   {mode === "connexion" && (
-                    <button type="button" onClick={() => { setMode("oubli"); setErreur(null); setInfo(null); }}
+                    <button type="button" onClick={() => changerMode("oubli")}
                       style={{ marginTop: 6, background: "none", border: "none", padding: 0, fontSize: 12, color: "var(--primary)", cursor: "pointer" }}>
                       Mot de passe oublié ?
                     </button>
@@ -389,7 +404,7 @@ export default function ComptePage() {
                 {loading ? "…" : mode === "connexion" ? "Se connecter" : mode === "oubli" ? "Envoyer le lien" : "Créer le compte"}
               </button>
               {mode === "oubli" && (
-                <button type="button" onClick={() => { setMode("connexion"); setErreur(null); setInfo(null); }}
+                <button type="button" onClick={() => changerMode("connexion")}
                   style={{ background: "none", border: "none", padding: 0, fontSize: 12.5, color: "var(--primary)", cursor: "pointer" }}>
                   ← Retour à la connexion
                 </button>
