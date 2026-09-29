@@ -32,8 +32,11 @@ export const PROJETS: Projet[] = [
     nom: "CPB Cockpit",
     description:
       "Optimisation de recettes CPB par modèles Slump/UCS entraînés et échantillonnage Monte-Carlo sous contraintes (article 4).",
-    // URL de production confirmee (HTTP 200, 2026-07-12).
-    url: "https://cpb-trained-model.vercel.app",
+    // Sous-domaine du portail plutot que cpb-trained-model.vercel.app : des
+    // postes geres (Microsoft Defender, politique de l'UQAT) bloquent tout
+    // *.vercel.app. HTTP 200 confirme depuis un tel poste (2026-09-28).
+    // L'API doit autoriser cette origine : CPB_ALLOWED_ORIGINS sur Render.
+    url: "https://cpb.progicielbelem.com",
     tags: ["Article 4", "Optimisation", "Machine learning"],
     statut: "beta",
   },
