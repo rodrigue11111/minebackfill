@@ -514,6 +514,27 @@ describe("schema.sql — réponses et accusés de lecture", () => {
     await expect(comme(E1, ins, [E1, "g1", E1, "direct"])).rejects.toMatchObject({ code: "42501" });
   });
 
+  it("réponse ancrée : sous la note visée ; ancre inconnue ou trop longue refusée", async () => {
+    await ecrire(E1, "gachee", "g4", { id: "g4" }, null);
+    const insAncre = "insert into public.annotations (owner_id, target_kind, target_id, auteur_id, texte, ancre) values ($1, 'gachee', $2, $3, $4, $5) returning id";
+    await comme(PROF, insAncre, [E1, "g4", PROF, "Liant à +8 %", "Pesée : Liant"]);
+    const repondreAncre = (uid: string, id: string, texte: string, ancre: string | null) =>
+      comme<{ annotation_id: string }>(uid, "select annotation_id from public.repondre_annotation_ancree($1, 'gachee', $2, 1, $3, $4)", [uid, id, texte, ancre]);
+    const r = (await repondreAncre(E1, "g4", "Je repèse demain.", " Pesée : Liant ")).rows[0].annotation_id;
+    expect((await db.query<{ ancre: string | null; auteur_id: string }>("select ancre, auteur_id from public.annotations where id = $1", [r])).rows[0])
+      .toEqual({ ancre: "Pesée : Liant", auteur_id: E1 });
+    // Ancre sans commentaire de l'enseignant : refusée (pas de réponse orpheline).
+    await expect(repondreAncre(E1, "g4", "Ailleurs", "G-20260929-01-E02")).rejects.toMatchObject({ code: "42501" });
+    await expect(repondreAncre(E1, "g4", "Trop long", "x".repeat(201))).rejects.toMatchObject({ code: "22023" });
+    // Sans ancre : même comportement que repondre_annotation (fil général).
+    const g = (await repondreAncre(E1, "g4", "Merci", null)).rows[0].annotation_id;
+    expect((await db.query<{ ancre: string | null }>("select ancre from public.annotations where id = $1", [g])).rows[0].ancre).toBeNull();
+    // Mêmes gardes que l'ancienne fonction.
+    await expect(repondreAncre(E2, "g4", "Chez un autre", "Pesée : Liant")).rejects.toMatchObject({ code: "42501" });
+    await expect(comme(null, "select * from public.repondre_annotation_ancree($1, 'gachee', 'g4', 1, 'x', null)", [E1])).rejects.toMatchObject({ code: "42501" });
+    await expect(comme<{ annotation_id: string }>(E1, "select annotation_id from public.repondre_annotation_ancree($1, 'gachee', 'g4', 1, 'x', null)", [E2])).rejects.toMatchObject({ code: "28000" });
+  });
+
   it("document supprimé : plus de réponse ; plafond de réponses", async () => {
     await ecrire(E1, "gachee", "g3", { id: "g3" }, null);
     await comme(PROF, ins, [E1, "g3", PROF, "Commentaire"]);

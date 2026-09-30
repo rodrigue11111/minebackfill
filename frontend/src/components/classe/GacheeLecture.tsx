@@ -3,7 +3,8 @@
 
 import type React from "react";
 import { Carte, CarteProtocolesFiges } from "@/components/labo/Carte";
-import { ecart, parametresEffectifs, type Gachee } from "@/lib/gachee";
+import { parametresEffectifs, type Gachee } from "@/lib/gachee";
+import Pesees from "@/components/labo/Pesees";
 import {
   agregerParAge, ageReelJours, contrainteKpa, dateCoulee, dateEcheance,
 } from "@/lib/eprouvette";
@@ -15,8 +16,8 @@ import { nombre, Pastille, td, tdNum, th } from "./commun";
 function Info({ label, valeur }: { label: string; valeur: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
-      <div style={{ fontSize: 13.5, color: "#0f172a", marginTop: 2 }}>{valeur ?? "—"}</div>
+      <div style={{ fontSize: 13, color: "var(--texte-2)" }}>{label}</div>
+      <div style={{ fontSize: 15, color: "var(--texte)", marginTop: 2 }}>{valeur ?? "—"}</div>
     </div>
   );
 }
@@ -55,32 +56,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
         )}
       </Carte>
 
-      <Carte titre="Pesées : cible vs réelle" extra={<span style={{ fontSize: 12, color: "#64748b" }}>Tolérance ± {nombre(g.tolerancePct, 1)} %</span>}>
-        {g.composants.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: "#94a3b8", margin: 0 }}>Aucune pesée enregistrée.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr><th style={th}>Composant</th><th style={{ ...th, textAlign: "right" }}>Cible (kg)</th><th style={{ ...th, textAlign: "right" }}>Pesée (kg)</th><th style={{ ...th, textAlign: "right" }}>Écart</th></tr></thead>
-            <tbody>
-              {g.composants.map((c) => {
-                const e = ecart(c);
-                const hors = e !== null && Math.abs(e.pct) > g.tolerancePct;
-                return (
-                  <tr key={c.cle}>
-                    <td style={{ ...td, fontWeight: 600 }}>{c.label}</td>
-                    <td style={tdNum}>{fmt(c.cibleKg, 1)}</td>
-                    <td style={tdNum}>{c.peseeKg === undefined ? "—" : fmt(c.peseeKg, 1)}</td>
-                    <td style={{ ...tdNum, fontWeight: 600, color: e === null ? "#cbd5e1" : hors ? "#dc2626" : "#16a34a" }}>
-                      {e === null ? "—" : `${e.kg >= 0 ? "+" : ""}${fmt(e.kg, 1)} kg (${e.pct >= 0 ? "+" : ""}${fmt(e.pct, 1)} %)`}
-                      {hors && <> <Pastille ton="rouge">hors tolérance</Pastille></>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </Carte>
+      <Pesees gachee={g} lectureSeule />
 
       <Carte titre="Matériaux et pâte fraîche">
         <div style={grille}>

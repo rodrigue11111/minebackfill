@@ -67,7 +67,7 @@ export default function FilCommentaires({ liste, moi, nomEtudiant, nouvelles, on
           {ancres.length > 0 && (
             <select value={ancre} onChange={(e) => setAncre(e.target.value)}
               style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "4px 8px", fontSize: 12.5, alignSelf: "flex-start" }}>
-              <option value="">Toute la gâchée</option>
+              <option value="">Toute la gâchée (fil général)</option>
               {ancres.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
           )}

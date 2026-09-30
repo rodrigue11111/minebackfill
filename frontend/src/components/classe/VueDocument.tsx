@@ -2,6 +2,7 @@
 // commentaires. Remplace le contenu de l'onglet ; « Retour » ramène à la classe.
 
 import type { SavedResult } from "@/lib/store";
+import { ancresGachee } from "@/lib/ancres";
 import type { UnitPreferences } from "@/lib/units";
 import { normaliserGachee, type EtudiantClasse } from "@/lib/classe";
 import type { DocComplet, LigneAnnotation } from "@/lib/classe-reseau";
@@ -79,7 +80,7 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
         <div className="form-card">
           <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px" }}>Commentaires</h3>
           <FilCommentaires liste={commentaires} moi={ctx.moi} nomEtudiant={etudiant?.nom ?? "Étudiant"} nouvelles={ctx.nouvelles}
-            onRetirer={ctx.onRetirer} ancres={gachee ? gachee.eprouvettes.map((e) => e.code) : []}
+            onRetirer={ctx.onRetirer} ancres={gachee ? ancresGachee(gachee) : []}
             onAjouter={(texte, ancre) => onAnnoter({ kind: ref.kind, id: ref.id, rev: doc.etat === "pret" ? doc.doc.rev : null, ancre, texte })} />
         </div>
       )}

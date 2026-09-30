@@ -29,8 +29,8 @@ export function EnTetePage({ surtitre, titre, sousTitre, actions, retour, pastil
   sousTitre?: React.ReactNode;
   /** Boutons à droite du titre (passent sous le titre sur téléphone). */
   actions?: React.ReactNode;
-  /** Lien de retour au-dessus du titre (« ‹ Gâchées »). */
-  retour?: { href: string; libelle: string };
+  /** Retour au-dessus du titre (« ‹ Gâchées ») : un lien, ou une action (composant client). */
+  retour?: { href: string; libelle: string } | { onClick: () => void; libelle: string };
   /** Pastille collée au titre (statut). */
   pastille?: React.ReactNode;
   /** « moyen » : titre de 44 px (page de détail). */
@@ -38,12 +38,17 @@ export function EnTetePage({ surtitre, titre, sousTitre, actions, retour, pastil
 }) {
   return (
     <header className="ui-entete">
-      {retour && (
+      {retour && ("href" in retour ? (
         <Link href={retour.href} className="ui-retour">
           <Icone nom="retour" taille={14} epaisseur={2.4} />
           {retour.libelle}
         </Link>
-      )}
+      ) : (
+        <button type="button" onClick={retour.onClick} className="ui-retour">
+          <Icone nom="retour" taille={14} epaisseur={2.4} />
+          {retour.libelle}
+        </button>
+      ))}
       <div className="ui-entete-ligne">
         <div className="ui-entete-texte">
           {surtitre && <div className="ui-surtitre">{surtitre}</div>}

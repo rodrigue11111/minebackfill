@@ -6,6 +6,7 @@ import { agregerParAge } from "@/lib/eprouvette";
 import { essaiValide, type EtudiantClasse, type LigneClasse } from "@/lib/classe";
 import { estReponse, type LigneAnnotation } from "@/lib/classe-reseau";
 import { methodLabel } from "@/lib/method-registry";
+import { ancresGachee } from "@/lib/ancres";
 import FilCommentaires from "./FilCommentaires";
 import { dateCourte, lienBouton, Pastille, type RefDoc } from "./commun";
 
@@ -99,7 +100,7 @@ export default function DetailEtudiant({ etudiant, annotations, onAnnoter, ctx, 
                 {parAge.length > 0 && " · UCS : " + parAge.map((a) => `${a.ageJours} j = ${Math.round(a.moyenneKpa as number).toLocaleString("fr-CA")} kPa (n=${a.n})`).join(" ; ")}
               </div>
               <FilReplie liste={commentaires("gachee", g.id)} nomEtudiant={etudiant.nom} ctx={ctx}
-                ancres={g.eprouvettes.map((e) => e.code)}
+                ancres={ancresGachee(g)}
                 onAjouter={(texte, ancre) => onAnnoter({ kind: "gachee", id: g.id, rev: revDe(lignes, etudiant.id, "gachee", g.id), ancre, texte })} />
             </div>
           );

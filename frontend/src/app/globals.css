@@ -296,6 +296,11 @@ textarea.field-input { min-height: 88px; line-height: 1.5; resize: vertical; }
 /* ── En-tête de page ── */
 .ui-entete { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
 .ui-retour {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -914,6 +919,164 @@ textarea.field-input { min-height: 88px; line-height: 1.5; resize: vertical; }
   .mix-rapport-grille { grid-template-columns: minmax(0, 1fr); }
   .mix-grille-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mix-pied-ligne { flex-direction: column; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   LABO (maquette A améliorée) — app/labo, components/labo
+   ══════════════════════════════════════════════════════════════════ */
+.labo-vide { margin: 0; font-size: 14px; line-height: 1.55; color: var(--texte-2); }
+.labo-etapes { margin: 0; padding-left: 22px; font-size: 14px; line-height: 1.7; color: var(--texte); }
+.labo-barre-vue { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: -4px; }
+.labo-ligne-bouton { width: 100%; background: none; border: none; border-top: 1px solid var(--filet); font-family: inherit; text-align: left; padding-left: 0; padding-right: 0; }
+.ui-liste > .labo-ligne-bouton:first-child { border-top: none; }
+.labo-liste-gachees { padding: 0 28px 8px; }
+.labo-pastilles { gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 70%; }
+.ui-pilule-select {
+  appearance: none;
+  min-height: 34px;
+  padding: 0 32px 0 14px;
+  border: none;
+  border-radius: 999px;
+  background-color: rgba(0, 0, 0, 0.05);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236E6E73' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--texte);
+  cursor: pointer;
+}
+.ui-filtre { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--texte-2); }
+
+/* Éditeur d'une gâchée */
+.labo-editeur { display: flex; flex-direction: column; gap: 24px; }
+.labo-grille { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (min-width: 1025px) { .labo-grille { grid-template-columns: minmax(0, 1fr) 352px; } }
+.labo-colonne { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.labo-vues-tel { display: none; }
+.labo-supprimer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 0 4px; }
+
+/* Frise de cure */
+.labo-frise { position: relative; height: 32px; margin: 0 6px; }
+.labo-frise-piste { position: absolute; left: 0; right: 0; top: 13px; height: 6px; border-radius: 999px; background: var(--filet); }
+.labo-frise-progres { position: absolute; left: 0; top: 13px; height: 6px; border-radius: 999px; background: var(--accent); }
+.labo-frise-point { position: absolute; top: 10px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #fff; border: 2px solid #C7C7CC; box-sizing: border-box; }
+.labo-frise-point.labo-frise-coulee { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px #fff; }
+.labo-frise-point.labo-frise-fait { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px #fff; }
+.labo-frise-point.labo-frise-retard { border-color: var(--hors-tolerance); background: #fff; }
+.labo-frise-point.labo-frise-aujourdhui { border-color: var(--accent); background: var(--accent-pale); }
+.labo-frise-maintenant { position: absolute; top: 8px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); box-sizing: border-box; }
+.labo-frise-legende { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 18px; font-size: 13px; color: var(--texte-2); }
+.labo-frise-legende strong { color: var(--texte); font-weight: 500; }
+.labo-legende-retard strong { color: var(--hors-tolerance-texte); }
+.labo-legende-aujourdhui strong { color: var(--accent); font-weight: 600; }
+
+/* Pesées sur bande de tolérance */
+.labo-tolerance { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--texte-2); }
+.labo-tolerance-champ.field-input { width: 64px; min-height: 32px; padding: 4px 8px; text-align: right; }
+.labo-pesees { display: flex; flex-direction: column; }
+.labo-pesee { display: flex; flex-direction: column; gap: 10px; padding: 14px 0; border-top: 1px solid var(--filet); }
+.labo-pesees > .labo-pesee:first-child { border-top: none; padding-top: 2px; }
+.labo-pesee-ligne { display: grid; grid-template-columns: 170px minmax(0, 1fr) 118px 150px; gap: 16px; align-items: center; }
+.labo-pesee-nom { display: flex; flex-direction: column; font-size: 15px; }
+.labo-pesee-cible { font-size: 12.5px; color: var(--texte-2); }
+.labo-pesee-saisie .field-input { min-height: 38px; padding: 6px 10px; text-align: right; }
+.labo-pesee-valeur { font-size: 14px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.labo-pesee-ecart { font-size: 13.5px; text-align: right; color: var(--texte-2); font-variant-numeric: tabular-nums; }
+.labo-pesee-ecart.labo-hors { color: var(--hors-tolerance-texte); font-weight: 600; }
+.labo-hors-echelle { font-weight: 400; }
+.labo-bande { position: relative; height: 20px; }
+.labo-bande-piste { position: absolute; left: 0; right: 0; top: 6px; height: 8px; border-radius: 999px; background: var(--filet); }
+.labo-bande-tolerance { position: absolute; top: 6px; height: 8px; border-radius: 999px; background: var(--accent-pale-2); }
+.labo-bande-cible { position: absolute; left: 50%; top: 3px; width: 1px; height: 14px; background: #C7C7CC; }
+.labo-bande-point { position: absolute; top: 4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px #fff; }
+.labo-bande-point.labo-bande-hors { background: var(--hors-tolerance); }
+
+/* Ajustements */
+.labo-ajustement { display: grid; grid-template-columns: 130px 120px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--filet); }
+.ui-liste > .labo-ajustement:first-child { border-top: none; }
+.labo-ajustement .field-input { min-height: 38px; padding: 6px 10px; }
+.labo-ajustement select.field-input { padding-right: 32px; }
+
+/* Éprouvettes */
+.labo-eprouvette { display: flex; flex-direction: column; gap: 8px; padding: 6px 0; border-top: 1px solid var(--filet); }
+.ui-liste > .labo-eprouvette:first-child { border-top: none; }
+.labo-eprouvette-ligne { display: flex; align-items: center; gap: 12px; }
+.labo-rond { width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; border: 2px solid #C7C7CC; background: #fff; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.labo-rond:hover { border-color: var(--accent); }
+.labo-rond-plein { background: var(--accent); border-color: var(--accent); }
+.labo-eprouvette-corps { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border: none; background: none; font-family: inherit; text-align: left; cursor: pointer; color: var(--texte); }
+.labo-eprouvette-textes { display: flex; flex-direction: column; min-width: 0; }
+.labo-eprouvette-code { font-size: 15px; font-weight: 500; }
+.labo-eprouvette-detail { font-size: 13px; color: var(--texte-2); }
+.labo-eprouvette-droite { display: flex; align-items: center; gap: 10px; flex-shrink: 0; font-size: 14px; }
+.labo-ucs { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--texte); }
+.labo-eprouvette-ouverte { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 10px 36px; }
+.labo-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.labo-essai { display: flex; flex-direction: column; gap: 14px; padding: 14px 16px; border-radius: var(--rayon-bloc); background: var(--fond); }
+.labo-essai .field-input { background: var(--surface); }
+.labo-grille-essai { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.labo-ligne-contrainte { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.labo-ucs-retenue { font-size: 14px; padding-bottom: 12px; }
+.labo-ucs-retenue strong { font-size: 17px; }
+.labo-ajout { border-top: 1px solid var(--filet); padding-top: 12px; }
+.labo-ajout > summary { cursor: pointer; font-size: 15px; font-weight: 500; color: var(--accent); list-style: none; }
+.labo-ajout > summary::-webkit-details-marker { display: none; }
+.labo-ajout > summary::before { content: "+ "; }
+.labo-ajout[open] > summary::before { content: "– "; }
+.labo-ajout-corps { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.labo-grille-ajout { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.labo-ages { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.labo-import { margin-top: 4px; padding: 14px 16px; border-radius: var(--rayon-bloc); background: var(--accent-pale); display: flex; flex-direction: column; gap: 6px; }
+.labo-liste-champs { padding: 0 28px 10px; }
+.labo-liste-champs .ui-ligne-droite { width: 46%; }
+.labo-liste-champs .field-input { width: 100%; }
+
+/* Résultats UCS */
+.labo-series { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.labo-serie { display: flex; align-items: center; gap: 7px; font-size: 14px; cursor: pointer; }
+.labo-serie input { accent-color: var(--accent); }
+.labo-serie-trait { width: 14px; height: 3px; border-radius: 2px; }
+.labo-axes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.labo-age-choix { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--texte-2); }
+.labo-age-choix .field-input { min-height: 34px; padding: 4px 30px 4px 12px; width: auto; }
+
+/* Fil de commentaires (étudiant) */
+.fil { display: flex; flex-direction: column; gap: 10px; }
+.fil-titre { font-size: 15px; font-weight: 600; }
+.fil-liste { display: flex; flex-direction: column; gap: 10px; }
+.fil-message { display: flex; gap: 10px; align-items: flex-start; }
+.fil-moi { padding-left: 24px; }
+.fil-avatar { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; background: var(--texte); color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.fil-avatar-moi { background: var(--accent); }
+.fil-bulle { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border-radius: 14px; background: var(--fond); }
+.fil-moi .fil-bulle { background: var(--accent-pale); }
+.fil-auteur { font-size: 13px; }
+.fil-date { color: var(--texte-2); }
+.fil-texte { font-size: 14.5px; line-height: 1.45; }
+.fil-pied { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; font-size: 12.5px; color: var(--texte-2); }
+.fil-lien { background: none; border: none; padding: 0; color: var(--accent); cursor: pointer; font-family: inherit; font-size: 12.5px; }
+.fil-note { margin: 0; font-size: 13px; color: var(--texte-2); }
+.fil-repondre { align-self: flex-start; }
+.fil-formulaire { display: flex; flex-direction: column; gap: 8px; }
+.fil-contexte { padding-left: 0; }
+
+@media (max-width: 720px) {
+  /* Une partie de la gâchée à la fois (CSS seulement : aucun hook de largeur). */
+  .labo-vues-tel { display: block; position: sticky; top: 0; z-index: 5; padding: 6px 0; background: var(--fond); }
+  .labo-editeur[data-vue="pesees"] [data-section]:not([data-section="pesees"]),
+  .labo-editeur[data-vue="eprouvettes"] [data-section]:not([data-section="eprouvettes"]),
+  .labo-editeur[data-vue="echanges"] [data-section]:not([data-section="echanges"]) { display: none; }
+  .labo-pesee-ligne { grid-template-columns: minmax(0, 1fr) 110px; gap: 8px 12px; }
+  .labo-pesee-ligne .labo-bande { grid-column: 1 / -1; grid-row: 2; }
+  .labo-pesee-ecart { grid-column: 1 / -1; text-align: left; }
+  .labo-ajustement { grid-template-columns: minmax(0, 1fr) 100px auto; }
+  .labo-ajustement input[placeholder^="Note"] { grid-column: 1 / -1; grid-row: 2; }
+  .labo-eprouvette-ouverte { padding-left: 0; }
+  .labo-liste-gachees, .labo-liste-champs { padding: 0 18px 6px; }
+  .labo-liste-champs .ui-ligne-droite { width: 44%; }
+  .labo-pastilles { max-width: 55%; }
+  .labo-frise-legende { justify-content: flex-start; }
 }
 
 /* ── Loading spinner ── */

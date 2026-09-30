@@ -16,15 +16,14 @@ export default function FiltreSession({ sessions, valeur, onChange, compte }: {
 }) {
   if (sessions.length === 0) return null;
   return (
-    <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#475569" }}>
-      Session :
-      <select value={valeur} onChange={(e) => onChange(e.target.value)}
-        style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "4px 8px", fontSize: 12.5, background: "#fff" }}>
+    <label className="ui-filtre">
+      Session
+      <select value={valeur} onChange={(e) => onChange(e.target.value)} className="ui-pilule-select">
         <option value="toutes">Toutes</option>
         {[...sessions].reverse().map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
         <option value="sans">Sans session</option>
       </select>
-      {compte && <span style={{ color: "#94a3b8" }}>{compte}</span>}
+      {compte && <span>{compte}</span>}
     </label>
   );
 }
