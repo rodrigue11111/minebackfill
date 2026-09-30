@@ -9,7 +9,8 @@ Ce document sert de memoire technique du projet **minebackfill** pour qu'un outi
 
 Lire ENSUITE, selon la tache :
 - `docs/MAINTENANCE.md` — recettes pas-a-pas (ajouter methode/pack/champ,
-  nouveau classeur Excel via `tools/extract_workbook.py`) et invariants.
+  nouveau classeur Excel via `tools/extract_workbook.py`, systeme de design
+  (recette 13), glossaire et normes (recette 14)) et invariants.
 - `docs/HISTORIQUE_EXTENSIBILITE.md` — le POURQUOI des structures (P0-P5).
 - `docs/OPERATIONS.md` — cote exploitation (enseignant).
 - `docs/ANALYSE_H25.md` — classeur H25 deja depouille (pret a implementer).
@@ -18,11 +19,15 @@ Lire ENSUITE, selon la tache :
 
 Application web de dimensionnement des melanges de remblai cimente en pate:
 - saisie des informations generales (operateur, projet, residu, date, moule, liant)
-- calcul de recettes RPC selon plusieurs methodes:
-1. `Dosage Cw (%)`
-2. `Rapport eau/ciment (W/C)`
-3. `Ajustement pour slump` (modele predictif)
-4. `Methode essai-erreur` (ajustements de masse/eau a partir d'une recette de base)
+- calcul de recettes RPC selon plusieurs methodes (libellés affichés depuis
+  la refonte du 2026-09-30 ; identifiants de code entre parenthèses) :
+1. « Dosage selon Cw » (`dosage_cw`)
+2. « Dosage selon E/L » — rapport eau/liant, W/C dans le code (`wb`)
+3. « Modèle prédictif (affaissement) » (`slump`)
+4. « Méthode essai-erreur » (`essai` : ajustements de masse/eau a partir d'une recette de base)
+- RPG (mêmes méthodes sans le modèle prédictif) et RRC (« Dosage selon Bw et
+  E/L du coulis ») ; suivi du laboratoire (gâchées, éprouvettes, essais UCS) ;
+  tableau de bord de l'enseignant.
 
 Reference metier: logique C# / Excel fournie par l'utilisateur (formules historiques).
 
@@ -36,6 +41,10 @@ Reference metier: logique C# / Excel fournie par l'utilisateur (formules histori
   et `rrc_solver.py`, qui délèguent au pipeline. Toute formule partagée
   RPC/RPG se touche dans `mix_pipeline.py`, pas dans un solveur.
 - **Affichage resultats**: `frontend/src/components/mix/ResultsPanel.tsx`
+  (contrôleur) autour de `CarteResultats.tsx` (tuiles, tableau résumé, rapport
+  complet)
+- **Interface**: un kit de composants (`frontend/src/components/ui/`) et des
+  jetons de design (`frontend/src/app/globals.css`) ; voir la section 13
 
 Principe impose par l'utilisateur:
 - Le frontend saisit + envoie les donnees
@@ -67,14 +76,25 @@ Principe impose par l'utilisateur:
 - `frontend/src/lib/store.tsx`
   - etat global (general, cw, wb, slump, essai, resultats)
 - `frontend/src/app/mix/page.tsx`
-  - navigation des methodes et rendu des formulaires
+  - contrôles segmentés Catégorie / Méthode et rendu des formulaires
+    (`FORM_BY_STATE_KEY`)
+- `frontend/src/lib/method-registry.ts`
+  - registre des méthodes : libellés `long` / `court` / `telephone` /
+    `fichier`, endpoint, tranches du store
+- `frontend/src/components/mix/champs.tsx`
+  - champs partagés des formulaires (`Field`, `CardSection`, `PiedFormulaire`…)
 - `frontend/src/components/mix/rpc/CwForm.tsx`
 - `frontend/src/components/mix/rpc/WbForm.tsx`
 - `frontend/src/components/mix/rpc/SlumpForm.tsx`
 - `frontend/src/components/mix/rpc/EssaiForm.tsx`
-- `frontend/src/components/mix/ResultsPanel.tsx`
+- `frontend/src/components/mix/ResultsPanel.tsx` + `CarteResultats.tsx`
   - affichage unifie des resultats (sections : `components/mix/SectionsRapport.tsx`,
-    rendu du schema unique `lib/report-schema.ts`)
+    rendu du schema unique `lib/report-schema.ts` ; tableau résumé = lignes
+    marquées `resume`)
+- `frontend/src/app/labo/page.tsx` + `frontend/src/components/labo/*`
+  - gâchées (`EditeurGachee`), éprouvettes, essais UCS, échéancier,
+    protocoles ; logique pure dans `lib/gachee.ts`, `lib/frise-cure.ts`,
+    `lib/bande-tolerance.ts`, `lib/ancres.ts`
 - `frontend/src/app/classe/page.tsx` + `frontend/src/components/classe/*`
   - tableau de bord de l'enseignant : etudiants, alertes, echeancier,
     comparaison, comptes, document d'etudiant en lecture seule, fil de
@@ -83,6 +103,15 @@ Principe impose par l'utilisateur:
   - logique PURE du tableau de bord (regle de comptage `essaiValide`,
     comparaison, alertes et `SEUILS_ALERTES`, echeancier, CSV, rapport) ;
     `classe-reseau.ts` = seul module reseau (Supabase injecte)
+- `frontend/src/lib/glossaire.ts`
+  - vocabulaire UNIQUE (libellés `T`, glossaire sourcé, normes d'essai) ;
+    garde `lib/terminologie.test.ts` contre le retour des anciens libellés
+- `frontend/src/components/ui/*`, `frontend/src/lib/navigation.ts`
+  - kit de l'interface et liens des barres (haute et d'onglets du téléphone)
+- `frontend/src/lib/texte-pdf.ts`
+  - `pourPdf` / `nombrePdf` / `assainirTextePdf` : tout texte de PDF y passe
+- `portail/`
+  - portail progicielbelem.com (application séparée, copie des jetons)
 
 ## 4) Conventions de calcul (a respecter)
 
@@ -114,7 +143,7 @@ Principe impose par l'utilisateur:
      (suite d'or inchangee) : le frontend envoie TOUJOURS le drapeau explicite.
      Les unites d'affichage (t, kg, g, lb) restent au choix de l'utilisateur :
      « tonne » et « gramme » designent des classeurs, pas des unites.
-4. **A_m (agregat/co-mixing)**:
+4. **A_m (granulat/co-mixing)**:
    - garde dans la logique (preparation futures methodes), ne pas supprimer
 5. **Champs de sortie**:
    - conserver les memes familles de champs visibles dans le panneau resultats
@@ -182,17 +211,20 @@ Le RPG n'a pas de méthode slump : le modèle prédictif n'existe qu'en RPC
 
 ## 8) Frontend: logique de resultat
 
-`ResultsPanel.tsx` affiche selon la methode active:
+`ResultsPanel.tsx` choisit le resultat selon la methode active:
 - `cwResult` si `dosage_cw`
 - `wbResult` si `wb`
 - `slumpResult` si `slump`
 - `essaiResult` si `essai`
 
-Le panel montre:
-- Donnees du melange (masses)
-- Parametres geotechniques 1
-- Parametres geotechniques 2
-- Parametres geotechniques 3
+`CarteResultats.tsx` montre (depuis la refonte du 2026-09-30) :
+- quatre tuiles de chiffres clés de la recette choisie (Liant, Eau totale,
+  Résidu sec, E/L ; en RRC : Ciment, Eau, Roches stériles, E/L du coulis) ;
+- un tableau résumé (lignes `resume` de `report-schema.ts`) ;
+- le lien « Voir les N lignes du rapport complet », qui ouvre les six
+  sections de `SectionsRapport.tsx` (données du mélange, paramètres
+  géotechniques, masses et poids volumiques, indice des vides, volumes,
+  résultats complets). Les exports Excel et PDF contiennent toujours tout.
 
 ## 9) Decisions fonctionnelles prises avec l'utilisateur
 
@@ -256,11 +288,33 @@ La passe de consolidation que ce document recommandait est **faite** :
    (ce document-ci garde son texte d'origine sans accents ; les passages
    révisés depuis sont accentués correctement) ;
 3. ~~ajouter des tests backend par méthode avec cas de référence Excel~~ —
-   largement dépassé : 574 tests backend, dont les tests d'or adossés aux
-   oracles `excel_twin.py` et `excel_twin_gramme.py`.
+   largement dépassé : 584 tests backend (2026-09-30), dont les tests d'or
+   adossés aux oracles `excel_twin.py` et `excel_twin_gramme.py`.
 
 **Ce qui reste ouvert** se trouve dans `frontend/src/lib/formulas-TODO.md` :
 deux vérifications **métier** (convention d'unités `D1`/`D2` du retardateur
 CRF, forme pratique de `F096` sous `ρw = 1 g/cm³`). Ce sont des questions
 pour le professeur, pas du code — ne pas deviner.
 
+## 13) Vocabulaire et interface (refonte du 2026-09-30)
+
+**Vocabulaire.** Les libellés emploient les termes scientifiques du domaine,
+ceux du cours (GNM1002, H2026, chapitre 4) et des classeurs du professeur,
+avec les vrais noms des essais normalisés. La source unique est
+`frontend/src/lib/glossaire.ts` ; ne pas écrire un libellé répété en dur.
+Décisions de l'utilisateur :
+- « Rapport eau/liant E/L » partout, « (W/C) » entre parenthèses au besoin ;
+  les symboles du catalogue de formules restent ceux du cours (`(W/C)_m`) ;
+- « Taux massique de liant Bw » (p/r à la masse sèche de résidu, + granulat
+  en RPG) ; « Pourcentage solide massique Cw » ; « Densité relative des
+  grains Gs » (sans unité) ; « masse volumique » pour ρ ; « granulat » ;
+- UCS : ASTM C39/C39M ; affaissement : cône d'Abrams, ASTM C143/C143M.
+Les normes sont à confirmer par le professeur (le cours n'en cite aucune).
+Détails et marche à suivre : `docs/MAINTENANCE.md`, recette 14.
+
+**Interface.** Style « épuré » (inspiré d'Apple) : jetons dans
+`globals.css`, kit `components/ui/`, une page = `<Page>` (un seul défilement),
+barre haute de 52 px, barre d'onglets en bas sous 720 px. Pas de couleur
+codée en dur dans une page, sauf dans les figures SVG (export PNG). Détails :
+`docs/MAINTENANCE.md`, recette 13 ; le pourquoi :
+`docs/HISTORIQUE_EXTENSIBILITE.md`, « Refonte épurée ».

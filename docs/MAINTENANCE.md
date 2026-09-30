@@ -26,6 +26,7 @@ pnpm dev
 ```powershell
 cd backend  ; .\.venv\Scripts\python.exe -m pytest app/tests -q   # tous verts
 cd frontend ; pnpm typecheck ; pnpm lint ; pnpm test ; pnpm build # zéro erreur
+cd portail  ; pnpm typecheck ; pnpm lint ; pnpm build             # si le portail change
 ```
 
 La CI (`.github/workflows/ci.yml`) rejoue ces portes sans réseau : ne jamais y
@@ -57,7 +58,7 @@ introduire de dépendance à un service externe.
 ## Recettes
 
 ### 1. Ajouter un liant ou un matériau officiel — 0 code
-Réglages → carte concernée → « + Ajouter » (en mode enseignant connecté, les
+Réglages → carte concernée → « Ajouter » (en mode enseignant connecté, les
 entrées créées sont « officielles ») → « Publier en ligne » pour diffuser à la
 classe. Les entrées officielles publiées remplacent la couche officielle des
 étudiants ; leurs entrées perso sont préservées.
@@ -79,14 +80,29 @@ classe. Les entrées officielles publiées remplacent la couche officielle des
    dans `store.tsx` + un composant de formulaire (mappé dans
    `FORM_BY_STATE_KEY`, `mix/page.tsx`).
 3. `pnpm gen:api` pour régénérer les types (backend démarré).
-Le registre alimente automatiquement le panneau de gauche, l'historique, les
-libellés d'exports et la sauvegarde/restauration.
+Le registre alimente automatiquement le choix de méthode de la page Calculs
+(contrôle segmenté), l'historique, les libellés d'exports et la
+sauvegarde/restauration. Chaque méthode porte quatre libellés (`labels`) :
+`long` (titre, info-bulle), `court` (contrôle segmenté), `telephone` (même
+contrôle sous 720 px, où la place manque) et `fichier` (noms de fichiers
+exportés, sans espace ni accent). Ils suivent le vocabulaire de
+`lib/glossaire.ts` (recette 14). La méthode retenue après un changement de
+catégorie vient de `methodeApresChangementCategorie()` (testée dans
+`method-registry.test.ts`).
 
 ### 4. Ajouter une ligne au rapport de résultats
 `frontend/src/lib/report-schema.ts` UNIQUEMENT (section, libellé, unité,
 getter, décimales, garde `when`). L'écran, l'export Excel et le PDF itèrent la
 même liste — une ligne ajoutée apparaît partout. Tests dans
 `report-schema.test.ts` (unicité par section, gating).
+
+La carte « Résultats » de la page Calculs n'affiche d'abord qu'un **tableau
+résumé** : les lignes qui portent `resume: <rang>` (1 = en haut), filtrées par
+`lignesResume(ctx)`. Le reste s'ouvre par « Voir les N lignes du rapport
+complet », N venant de `nbLignesRapport(ctx)`. Les exports Excel et PDF
+ignorent ce drapeau : leur contenu ne dépend pas de l'écran. Ajouter `resume`
+à une ligne = la faire monter dans le résumé ; garder le résumé court (une
+dizaine de lignes).
 
 ### 5. Ajouter un pack de conventions
 > **Depuis 2026-09-29, l'interface n'expose plus de choix de convention** :
@@ -140,7 +156,7 @@ optionnel+nullable pour les vieux localStorage).
 |---|---|---|---|
 | `minebackfill_saved_results` | brut (tableau) | — | additif seulement |
 | `minebackfill_unit_prefs`, `_binder_prices`, `_production_log` | brut | — | additif |
-| `minebackfill_catalogue_liants` | `{v,data}` | 2 | `migrationCatalogueLiants` (origine) |
+| `minebackfill_catalogue_liants` | `{v,data}` | 3 | `migrationCatalogueLiants(d, versionLue)` : v1 → v2 champ `origine` ; v2 → v3 noms normalisés des liants par défaut (« Ciment Portland GU (anc. type 10) »…), **seulement si le nom est encore celui d'origine** (`NOMS_LIANTS_V2`) : un nom modifié par l'enseignant reste. Le catalogue publié en ligne passe par la même migration à la lecture (`migrerCatalogueLiantsCloud`). |
 | `minebackfill_constantes` | `{v,data}` | 2 | `completerConstantes` (drapeaux + détection de pack) |
 | `minebackfill_general` | `{v,data}` | 1 | identité |
 | `minebackfill_catalogue_residus/granulats/retardateurs` | `{v,data}` | 1 | identité |
@@ -248,10 +264,16 @@ afficher produirait une provenance fausse. Et un nuage mesuré à côté d'une
 courbe calculée, sur des graphes identiques, se lit comme une validation de
 modèle. Les mesures restent donc dans `/labo`, avec deux liens croisés.
 
-**Pas de test de composant** dans ce dépôt : `vitest.config.ts` n'inclut que
+**Pas de navigateur dans les tests** : `vitest.config.ts` n'inclut que
 `src/**/*.test.ts` en environnement `node`. La règle est d'extraire la
 logique en modules purs de `src/lib` et de la tester là —
 `courbe-analyse.ts`, `analyse-fixe.ts`, `composition.ts` suivent ce patron.
+Le rendu d'un composant se vérifie en node avec `renderToStaticMarkup`
+(`react-dom/server`), sans DOM ni effet : `components/classe/rendu.test.ts`,
+`components/ui/kit.test.ts`, `components/mix/carte-resultats.test.ts`,
+`components/labo/editeur-gachee.test.ts`. Ce rendu n'insère pas les
+séparateurs `<!-- -->` entre texte et expression : on y teste des textes
+d'un seul tenant.
 
 ### 11. Synchronisation du travail (v2)
 
@@ -302,7 +324,9 @@ connexion enseignant). Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
   s'exporte (CSV, PDF, messages d'alerte). Voir l'en-tête de
   `classe-comparaison.ts`.
 - **Texte d'un PDF** : toujours par `pourPdf` (police intégrée WinAnsi : un seul
-  caractère hors table rend la ligne illisible) ; nombres par `nombrePdf`.
+  caractère hors table rend la ligne illisible) ; nombres par `nombrePdf`. Les
+  deux vivent dans `lib/texte-pdf.ts` (réexportés par `rapport-classe.ts`) ;
+  voir « Pièges connus ».
 - **CSV** : cellules texte par `securiserCsv` (garde contre les formules),
   nombres bruts (virgule décimale à l'écriture, `celluleCsv`).
 - **Annotations, côté SQL** : une colonne que les clients doivent modifier
@@ -313,6 +337,121 @@ connexion enseignant). Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
   ordre ; un nouveau bloc crée SES comptes et ne change jamais le rôle de
   `PROF`.
 
+### 13. Système de design (refonte « épurée », 2026-09-30)
+
+L'interface suit un seul langage visuel, inspiré des réglages d'Apple : fond
+gris très clair, cartes blanches sans bordure (rayon 22, ombre douce), titres
+de 56 px, listes groupées à filets, contrôles segmentés, boutons en pilule,
+une seule couleur d'accent. Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
+« Refonte épurée ».
+
+**Où sont les choses.**
+- **Jetons** : `frontend/src/app/globals.css`, section `:root` — couleurs
+  (`--fond`, `--surface`, `--texte`, `--texte-2`, `--filet`, `--accent`…),
+  états (`--succes-*`, `--alerte-*`, `--hors-tolerance*`, `--danger-*`,
+  `--violet-*`), rayons, ombres, `--barre-haut` (52 px), `--page-max`
+  (1160 px). Les anciens noms (`--primary`, `--navy`, `--border`…) pointent
+  vers les nouveaux : ne pas en créer d'autres.
+- **Classes globales** : `btn-primary` (pilule), `btn-secondary` (teinté),
+  `btn-sombre`, `btn-discret`, `btn-danger`, `btn-contour` ; `field-input` ;
+  `result-table` (filets) ; `grille-2`, `grille-auto`. Les classes du kit
+  commencent par `ui-` ; celles d'une page par son préfixe (`mix-`, `labo-`,
+  `classe-`, `info-`, `hist-`, `analyse-`, `frm-`, `regl-`, `compte-`,
+  `assistant-`, `lecture-` pour le Guide).
+- **Kit** : `frontend/src/components/ui/`. Sans hook (donc utilisables par un
+  composant serveur, comme le Guide) : `Page`/`EnTetePage`, `Carte`,
+  `ListeGroupee`/`LigneListe`, `BandeChiffres`/`TuilesChiffres`, `Pastille`,
+  `Bandeau`, `Champ`, `Icone`/`Marque`. Composants client : `Segmente`
+  (radiogroup ou tablist, flèches du clavier ; `libelleCourt` sous 720 px),
+  `Menu` (API Popover), `Feuille` (`<dialog>` du téléphone), `ChampNombre`
+  (virgule décimale sûre, `lireNombre`), `BarreHaut`, `BarreOnglets`. Tests de
+  rendu : `components/ui/kit.test.ts`.
+- **Navigation** : `lib/navigation.ts` (`liensNavigation(role)`,
+  `ongletsTelephone(role)`, `estActif`) — une entrée de menu s'ajoute là, les
+  deux barres suivent. Test : `navigation.test.ts`.
+
+**Règles.**
+1. **Un défilement par page** : chaque page s'enveloppe dans `<Page>` (le
+   conteneur défilant sous la barre haute). Ne pas ajouter de second
+   conteneur défilant, ni faire défiler le document.
+2. **Pas de couleur codée en dur dans une page** : `var(--…)`. Exception
+   voulue : **les figures SVG** (`CourbeSvg`, `CourbeUCS`, `BarresPhases`,
+   `DiagrammeTernaire`, `EchantillonCylindre`) gardent leurs
+   couleurs hexadécimales en ligne, parce que l'export PNG
+   (`lib/export-fig.ts`) sérialise le SVG seul, sans la feuille de style : une
+   variable CSS y deviendrait noire. Même raison pour les couleurs de séries
+   (`COULEURS` de `components/classe/commun.tsx`, utilisées par
+   `FigureClasse` ; `COULEURS_SERIE` ; `RECIPE_COLORS`).
+3. **Survol en CSS** (`:hover`), jamais par `onMouseEnter`/`onMouseLeave`.
+4. **Téléphone (≤ 720 px)** : barre d'onglets en bas, barre haute réduite à
+   la marque ; champs en 16 px (sinon iOS zoome) ; zones de sécurité par
+   `env(safe-area-inset-*)`. Une section qui ne doit pas s'afficher sur
+   téléphone se masque en CSS (`data-section`, `data-vue`), sans hook de
+   largeur d'écran (règle du React Compiler, et rendu serveur identique).
+5. **Grilles** : `repeat(auto-fit, minmax(min(100%, Npx), 1fr))` — le
+   `min(100%, …)` évite qu'une colonne minimale plus large que l'écran ne
+   déborde.
+6. **Portail** (`portail/`) : application séparée, qui reprend une COPIE des
+   jetons en tête de `portail/src/app/globals.css`. Une couleur changée ici se
+   change là (le commentaire « GARDER EN PHASE » le rappelle).
+7. **`/industrie`** n'est liée nulle part et n'a pas été refaite : elle
+   hérite des couleurs, pas de la mise en page. Ne pas s'en servir de modèle.
+
+**Ajouter une page** : `<Page>` + `<EnTetePage titre=… sousTitre=… actions=…>`,
+puis des `<Carte titre=…>` ; les réglages en `ListeGroupee`, les champs en
+`Champ` ; un lien dans `lib/navigation.ts` si elle doit figurer au menu.
+
+**Vérifier** : les tests de rendu ne voient ni la mise en page ni les
+débordements. Pour un changement visuel, contrôle dans un navigateur sur le
+build de production, à 1440×900 et à 390×844 (aucun défilement horizontal,
+aucune erreur de console) — voir « Pièges connus », vérification navigateur.
+
+### 14. Glossaire, libellés et normes d'essai
+
+**Source unique** : `frontend/src/lib/glossaire.ts` (module pur, sans
+dépendance). Il contient :
+- `T` : les libellés répétés, en deux formes (`long` : nom scientifique ;
+  `court` : symbole) — `libelle("cw")` donne « Pourcentage solide massique Cw » ;
+- `GLOSSAIRE` : une entrée par terme (définition, symbole, unité, synonymes,
+  normes, **source** obligatoire : diapositive du cours, classeur, programme) ;
+- `NORMES_REF` et `ESSAIS_NORMALISES` : les normes citées (ASTM C143/C143M,
+  C39/C39M, C192/C192M, C470, D2216, D854, C188, CSA A3001, ASTM C989, C618,
+  D6913, D7928…) et l'essai qui les emploie.
+
+Le Guide les affiche (`components/guide/SectionGlossaire.tsx`, section 9,
+ancre `/guide#glossaire`) ; Réglages → À propos y renvoie.
+
+**Vocabulaire retenu** (décisions du 2026-09-30) : « Rapport eau/liant E/L »
+(« (W/C) » entre parenthèses au besoin) ; « Taux massique de liant Bw » (masse
+de liant / masse sèche de résidu, + granulat en RPG) ; « Densité relative des
+grains Gs » (sans unité) ; « masse volumique » pour ρ (jamais « densité » en
+kg/m³) ; « granulat » (jamais « agrégat ») ; « Modèle prédictif
+(affaissement) » ; UCS selon ASTM C39/C39M.
+
+**Changer un libellé** : le modifier dans `T` (ou dans `method-registry.ts`
+pour une méthode) ; `pnpm test` désigne les tests qui l'épinglent
+(`report-schema.test.ts`, `glossaire.test.ts`…). Si un ancien terme ne doit
+plus revenir, l'ajouter à `RETIRES` dans `lib/terminologie.test.ts` : ce test
+parcourt le code de l'interface et échoue s'il le retrouve (exemptés : les
+tests, le glossaire, le catalogue de formules, les types générés,
+`/industrie`).
+
+**Ajouter un terme** : une entrée dans `GLOSSAIRE` avec sa source ; une norme
+nouvelle dans `NORMES_REF`. `glossaire.test.ts` vérifie que les clés sont
+uniques, que chaque entrée cite sa source, l'absence d'emoji et d'accents
+manquants, et les normes de l'UCS et de l'affaissement.
+
+**Ne pas toucher** : les symboles du catalogue de formules
+(`lib/formulas-data.ts`) restent ceux du cours, y compris `(W/C)_m` — la
+fenêtre « fx » des résultats les relie aux valeurs calculées par
+`SYMBOL_TO_RECIPE` (`components/mix/FormulaPopover.tsx`).
+
+**Normes à confirmer** : le cours ne cite aucune norme d'essai. Celles du
+glossaire sont les normes usuelles de la pratique nord-américaine ; l'en-tête
+de `glossaire.ts` et le Guide le disent. Une correction du professeur se
+reporte dans `NORMES_REF` (et dans les protocoles par défaut,
+`lib/protocole.ts`, qui les citent).
+
 ## Pièges connus
 
 - **Lint React Compiler** : `setState` synchrone dans un `useEffect` est une
@@ -321,6 +460,28 @@ connexion enseignant). Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
   des callbacks (fetch.then, onAuthStateChange) sont acceptés.
 - **`NEXT_PUBLIC_*` inlinées au build** : changer une variable Vercel exige un
   redéploiement.
+- **Zoom iOS** : Safari zoome sur tout champ dont le texte fait moins de
+  16 px. `field-input` et les champs du portail passent à 16 px sous 720 px ;
+  un champ stylé à la main doit faire de même.
+- **Menu (Popover) et Feuille (`<dialog>`)** : le menu est un `popover` natif ;
+  sa position sous le bouton se calcule dans `onBeforeToggle`, sans état
+  React. La feuille « Plus » du téléphone est un `<dialog>` : la propriété
+  `ouverte` est reportée sur `showModal()` / `close()` par un effet qui ne
+  touche que le DOM (aucun `setState`, que le lint du React Compiler
+  refuserait) ; Échap et le clic sur le fond appellent `onFermer`. Le focus
+  piégé et Échap viennent du navigateur : ne pas les réécrire à la main.
+- **Libellé court d'un contrôle segmenté** : sous 720 px, le libellé long est
+  masqué **visuellement seulement** (le libellé court est `aria-hidden`). Un
+  `display: none` sur le libellé long laisserait le bouton sans nom
+  accessible.
+- **Texte des PDF** : jsPDF n'a que la police intégrée WinAnsi. Tout texte
+  passe par `pourPdf` (`lib/texte-pdf.ts`) : lettres grecques translittérées
+  (ρh → « rho_h », κ → « kappa »), espaces fines et signes typographiques
+  remplacés ; `assainirTextePdf(doc)` l'applique à tous les `doc.text` d'un
+  document. Ajouter un PDF = appeler `assainirTextePdf` sur son document.
+- **Espace perdue en JSX** : constaté sur le portail, un texte sur plusieurs
+  lignes qui commence par une espace juste après une expression (`{n} projets
+  — chaque…`) a perdu cette espace au rendu. Écrire `{" "}` explicitement.
 - **Vérification navigateur** : pas de harnais E2E commité ; le rituel est
   `pnpm add -D playwright-core` (éphémère), script de smoke contre le build de
   prod avec Edge (`channel`/executablePath), puis `pnpm remove playwright-core`.

@@ -9,15 +9,17 @@ Module 1 du programme de M. Belem (GNM1002).
 
 ## Ce que fait l'outil
 
-À partir des propriétés du résidu (Gs, teneur en eau), du système liant (1 à 3 ciments) et de
-la géométrie du contenant, l'application calcule des recettes complètes :
+À partir des propriétés du résidu (densité relative Gs, teneur en eau massique w₀), de l'agent
+liant (1 à 8 composants : ciment Portland, laitier, cendres volantes…) et de la géométrie du
+contenant de moulage, l'application calcule des recettes complètes :
 
-- masses des composants (résidu sec/humide, granulat, eau à ajouter/retirer, liant par ciment) ;
-- paramètres géotechniques (e, n, ρd, ρh, Cw%, Cv%, Sr, W/C, Bw%, Bv%, θ) ;
-- quatre méthodes : **Dosage Cw%**, **Rapport eau/ciment (W/C)**, **Ajustement pour slump**
-  (RPC) et **Méthode essai-erreur** (ajouts/retraits d'eau, de résidu et de granulat) ;
+- masses des composants (résidu sec/humide, granulat, eau à ajouter/retirer, liant par composant) ;
+- paramètres géotechniques (e, n, ρd, ρh, Cw, Cv, Sr, rapport eau/liant E/L, Bw, Bv, θ) ;
+- quatre méthodes : **Dosage selon Cw**, **Dosage selon E/L**, **Modèle prédictif
+  (affaissement)** (RPC) et **Méthode essai-erreur** (ajouts/retraits d'eau, de résidu et de
+  granulat) ; le remblai rocheux cimenté (RRC) se dose selon Bw et le rapport E/L du coulis ;
 - un module **Analyse** : courbes de réponse paramétriques (balayage de Bw, Cw, Sr ou de la
-  fraction d'agrégat — chaque point est une vraie résolution par les solveurs, jamais une
+  fraction massique de granulat — chaque point est une vraie résolution par les solveurs, jamais une
   formule approchée), tableau « tenu fixe / ce qui varie », visuels de composition du mélange
   (barres, diagramme ternaire, échantillon), exports CSV/JSON/PNG avec bloc de provenance ;
 - un module **Labo** : gâchée réelle (masses cibles contre masses pesées, lots, ajustements),
@@ -39,19 +41,19 @@ Les solveurs reproduisent **cellule par cellule** le classeur de référence du 
 
 - `backend/app/tests/excel_twin.py` — réplique Python exacte de la feuille, validée sur
   38 valeurs du classeur (précision ~1e-15) ;
-- `backend/app/tests/` — **574 tests** : les tests d'or (tolérance 1e-9, cas
+- `backend/app/tests/` — **584 tests** : les tests d'or (tolérance 1e-9, cas
   canonique « Mélange 1 », grille de 144 combinaisons Cw, grille W/C avec invariant
   Mw = W/C × Mb, 13 scénarios d'essai-erreur), les tests d'or RRC/CRF, les tests
   unitaires du pipeline (identités algébriques sur grille aléatoire reproductible,
-  constantes personnalisées, géométrie du contenant, modèle de slump), les tests
+  constantes personnalisées, géométrie du contenant, modèle prédictif de l'affaissement), les tests
   de contrat HTTP et les gardes-fous de validation (limite de 3 liants, entrées
-  hors domaine). Côté frontend : 277 tests Vitest sur 26 fichiers (conversions
+  hors domaine). Côté frontend : 649 tests Vitest sur 65 fichiers (conversions
   d'unités, calculs usine, grandeurs dérivées, w/Cw mesurés, constructeurs de
   payload, persistance versionnée, bibliothèques de matériaux, prix des liants,
   invariants des formules, séries et instantanés d'analyse, gâchées, éprouvettes,
-  protocoles de labo).
+  protocoles de labo, glossaire et garde du vocabulaire, rendu des composants).
 
-Ces deux compteurs sont vérifiés le 2026-09-27 (`pytest app/tests -q` et
+Ces deux compteurs sont vérifiés le 2026-09-30 (`pytest app/tests -q` et
 `pnpm test`). Ils bougent à chaque ajout de test : en cas d'écart, c'est le
 README qui a tort, pas la suite.
 
