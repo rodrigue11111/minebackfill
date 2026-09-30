@@ -487,6 +487,8 @@ textarea.field-input { min-height: 88px; line-height: 1.5; resize: vertical; }
   max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
+  /* Dans une colonne flex (page), le contrôle garde sa largeur naturelle. */
+  align-self: flex-start;
 }
 .ui-segmente::-webkit-scrollbar { display: none; }
 .ui-segment {
@@ -511,7 +513,7 @@ textarea.field-input { min-height: 88px; line-height: 1.5; resize: vertical; }
 .ui-segment:disabled { color: var(--texte-3); cursor: not-allowed; }
 .ui-segmente-compact { padding: 2px; border-radius: 10px; background: rgba(0, 0, 0, 0.06); }
 .ui-segmente-compact .ui-segment { height: 32px; padding: 0 16px; font-size: 13px; border-radius: 8px; }
-.ui-segmente-plein { display: flex; }
+.ui-segmente-plein { display: flex; align-self: stretch; }
 .ui-segment-court { display: none; }
 .ui-segmente-plein .ui-segment { flex: 1; }
 
@@ -1077,6 +1079,47 @@ textarea.field-input { min-height: 88px; line-height: 1.5; resize: vertical; }
   .labo-liste-champs .ui-ligne-droite { width: 44%; }
   .labo-pastilles { max-width: 55%; }
   .labo-frise-legende { justify-content: flex-start; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CLASSE (maquette A améliorée) — app/classe, components/classe
+   ══════════════════════════════════════════════════════════════════ */
+.classe-intro { margin: 0; font-size: 14px; line-height: 1.55; color: var(--texte-2); max-width: 860px; }
+.classe-rien { margin: 0; font-size: 14px; line-height: 1.55; color: var(--texte-2); }
+.classe-compteur { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: rgba(0, 0, 0, 0.08); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.ui-segment-actif .classe-compteur { background: var(--accent-pale); color: var(--accent); }
+.classe-grille { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (min-width: 1025px) { .classe-grille { grid-template-columns: 372px minmax(0, 1fr); } }
+.classe-colonne { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.classe-alertes-liste { display: flex; flex-direction: column; gap: 14px; }
+.classe-alertes-nom { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.classe-alertes-etudiant ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.classe-alertes-etudiant li { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; line-height: 1.45; color: var(--texte); }
+.classe-alertes-etudiant li .ui-point { transform: translateY(-1px); }
+.classe-alertes-etudiant strong { color: var(--hors-tolerance-texte); font-weight: 600; }
+.classe-seuils { font-size: 13px; color: var(--texte-2); }
+.classe-seuils summary { cursor: pointer; }
+.classe-seuils ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.5; }
+.classe-seuils p { margin: 6px 0 0; }
+.classe-tableau { overflow-x: auto; padding: 0 28px 12px; }
+.classe-table { min-width: 680px; }
+.classe-table th, .classe-table td { text-align: left; }
+.classe-table th:first-child, .classe-table td:first-child { padding-left: 0; }
+.classe-ligne { cursor: pointer; }
+.classe-ligne:hover td { background: #FAFAFC; }
+.classe-ligne-active td { background: var(--accent-pale); }
+.classe-nom { font-weight: 500; }
+.classe-courriel { display: block; margin-left: 17px; color: var(--texte-2); font-weight: 400; font-size: 12.5px; }
+.classe-pastille-couleur { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; }
+.classe-note-alerte { color: var(--alerte-texte); font-weight: 600; font-size: 13px; }
+.classe-alerte { color: var(--hors-tolerance-texte); font-weight: 600; }
+.classe-chevron { color: #C7C7CC; text-align: right !important; width: 28px; }
+.classe-sous-titre { margin: 4px 0 0; font-size: 15px; font-weight: 600; }
+.classe-documents { display: flex; flex-direction: column; }
+.classe-document { padding: 12px 0; border-top: 1px solid var(--filet); }
+.classe-documents > .classe-document:first-child { border-top: none; }
+@media (max-width: 720px) {
+  .classe-tableau { padding: 0 18px 8px; }
 }
 
 /* ── Loading spinner ── */

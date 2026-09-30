@@ -37,12 +37,12 @@ export function Pastille({ children, ton = "gris", title }: {
   return <PastilleUi ton={TONS[ton]} title={title}>{children}</PastilleUi>;
 }
 
-export const th: React.CSSProperties = { padding: "8px 10px", borderBottom: "2px solid var(--border)", textAlign: "left", color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" };
-export const td: React.CSSProperties = { padding: "7px 10px", borderBottom: "1px solid #f1f5f9", fontSize: 12.5, verticalAlign: "top" };
+export const th: React.CSSProperties = { padding: "0 10px 10px", textAlign: "left", color: "var(--texte-2)", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" };
+export const td: React.CSSProperties = { padding: "10px", borderTop: "1px solid var(--filet)", fontSize: 14, verticalAlign: "top" };
 export const tdNum: React.CSSProperties = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
 
 /** Bouton-lien discret (ouvrir un document, etc.). */
-export const lienBouton: React.CSSProperties = { background: "none", border: "none", color: "var(--primary)", cursor: "pointer", fontSize: 12.5, padding: 0, fontWeight: 600 };
+export const lienBouton: React.CSSProperties = { background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 14, padding: 0, fontWeight: 500, fontFamily: "inherit" };
 
 /** Un document d'étudiant à ouvrir en entier. */
 export interface RefDoc {
