@@ -129,7 +129,7 @@ export default function NavBar() {
               textTransform: "uppercase",
             }}
           >
-            Mix Design Tool
+            Formulation des remblais
           </div>
         </div>
       </Link>

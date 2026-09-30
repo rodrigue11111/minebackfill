@@ -4,7 +4,7 @@
 //  • Courbes de réponse (balayage d'un paramètre, endpoint /analyse/balayage) ;
 //  • Composition (barres de phases + ternaire + échantillon d'une recette
 //    calculée via /rpc/cw ou /rpg/cw).
-// Les deux REPRENNENT la recette Cw% déjà saisie dans Calculs. Aucun calcul
+// Les deux REPRENNENT la recette « Dosage selon Cw » déjà saisie dans Calculs. Aucun calcul
 // n'est réimplémenté côté client.
 
 import React, { useMemo, useRef, useState } from "react";
@@ -172,9 +172,9 @@ export default function AnalysePage() {
     if (!general.container_type)
       return "Choisis d'abord un type de contenant dans Informations : il est nécessaire au calcul des volumes.";
     if (!(base.residue_sg > 0) || !(base.solid_mass_pct > 0) || !(base.saturation_pct > 0))
-      return `Renseigne d'abord une recette dans Calculs → ${categorie} (méthode Cw%) : Gs du résidu, Cw% et Sr (> 0).`;
+      return `Renseigne d'abord une recette dans Calculs → ${categorie} (dosage selon Cw) : Gs du résidu, Cw et Sr (> 0).`;
     if (categorie === "RPG" && !(rpgCw.aggregate_sg > 0))
-      return "Renseigne le Gs de l'agrégat dans Calculs → RPG (Cw%).";
+      return "Renseigne le Gs du granulat dans Calculs → RPG (dosage selon Cw).";
     return null;
   }
 
@@ -218,7 +218,7 @@ export default function AnalysePage() {
     });
     return {
       date: new Date().toISOString(),
-      categorie, methode: "Cw%",
+      categorie, methode: "Dosage selon Cw",
       parametre: avecParametre ? { label: xLabel, min: xMin, max: xMax, points: steps } : undefined,
       recette: {
         gsResidu: base.residue_sg || 0, w0Pct: base.residue_w_pct || 0,
@@ -362,7 +362,7 @@ export default function AnalysePage() {
     const meta = lignesMetaCsv(resMeta).map((l) => [l] as (string | number | null)[]);
 
     // En comparaison : un GROUPE de colonnes par variante, l'en-tête portant
-    // la recette (« Bw 3 % — W/C ») pour que le fichier reste lisible seul.
+    // la recette (« Bw 3 % — E/L ») pour que le fichier reste lisible seul.
     const colonnes = comparaisonActive && resultats.length > 1
       ? sorties.flatMap((cle) => {
           const m = sortieMeta(cle);

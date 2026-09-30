@@ -428,7 +428,7 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F016",
-    title: "Taux massique de liant Bw (vs résidus + agrégats)",
+    title: "Taux massique de liant Bw (vs résidus + granulats)",
     subtitle: "Quantité de liant",
     section: "Description des remblais miniers — Quantité de liant",
     chapter: "Chapitre 4 — Calculs des mélanges",
@@ -437,14 +437,14 @@ export const FORMULAS: Formula[] = [
       "B_w = \\frac{M_b}{M_t + M_{ag}}",
     equationPlainText: "Bw = Mb / (Mt + Mag)",
     variables: [
-      { symbol: "B_w", description: "Taux massique de liant (vs résidus + agrégats secs)", unit: null },
+      { symbol: "B_w", description: "Taux massique de liant (vs résidus + granulats secs)", unit: null },
       { symbol: "M_b", description: "Masse du liant (sec)", unit: "kg" },
       { symbol: "M_t", description: "Masse des résidus secs (tailings)", unit: "kg" },
-      { symbol: "M_{ag}", description: "Masse des agrégats secs", unit: "kg" },
+      { symbol: "M_{ag}", description: "Masse des granulats secs", unit: "kg" },
     ],
     keywords: ["binder ratio", "Bw", "taux liant", "liant", "dosage", "binder content"],
     contextSnippet:
-      "Valeur typique : Bw = 2–10 % (0.02–0.10). Dans le cas RPC sans agrégat : Bw = Mb/Mt.",
+      "Valeur typique : Bw = 2–10 % (0.02–0.10). Dans le cas RPC sans granulat : Bw = Mb/Mt.",
     derivationLinks: {
       derivedFrom: [],
       derivesInto: ["F017", "F018", "F019", "F020", "F022", "F040", "F048", "F051", "F056", "F069"],
@@ -515,7 +515,7 @@ export const FORMULAS: Formula[] = [
       "B_w = \\frac{B_{ws}}{1-B_{ws}} = \\frac{c_c}{1-c_c} \\qquad B_{ws}=c_c=\\frac{B_w}{1+B_w}",
     equationPlainText: "Bw = Bws/(1-Bws) = cc/(1-cc) ; Bws = cc = Bw/(1+Bw)",
     variables: [
-      { symbol: "B_w", description: "Taux massique de liant (vs résidus/agrégats)", unit: null },
+      { symbol: "B_w", description: "Taux massique de liant (vs résidus/granulats)", unit: null },
       { symbol: "B_{ws}", description: "Teneur massique de liant (vs solides)", unit: null },
       { symbol: "c_c", description: "Alias de Bws", unit: null },
     ],
@@ -1031,7 +1031,7 @@ export const FORMULAS: Formula[] = [
       { symbol: "C_w", description: "Pourcentage solide (décimal)", unit: null },
     ],
     keywords: ["Ms", "solides", "méthode 1", "laboratoire"],
-    contextSnippet: "Masse des solides (tailings secs + liant sec) dans le volume de remblai.",
+    contextSnippet: "Masse des solides (résidus secs + liant sec) dans le volume de remblai.",
     derivationLinks: {
       derivedFrom: ["F009", "F037"],
       derivesInto: ["F039", "F040"],
@@ -1286,7 +1286,7 @@ export const FORMULAS: Formula[] = [
     variables: [
       { symbol: "M_t", description: "Masse de résidus secs dans le PAF", unit: "kg" },
       { symbol: "M_T", description: "Masse totale du PAF", unit: "kg" },
-      { symbol: "A_m", description: "Fraction massique des agrégats (vs résidus + agrégats)", unit: null },
+      { symbol: "A_m", description: "Fraction massique des granulats (vs résidus + granulats)", unit: null },
       { symbol: "C_{w\\text{-PAF}}", description: "% solide massique du PAF", unit: null },
       { symbol: "B_w", description: "Taux massique de liant", unit: null },
     ],
@@ -1326,7 +1326,7 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F050",
-    title: "PAF — Masse d'agrégats secs",
+    title: "PAF — Masse de granulats secs",
     subtitle: "Remblais en pâte aux granulats (PAF/RPG)",
     section: "Calculs des mélanges de remblais mixtes",
     chapter: "Chapitre 4 — Calculs des mélanges",
@@ -1335,14 +1335,14 @@ export const FORMULAS: Formula[] = [
       "M_{ag} = M_T \\cdot A_m \\cdot \\frac{C_{w\\text{-PAF}}}{1 + B_w}",
     equationPlainText: "Mag = MT*Am*Cw_PAF/(1+Bw)",
     variables: [
-      { symbol: "M_{ag}", description: "Masse d'agrégats secs (roches stériles concassées)", unit: "kg" },
+      { symbol: "M_{ag}", description: "Masse de granulats secs (roches stériles concassées)", unit: "kg" },
       { symbol: "M_T", description: "Masse totale du PAF", unit: "kg" },
-      { symbol: "A_m", description: "Fraction massique des agrégats", unit: null },
+      { symbol: "A_m", description: "Fraction massique des granulats", unit: null },
       { symbol: "C_{w\\text{-PAF}}", description: "% solide du PAF", unit: null },
       { symbol: "B_w", description: "Taux massique de liant", unit: null },
     ],
     keywords: ["agrégats", "roches stériles", "Mag", "PAF", "RPG"],
-    contextSnippet: "Masse d'agrégats (ex. roches stériles concassées) dans le PAF.",
+    contextSnippet: "Masse de granulats (ex. roches stériles concassées) dans le PAF.",
     derivationLinks: {
       derivedFrom: ["F048"],
       derivesInto: [],
@@ -1412,9 +1412,9 @@ export const FORMULAS: Formula[] = [
       "\\rho_{s\\text{-PAF}} = (1 + B_w) \\left(\\frac{A_m}{\\rho_{s\\text{-ag}}} + \\frac{1-A_m}{\\rho_{s\\text{-t}}} + \\frac{B_w}{\\rho_{s\\text{-b}}}\\right)^{-1}",
     equationPlainText: "rho_s-PAF = (1+Bw) / (Am/rho_ag + (1-Am)/rho_t + Bw/rho_b)",
     variables: [
-      { symbol: "\\rho_{s\\text{-PAF}}", description: "Masse volumique des grains du PAF (agrégats + résidus + liant)", unit: "kg/m³" },
-      { symbol: "A_m", description: "Fraction massique des agrégats", unit: null },
-      { symbol: "\\rho_{s\\text{-ag}}", description: "Masse volumique des grains d'agrégats", unit: "kg/m³" },
+      { symbol: "\\rho_{s\\text{-PAF}}", description: "Masse volumique des grains du PAF (granulats + résidus + liant)", unit: "kg/m³" },
+      { symbol: "A_m", description: "Fraction massique des granulats", unit: null },
+      { symbol: "\\rho_{s\\text{-ag}}", description: "Masse volumique des grains de granulats", unit: "kg/m³" },
       { symbol: "\\rho_{s\\text{-t}}", description: "Masse volumique des grains de résidus", unit: "kg/m³" },
       { symbol: "\\rho_{s\\text{-b}}", description: "Masse volumique des grains de liant", unit: "kg/m³" },
     ],
@@ -1438,8 +1438,8 @@ export const FORMULAS: Formula[] = [
       "a_m = \\frac{A_m}{1 - A_m} \\qquad A_m = \\frac{a_m}{1 + a_m}",
     equationPlainText: "am = Am/(1-Am) ; Am = am/(1+am)",
     variables: [
-      { symbol: "A_m", description: "Fraction massique des agrégats (vs résidus + agrégats)", unit: null },
-      { symbol: "a_m", description: "Ratio massique agrégats/résidus", unit: null },
+      { symbol: "A_m", description: "Fraction massique des granulats (vs résidus + granulats)", unit: null },
+      { symbol: "a_m", description: "Ratio massique granulats/résidus", unit: null },
     ],
     keywords: ["Am", "am", "agrégats", "fraction", "ratio", "PAF"],
     contextSnippet: "Conversion entre fraction massique Am et ratio am = Mag/Mt.",
@@ -1500,7 +1500,7 @@ export const FORMULAS: Formula[] = [
     derivationLinks: {
       derivedFrom: ["F016", "F055"],
       derivesInto: ["F055", "F057", "F058", "F090", "F091", "F092"],
-      derivationNote: "Analogue à Bw pour RPC mais les agrégats = roches stériles",
+      derivationNote: "Analogue à Bw pour RPC mais les granulats = roches stériles",
     },
   },
 
@@ -2201,7 +2201,7 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F083",
-    title: "PAF — Fraction volumique d'agrégats Av",
+    title: "PAF — Fraction volumique de granulats Av",
     subtitle: "Paramètres PAF",
     section: "Calculs des mélanges de remblais mixtes",
     chapter: "Chapitre 4 — Calculs des mélanges",
@@ -2210,16 +2210,16 @@ export const FORMULAS: Formula[] = [
       "A_v = \\frac{V_{aggregates}}{V_{tailings} + V_{aggregates}} = \\frac{A_m}{A_m + (1-A_m)\\dfrac{\\rho_{s\\text{-ag}}}{\\rho_{s\\text{-t}}}}",
     equationPlainText: "Av = Vaggregates/(Vtailings+Vaggregates) = Am/(Am + (1-Am)*(rho_s-ag/rho_s-t))",
     variables: [
-      { symbol: "A_v", description: "Fraction volumique des agrégats", unit: null },
-      { symbol: "V_{aggregates}", description: "Volume des agrégats", unit: "m³" },
+      { symbol: "A_v", description: "Fraction volumique des granulats", unit: null },
+      { symbol: "V_{aggregates}", description: "Volume des granulats", unit: "m³" },
       { symbol: "V_{tailings}", description: "Volume des résidus (tailings)", unit: "m³" },
-      { symbol: "A_m", description: "Fraction massique des agrégats", unit: null },
-      { symbol: "\\rho_{s\\text{-ag}}", description: "Masse volumique des grains d'agrégats", unit: "kg/m³" },
+      { symbol: "A_m", description: "Fraction massique des granulats", unit: null },
+      { symbol: "\\rho_{s\\text{-ag}}", description: "Masse volumique des grains de granulats", unit: "kg/m³" },
       { symbol: "\\rho_{s\\text{-t}}", description: "Masse volumique des grains de résidus", unit: "kg/m³" },
     ],
     keywords: ["PAF", "Av", "agrégats", "fraction volumique", "Dia 60"],
     contextSnippet:
-      "Dia. 60: relation fondamentale entre contenu massique Am et contenu volumique Av des agrégats.",
+      "Dia. 60: relation fondamentale entre contenu massique Am et contenu volumique Av des granulats.",
     derivationLinks: {
       derivedFrom: ["F054"],
       derivesInto: ["F084", "F085", "F086"],
@@ -2229,7 +2229,7 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F084",
-    title: "PAF — Densité des grains tailings + agrégats",
+    title: "PAF — Masse volumique des grains résidus + granulats",
     subtitle: "Paramètres PAF",
     section: "Calculs des mélanges de remblais mixtes",
     chapter: "Chapitre 4 — Calculs des mélanges",
@@ -2238,9 +2238,9 @@ export const FORMULAS: Formula[] = [
       "\\rho_{s\\text{-tails+aggr}} = \\left(\\frac{A_m}{\\rho_{s\\text{-ag}}} + \\frac{1-A_m}{\\rho_{s\\text{-t}}}\\right)^{-1}",
     equationPlainText: "rho_s-tails+aggr = (Am/rho_s-ag + (1-Am)/rho_s-t)^(-1)",
     variables: [
-      { symbol: "\\rho_{s\\text{-tails+aggr}}", description: "Masse volumique équivalente des grains (résidus + agrégats)", unit: "kg/m³" },
-      { symbol: "A_m", description: "Fraction massique d'agrégats", unit: null },
-      { symbol: "\\rho_{s\\text{-ag}}", description: "Masse volumique des grains d'agrégats", unit: "kg/m³" },
+      { symbol: "\\rho_{s\\text{-tails+aggr}}", description: "Masse volumique équivalente des grains (résidus + granulats)", unit: "kg/m³" },
+      { symbol: "A_m", description: "Fraction massique de granulats", unit: null },
+      { symbol: "\\rho_{s\\text{-ag}}", description: "Masse volumique des grains de granulats", unit: "kg/m³" },
       { symbol: "\\rho_{s\\text{-t}}", description: "Masse volumique des grains de résidus", unit: "kg/m³" },
     ],
     keywords: ["PAF", "rho_s", "tails+aggr", "Dia 60"],
@@ -2266,9 +2266,9 @@ export const FORMULAS: Formula[] = [
     variables: [
       { symbol: "B_v", description: "Taux volumique de liant", unit: null },
       { symbol: "B_w", description: "Taux massique de liant", unit: null },
-      { symbol: "\\rho_{s\\text{-tails+aggr}}", description: "Densité grains résidus+agrégats", unit: "kg/m³" },
+      { symbol: "\\rho_{s\\text{-tails+aggr}}", description: "Densité grains résidus+granulats", unit: "kg/m³" },
       { symbol: "\\rho_{s\\text{-binder}}", description: "Densité grains du mélange de liants", unit: "kg/m³" },
-      { symbol: "A_m", description: "Fraction massique d'agrégats", unit: null },
+      { symbol: "A_m", description: "Fraction massique de granulats", unit: null },
       { symbol: "x_i", description: "Fraction massique du liant i", unit: null },
       { symbol: "x_j", description: "Fraction massique du liant j", unit: null },
     ],
@@ -2293,8 +2293,8 @@ export const FORMULAS: Formula[] = [
       "a_v = \\frac{A_v}{1-A_v} \\qquad A_v = \\frac{a_v}{1+a_v}",
     equationPlainText: "av = Av/(1-Av) ; Av = av/(1+av)",
     variables: [
-      { symbol: "A_v", description: "Fraction volumique d'agrégats", unit: null },
-      { symbol: "a_v", description: "Ratio volumique agrégats/résidus", unit: null },
+      { symbol: "A_v", description: "Fraction volumique de granulats", unit: null },
+      { symbol: "a_v", description: "Ratio volumique granulats/résidus", unit: null },
     ],
     keywords: ["PAF", "Av", "av", "ratio volumique", "agrégats"],
     contextSnippet:
@@ -2378,10 +2378,10 @@ export const FORMULAS: Formula[] = [
       { symbol: "C_{w\\text{-PAF}}", description: "Pourcentage solide massique du PAF", unit: null },
       { symbol: "\\rho_w", description: "Masse volumique de l'eau", unit: "kg/m³" },
       { symbol: "\\rho_{bulk\\text{-PAF}}", description: "Masse volumique humide du PAF", unit: "kg/m³" },
-      { symbol: "A_m", description: "Fraction massique d'agrégats", unit: null },
+      { symbol: "A_m", description: "Fraction massique de granulats", unit: null },
       { symbol: "B_w", description: "Taux massique de liant", unit: null },
       { symbol: "\\rho_{s\\text{-t}}", description: "Masse volumique des grains de résidus", unit: "kg/m³" },
-      { symbol: "\\rho_{s\\text{-ag}}", description: "Masse volumique des grains d'agrégats", unit: "kg/m³" },
+      { symbol: "\\rho_{s\\text{-ag}}", description: "Masse volumique des grains de granulats", unit: "kg/m³" },
       { symbol: "\\rho_{s\\text{-b}}", description: "Masse volumique des grains du liant", unit: "kg/m³" },
     ],
     keywords: ["PAF", "Sr-PAF", "saturation", "Dia 62"],

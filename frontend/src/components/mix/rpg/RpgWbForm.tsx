@@ -104,20 +104,20 @@ export default function RpgWbForm() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* ── PAF info banner ── */}
+      {/* ── Bandeau RPG ── */}
       <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#15803d" }}>
-        <strong>RPG — Paste Aggregate Fill :</strong> formules PAF actives.
-        Le Cw% est dérivé du rapport E/C et du Bw% selon la relation PAF.
+        <strong>Remblai en pâte granulaire :</strong> formules du RPG actives.
+        Le Cw est déduit du rapport E/L et du Bw selon la relation du RPG.
       </div>
 
-      {/* ── Agrégat (PAF-specific) ── */}
-      <CardSection title="Agrégat granulaire" subtitle="Paramètres spécifiques au RPG (PAF)">
+      {/* ── Granulat (propre au RPG) ── */}
+      <CardSection title="Granulat" subtitle="Paramètres propres au remblai en pâte granulaire">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
           <MaterialPresetSelect kind="granulats" role="aggregateId" label="Granulat (bibliothèque)"
             onPick={(m) => { const g = m as GranulatItem; setRpgWb({ aggregate_sg: g.gs, aggregate_fraction_pct: g.fraction_defaut_pct ?? rpgWb.aggregate_fraction_pct }); }}
             matches={(m) => (m as GranulatItem).gs === rpgWb.aggregate_sg} />
           <div />
-          <Field label="Gs agrégat" hint="Masse volumique spécifique de l'agrégat">
+          <Field label="Densité relative du granulat Gs" hint="Sans unité : Gs = ρs/ρw">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 2.65"
               value={rpgWb.aggregate_sg || ""}
               onChange={(e) => setRpgWb({ aggregate_sg: num(e.target.value) })} />
@@ -132,23 +132,23 @@ export default function RpgWbForm() {
       </CardSection>
 
       {/* ── Résidu & saturation ── */}
-      <CardSection title="Résidu & saturation">
+      <CardSection title="Résidu et saturation">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
           <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
             onPick={(m) => { const r = m as ResiduItem; setRpgWb({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
             matches={(m) => { const r = m as ResiduItem; return r.gs === rpgWb.residue_sg && r.w0_pct === rpgWb.residue_w_pct; }} />
           <div />
-          <Field label="Gs résidu" hint="Masse volumique spécifique des grains">
+          <Field label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4"
               value={rpgWb.residue_sg || ""}
               onChange={(e) => setRpgWb({ residue_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Teneur en eau résidu w₀ (%)">
+          <Field label="Teneur en eau massique du résidu w₀ (%)">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 23.8"
               value={rpgWb.residue_w_pct || ""}
               onChange={(e) => setRpgWb({ residue_w_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Saturation Sr (%)">
+          <Field label="Degré de saturation Sr (%)">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 100"
               value={rpgWb.saturation_pct || ""}
               onChange={(e) => setRpgWb({ saturation_pct: num(e.target.value) })} />
@@ -159,12 +159,12 @@ export default function RpgWbForm() {
       {/* ── Paramètres du mélange ── */}
       <CardSection title="Paramètres du mélange">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <Field label="Quantité (nb. de moules)">
+          <Field label="Nombre de moules par recette">
             <input type="number" style={inputStyle} min={1}
               value={rpgWb.desired_qty ?? 1}
               onChange={(e) => setRpgWb({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de sécurité (multiplicateur)" hint="1 = aucun surplus ; 1,05 = +5 % (feuille prof : FS % = FS/100 + 1)">
+          <Field label="Facteur de perte κ" hint="1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).">
             <input type="number" step="any" style={inputStyle} min={1}
               value={rpgWb.safety_factor ?? 1}
               onChange={(e) => setRpgWb({ safety_factor: num(e.target.value) })} />
@@ -186,10 +186,10 @@ export default function RpgWbForm() {
         </div>
       </CardSection>
 
-      {/* ── Per-recipe: Bw% + E/C ── */}
+      {/* ── Par recette : Bw et E/L ── */}
       <CardSection
-        title={`Recettes — Bw% & rapport E/C (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}
-        subtitle="Bw% = Mb/(Mr+Ma)×100  ·  E/C = Meau/Mliant"
+        title={`Recettes — Bw et rapport eau/liant E/L (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}
+        subtitle="Bw = Mb / (Mr + Ma) × 100  ·  E/L = Mw / Mb"
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {Array.from({ length: numRecipes }).map((_, i) => (
@@ -197,12 +197,12 @@ export default function RpgWbForm() {
               <div style={{ gridColumn: "1/-1", fontSize: 11.5, fontWeight: 700, color: RECIPE_COLORS[i], textTransform: "uppercase" as const, letterSpacing: "0.05em", marginBottom: 2 }}>
                 Recette {i + 1}
               </div>
-              <Field label="Bw% — liant (%)" hint="% massique de liant / (résidu+agrégat)">
+              <Field label="Taux massique de liant Bw (%)" hint="Masse de liant / masse sèche de résidu et de granulat">
                 <input type="number" step="any" style={inputStyle} placeholder="ex : 5"
                   value={rpgWb.binder_pct?.[i] ?? ""}
                   onChange={(e) => setRpgWbRecipe(i, { binder_pct: num(e.target.value) })} />
               </Field>
-              <Field label="Rapport E/C" hint="Eau / ciment massique (ex : 4 à 8)">
+              <Field label="Rapport eau/liant E/L (W/C)" hint="Masse d'eau / masse de liant (ex. : 4 à 8)">
                 <input type="number" step="any" style={inputStyle} placeholder="ex : 6.0"
                   value={rpgWb.wc_ratio?.[i] ?? ""}
                   onChange={(e) => setRpgWbRecipe(i, { wc_ratio: num(e.target.value) })} />

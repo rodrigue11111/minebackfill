@@ -11,9 +11,9 @@ import { RECIPE_COLORS } from "@/lib/recipe-theme";
 import { construireConstantesPayload } from "@/lib/rpc_payload";
 
 /**
- * Formulaire RRC — Remblai Rocheux Cimenté (CRF).
+ * Formulaire RRC — remblai rocheux cimenté.
  * Méthode unique du cours (Dias 66-70) : dosage par Bw (liant / roches
- * stériles) et W/C du coulis (fluide = eau + retardateur de prise).
+ * stériles) et rapport E/L du coulis (fluide = eau + retardateur de prise).
  */
 
 const inputStyle: React.CSSProperties = {
@@ -94,12 +94,12 @@ export default function RrcForm() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* ── Quantité de CRF ── */}
-      <CardSection title="Quantité de CRF" subtitle="Volume du chantier à remblayer, ou masse totale directe">
+      {/* ── Quantité de RRC ── */}
+      <CardSection title="Quantité de remblai rocheux cimenté" subtitle="Volume du chantier à remblayer, ou masse totale directe">
         <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
           {[
-            { value: "volume", label: "Par volume", sub: "V x masse volumique humide" },
-            { value: "masse", label: "Par masse", sub: "Masse totale de CRF" },
+            { value: "volume", label: "Par volume", sub: "V × masse volumique humide" },
+            { value: "masse", label: "Par masse", sub: "Masse totale de RRC" },
           ].map((opt) => {
             const active = rrc.quantity_mode === opt.value;
             return (
@@ -122,18 +122,18 @@ export default function RrcForm() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
           {modeVolume ? (
             <>
-              <Field label="Volume du chantier V_CRF (m³)">
+              <Field label="Volume du chantier à remblayer (m³)">
                 <input type="number" step="any" style={inputStyle} placeholder="ex : 1000"
                   value={rrc.volume_m3 || ""} onChange={(e) => setRrc({ volume_m3: num(e.target.value) })} />
               </Field>
-              <Field label="Masse volumique humide (kg/m³)" hint="rho_wet du CRF en place (typ. 1800-2400)">
+              <Field label="Masse volumique humide (kg/m³)" hint="Masse volumique humide du RRC en place (typ. 1800 à 2400)">
                 <input type="number" step="any" style={inputStyle} placeholder="ex : 2200"
                   value={rrc.wet_density_kg_m3 || ""} onChange={(e) => setRrc({ wet_density_kg_m3: num(e.target.value) })} />
               </Field>
             </>
           ) : (
             <>
-              <Field label="Masse totale M_CRF (kg)">
+              <Field label="Masse totale de RRC (kg)">
                 <input type="number" step="any" style={inputStyle} placeholder="ex : 2200000"
                   value={rrc.total_mass_kg || ""} onChange={(e) => setRrc({ total_mass_kg: num(e.target.value) })} />
               </Field>
@@ -147,7 +147,7 @@ export default function RrcForm() {
       </CardSection>
 
       {/* ── Coulis & retardateur ── */}
-      <CardSection title="Coulis cimentaire et retardateur de prise"
+      <CardSection title="Coulis de ciment et retardateur de prise"
         subtitle="Le fluide du coulis = eau + retardateur ; dosage D0 recommandé : 50 à 260 ml/100 kg de ciment">
         <div style={{ maxWidth: 320, marginBottom: 14 }}>
           <MaterialPresetSelect
@@ -159,11 +159,11 @@ export default function RrcForm() {
           />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px 16px" }}>
-          <Field label="Gs du ciment" hint="Pour le volume du coulis">
+          <Field label="Densité relative du ciment Gs" hint="Pour le volume du coulis (ASTM C188)">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.15"
               value={rrc.cement_sg || ""} onChange={(e) => setRrc({ cement_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Dosage retardateur D0 (ml/100 kg)" hint="0 = aucun retardateur">
+          <Field label="Dosage en retardateur D0 (ml/100 kg de ciment)" hint="0 = aucun retardateur">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 100"
               value={rrc.retarder_d0 ?? ""} onChange={(e) => setRrc({ retarder_d0: num(e.target.value) })} />
           </Field>
@@ -175,8 +175,8 @@ export default function RrcForm() {
       </CardSection>
 
       {/* ── Recettes ── */}
-      <CardSection title={`Recettes — Bw et W/C (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}
-        subtitle="Bw = Mc/MWR (liant / roches stériles) ; W/C = fluide / ciment">
+      <CardSection title={`Recettes — Bw et rapport E/L du coulis (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}
+        subtitle="Bw = Mc / MWR (ciment / roches stériles) ; E/L = fluide / ciment">
         <div style={{ marginBottom: 12 }}>
           <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
             Nombre de recettes
@@ -214,11 +214,11 @@ export default function RrcForm() {
                 Recette {i + 1}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px" }}>
-                <Field label="Bw (%)">
+                <Field label="Taux massique de liant Bw (%)">
                   <input type="number" step="any" style={inputStyle} placeholder="ex : 5"
                     value={rrc.binder_pct?.[i] || ""} onChange={(e) => setRrcRecipe(i, { binder_pct: num(e.target.value) })} />
                 </Field>
-                <Field label="W/C du coulis">
+                <Field label="Rapport E/L du coulis (W/C)">
                   <input type="number" step="any" style={inputStyle} placeholder="ex : 1.0"
                     value={rrc.wc_ratio?.[i] || ""} onChange={(e) => setRrcRecipe(i, { wc_ratio: num(e.target.value) })} />
                 </Field>

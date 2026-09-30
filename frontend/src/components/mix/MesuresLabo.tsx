@@ -61,8 +61,8 @@ export default function MesuresLabo({
   numRecipes: number;
   recipes?: RecetteCalculee[] | null;
   /**
-   * Cible de slump du protocole essai-erreur (mm). Si fournie, l'écart et le
-   * geste conseillé (eau vs solides) s'affichent sous le slump mesuré —
+   * Affaissement visé du protocole essai-erreur (mm). Si fourni, l'écart et le
+   * geste conseillé (eau ou solides) s'affichent sous l'affaissement mesuré —
    * protocole de Belem et al. 2018, §2.3.
    */
   slumpCibleMm?: number;
@@ -84,7 +84,7 @@ export default function MesuresLabo({
           Paramètres mesurés au laboratoire
         </h3>
         <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>
-          Après la gâchée : slump mesuré et essai de teneur en eau (masses en grammes, comme la feuille de référence).
+          Après la gâchée : affaissement mesuré (ASTM C143/C143M) et teneur en eau massique (ASTM D2216 ; masses en grammes, comme la feuille de référence).
           w mesuré = (m_h − m_s)/(m_s − tare) ; Cw mesuré = (m_s − tare)/(m_h − tare).
         </p>
       </div>
@@ -106,7 +106,7 @@ export default function MesuresLabo({
                 Recette {i + 1}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px 12px" }}>
-                <Field label="Slump mesuré (mm)">
+                <Field label="Affaissement mesuré (mm)">
                   <input type="number" step="any" style={inputStyle} placeholder="—"
                     value={m.slump ?? ""} onChange={(e) => setMesure(i, { slump: num(e.target.value) })} />
                 </Field>
@@ -125,7 +125,7 @@ export default function MesuresLabo({
               </div>
               {slumpCibleMm !== undefined && slumpCibleMm > 0 && m.slump !== undefined && (
                 <div style={{ marginTop: 10, fontSize: 12.5, color: "#374151" }}>
-                  <strong>Slump : {m.slump} mm</strong> vs cible {slumpCibleMm} mm{" "}
+                  <strong>Affaissement : {m.slump} mm</strong> pour une cible de {slumpCibleMm} mm{" "}
                   {m.slump === slumpCibleMm ? (
                     <span style={{ color: "#16a34a", fontWeight: 600 }}>— cible atteinte</span>
                   ) : m.slump < slumpCibleMm ? (
@@ -134,7 +134,7 @@ export default function MesuresLabo({
                     </span>
                   ) : (
                     <span style={{ color: "#d97706", fontWeight: 600 }}>
-                      (écart +{(m.slump - slumpCibleMm).toFixed(0)} mm) — au-dessus : ajouter résidus + granulats (le liant suit la règle active)
+                      (écart +{(m.slump - slumpCibleMm).toFixed(0)} mm) — au-dessus : ajouter résidu et granulat (le liant suit la règle active)
                     </span>
                   )}
                 </div>

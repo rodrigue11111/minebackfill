@@ -59,7 +59,7 @@ export default function ChampFractionGranulat({
 
   const equivalence =
     !gsOk
-      ? "Renseignez les Gs du résidu et de l'agrégat pour la saisie volumique."
+      ? "Renseignez les Gs du résidu et du granulat pour la saisie volumique."
       : modeEffectif === "am"
         ? av !== null
           ? `= Av ${arrondi(av).toLocaleString("fr-CA")} %v/v (éq. [3], Belem et al. 2018)`
@@ -79,7 +79,7 @@ export default function ChampFractionGranulat({
         type="button"
         disabled={desactive}
         onClick={() => changerMode(m)}
-        title={desactive ? "Gs du résidu et de l'agrégat requis" : undefined}
+        title={desactive ? "Gs du résidu et du granulat requis" : undefined}
         style={{
           padding: "2px 9px", borderRadius: 999, fontSize: 10.5, fontWeight: 700,
           border: `1px solid ${actif ? "#2563eb" : "#e2e8f0"}`,
@@ -98,7 +98,7 @@ export default function ChampFractionGranulat({
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
         <label style={{ fontSize: 12.5, fontWeight: 600, color: "#374151" }}>
-          {modeEffectif === "am" ? "A_m — fraction agrégat (% massique)" : "A_v — fraction agrégat (% volumique)"}
+          {modeEffectif === "am" ? "Fraction massique de granulat Am (%)" : "Fraction volumique de granulat Av (%)"}
         </label>
         <span style={{ display: "flex", gap: 4 }}>
           {boutonMode("am", "% masse", false)}
@@ -127,7 +127,7 @@ export default function ChampFractionGranulat({
       />
       <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>
         {modeEffectif === "am"
-          ? `Ma/(Ma+Mr)×100 — % d'agrégat dans les solides non-liant. ${equivalence}`
+          ? `Ma/(Ma+Mr)×100 — part du granulat dans les solides hors liant. ${equivalence}`
           : `Va/(Va+Vr)×100 — % du volume des grains (la grandeur pilotée par l'article). ${equivalence}`}
       </p>
     </div>

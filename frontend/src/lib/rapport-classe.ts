@@ -15,6 +15,8 @@ import { libelleGroupe, type Comparaison } from "./classe-comparaison";
 import { LIBELLES_ALERTES, libellesSeuils, type Alerte, type TypeAlerte } from "./classe-alertes";
 import { estReponse, type LigneAnnotation } from "./classe-reseau";
 import { fmtDate } from "./echeance-affichage";
+import { methodLabel } from "./method-registry";
+import { nombrePdf } from "./texte-pdf";
 
 export type BlocRapport =
   | { type: "titre"; texte: string; niveau: 1 | 2 }
@@ -39,35 +41,9 @@ export interface ContexteRapport {
   moi: string;
 }
 
-/* ── Texte compatible avec la police intégrée de jsPDF ─────────────────────
- * Helvetica intégrée = encodage WinAnsi (CP1252) : Latin-1 plus quelques
- * signes (’ « » œ – — … €). Un SEUL caractère hors de cette table fait passer
- * toute la chaîne en UCS-2, rendue illisible. On ramène donc chaque caractère
- * hors table à un équivalent sûr. */
-const CP1252_EXTRA = new Set([..."€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ"]);
-const EQUIVALENTS: Record<string, string> = {
-  " ": " ", " ": " ", " ": " ", "​": "", "−": "-", "‑": "-", "‐": "-",
-  "≥": ">=", "≤": "<=", "≈": "~", "≠": "!=", "σ": "s", "→": "->", "←": "<-", "▸": ">", "▾": "v",
-  "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9",
-};
-
-export function pourPdf(s: string): string {
-  let r = "";
-  for (const c of s.normalize("NFC")) {
-    const code = c.codePointAt(0)!;
-    if (code <= 0xff || CP1252_EXTRA.has(c)) r += c;
-    else r += EQUIVALENTS[c] ?? "?";
-  }
-  return r;
-}
-
-/** Nombre à virgule décimale, milliers séparés par une espace ordinaire. */
-export function nombrePdf(v: number | null | undefined, dec = 0): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
-  const [ent, frac] = Math.abs(v).toFixed(dec).split(".");
-  const groupe = ent.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return `${v < 0 && Number(Math.abs(v).toFixed(dec)) !== 0 ? "-" : ""}${groupe}${frac ? `,${frac}` : ""}`;
-}
+/* Texte compatible avec la police intégrée de jsPDF : voir texte-pdf.ts
+ * (réexporté ici pour les appelants historiques). */
+export { pourPdf, nombrePdf } from "./texte-pdf";
 
 const jour = (iso: string | null | undefined): string => {
   if (!iso) return "—";
@@ -128,9 +104,9 @@ function chapitreEtudiant(e: EtudiantClasse, ctx: ContexteRapport): BlocRapport[
     blocs.push({ type: "titre", texte: "Résultats sauvegardés", niveau: 2 });
     blocs.push({
       type: "tableau",
-      colonnes: [{ titre: "Libellé", largeur: 90 }, { titre: "Catégorie", largeur: 22 }, { titre: "Méthode", largeur: 30 }, { titre: "Recettes", largeur: 18, alignement: "d" }, { titre: "Date", largeur: 22 }],
+      colonnes: [{ titre: "Libellé", largeur: 90 }, { titre: "Catégorie", largeur: 20 }, { titre: "Méthode", largeur: 32 }, { titre: "Recettes", largeur: 18, alignement: "d" }, { titre: "Date", largeur: 22 }],
       lignes: e.resultats.map((r) => [
-        r.label + (r.conflit ? " (copie de conflit)" : ""), r.category, r.method,
+        r.label + (r.conflit ? " (copie de conflit)" : ""), r.category, methodLabel(r.category, r.method),
         String(r.category === "RRC" ? r.rrc?.result.recipes.length ?? 0 : (r.recipes ?? []).length), jour(r.savedAt),
       ]),
     });

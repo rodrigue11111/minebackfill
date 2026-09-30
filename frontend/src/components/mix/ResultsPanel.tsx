@@ -9,6 +9,7 @@ import {
   type UnitPreferences,
 } from "@/lib/units";
 import FormulaPopover from "@/components/mix/FormulaPopover";
+import { nomLiant } from "@/lib/liants";
 import { descriptorFor, methodLabel } from "@/lib/method-registry";
 import { REPORT_SECTIONS, rowsForSection, type ReportCtx } from "@/lib/report-schema";
 import { SectionsRapport, TableauRrc, SectionHeader, SECTION_BORDER, HEADER_TEXT } from "@/components/mix/SectionsRapport";
@@ -218,7 +219,7 @@ export async function exportToExcel(
   /* ── Save ── */
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  const filename = `MineBackfill_${category}_${method}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `MineBackfill_${category}_${methodLabel(category as Category, method, "fichier")}_${new Date().toISOString().slice(0, 10)}.xlsx`;
   saveAs(blob, filename);
 }
 
@@ -329,7 +330,7 @@ function RrcResultatsView({ recipes, massLabel, toMass, general, units, onSave }
         </button>
       </div>
       <p style={{ fontSize: 11.5, color: "#94a3b8", padding: "0 2px" }}>
-        Invariant : M_WR + M_c + M* = M_CRF. Le coulis = ciment + eau + retardateur.
+        Bilan : MWR + Mc + M* = masse totale de RRC. Coulis de ciment = ciment + eau + retardateur de prise.
       </p>
     </div>
   );
@@ -361,14 +362,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
   // Nom du composant n (1-indexé), pour un nombre N quelconque : lit la liste
   // N-aire des liants (repli legacy binder1/2/3 via lireBinders).
   const bindersGeneral = lireBinders(general);
-  const binderName = (n: number): string => {
-    const ref = bindersGeneral[n - 1];
-    if (!ref?.code && !ref?.id) return `Ciment ${n}`;
-    const item =
-      (ref.id ? catalogue_liants.find((l) => l.id === ref.id) : undefined) ??
-      catalogue_liants.find((l) => l.code === ref.code);
-    return item?.nom ?? ref.code ?? `Ciment ${n}`;
-  };
+  const binderName = nomLiant(general, catalogue_liants);
 
   const isRpg = category === "RPG";
   const isEssai = method === "essai";
@@ -397,15 +391,15 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
     ? (store[dQty.stateKey] as { desired_qty?: number }).desired_qty
     : undefined;
 
-  /* ── RRC : vue dédiée (formules CRF, pas de MixState) ── */
+  /* ── RRC : vue dédiée (formules du RRC, pas de MixState) ── */
   if (category === "RRC") {
     const rrcRecipes = store.rrcResult?.recipes ?? [];
     if (rrcRecipes.length === 0) {
       return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: 32, textAlign: "center", gap: 14, color: "var(--muted-foreground)" }}>
-          <p style={{ fontWeight: 600, fontSize: 15, color: "#374151", margin: 0 }}>Résultats RRC / CRF</p>
+          <p style={{ fontWeight: 600, fontSize: 15, color: "#374151", margin: 0 }}>Résultats RRC</p>
           <p style={{ fontSize: 13, maxWidth: 260, lineHeight: 1.5 }}>
-            Renseignez la quantité de CRF, Bw et W/C puis cliquez sur <strong>Lancer le calcul</strong>.
+            Renseignez la quantité de RRC, le Bw et le rapport E/L du coulis, puis cliquez sur <strong>Lancer le calcul</strong>.
           </p>
         </div>
       );
@@ -448,7 +442,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             Résultats de calcul
           </p>
           <p style={{ fontSize: 13, maxWidth: 240, marginTop: 6, lineHeight: 1.5 }}>
-            Renseignez les parametres et cliquez sur{" "}
+            Renseignez les paramètres et cliquez sur{" "}
             <strong>Lancer le calcul</strong> pour afficher les résultats ici.
           </p>
         </div>
@@ -478,8 +472,8 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
               marginBottom: 6,
             }}
           >
-            {isRpg ? "RPG (PAF)" : "RPC"} — {recipes.length} recette{recipes.length > 1 ? "s" : ""}
-            {isEssai ? " (ajustees)" : ""}
+            {isRpg ? "RPG" : "RPC"} — {recipes.length} recette{recipes.length > 1 ? "s" : ""}
+            {isEssai ? " (ajustées)" : ""}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 24px" }}>
             {general.residue_id && (
@@ -496,7 +490,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
             )}
             {desiredQty !== undefined && (
               <span style={{ fontSize: 13, color: "#374151" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>Qte : </span>
+                <span style={{ color: "var(--muted-foreground)" }}>Qté : </span>
                 {desiredQty} moule{desiredQty > 1 ? "s" : ""}
               </span>
             )}
@@ -690,11 +684,11 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                     className="field-input"
                     value={saveLabel}
                     onChange={(e) => setSaveLabel(e.target.value)}
-                    placeholder={`${category} ${method} — ${new Date().toLocaleDateString("fr-CA")}`}
+                    placeholder={`${category} ${methodLabel(category, method)} — ${new Date().toLocaleDateString("fr-CA")}`}
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        const lbl = saveLabel.trim() || `${category} ${method} — ${new Date().toLocaleDateString("fr-CA")}`;
+                        const lbl = saveLabel.trim() || `${category} ${methodLabel(category, method)} — ${new Date().toLocaleDateString("fr-CA")}`;
                         setSaveOutcome(store.saveCurrentResult(lbl) ? "ok" : "erreur");
                       }
                       if (e.key === "Escape") setShowSaveDialog(false);
@@ -703,7 +697,7 @@ export default function ResultsPanel({ isMaximized = false }: { isMaximized?: bo
                   <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
                     <button
                       onClick={() => {
-                        const lbl = saveLabel.trim() || `${category} ${method} — ${new Date().toLocaleDateString("fr-CA")}`;
+                        const lbl = saveLabel.trim() || `${category} ${methodLabel(category, method)} — ${new Date().toLocaleDateString("fr-CA")}`;
                         setSaveOutcome(store.saveCurrentResult(lbl) ? "ok" : "erreur");
                       }}
                       className="btn-primary"

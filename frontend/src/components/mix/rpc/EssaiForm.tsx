@@ -144,15 +144,15 @@ export default function EssaiForm() {
 
       {/* ── Info banner ── */}
       <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#0369a1" }}>
-        <strong>Méthode essai-erreur :</strong> réutilise les données de la méthode de base (Cw% ou E/C) et permet d&apos;ajouter des ajustements manuels par recette après mesure du slump.
+        <strong>Méthode essai-erreur :</strong> reprend les données de la méthode de base (dosage selon Cw ou selon E/L) et permet d&apos;entrer, par recette, les ajouts réels faits après la mesure de l&apos;affaissement.
       </div>
 
       {/* ── Base method choice ── */}
       <CardSection title="Méthode de base" subtitle="Les paramètres sont repris depuis le formulaire correspondant">
         <div style={{ display: "flex", gap: 10 }}>
           {[
-            { value: "dosage_cw", label: "Dosage Cw (%)", sub: `${cw.num_recipes || 1} recette${(cw.num_recipes || 1) > 1 ? "s" : ""}` },
-            { value: "wb", label: "Rapport E/C", sub: `${wb.num_recipes || 1} recette${(wb.num_recipes || 1) > 1 ? "s" : ""}` },
+            { value: "dosage_cw", label: "Dosage selon Cw", sub: `${cw.num_recipes || 1} recette${(cw.num_recipes || 1) > 1 ? "s" : ""}` },
+            { value: "wb", label: "Dosage selon E/L", sub: `${wb.num_recipes || 1} recette${(wb.num_recipes || 1) > 1 ? "s" : ""}` },
           ].map((opt) => {
             const active = baseMethod === opt.value;
             return (

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { agregerParAge } from "@/lib/eprouvette";
 import { essaiValide, type EtudiantClasse, type LigneClasse } from "@/lib/classe";
 import { estReponse, type LigneAnnotation } from "@/lib/classe-reseau";
+import { methodLabel } from "@/lib/method-registry";
 import FilCommentaires from "./FilCommentaires";
 import { dateCourte, lienBouton, Pastille, type RefDoc } from "./commun";
 
@@ -112,7 +113,7 @@ export default function DetailEtudiant({ etudiant, annotations, onAnnoter, ctx, 
           <div key={r.id} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
               <div style={{ fontSize: 13.5, fontWeight: 700 }}>
-                {r.label} <span style={{ fontWeight: 400, color: "#64748b" }}>· {r.category} · {r.method} · {(r.recipes ?? []).length} recette(s) · {dateCourte(r.savedAt)}</span>
+                {r.label} <span style={{ fontWeight: 400, color: "#64748b" }}>· {r.category} · {methodLabel(r.category, r.method)} · {(r.recipes ?? []).length} recette(s) · {dateCourte(r.savedAt)}</span>
                 {r.conflit && <> <Pastille ton="ambre">copie de conflit</Pastille></>}
               </div>
               <button type="button" style={lienBouton} onClick={() => onOuvrir({ etudiantId: etudiant.id, kind: "resultat", id: r.id })}>Ouvrir</button>

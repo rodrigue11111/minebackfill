@@ -262,7 +262,7 @@ export default function HistoriquePage() {
                           cursor: "pointer",
                         }}
                       >
-                        {isExpanded ? "Reduire" : "Voir"}
+                        {isExpanded ? "Réduire" : "Voir"}
                       </button>
                       {confirmDeleteId === sr.id ? (
                         <button
@@ -370,7 +370,7 @@ export default function HistoriquePage() {
                           recettes MixState : on renvoie vers Recharger/Excel. */}
                       {sr.category === "RRC" ? (
                         <p style={{ fontSize: 12.5, color: "#64748b", margin: 0 }}>
-                          Résultat RRC / CRF ({nbRecettes(sr)} recette{nbRecettes(sr) > 1 ? "s" : ""}).
+                          Résultat RRC ({nbRecettes(sr)} recette{nbRecettes(sr) > 1 ? "s" : ""}).
                           Utilisez « Recharger dans Calculs » pour le détail complet, ou « Excel » / « Feuille labo » pour l&apos;export.
                         </p>
                       ) : (
@@ -398,12 +398,12 @@ export default function HistoriquePage() {
                         </thead>
                         <tbody>
                           {[
-                            { label: "Bw%", getter: (r: Recipe) => r.bw_mass_pct, digits: 2, unit: "%" },
-                            { label: "Cw%", getter: (r: Recipe) => r.solids_mass_pct, digits: 2, unit: "%" },
+                            { label: "Bw (%)", getter: (r: Recipe) => r.bw_mass_pct, digits: 2, unit: "%" },
+                            { label: "Cw (%)", getter: (r: Recipe) => r.solids_mass_pct, digits: 2, unit: "%" },
                             { label: "e (indice des vides)", getter: (r: Recipe) => r.void_ratio, digits: 4, unit: "" },
                             { label: "n (porosité)", getter: (r: Recipe) => r.porosity, digits: 4, unit: "" },
                             { label: "w (%)", getter: (r: Recipe) => r.w_mass_pct, digits: 2, unit: "%" },
-                            { label: "E/C", getter: (r: Recipe) => r.wc_ratio, digits: 3, unit: "" },
+                            { label: "E/L", getter: (r: Recipe) => r.wc_ratio, digits: 3, unit: "" },
                             { label: "Sr (%)", getter: (r: Recipe) => r.saturation_pct, digits: 1, unit: "%" },
                             { label: `Résidu sec (${massLabel})`, getter: (r: Recipe) => fromStoreMass(r.components?.residue_dry_mass_kg, units?.mass), digits: 3, unit: massLabel },
                             { label: `Liant (${massLabel})`, getter: (r: Recipe) => fromStoreMass(r.components?.binder_total_mass_kg, units?.mass), digits: 3, unit: massLabel },

@@ -3,15 +3,15 @@
 // l'Historique et la vue enseignant (/classe). Les modules lourds (exceljs,
 // jspdf) ne sont chargés qu'au clic.
 
-import { lireBinders, type RpcMethod, type SavedResult } from "./store";
+import type { RpcMethod, SavedResult } from "./store";
+import { nomLiant } from "./liants";
 import { estVersionCourante } from "./conventions";
 import type { UnitPreferences } from "./units";
 
 export type FormatExportResultat = "excel" | "pdf" | "feuille";
 
-/** Nom du liant n (1-indexé) d'un résultat : son code, sinon « Ciment n ». */
-export const binderNameFor = (sr: SavedResult) => (n: number): string =>
-  lireBinders(sr.general)[n - 1]?.code || `Ciment ${n}`;
+/** Nom du liant n (1-indexé) d'un résultat, lu dans le catalogue figé avec lui. */
+export const binderNameFor = (sr: SavedResult) => nomLiant(sr.general, sr.catalogue_liants ?? []);
 
 /**
  * Avertit avant d'exporter un résultat calculé avec d'anciennes formules

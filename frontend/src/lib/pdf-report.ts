@@ -7,6 +7,7 @@ import { lireBinders } from "@/lib/store";
 import { MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS } from "@/lib/units";
 import { fmt } from "@/lib/format";
 import { EXPORT_FOOTER } from "@/lib/branding";
+import { assainirTextePdf } from "@/lib/texte-pdf";
 
 /* ── Colour palette (RGB tuples) ── */
 const NAVY: [number, number, number] = [12, 30, 66];
@@ -34,7 +35,7 @@ export async function exportToPdf(
   units: UnitPreferences,
 ) {
   const { default: jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const doc = assainirTextePdf(new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" }));
 
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -214,6 +215,6 @@ export async function exportToPdf(
   addFooter();
 
   /* ── Save ── */
-  const filename = `MineBackfill_${category}_${method}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filename = `MineBackfill_${category}_${methodLabel(category as Category, method, "fichier")}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
 }

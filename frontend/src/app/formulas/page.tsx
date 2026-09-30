@@ -635,7 +635,7 @@ function SearchInput({
           onChange={(e) => { onChange(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => { if (e.key === "Escape") { setOpen(false); onChange(""); } }}
-          placeholder="Rechercher : Cw, rho_h, porosité, slump, W/C, e/(1+e)…"
+          placeholder="Rechercher : Cw, rho_h, porosité, affaissement, E/L, e/(1+e)…"
           className="field-input"
           style={{ paddingLeft: 38, paddingRight: value ? 36 : 12, fontSize: 13.5, height: 42 }}
         />
@@ -1658,8 +1658,8 @@ export default function FormulaLibraryPage() {
                   Aucune formule trouvée
                 </div>
                 <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 6, lineHeight: 1.6 }}>
-                  Essayez : &ldquo;Cw&rdquo;, &ldquo;porosité&rdquo;, &ldquo;rho_h&rdquo;, &ldquo;slump&rdquo;,
-                  &ldquo;W/C&rdquo;, &ldquo;liant&rdquo;, &ldquo;PAF&rdquo;, &ldquo;CRF&rdquo; ou un fragment d&rsquo;équation
+                  Essayez : &ldquo;Cw&rdquo;, &ldquo;porosité&rdquo;, &ldquo;rho_h&rdquo;, &ldquo;affaissement&rdquo;,
+                  &ldquo;E/L&rdquo;, &ldquo;liant&rdquo;, &ldquo;granulat&rdquo;, &ldquo;roches stériles&rdquo; ou un fragment d&rsquo;équation
                 </div>
                 <button
                   onClick={() => { setQuery(""); setSelectedSection("all"); }}

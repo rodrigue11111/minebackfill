@@ -491,7 +491,7 @@ export default function GeneralInfoPage() {
                 3
               </div>
               <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
-                Système liant hydraulique
+                Agent liant
               </h2>
             </div>
 
@@ -562,7 +562,7 @@ export default function GeneralInfoPage() {
                             updateBinder(idx, { id: item?.id ?? null, code: item?.code ?? null });
                           }}
                         >
-                          <option value="">Sélectionner...</option>
+                          <option value="">Sélectionner…</option>
                           {liantsValides.map((liant: LiantCatalogueItem) => (
                             <option key={liant.id} value={liant.id}>
                               {liant.nom} ({liant.code}) — Gs {Number(liant.gs).toFixed(4)}
@@ -571,7 +571,7 @@ export default function GeneralInfoPage() {
                         </select>
                       </div>
                       <div>
-                        <label style={LABEL}>Fraction (%)</label>
+                        <label style={LABEL}>Fraction massique (%)</label>
                         <input
                           type="number"
                           step="any"
@@ -640,10 +640,10 @@ export default function GeneralInfoPage() {
               }}
             >
               <p style={{ margin: 0, color: "var(--muted-foreground)", fontSize: 12.5 }}>
-                Catalogue des liants et constantes physiques : page Reglages.
+                Catalogue des liants et constantes physiques : page Réglages.
               </p>
               <Link href="/reglages" className="btn-secondary" style={{ textDecoration: "none", whiteSpace: "nowrap" }}>
-                Reglages des constantes
+                Réglages des constantes
               </Link>
             </div>
           </div>

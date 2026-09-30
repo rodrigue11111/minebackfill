@@ -10,7 +10,7 @@ import type { InstantaneAnalyse } from "@/lib/analyse-instantane";
  * « Ce qui est tenu fixe » / « Ce qui varie sur la plage ».
  *
  * Répond à la question que la page laissait sans réponse : en balayant Bw,
- * Cw ne bouge pas — c'est une ENTRÉE de la méthode Cw%, et le balayage ne
+ * Cw ne bouge pas — c'est une ENTRÉE du dosage selon Cw, et le balayage ne
  * remplace que le paramètre choisi. Ce qui change, c'est la répartition
  * résidu/liant.
  *

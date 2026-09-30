@@ -27,7 +27,7 @@ export default function LeftPane() {
   const handleCategoryClick = (c: Category) => {
     setCategory(c);
     // Si la méthode courante n'existe pas pour la nouvelle catégorie
-    // (ex. slump en RPG), on retombe sur la première disponible. RRC n'a pas
+    // (ex. modèle prédictif en RPG), on retombe sur la première disponible. RRC n'a pas
     // de liste de méthodes (formulaire unique) : on NE réinitialise pas, pour
     // qu'un aller-retour RPC -> RRC -> RPC retrouve la méthode et ses résultats.
     const methodes = methodsFor(c);
@@ -124,7 +124,7 @@ export default function LeftPane() {
           <p style={SECTION_LABEL}>Méthode de calcul</p>
           {category === "RRC" && (
             <p style={{ fontSize: 12, color: "var(--muted-foreground)", padding: "4px 2px" }}>
-              Méthode unique : dosage par Bw (liant/roches stériles) et W/C du coulis
+              Méthode unique : dosage selon Bw (ciment / roches stériles) et le rapport E/L du coulis
               (cours, Dias 66-70).
             </p>
           )}

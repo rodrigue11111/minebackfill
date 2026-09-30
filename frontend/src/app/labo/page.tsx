@@ -3,12 +3,13 @@
 // Onglet « Labo » — gâchées RÉELLES. Chaque gâchée part d'une formulation
 // sauvegardée (Calculs → Sauvegarder) et enregistre ce qui a vraiment été fait :
 // masses cibles vs pesées (écart kg/%), lots, humidité mesurée, mesures fraîches
-// (slump, température, w, Cw — persistées) et ajustements de l'essai-erreur.
+// (affaissement, température, w, Cw — persistées) et ajustements de l'essai-erreur.
 // Auto-sauvegarde : chaque saisie est persistée immédiatement (localStorage).
 
 import React, { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import { nomLiant } from "@/lib/liants";
 import FiltreSession from "@/components/FiltreSession";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -784,7 +785,7 @@ function ResultatsUCS({ gachees, formulations }: {
                   <tr style={{ color: "#64748b", textAlign: "right" }}>
                     <th style={{ textAlign: "left", padding: "5px 8px" }}>Gâchée</th>
                     <th style={{ padding: "5px 8px" }}>Cw</th>
-                    <th style={{ padding: "5px 8px" }}>W/C</th>
+                    <th style={{ padding: "5px 8px" }}>E/L</th>
                     <th style={{ padding: "5px 8px" }}>Bw</th>
                     <th style={{ padding: "5px 8px" }}>Âge</th>
                     <th style={{ padding: "5px 8px" }}>UCS moyenne (kPa)</th>
@@ -901,7 +902,7 @@ export default function LaboPage() {
       categorie: form.category,
       recetteIndex: Math.min(recIndex, form.recipes.length - 1),
       solverVersion: form.solverVersion,
-      composants: composantsDepuisRecette(recette, (i) => `Ciment ${i}`),
+      composants: composantsDepuisRecette(recette, nomLiant(form.general, form.catalogue_liants ?? [])),
       tolerancePct: 2,
       ajustements: [],
       eprouvettes: [],
@@ -1002,7 +1003,7 @@ export default function LaboPage() {
           {/* Mesures fraîches */}
           <Carte titre="Mesures sur pâte fraîche">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
-              <Champ label="Slump mesuré (mm)"><NumInput style={inputStyle} value={g.slumpMesureMm} onChange={(n) => maj({ slumpMesureMm: n })} /></Champ>
+              <Champ label="Affaissement mesuré (mm)"><NumInput style={inputStyle} value={g.slumpMesureMm} onChange={(n) => maj({ slumpMesureMm: n })} /></Champ>
               <Champ label="Température (°C)"><NumInput style={inputStyle} value={g.temperatureC} onChange={(n) => maj({ temperatureC: n })} /></Champ>
               <Champ label="w mesuré (%)"><NumInput style={inputStyle} value={g.wMesurePct} onChange={(n) => maj({ wMesurePct: n })} /></Champ>
               <Champ label="Cw mesuré (%)"><NumInput style={inputStyle} value={g.cwMesurePct} onChange={(n) => maj({ cwMesurePct: n })} /></Champ>

@@ -81,7 +81,7 @@ export default function MixPage() {
   const renderForm = () => {
     const d = descriptorFor(category, method);
 
-    // Combinaison inexistante (ex. slump en RPG) : message dédié.
+    // Combinaison inexistante (ex. modèle prédictif en RPG) : message dédié.
     if (!d && category === "RPG" && method === "slump") {
       return (
         <div
@@ -95,8 +95,8 @@ export default function MixPage() {
         >
           <p style={{ fontWeight: 600, marginBottom: 4 }}>Méthode non disponible pour RPG</p>
           <p style={{ fontSize: 13 }}>
-            L&apos;ajustement par slump est une méthode empirique spécifique à <strong>RPC</strong>.
-            Utilisez <strong>Essai-erreur</strong> pour appliquer des ajustements manuels en RPG.
+            Le modèle prédictif (affaissement) est calé sur le <strong>RPC</strong>.
+            Utilisez la <strong>méthode essai-erreur</strong> pour entrer les ajouts réels en RPG.
           </p>
         </div>
       );
@@ -211,7 +211,7 @@ export default function MixPage() {
                     marginBottom: 12,
                   }}
                 >
-                  Mode RPG — méthodes Cw% et W/C uniquement
+                  Mode RPG — le modèle prédictif n&apos;est offert qu&apos;en RPC
                 </div>
               )}
             </div>

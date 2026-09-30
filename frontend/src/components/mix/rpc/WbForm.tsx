@@ -109,19 +109,19 @@ export default function WbForm() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
       {/* ── Residue & saturation ── */}
-      <CardSection title="Résidu & saturation">
+      <CardSection title="Résidu et saturation">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
           <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
             onPick={(m) => { const r = m as ResiduItem; setWb({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
             matches={(m) => { const r = m as ResiduItem; return r.gs === wb.residue_sg && r.w0_pct === wb.residue_w_pct; }} />
           <div />
-          <Field label="Gs résidu" hint="Masse volumique spécifique des grains">
+          <Field label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4" value={wb?.residue_sg ?? ""} onChange={(e) => setWb({ residue_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Teneur en eau résidu w₀ (%)" hint="Humidité naturelle du résidu">
+          <Field label="Teneur en eau massique du résidu w₀ (%)" hint="Résidu tel que reçu (ASTM D2216)">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 23.8" value={wb?.residue_w_pct ?? ""} onChange={(e) => setWb({ residue_w_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Saturation Sr (%)" hint="100% = entièrement saturé">
+          <Field label="Degré de saturation Sr (%)" hint="100 % = pâte saturée">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 100" value={wb?.saturation_pct ?? ""} onChange={(e) => setWb({ saturation_pct: num(e.target.value) })} />
           </Field>
         </div>
@@ -130,10 +130,10 @@ export default function WbForm() {
       {/* ── Mix metadata ── */}
       <CardSection title="Paramètres du mélange">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <Field label="Quantité (nb. de moules)">
+          <Field label="Nombre de moules par recette">
             <input type="number" style={inputStyle} min={1} value={wb?.desired_qty ?? 1} onChange={(e) => setWb({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de sécurité (multiplicateur)" hint="1 = aucun surplus ; 1,05 = +5 % (feuille prof : FS % = FS/100 + 1)">
+          <Field label="Facteur de perte κ" hint="1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).">
             <input type="number" step="any" style={inputStyle} min={1} value={wb?.safety_factor ?? 1} onChange={(e) => setWb({ safety_factor: num(e.target.value) })} />
           </Field>
         </div>
@@ -153,8 +153,8 @@ export default function WbForm() {
         </div>
       </CardSection>
 
-      {/* ── Per-recipe: Bw% + E/C ── */}
-      <CardSection title={`Recettes — Bw% & rapport E/C (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}>
+      {/* ── Par recette : Bw et E/L ── */}
+      <CardSection title={`Recettes — Bw et rapport eau/liant E/L (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {Array.from({ length: numRecipes }).map((_, i) => (
             <div
@@ -183,7 +183,7 @@ export default function WbForm() {
               >
                 Recette {i + 1}
               </div>
-              <Field label="Bw% — liant (%)" hint="% massique de liant">
+              <Field label="Taux massique de liant Bw (%)" hint="Masse de liant / masse sèche de résidu">
                 <input
                   type="number"
                   step="any"
@@ -193,7 +193,7 @@ export default function WbForm() {
                   onChange={(e) => setWbRecipe(i, { binder_pct: num(e.target.value) })}
                 />
               </Field>
-              <Field label="Rapport E/C" hint="Eau / ciment massique (ex : 4 à 8)">
+              <Field label="Rapport eau/liant E/L (W/C)" hint="Masse d'eau / masse de liant (ex. : 4 à 8)">
                 <input
                   type="number"
                   step="any"

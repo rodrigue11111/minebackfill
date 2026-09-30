@@ -38,7 +38,7 @@ function CarteGroupe({ groupe, onOuvrir }: { groupe: GroupeComparaison; onOuvrir
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
             <thead>
               <tr>
-                {["Étudiant", "Gâchée", "Date", "Cw (%)", "Bw (%)", "W/C", "UCS (kPa)", "± écart-type", "n", "CV", "Écart à la médiane"].map((t, i) => (
+                {["Étudiant", "Gâchée", "Date", "Cw (%)", "Bw (%)", "E/L", "UCS (kPa)", "± écart-type", "n", "CV", "Écart à la médiane"].map((t, i) => (
                   <th key={t} style={i >= 3 ? { ...th, textAlign: "right" } : th}>{t}</th>
                 ))}
               </tr>

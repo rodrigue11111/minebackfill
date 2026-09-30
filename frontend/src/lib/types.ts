@@ -33,7 +33,7 @@ export interface MixResult {
   recipes: Recipe[];
 }
 
-// ── RRC / CRF (remblai rocheux cimenté) — dérivé de RrcRecipeState ──
+// ── RRC (remblai rocheux cimenté) — dérivé de RrcRecipeState ──
 
 export type RrcRecipe = Lax<Schemas["RrcRecipeState"]>;
 

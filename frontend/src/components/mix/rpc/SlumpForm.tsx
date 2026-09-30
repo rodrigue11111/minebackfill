@@ -101,7 +101,7 @@ export default function SlumpForm() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
       {/* ── Slump target ── */}
-      <CardSection title="Slump cible">
+      <CardSection title="Affaissement visé">
         <div>
           <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Type de cône</label>
           <div style={{ display: "flex", gap: 10 }}>
@@ -126,17 +126,17 @@ export default function SlumpForm() {
                   }}
                 >
                   <input type="radio" name="cone_type" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setSlump({ cone_type: t })} />
-                  {t === "mini" ? "Petit cône" : "Grand cône"}
+                  {t === "mini" ? "Petit cône" : "Cône d'Abrams (300 mm)"}
                 </label>
               );
             })}
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <Field label={`Affaissement slump (${slumpLabel})`} hint="Valeur mesurée au cône d'Abrams">
+          <Field label={`Affaissement visé S (${slumpLabel})`} hint="Essai au cône d'Abrams, ASTM C143/C143M ; le petit cône n'est pas normalisé">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 180" value={fromStoreSlump(slump.slump_mm, units.slump) ?? ""} onChange={(e) => setSlump({ slump_mm: toStoreSlump(num(e.target.value), units.slump) ?? undefined })} />
           </Field>
-          <Field label="Saturation Sr (%)" hint="100% = entièrement saturé">
+          <Field label="Degré de saturation Sr (%)" hint="100 % = pâte saturée">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 100" value={slump.saturation_pct ?? ""} onChange={(e) => setSlump({ saturation_pct: num(e.target.value) })} />
           </Field>
         </div>
@@ -149,10 +149,10 @@ export default function SlumpForm() {
             onPick={(m) => { const r = m as ResiduItem; setSlump({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
             matches={(m) => { const r = m as ResiduItem; return r.gs === slump.residue_sg && r.w0_pct === slump.residue_w_pct; }} />
           <div />
-          <Field label="Gs résidu">
+          <Field label="Densité relative des grains du résidu Gs">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4" value={slump.residue_sg ?? ""} onChange={(e) => setSlump({ residue_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Teneur en eau w₀ (%)">
+          <Field label="Teneur en eau massique du résidu w₀ (%)">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 23.8" value={slump.residue_w_pct ?? ""} onChange={(e) => setSlump({ residue_w_pct: num(e.target.value) })} />
           </Field>
         </div>
@@ -161,10 +161,10 @@ export default function SlumpForm() {
       {/* ── Mix metadata ── */}
       <CardSection title="Paramètres du mélange">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <Field label="Quantité (nb. de moules)">
+          <Field label="Nombre de moules par recette">
             <input type="number" style={inputStyle} min={1} value={slump.desired_qty ?? 1} onChange={(e) => setSlump({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de sécurité (multiplicateur)" hint="1 = aucun surplus ; 1,05 = +5 % (feuille prof : FS % = FS/100 + 1)">
+          <Field label="Facteur de perte κ" hint="1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).">
             <input type="number" step="any" style={inputStyle} min={1} value={slump.safety_factor ?? 1} onChange={(e) => setSlump({ safety_factor: num(e.target.value) })} />
           </Field>
         </div>
@@ -184,11 +184,11 @@ export default function SlumpForm() {
         </div>
       </CardSection>
 
-      {/* ── Per-recipe Bw% ── */}
-      <CardSection title={`Liant Bw% par recette (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}>
+      {/* ── Bw par recette ── */}
+      <CardSection title={`Taux massique de liant Bw par recette (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}>
         <div style={{ display: "grid", gridTemplateColumns: numRecipes === 1 ? "1fr" : "repeat(2, 1fr)", gap: "12px 16px" }}>
           {Array.from({ length: numRecipes }).map((_, i) => (
-            <Field key={i} label={`Recette ${i + 1} — Bw%`}>
+            <Field key={i} label={`Recette ${i + 1} — Bw (%)`}>
               <input
                 type="number"
                 step="any"

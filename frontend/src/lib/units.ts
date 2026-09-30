@@ -129,7 +129,7 @@ export const fromStoreVolume = (v: Nullable, to: VolumeUnit): number | null   =>
 export const toStoreDensity   = (v: Nullable, from: DensityUnit): number | null => safeConvert(v, DENSITY_FACTORS[from], "toStore");
 export const fromStoreDensity = (v: Nullable, to: DensityUnit): number | null   => safeConvert(v, DENSITY_FACTORS[to], "fromStore");
 
-// Slump (store = mm)
+// Affaissement (store = mm)
 export const toStoreSlump   = (v: Nullable, from: SlumpUnit): number | null => safeConvert(v, SLUMP_FACTORS[from], "toStore");
 export const fromStoreSlump = (v: Nullable, to: SlumpUnit): number | null   => safeConvert(v, SLUMP_FACTORS[to], "fromStore");
 
@@ -155,5 +155,5 @@ export const UNIT_CATEGORIES: {
   { key: "mass",    label: "Masse",           options: ["kg", "g", "t", "lb"],             labels: MASS_LABELS },
   { key: "volume",  label: "Volume",          options: ["mm3", "cm3", "m3", "in3"],        labels: VOLUME_LABELS },
   { key: "density", label: "Masse volumique", options: ["g/cm3", "kg/m3", "t/m3"],         labels: DENSITY_LABELS },
-  { key: "slump",   label: "Slump",           options: ["mm", "cm", "in"],                 labels: SLUMP_LABELS },
+  { key: "slump",   label: "Affaissement",    options: ["mm", "cm", "in"],                 labels: SLUMP_LABELS },
 ];

@@ -10,7 +10,7 @@ class MemStorage {
   get length() { return this.m.size; }
 }
 
-import { useStore } from "./store";
+import { useStore, migrerCatalogueLiantsCloud, CATALOGUE_VERSION } from "./store";
 import type { ResiduItem } from "./materials";
 
 const s = () => useStore.getState();
@@ -117,5 +117,41 @@ describe("store — migration du catalogue de liants v1 -> v2", () => {
     const cat = s().catalogue_liants;
     expect(cat.find((l) => l.code === "CP10")?.origine).toBe("officiel");
     expect(cat.find((l) => l.code === "CUSTOM")?.origine).toBe("perso");
+  });
+});
+
+describe("store — migration du catalogue de liants v2 -> v3 (noms normalisés)", () => {
+  it("renomme les liants par défaut restés intacts, garde les noms modifiés", () => {
+    localStorage.setItem("minebackfill_catalogue_liants", JSON.stringify({ v: 2, data: [
+      { id: "liant_cp10", code: "CP10", nom: "Ciment CP10", gs: 3.1543, origine: "officiel" },
+      { id: "liant_cp50", code: "CP50", nom: "CP50 du labo", gs: 3.1887, origine: "officiel" },
+      { id: "liant_slag", code: "SLAG", nom: "Laitier", gs: 2.8426, origine: "officiel" },
+      { id: "liant_fly_ash", code: "FLY_ASH", nom: "Fly Ash", gs: 2.6114, origine: "officiel" },
+      { id: "liant_x", code: "CUSTOM", nom: "Fly Ash", gs: 2.5, origine: "perso" },
+    ] }));
+    s().loadCatalogue();
+    const nom = (id: string) => s().catalogue_liants.find((l) => l.id === id)?.nom;
+    expect(nom("liant_cp10")).toBe("Ciment Portland GU (anc. type 10)");
+    expect(nom("liant_cp50")).toBe("CP50 du labo"); // modifié à la main : conservé
+    expect(nom("liant_slag")).toBe("Laitier de haut fourneau (GGBFS)");
+    expect(nom("liant_fly_ash")).toBe("Cendres volantes (FA)");
+    expect(nom("liant_x")).toBe("Fly Ash"); // id perso : jamais renommé
+    // Ids, codes et Gs ne bougent pas.
+    expect(s().catalogue_liants.find((l) => l.id === "liant_cp10")).toMatchObject({ code: "CP10", gs: 3.1543 });
+  });
+
+  it("un catalogue v1 brut reçoit à la fois `origine` et les nouveaux noms", () => {
+    localStorage.setItem("minebackfill_catalogue_liants", JSON.stringify([
+      { id: "liant_slag", code: "SLAG", nom: "Laitier", gs: 2.8426 },
+    ]));
+    s().loadCatalogue();
+    expect(s().catalogue_liants[0]).toMatchObject({ nom: "Laitier de haut fourneau (GGBFS)", origine: "officiel" });
+  });
+
+  it("le catalogue publié en ligne en v2 est migré à la lecture", () => {
+    const cat = migrerCatalogueLiantsCloud({ v: 2, data: [{ id: "liant_cp50", code: "CP50", nom: "Ciment CP50", gs: 3.1887, origine: "officiel" }] });
+    expect(cat?.[0].nom).toBe("Ciment Portland HS (anc. type 50)");
+    // Une version future (publieur plus récent) est refusée, comme avant.
+    expect(migrerCatalogueLiantsCloud({ v: CATALOGUE_VERSION + 1, data: [{ id: "a" }] })).toBeNull();
   });
 });

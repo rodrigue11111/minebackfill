@@ -2,7 +2,7 @@
 // Ce qu'un balayage TIENT FIXE. Transformations PURES, testables sans DOM.
 //
 // Motivation : la page ne disait nulle part que Cw, Sr, Bw et Am sont des
-// ENTRÉES de la méthode Cw%. Le balayage ne remplace QUE le paramètre choisi
+// ENTRÉES du dosage selon Cw. Le balayage ne remplace QUE le paramètre choisi
 // (backend app/core/analyse.py, _PARAM_OVERRIDE) ; tous les autres gardent la
 // valeur de la recette de base. D'où la question récurrente « si je fais
 // varier Bw, est-ce que Cw change ? » — non, et l'outil doit le dire seul.
@@ -73,17 +73,17 @@ export function tenuFixe(inst: InstantaneAnalyse, param: ParamCle): LigneFixe[] 
   const sauf = (p: ParamCle) => param !== p;
 
   l.push({ label: "Gs du résidu", valeur: f(r.gsResidu) });
-  l.push({ label: "w₀ — teneur en eau du résidu", valeur: `${f(r.w0Pct, 1)} %` });
-  if (sauf("solids_mass_pct")) l.push({ label: "Cw — solides massiques", valeur: `${f(r.cwPct, 2)} %` });
-  if (sauf("saturation_pct")) l.push({ label: "Sr — saturation", valeur: `${f(r.srPct, 1)} %` });
-  if (sauf("binder_mass_pct")) l.push({ label: "Bw — dosage de liant", valeur: `${f(r.bwPct, 2)} %` });
+  l.push({ label: "w₀ — teneur en eau massique du résidu", valeur: `${f(r.w0Pct, 1)} %` });
+  if (sauf("solids_mass_pct")) l.push({ label: "Cw — pourcentage solide massique", valeur: `${f(r.cwPct, 2)} %` });
+  if (sauf("saturation_pct")) l.push({ label: "Sr — degré de saturation", valeur: `${f(r.srPct, 1)} %` });
+  if (sauf("binder_mass_pct")) l.push({ label: "Bw — taux massique de liant", valeur: `${f(r.bwPct, 2)} %` });
   if (r.amPct !== undefined && sauf("aggregate_fraction_pct")) {
-    l.push({ label: "Am — fraction d'agrégat", valeur: `${f(r.amPct, 1)} %` });
+    l.push({ label: "Am — fraction massique de granulat", valeur: `${f(r.amPct, 1)} %` });
   }
-  if (r.gsAgregat !== undefined) l.push({ label: "Gs de l'agrégat", valeur: f(r.gsAgregat) });
+  if (r.gsAgregat !== undefined) l.push({ label: "Gs du granulat", valeur: f(r.gsAgregat) });
 
   l.push({
-    label: "Système liant",
+    label: "Agent liant",
     valeur: inst.liants.length
       ? inst.liants.map((b) => `${b.code || "?"} ${f(b.fractionPct, 0)} %`).join(" · ")
       : "aucun",
@@ -91,7 +91,7 @@ export function tenuFixe(inst: InstantaneAnalyse, param: ParamCle): LigneFixe[] 
 
   if (inst.contenant) l.push({ label: "Contenant", valeur: inst.contenant.type });
   if (inst.contenants !== undefined) l.push({ label: "Nombre de contenants", valeur: f(inst.contenants, 0) });
-  if (inst.facteurSecurite !== undefined) l.push({ label: "Facteur de sécurité", valeur: f(inst.facteurSecurite) });
+  if (inst.facteurSecurite !== undefined) l.push({ label: "Facteur de perte κ", valeur: f(inst.facteurSecurite) });
 
   // Comportement non évident et jamais affiché jusqu'ici : le balayage réduit
   // la base à UNE seule recette et reprend le premier dosage de liant. Une

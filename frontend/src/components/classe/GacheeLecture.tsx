@@ -43,7 +43,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
           <Info label="Catégorie" valeur={g.categorie} />
           <Info label="Recette" valeur={`R${(g.recetteIndex ?? 0) + 1}`} />
           <Info label="Cw (%)" valeur={nombre(p?.cwPct, 2)} />
-          <Info label="W/C" valeur={nombre(p?.wcRatio, 3)} />
+          <Info label="E/L" valeur={nombre(p?.wcRatio, 3)} />
           <Info label="Bw (%)" valeur={nombre(p?.bwPct, 2)} />
           <Info label="w (%)" valeur={nombre(p?.wPct, 2)} />
           <Info label="Version des formules" valeur={g.solverVersion ?? "—"} />
@@ -88,7 +88,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
           <Info label="Lot de granulat" valeur={g.lotGranulat || "—"} />
           <Info label="Lot de liant" valeur={g.lotLiant || "—"} />
           <Info label="w₀ mesuré (%)" valeur={nombre(g.w0MesurePct, 2)} />
-          <Info label="Slump (mm)" valeur={nombre(g.slumpMesureMm, 0)} />
+          <Info label="Affaissement (mm)" valeur={nombre(g.slumpMesureMm, 0)} />
           <Info label="Température (°C)" valeur={nombre(g.temperatureC, 1)} />
           <Info label="w mesuré (%)" valeur={nombre(g.wMesurePct, 2)} />
           <Info label="Cw mesuré (%)" valeur={nombre(g.cwMesurePct, 2)} />

@@ -169,20 +169,20 @@ export default function RpgEssaiForm() {
 
       {/* ── Info banner ── */}
       <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#15803d" }}>
-        <strong>RPG — Essai-erreur (PAF) :</strong> réutilise les données de la méthode RPG de base (Cw% ou E/C).
-        L&apos;ajout d&apos;agrégat modifie A_m. Le liant ajouté ne suit que le résidu ajouté :
+        <strong>RPG — Méthode essai-erreur :</strong> reprend les données de la méthode RPG de base (dosage selon Cw ou selon E/L).
+        L&apos;ajout de granulat modifie Am. Le liant ajouté ne suit que le résidu ajouté :
         un ajout de granulat n&apos;ajoute pas de liant, et dilue donc le Bw atteint.
-        L&apos;option « doser le liant par le W/C » (par recette, ci-dessous) fait plutôt suivre
+        L&apos;option « doser le liant selon le rapport E/L » (par recette, ci-dessous) fait plutôt suivre
         le liant à l&apos;eau ajoutée — recommandation de Belem et al. 2018 (§3.2.3) quand on
-        monte le slump avec de l&apos;eau.
+        augmente l&apos;affaissement avec de l&apos;eau.
       </div>
 
       {/* ── Base method choice ── */}
-      <CardSection title="Méthode de base" subtitle="Les paramètres (Gs agrégat, A_m%, Bw%, …) sont repris depuis le formulaire RPG correspondant">
+      <CardSection title="Méthode de base" subtitle="Les paramètres (Gs du granulat, Am, Bw…) sont repris du formulaire RPG correspondant">
         <div style={{ display: "flex", gap: 10 }}>
           {[
-            { value: "dosage_cw", label: "Dosage Cw (%)", sub: `${rpgCw.num_recipes || 1} recette${(rpgCw.num_recipes || 1) > 1 ? "s" : ""}` },
-            { value: "wb", label: "Rapport E/C", sub: `${rpgWb.num_recipes || 1} recette${(rpgWb.num_recipes || 1) > 1 ? "s" : ""}` },
+            { value: "dosage_cw", label: "Dosage selon Cw", sub: `${rpgCw.num_recipes || 1} recette${(rpgCw.num_recipes || 1) > 1 ? "s" : ""}` },
+            { value: "wb", label: "Dosage selon E/L", sub: `${rpgWb.num_recipes || 1} recette${(rpgWb.num_recipes || 1) > 1 ? "s" : ""}` },
           ].map((opt) => {
             const active = baseMethod === opt.value;
             return (
@@ -234,12 +234,12 @@ export default function RpgEssaiForm() {
                       value={fromStoreMass(aj.ajout_residu_humide, units.mass) ?? ""}
                       onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
                   </Field>
-                  <Field label={`Agrégat sec (${massLabel})`} hint="Modifie A_m et recalcule Gs_PAF">
+                  <Field label={`Granulat sec (${massLabel})`} hint="Modifie Am et recalcule le Gs du remblai">
                     <input type="number" step="any" style={inputStyle} placeholder="0"
                       value={fromStoreMass(aj.ajout_agregat, units.mass) ?? ""}
                       onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_agregat: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
                   </Field>
-                  <Field label="w0-ag agrégat (%)" hint="Teneur en eau de l'agrégat ajouté">
+                  <Field label="Teneur en eau du granulat ajouté (%)" hint="Teneur en eau massique du granulat, tel qu'ajouté">
                     <input type="number" step="any" style={inputStyle} placeholder="0"
                       value={aj.w0_agregat ?? ""}
                       onChange={(e) => setRpgEssaiAjustement(i, { ...aj, w0_agregat: num(e.target.value) })} />
@@ -258,9 +258,9 @@ export default function RpgEssaiForm() {
                     style={{ marginTop: 2 }}
                   />
                   <span>
-                    <strong>Doser le liant par le W/C de conception</strong> — le liant suit
-                    l&apos;eau ajoutée (mb = eau totale / W/C de base) au lieu du % de masse sèche.
-                    Le Bw% atteint dérive alors et est affiché tel quel. Exige un Bw &gt; 0 sur la
+                    <strong>Doser le liant selon le rapport E/L de conception</strong> — le liant suit
+                    l&apos;eau ajoutée (Mb = eau totale / E/L de base) au lieu du pourcentage de masse sèche.
+                    Le Bw atteint dérive alors et est affiché tel quel. Exige un Bw &gt; 0 sur la
                     recette de base. Référence : Belem et al. 2018, §3.2.3.
                   </span>
                 </label>
@@ -270,13 +270,13 @@ export default function RpgEssaiForm() {
         </div>
       </CardSection>
 
-      {/* ── Cible de slump (protocole essai-erreur, Belem et al. 2018 §2.3) ── */}
+      {/* ── Affaissement visé (protocole essai-erreur, Belem et al. 2018 §2.3) ── */}
       <CardSection
-        title="Cible de slump"
-        subtitle="Protocole essai-erreur : cône d'Abrams standard (300 mm), cible usuelle 178 mm (7 po)"
+        title="Affaissement visé"
+        subtitle="Cône d'Abrams normalisé (300 mm, ASTM C143/C143M) ; cible usuelle 178 mm (7 po)"
       >
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <Field label="Slump cible (mm)" hint="La comparaison s'affiche sous « Slump mesuré » ci-dessous ; vider le champ rétablit 178">
+          <Field label="Affaissement visé S (mm)" hint="La comparaison s'affiche sous « Affaissement mesuré » ci-dessous ; vider le champ rétablit 178">
             <input type="number" step="any" style={inputStyle} placeholder="178"
               value={rpgEssai.slump_cible_mm ?? 178}
               onChange={(e) => {
@@ -285,8 +285,8 @@ export default function RpgEssaiForm() {
               }} />
           </Field>
           <div style={{ fontSize: 12, color: "#64748b", alignSelf: "end", lineHeight: 1.5 }}>
-            Slump mesuré <strong>sous</strong> la cible : ajouter de l&apos;eau.
-            {" "}<strong>Au-dessus</strong> : ajouter résidus + granulats (le liant suit la règle active).
+            Affaissement mesuré <strong>sous</strong> la cible : ajouter de l&apos;eau.
+            {" "}<strong>Au-dessus</strong> : ajouter résidu et granulat (le liant suit la règle active).
           </div>
         </div>
       </CardSection>

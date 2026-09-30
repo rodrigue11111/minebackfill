@@ -88,7 +88,7 @@ def solve_rrc(inputs: RrcInputs) -> RrcResult:
         sr_frac = rho_sr * d1                # M_SR / M_c  (g/ml * ml/g)
         if wc <= sr_frac:
             raise ValueError(
-                "Dosage de retardateur trop élevé pour ce W/C : le fluide "
+                "Dosage de retardateur trop élevé pour ce rapport E/L du coulis : le fluide "
                 f"serait entièrement du retardateur (recette {i + 1})."
             )
 

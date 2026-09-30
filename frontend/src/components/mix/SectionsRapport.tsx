@@ -195,7 +195,7 @@ export function SectionsRapport({ recipes, ctx, grille = false, padding = "0 16p
   );
 }
 
-/** Tableau des résultats RRC / CRF (lignes du schéma unique RRC_ROWS). */
+/** Tableau des résultats RRC (lignes du schéma unique RRC_ROWS). */
 export function TableauRrc({ recipes, massLabel, toMass }: {
   recipes: RrcRecipe[];
   massLabel: string;
@@ -206,7 +206,7 @@ export function TableauRrc({ recipes, massLabel, toMass }: {
   const rows = RRC_ROWS;
   return (
     <div style={{ border: `1px solid ${SECTION_BORDER}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-      <SectionHeader title="RRC — Remblai rocheux cimenté (CRF)" sub="masses, retardateur de prise et coulis — cours Dias 66-70" />
+      <SectionHeader title="Remblai rocheux cimenté (RRC)" sub="masses, retardateur de prise et coulis de ciment — cours, dia 66-70" />
       <table className="result-table" style={{ background: "#fff" }}>
         <thead>
           <tr style={{ background: HEADER_BG }}>

@@ -19,7 +19,7 @@ export const PROJETS: Projet[] = [
     id: "minebackfill",
     nom: "MineBackfill",
     description:
-      "Dimensionnement des mélanges de remblai minier en pâte (RPC, RPG, RRC) — méthodes Cw%, E/C, slump et essai-erreur, exports Excel/PDF, bibliothèques de matériaux.",
+      "Calcul des mélanges de remblais miniers cimentés (RPC, RPG, RRC) : dosage selon Cw ou selon E/L, modèle prédictif de l'affaissement, méthode essai-erreur, suivi des gâchées et des essais UCS, exports Excel et PDF.",
     // MineBackfill demenage de l'apex progicielbelem.com (repris par CE portail)
     // vers ce sous-domaine. VALIDE une fois le sous-domaine ajoute au projet
     // Vercel de MineBackfill (voir portail/README.md, section « Domaines »).

@@ -104,14 +104,14 @@ export default function RpgCwForm() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* ── PAF info banner ── */}
+      {/* ── Bandeau RPG ── */}
       <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#15803d" }}>
-        <strong>RPG — Paste Aggregate Fill :</strong> formules PAF actives.
-        L&apos;agrégat granulaire est pris en compte dans le Gs équivalent et la distribution des masses.
+        <strong>Remblai en pâte granulaire :</strong> formules du RPG actives.
+        Le granulat est pris en compte dans le Gs équivalent et dans la répartition des masses.
       </div>
 
-      {/* ── Agrégat (PAF-specific) ── */}
-      <CardSection title="Agrégat granulaire" subtitle="Paramètres spécifiques au RPG (PAF)">
+      {/* ── Granulat (propre au RPG) ── */}
+      <CardSection title="Granulat" subtitle="Paramètres propres au remblai en pâte granulaire">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
           <MaterialPresetSelect
             kind="granulats"
@@ -121,7 +121,7 @@ export default function RpgCwForm() {
             matches={(m) => (m as GranulatItem).gs === rpgCw.aggregate_sg}
           />
           <div />
-          <Field label="Gs agrégat" hint="Masse volumique spécifique de l'agrégat">
+          <Field label="Densité relative du granulat Gs" hint="Sans unité : Gs = ρs/ρw">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 2.65"
               value={rpgCw.aggregate_sg || ""}
               onChange={(e) => setRpgCw({ aggregate_sg: num(e.target.value) })} />
@@ -146,22 +146,22 @@ export default function RpgCwForm() {
             matches={(m) => { const r = m as ResiduItem; return r.gs === rpgCw.residue_sg && r.w0_pct === rpgCw.residue_w_pct; }}
           />
           <div />
-          <Field label="Gs résidu" hint="Masse volumique spécifique des grains">
+          <Field label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4"
               value={rpgCw.residue_sg || ""}
               onChange={(e) => setRpgCw({ residue_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Teneur en eau résidu w₀ (%)">
+          <Field label="Teneur en eau massique du résidu w₀ (%)">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 23.8"
               value={rpgCw.residue_w_pct || ""}
               onChange={(e) => setRpgCw({ residue_w_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Cw% — solides massiques" hint="% massique total de solides">
+          <Field label="Pourcentage solide massique Cw (%)" hint="Masse des solides / masse totale du remblai">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 78"
               value={rpgCw.solid_mass_pct || ""}
               onChange={(e) => setRpgCw({ solid_mass_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Saturation Sr (%)">
+          <Field label="Degré de saturation Sr (%)">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 100"
               value={rpgCw.saturation_pct || ""}
               onChange={(e) => setRpgCw({ saturation_pct: num(e.target.value) })} />
@@ -172,12 +172,12 @@ export default function RpgCwForm() {
       {/* ── Paramètres du mélange ── */}
       <CardSection title="Paramètres du mélange">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <Field label="Quantité (nb. de moules)">
+          <Field label="Nombre de moules par recette">
             <input type="number" style={inputStyle} min={1}
               value={rpgCw.desired_qty ?? 1}
               onChange={(e) => setRpgCw({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de sécurité (multiplicateur)" hint="1 = aucun surplus ; 1,05 = +5 % (feuille prof : FS % = FS/100 + 1)">
+          <Field label="Facteur de perte κ" hint="1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).">
             <input type="number" step="any" style={inputStyle} min={1}
               value={rpgCw.safety_factor ?? 1}
               onChange={(e) => setRpgCw({ safety_factor: num(e.target.value) })} />
@@ -199,12 +199,12 @@ export default function RpgCwForm() {
         </div>
       </CardSection>
 
-      {/* ── Bw% par recette ── */}
-      <CardSection title={`Bw% par recette (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}
-        subtitle="Bw% = Mb / (Mr_sec + Ma_sec) × 100">
+      {/* ── Bw par recette ── */}
+      <CardSection title={`Taux massique de liant Bw par recette (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}
+        subtitle="Bw = Mb / (Mr + Ma) × 100, masses sèches">
         <div style={{ display: "grid", gridTemplateColumns: numRecipes === 1 ? "1fr" : "repeat(2, 1fr)", gap: "12px 16px" }}>
           {Array.from({ length: numRecipes }).map((_, i) => (
-            <Field key={i} label={`Recette ${i + 1} — Bw%`}>
+            <Field key={i} label={`Recette ${i + 1} — Bw (%)`}>
               <input
                 type="number" step="any"
                 style={{ ...inputStyle, borderLeft: `3px solid ${RECIPE_COLORS[i]}` }}

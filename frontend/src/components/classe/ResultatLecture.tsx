@@ -3,6 +3,7 @@
 // que la page Calculs et les exports Excel/PDF), et les exports existants.
 
 import { lireBinders, type SavedResult } from "@/lib/store";
+import { nomLiant } from "@/lib/liants";
 import { estVersionCourante } from "@/lib/conventions";
 import { methodLabel } from "@/lib/method-registry";
 import type { ReportCtx } from "@/lib/report-schema";
@@ -14,15 +15,9 @@ import { Pastille } from "./commun";
 export default function ResultatLecture({ resultat: sr, units }: { resultat: SavedResult; units: UnitPreferences }) {
   const massLabel = MASS_LABELS[units.mass] ?? "kg";
   // Nom du liant n : le catalogue FIGÉ avec le résultat (celui de l'étudiant
-  // au moment du calcul), sinon le code, sinon « Ciment n ».
+  // au moment du calcul), sinon le code, sinon « Liant n ».
   const binders = lireBinders(sr.general);
-  const catalogue = sr.catalogue_liants ?? [];
-  const binderName = (n: number): string => {
-    const ref = binders[n - 1];
-    if (!ref?.code && !ref?.id) return `Ciment ${n}`;
-    const item = (ref.id ? catalogue.find((l) => l.id === ref.id) : undefined) ?? catalogue.find((l) => l.code === ref.code);
-    return item?.nom ?? ref.code ?? `Ciment ${n}`;
-  };
+  const binderName = nomLiant(sr.general, sr.catalogue_liants ?? []);
   const ctx: ReportCtx = {
     units, massLabel, volLabel: VOLUME_LABELS[units.volume] ?? "L", densLabel: DENSITY_LABELS[units.density] ?? "g/cm3",
     binderName, isEssai: sr.method === "essai", isRpg: sr.category === "RPG", bcount: binders.length,

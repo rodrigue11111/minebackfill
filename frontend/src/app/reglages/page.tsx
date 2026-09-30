@@ -90,7 +90,7 @@ export default function ReglagesPage() {
             Réglage des constantes
           </h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 16 }}>
-            Ces valeurs sont globales et sont utilisées dans les méthodes Cw%, E/C, Slump et essai-erreur.
+            Ces valeurs sont globales ; elles servent au dosage selon Cw, au dosage selon E/L, au modèle prédictif et à la méthode essai-erreur.
           </p>
 
           {isProf && (
@@ -137,7 +137,7 @@ export default function ReglagesPage() {
             </div>
             <div>
               <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                Facteur petit cône vers grand cône
+                Facteur petit cône vers cône d&apos;Abrams
               </label>
               <input
                 type="number"
@@ -153,7 +153,7 @@ export default function ReglagesPage() {
             </div>
             <div>
               <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                Coefficient modèle slump
+                Coefficient du modèle prédictif (affaissement)
               </label>
               <input
                 type="number"
@@ -167,7 +167,7 @@ export default function ReglagesPage() {
             </div>
             <div>
               <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                Constante modèle slump
+                Constante du modèle prédictif (affaissement)
               </label>
               <input
                 type="number"

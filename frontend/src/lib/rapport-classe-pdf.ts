@@ -5,7 +5,8 @@
 // Tout texte passe par pourPdf (police intégrée WinAnsi).
 
 import type { jsPDF as JsPdf } from "jspdf";
-import { pourPdf, type BlocRapport, type DocumentRapport } from "./rapport-classe";
+import type { BlocRapport, DocumentRapport } from "./rapport-classe";
+import { pourPdf } from "./texte-pdf";
 
 const MARGE = 12;
 const NAVY: [number, number, number] = [12, 30, 66];
