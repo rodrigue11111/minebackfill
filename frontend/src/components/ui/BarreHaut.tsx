@@ -77,7 +77,7 @@ export default function BarreHaut() {
         <span className="ui-barre-plus">
           <Menu
             className="ui-barre-lien"
-            declencheur={<>Plus <Icone nom="chevron" taille={11} epaisseur={2.4} /></>}
+            declencheur={<>Plus <span className="ui-chevron-bas"><Icone nom="chevron" taille={11} epaisseur={2.4} /></span></>}
             aligner="gauche"
             elements={secondaires.map((l) => ({ libelle: l.label, href: l.href }))}
           />

@@ -2,6 +2,11 @@
 import Link from "next/link";
 import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
 import SectionGlossaire from "@/components/guide/SectionGlossaire";
+import { Page, EnTetePage } from "@/components/ui/Page";
+import { Carte } from "@/components/ui/Carte";
+import { Bandeau } from "@/components/ui/Bandeau";
+import { Pastille, type TonPastille } from "@/components/ui/Pastille";
+import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
 
 // Section « Sauvegarde en ligne » : seulement quand les comptes sont OUVERTS.
 // Page rendue au build, comme ces variables : la section apparaît au
@@ -9,109 +14,42 @@ import SectionGlossaire from "@/components/guide/SectionGlossaire";
 // avant — on ne décrit pas aux étudiants une fonction qu'ils n'ont pas.
 const COMPTES_OUVERTS = !MODE_TEST_SANS_COMPTE && !!process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-/* ── Reusable primitives ── */
+/* ── Primitives de lecture (sans hook : le Guide est un composant serveur) ── */
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2
-      style={{
-        fontSize: 18,
-        fontWeight: 800,
-        color: "var(--navy)",
-        margin: "0 0 16px",
-        letterSpacing: "-0.01em",
-        borderBottom: "2px solid var(--primary-mid)",
-        paddingBottom: 10,
-      }}
-    >
-      {children}
-    </h2>
-  );
+  return <h2 className="ui-carte-titre lecture-titre">{children}</h2>;
 }
 
 function SubTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3
-      style={{
-        fontSize: 14,
-        fontWeight: 700,
-        color: "var(--navy)",
-        margin: "20px 0 8px",
-      }}
-    >
-      {children}
-    </h3>
-  );
+  return <h3 className="lecture-sous-titre">{children}</h3>;
 }
 
 function Para({ children }: { children: React.ReactNode }) {
-  return (
-    <p style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.65, margin: "0 0 10px" }}>
-      {children}
-    </p>
-  );
+  return <p className="lecture-para">{children}</p>;
 }
 
-function Card({ children, accent = false }: { children: React.ReactNode; accent?: boolean }) {
-  return (
-    <div
-      style={{
-        background: "#fff",
-        border: "1px solid var(--card-border)",
-        borderRadius: 10,
-        padding: "22px 24px",
-        marginBottom: 16,
-        boxShadow: "0 1px 4px rgba(12,30,66,0.06)",
-        ...(accent ? { borderLeft: "4px solid var(--primary)" } : {}),
-      }}
-    >
-      {children}
-    </div>
-  );
+function Card({ children, id }: { children: React.ReactNode; id?: string }) {
+  return <Carte id={id}>{children}</Carte>;
 }
 
 function InfoBox({ children, type = "info" }: { children: React.ReactNode; type?: "info" | "warning" | "tip" }) {
-  const styles = {
-    info: { bg: "var(--primary-light)", border: "var(--primary-mid)", color: "var(--primary)" },
-    warning: { bg: "var(--warning-light)", border: "#fcd34d", color: "var(--warning)" },
-    tip: { bg: "var(--success-light)", border: "#6ee7b7", color: "var(--success)" },
-  }[type];
-  return (
-    <div
-      style={{
-        background: styles.bg,
-        border: `1px solid ${styles.border}`,
-        borderRadius: 8,
-        padding: "11px 16px",
-        marginBottom: 14,
-        fontSize: 13,
-        color: styles.color,
-        lineHeight: 1.6,
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <Bandeau ton={type === "warning" ? "alerte" : type === "tip" ? "succes" : "info"}>{children}</Bandeau>;
 }
 
-/* ── Step block ── */
+/* ── Étape numérotée ── */
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
-    <div className="guide-step" style={{ marginBottom: 20 }}>
-      <div className="guide-step-number">{n}</div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--navy)", marginBottom: 6 }}>
-          {title}
-        </div>
-        <div style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.65 }}>
-          {children}
-        </div>
+    <div className="lecture-etape">
+      <span className="lecture-numero" aria-hidden="true">{n}</span>
+      <div className="lecture-etape-corps">
+        <div className="lecture-etape-titre">{title}</div>
+        <div className="lecture-etape-texte">{children}</div>
       </div>
     </div>
   );
 }
 
-/* ── Method block ── */
+/* ── Méthode de calcul ── */
 function Method({
   badge,
   title,
@@ -126,56 +64,19 @@ function Method({
   formula?: string;
 }) {
   return (
-    <div
-      style={{
-        background: "#fff",
-        border: "1px solid var(--card-border)",
-        borderRadius: 10,
-        overflow: "hidden",
-        marginBottom: 14,
-      }}
-    >
-      <div
-        style={{
-          background: "var(--primary-light)",
-          borderBottom: "1px solid var(--primary-mid)",
-          padding: "11px 18px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <span className="guide-method-badge">{badge}</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--navy)" }}>{title}</span>
+    <div className="lecture-bloc">
+      <div className="lecture-bloc-tete">
+        <Pastille ton="accent">{badge}</Pastille>
+        <span className="lecture-bloc-titre">{title}</span>
       </div>
-      <div style={{ padding: "14px 18px" }}>
-        <Para><strong>Quand l&apos;utiliser :</strong> {when}</Para>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-          Paramètres requis :
-        </div>
-        <ul style={{ margin: "0 0 10px", paddingLeft: 20 }}>
-          {inputs.map((inp, i) => (
-            <li key={i} style={{ fontSize: 13, color: "#475569", marginBottom: 3, lineHeight: 1.5 }}>
-              {inp}
-            </li>
-          ))}
-        </ul>
-        {formula && (
-          <div
-            style={{
-              background: "var(--primary-light)",
-              border: "1px solid var(--primary-mid)",
-              borderRadius: 6,
-              padding: "8px 14px",
-              fontSize: 12.5,
-              color: "var(--primary)",
-              fontFamily: "monospace",
-            }}
-          >
-            {formula}
-          </div>
-        )}
-      </div>
+      <Para><strong>Quand l&apos;utiliser :</strong> {when}</Para>
+      <div className="lecture-etiquette">Paramètres requis :</div>
+      <ul className="lecture-liste">
+        {inputs.map((inp, i) => (
+          <li key={i}>{inp}</li>
+        ))}
+      </ul>
+      {formula && <div className="lecture-formule">{formula}</div>}
     </div>
   );
 }
@@ -195,100 +96,37 @@ export default function GuidePage() {
     ...(COMPTES_OUVERTS ? [["10", "Sauvegarde en ligne et compte"] as [string, string]] : []),
   ];
   return (
-    <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
+    <Page etroite>
+      <EnTetePage
+        surtitre="Documentation"
+        titre="Guide d'utilisation"
+        sousTitre="Outil de calcul des mélanges de remblais miniers cimentés, pour l'enseignement et le laboratoire. Ce guide explique chaque étape, méthode et paramètre."
+        actions={
+          <>
+            <Link href="/mix" className="btn-discret">Aller aux calculs</Link>
+            <Link href="/" className="btn-primary">Commencer — Informations</Link>
+          </>
+        }
+      />
 
-      {/* ── Hero ── */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, var(--navy) 0%, #1a3a8a 100%)",
-          padding: "32px 0 28px",
-          borderBottom: "3px solid var(--primary)",
-        }}
-      >
-        <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px" }}>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: "rgba(255,255,255,0.45)",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              marginBottom: 8,
-            }}
-          >
-            Documentation
-          </div>
-          <h1
-            style={{
-              fontSize: 28,
-              fontWeight: 800,
-              color: "#fff",
-              margin: "0 0 10px",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Guide d&apos;utilisation — MineBackfill
-          </h1>
-          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, maxWidth: 560, margin: 0 }}>
-            Outil de calcul des mélanges de remblais miniers cimentés, pour l&apos;enseignement et le
-            laboratoire. Ce guide explique chaque étape, méthode et paramètre.
-          </p>
-          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            <Link
-              href="/"
-              style={{
-                padding: "8px 18px",
-                borderRadius: 7,
-                background: "var(--primary)",
-                color: "#fff",
-                textDecoration: "none",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              Commencer — Informations
-            </Link>
-            <Link
-              href="/mix"
-              style={{
-                padding: "8px 18px",
-                borderRadius: 7,
-                border: "1px solid rgba(255,255,255,0.25)",
-                color: "rgba(255,255,255,0.8)",
-                textDecoration: "none",
-                fontSize: 13,
-                fontWeight: 500,
-                background: "rgba(255,255,255,0.07)",
-              }}
-            >
-              Aller aux calculs
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Content ── */}
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px 64px" }}>
-
-        {/* ── Table of contents ── */}
-        <Card>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
-            Table des matières
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px" }}>
+        {/* ── Table des matières ── */}
+        <Carte titre="Table des matières">
+          <ol className="lecture-sommaire">
             {sections.map(([num, title]) => (
-              <div key={num} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", minWidth: 18 }}>{num}.</span>
-                <span style={{ fontSize: 13, color: "#374151" }}>{title}</span>
-              </div>
+              <li key={num}>
+                <a href={num === "9" ? "#glossaire" : `#section-${num}`}>
+                  <span className="lecture-sommaire-num">{num}</span>
+                  {title}
+                </a>
+              </li>
             ))}
-          </div>
-        </Card>
+          </ol>
+        </Carte>
 
         {/* ─────────────────────────────────────────── */}
         {/* 1. Vue d'ensemble */}
         {/* ─────────────────────────────────────────── */}
-        <Card accent>
+        <Card id="section-1">
           <SectionTitle>1. Vue d&apos;ensemble</SectionTitle>
           <Para>
             <strong>MineBackfill</strong> calcule les mélanges de remblai en pâte cimenté (RPC), de remblai
@@ -296,7 +134,7 @@ export default function GuidePage() {
             et du programme de calcul de M. Belem (Université du Québec en Abitibi-Témiscamingue) et
             permet de :
           </Para>
-          <ul style={{ margin: "0 0 14px", paddingLeft: 22 }}>
+          <ul className="lecture-liste">
             {[
               "Calculer les masses et les volumes de chaque constituant du remblai (résidu, granulat, liant, eau) pour 1 à 4 recettes en parallèle.",
               "Déterminer les paramètres géotechniques : indice des vides, porosité, degré de saturation, masses et poids volumiques humides et secs.",
@@ -304,9 +142,7 @@ export default function GuidePage() {
               "Suivre les gâchées et les essais de compression uniaxiale (UCS) au laboratoire.",
               "Exporter les résultats en Excel (.xlsx) et en PDF, et consulter les formules avec leur rendu mathématique.",
             ].map((item, i) => (
-              <li key={i} style={{ fontSize: 13.5, color: "#475569", marginBottom: 6, lineHeight: 1.6 }}>
-                {item}
-              </li>
+              <li key={i}>{item}</li>
             ))}
           </ul>
           <InfoBox type="info">
@@ -320,7 +156,7 @@ export default function GuidePage() {
         {/* ─────────────────────────────────────────── */}
         {/* 2. Flux de travail */}
         {/* ─────────────────────────────────────────── */}
-        <Card accent>
+        <Card id="section-2">
           <SectionTitle>2. Flux de travail</SectionTitle>
           <Para>
             L&apos;application s&apos;organise en quelques pages accessibles depuis la barre de navigation.
@@ -392,34 +228,32 @@ export default function GuidePage() {
         {/* ─────────────────────────────────────────── */}
         {/* 3. Catégories */}
         {/* ─────────────────────────────────────────── */}
-        <Card accent>
+        <Card id="section-3">
           <SectionTitle>3. Catégories de remblai</SectionTitle>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 14, marginBottom: 16 }}>
+          <div className="lecture-categories">
             {[
               {
-                code: "RPC", nom: "Remblai en pâte cimenté", couleur: "var(--primary)", fond: "var(--primary-light)", bord: "var(--primary-mid)",
+                code: "RPC", nom: "Remblai en pâte cimenté", couleur: "var(--accent)",
                 texte: "Résidus miniers épaissis, agent liant et eau, mis en place sous forme de pâte. Toutes les méthodes sont disponibles.",
                 methodes: "Selon Cw · selon E/L · modèle prédictif · essai-erreur",
               },
               {
-                code: "RPG", nom: "Remblai en pâte granulaire", couleur: "#16a34a", fond: "#f0fdf4", bord: "#bbf7d0",
+                code: "RPG", nom: "Remblai en pâte granulaire", couleur: "var(--succes-texte)",
                 texte: "Remblai en pâte auquel on ajoute un granulat (roche concassée, sable). Deux paramètres de plus : la fraction massique de granulat Am et la densité relative Gs du granulat. Le modèle prédictif, calé sur le RPC, n'est pas proposé.",
                 methodes: "Selon Cw · selon E/L · essai-erreur",
               },
               {
-                code: "RRC", nom: "Remblai rocheux cimenté", couleur: "#b45309", fond: "#fffbeb", bord: "#fde68a",
+                code: "RRC", nom: "Remblai rocheux cimenté", couleur: "var(--alerte-texte)",
                 texte: "Roches stériles liées par un coulis de ciment, souvent avec un retardateur de prise. Dosage selon Bw (ciment / roches stériles) et le rapport E/L du coulis.",
                 methodes: "Selon Bw et E/L du coulis",
               },
             ].map((c) => (
-              <div key={c.code} style={{ background: c.fond, border: `1.5px solid ${c.bord}`, borderRadius: 9, padding: "16px 18px" }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: c.couleur, marginBottom: 6 }}>{c.code}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--navy)", marginBottom: 8 }}>{c.nom}</div>
+              <div key={c.code} className="lecture-bloc">
+                <div className="lecture-categorie-code" style={{ color: c.couleur }}>{c.code}</div>
+                <div className="lecture-bloc-titre">{c.nom}</div>
                 <Para>{c.texte}</Para>
-                <div style={{ display: "inline-block", padding: "3px 10px", borderRadius: 4, background: c.couleur, color: "#fff", fontSize: 11.5, fontWeight: 600 }}>
-                  {c.methodes}
-                </div>
+                <div className="lecture-methodes">{c.methodes}</div>
               </div>
             ))}
           </div>
@@ -428,7 +262,7 @@ export default function GuidePage() {
         {/* ─────────────────────────────────────────── */}
         {/* 4. Méthodes */}
         {/* ─────────────────────────────────────────── */}
-        <Card accent>
+        <Card id="section-4">
           <SectionTitle>4. Méthodes de calcul</SectionTitle>
           <Para>
             Chaque méthode produit le même ensemble de sorties (masses, volumes, paramètres
@@ -507,15 +341,15 @@ export default function GuidePage() {
         {/* ─────────────────────────────────────────── */}
         {/* 5. Paramètres */}
         {/* ─────────────────────────────────────────── */}
-        <Card accent>
+        <Card id="section-5">
           <SectionTitle>5. Référence des paramètres d&apos;entrée</SectionTitle>
           <Para>
             Définition de chaque paramètre des formulaires, avec son unité et une plage de valeurs
             typiques pour les remblais en pâte miniers.
           </Para>
 
-          <div style={{ overflowX: "auto" }}>
-            <table className="guide-param-table">
+          <div className="mix-tableau-defilant">
+            <table className="result-table lecture-table">
               <thead>
                 <tr>
                   <th style={{ width: "18%" }}>Paramètre</th>
@@ -540,10 +374,10 @@ export default function GuidePage() {
                   ["κ (facteur de perte)", "—", "1,0 – 1,25", "Multiplie les masses pour compenser les pertes au malaxage et au moulage. κ = 1 : aucun surplus ; le cours retient souvent 1,25. Appelé « facteur de sécurité » dans les feuilles de calcul."],
                 ].map(([param, unit, range, desc]) => (
                   <tr key={param as string}>
-                    <td><strong style={{ color: "var(--navy)", fontSize: 12.5 }}>{param}</strong></td>
-                    <td style={{ color: "var(--primary)", fontWeight: 600, fontSize: 12.5 }}>{unit}</td>
-                    <td style={{ fontSize: 12, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>{range}</td>
-                    <td style={{ fontSize: 13, color: "#374151" }}>{desc}</td>
+                    <td><strong>{param}</strong></td>
+                    <td style={{ color: "var(--accent)", fontWeight: 600 }}>{unit}</td>
+                    <td style={{ color: "var(--texte-2)", whiteSpace: "nowrap" }}>{range}</td>
+                    <td>{desc}</td>
                   </tr>
                 ))}
               </tbody>
@@ -554,90 +388,64 @@ export default function GuidePage() {
         {/* ─────────────────────────────────────────── */}
         {/* 6. Résultats */}
         {/* ─────────────────────────────────────────── */}
-        <Card accent>
+        <Card id="section-6">
           <SectionTitle>6. Lecture des résultats</SectionTitle>
           <Para>
             Le rapport complet est divisé en six sections. Les valeurs sont calculées pour chaque recette
             indépendamment, dans les unités choisies dans Réglages.
           </Para>
 
+          <ListeGroupee>
           {[
             {
-              color: "#1d4ed8", bg: "#eff6ff", border: "#bfdbfe",
+              ton: "accent" as TonPastille,
               title: "Données du mélange",
               desc: "Masse de chaque constituant : résidu sec, résidu humide, granulat (RPG), liant total, eau totale, eau à ajouter, et la masse de chaque composant du liant (Mc1, Mc2…). En méthode essai-erreur, les masses à ajouter ou à retirer (Mb-ad, Mc1-ad…).",
             },
             {
-              color: "#15803d", bg: "#f0fdf4", border: "#bbf7d0",
+              ton: "succes" as TonPastille,
               title: "Paramètres géotechniques",
               desc: "Taux massique de liant Bw, pourcentages solides massique Cw et volumique Cv, teneur en eau massique w, rapport eau/liant E/L et degré de saturation Sr.",
             },
             {
-              color: "#7c3aed", bg: "#faf5ff", border: "#e9d5ff",
+              ton: "violet" as TonPastille,
               title: "Masses et poids volumiques",
               desc: "Masses volumiques humide ρh, sèche ρd et des grains ρs ; poids volumiques humide γh, sec γd et des grains γs, en kN/m³.",
             },
             {
-              color: "#b45309", bg: "#fffbeb", border: "#fde68a",
+              ton: "alerte" as TonPastille,
               title: "Indice des vides et structure",
               desc: "Indice des vides e, porosité n, teneur en eau volumique θ, densités relatives Gs du remblai et du liant.",
             },
             {
-              color: "#0e7490", bg: "#ecfeff", border: "#a5f3fc",
+              ton: "neutre" as TonPastille,
               title: "Volumes",
               desc: "Volume du moule, volume total VT, volumes des solides Vs, des vides Vv, du résidu Vr, du liant Vb, de l'eau Vw et du granulat Vg (RPG).",
             },
             {
-              color: "#1d4ed8", bg: "#f8fafc", border: "#bfdbfe",
+              ton: "sombre" as TonPastille,
               title: "Résultats complets",
               desc: "Bilan des masses : masse sèche de résidu (et de granulat), masse totale des solides Ms, masse totale d'eau Mw, masse totale du remblai, eau contenue dans le résidu, eau à ajouter, volume d'air, et Cw, Cv recalculés à partir des masses et des volumes.",
             },
-          ].map(({ color, bg, border, title, desc }) => (
-            <div
-              key={title}
-              style={{
-                display: "flex",
-                gap: 14,
-                marginBottom: 10,
-                padding: "12px 16px",
-                background: bg,
-                border: `1px solid ${border}`,
-                borderRadius: 8,
-              }}
-            >
-              <div
-                style={{
-                  width: 4,
-                  borderRadius: 2,
-                  background: color,
-                  flexShrink: 0,
-                }}
-              />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--navy)", marginBottom: 4 }}>
-                  {title}
-                </div>
-                <div style={{ fontSize: 12.5, color: "#475569", lineHeight: 1.6 }}>
-                  {desc}
-                </div>
-              </div>
-            </div>
+          ].map(({ ton, title, desc }) => (
+            <LigneListe key={title} libelle={title} detail={desc} accent={<Pastille point ton={ton} />} />
           ))}
+          </ListeGroupee>
         </Card>
 
         {/* ─────────────────────────────────────────── */}
         {/* 7. Export Excel */}
         {/* ─────────────────────────────────────────── */}
-        <Card accent>
+        <Card id="section-7">
           <SectionTitle>7. Export Excel</SectionTitle>
           <Para>
             Le bouton <strong>Excel</strong> des résultats génère un fichier{" "}
-            <code style={{ background: "#f1f5f9", padding: "1px 6px", borderRadius: 4, fontSize: 12.5 }}>.xlsx</code>{" "}
+            <code className="lecture-code">.xlsx</code>{" "}
             directement dans le navigateur, sans passer par le serveur.
           </Para>
 
           <SubTitle>Contenu du fichier exporté</SubTitle>
-          <ul style={{ margin: "0 0 14px", paddingLeft: 22 }}>
+          <ul className="lecture-liste">
             {[
               "En-tête : opérateur, projet, résidu, date, catégorie, méthode.",
               "Données du mélange : Bw, Bv et toutes les masses (Mr, Ma, Mb, Mw, Mw-aj, Mc1, Mc2…, ajouts de l'essai-erreur).",
@@ -647,15 +455,13 @@ export default function GuidePage() {
               "Volumes : moule, VT, Vs, Vv, Vr, Vb, Vw.",
               "Résultats complets : bilan des masses, volume d'air, Cw et Cv recalculés.",
             ].map((item, i) => (
-              <li key={i} style={{ fontSize: 13.5, color: "#475569", marginBottom: 5, lineHeight: 1.6 }}>
-                {item}
-              </li>
+              <li key={i}>{item}</li>
             ))}
           </ul>
           <InfoBox type="tip">
             <strong>Nommage automatique :</strong> le fichier porte la catégorie, la méthode et la date,
             par exemple
-            <code style={{ margin: "0 4px", padding: "1px 5px", background: "#d1fae5", borderRadius: 3, fontSize: 12 }}>
+            <code className="lecture-code" style={{ margin: "0 4px" }}>
               MineBackfill_RPC_dosage-Cw_2026-03-15.xlsx
             </code>
           </InfoBox>
@@ -664,39 +470,23 @@ export default function GuidePage() {
         {/* ─────────────────────────────────────────── */}
         {/* 8. Formules */}
         {/* ─────────────────────────────────────────── */}
-        <Card accent>
+        <Card id="section-8">
           <SectionTitle>8. Page Formules</SectionTitle>
           <Para>
             La page <strong>Formules</strong> répertorie les équations employées par le logiciel, avec leur
             rendu mathématique complet.
           </Para>
-          <ul style={{ margin: "0 0 14px", paddingLeft: 22 }}>
+          <ul className="lecture-liste">
             {[
               "Recherche instantanée par mot-clé ou par symbole.",
               "Un clic sur une formule ouvre un panneau latéral : description, variables, hypothèses et références.",
               "Le panneau latéral peut passer en plein écran pour une lecture confortable.",
               "Les formules sont groupées par section du cours.",
             ].map((item, i) => (
-              <li key={i} style={{ fontSize: 13.5, color: "#475569", marginBottom: 5, lineHeight: 1.6 }}>
-                {item}
-              </li>
+              <li key={i}>{item}</li>
             ))}
           </ul>
-          <Link
-            href="/formulas"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "9px 18px",
-              borderRadius: 7,
-              background: "var(--primary)",
-              color: "#fff",
-              textDecoration: "none",
-              fontSize: 13.5,
-              fontWeight: 600,
-            }}
-          >
+          <Link href="/formulas" className="btn-secondary" style={{ alignSelf: "flex-start" }}>
             Ouvrir la page Formules
           </Link>
         </Card>
@@ -704,25 +494,23 @@ export default function GuidePage() {
         {/* ─────────────────────────────────────────── */}
         {/* 9. Glossaire et essais normalisés */}
         {/* ─────────────────────────────────────────── */}
-        <div id="glossaire" style={{ scrollMarginTop: 16 }}>
-          <Card accent>
-            <SectionTitle>9. Glossaire et essais normalisés</SectionTitle>
-            <SectionGlossaire />
-          </Card>
-        </div>
+        <Card id="glossaire">
+          <SectionTitle>9. Glossaire et essais normalisés</SectionTitle>
+          <SectionGlossaire />
+        </Card>
 
         {COMPTES_OUVERTS && (
-          <Card>
+          <Card id="section-10">
             <SectionTitle>10. Sauvegarde en ligne et compte</SectionTitle>
-            <div style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.65, display: "flex", flexDirection: "column", gap: 10 }}>
-              <p style={{ margin: 0 }}>
+            <div className="lecture-pile">
+              <p>
                 Avec un compte, <strong>tout votre travail est sauvegardé en ligne</strong> : résultats
                 sauvegardés et gâchées du laboratoire. Vous le retrouvez sur un autre appareil, d&apos;une
                 session à l&apos;autre, et l&apos;enseignant peut le consulter et le commenter.
               </p>
-              <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
+              <ol className="lecture-liste">
                 <li>
-                  Page <Link href="/compte" style={{ color: "var(--primary)" }}>Compte</Link> → Inscription, avec
+                  Page <Link href="/compte">Compte</Link> → Inscription, avec
                   votre <strong>prénom et nom</strong> : c&apos;est sous ce nom que l&apos;enseignant voit votre travail.
                 </li>
                 <li>
@@ -735,26 +523,26 @@ export default function GuidePage() {
                   attente ; <strong>grise</strong> : hors ligne (tout partira au retour du réseau).
                 </li>
               </ol>
-              <p style={{ margin: 0 }}>
+              <p>
                 <strong>Deux appareils modifient la même chose en même temps ?</strong> Les deux versions sont
                 gardées ; la vôtre est marquée « copie de conflit » et n&apos;entre pas dans les figures. Gardez
                 la bonne, supprimez l&apos;autre.
               </p>
-              <p style={{ margin: 0 }}>
+              <p>
                 <strong>Échanges avec l&apos;enseignant</strong> : ses commentaires apparaissent sous le
                 résultat (Historique) ou la gâchée (Labo) concernés, visibles de vous seul, avec une
                 pastille « commentaire non lu » dans la liste. Vous pouvez y <strong>répondre</strong> ;
                 chacun voit si l&apos;autre a lu (« vu le … »).
               </p>
-              <p style={{ margin: 0 }}>
+              <p>
                 <strong>Compte suspendu ?</strong> L&apos;enseignant peut bloquer un compte : la connexion
                 est refusée, mais le travail enregistré dans votre navigateur y reste.
               </p>
-              <p style={{ margin: 0 }}>
+              <p>
                 <strong>Les courbes de presse restent sur l&apos;appareil</strong> (elles sont volumineuses) :
                 exportez régulièrement une sauvegarde locale (Réglages → Données locales).
               </p>
-              <p style={{ margin: 0 }}>
+              <p>
                 <strong>Mot de passe oublié ?</strong> Page Compte → « Mot de passe oublié ? » : un lien
                 arrive par courriel. Votre travail n&apos;est pas en danger : il est dans votre navigateur
                 et dans votre compte.
@@ -763,39 +551,20 @@ export default function GuidePage() {
           </Card>
         )}
 
-        {/* ── Footer ── */}
-        <div
-          style={{
-            marginTop: 16,
-            padding: "16px 20px",
-            background: "var(--primary-light)",
-            border: "1px solid var(--primary-mid)",
-            borderRadius: 10,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-          }}
+        {/* ── Pied ── */}
+        <Carte
+          titre="Prêt à commencer ?"
+          actions={
+            <>
+              <Link href="/mix" className="btn-discret">Calculs</Link>
+              <Link href="/" className="btn-primary">Commencer</Link>
+            </>
+          }
         >
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--navy)", marginBottom: 4 }}>
-              Prêt à commencer ?
-            </div>
-            <div style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>
-              Renseignez les informations du projet, puis lancez vos premiers calculs de mélange.
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-            <Link href="/" className="btn-primary" style={{ textDecoration: "none" }}>
-              Commencer
-            </Link>
-            <Link href="/mix" className="btn-secondary" style={{ textDecoration: "none" }}>
-              Calculs
-            </Link>
-          </div>
-        </div>
-
-      </div>
-    </div>
+          <p className="lecture-para">
+            Renseignez les informations du projet, puis lancez vos premiers calculs de mélange.
+          </p>
+        </Carte>
+    </Page>
   );
 }

@@ -51,43 +51,46 @@ export default function PanneauVariation({
   }).filter((l): l is NonNullable<typeof l> => l !== null);
 
   const th: React.CSSProperties = {
-    textAlign: "right", padding: "4px 6px", fontWeight: 600, color: "#475569",
-    borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap",
+    textAlign: "right", padding: "4px 6px", fontWeight: 500, color: "var(--texte-2)",
+    borderBottom: "1px solid var(--filet-fort)", whiteSpace: "nowrap",
   };
-  const td: React.CSSProperties = { textAlign: "right", padding: "3px 6px", whiteSpace: "nowrap" };
+  const td: React.CSSProperties = { textAlign: "right", padding: "4px 6px", whiteSpace: "nowrap", borderTop: "1px solid var(--filet)" };
 
   return (
-    <div className="panneau-variation" style={{ display: "grid", gridTemplateColumns: "minmax(240px, 1fr) minmax(320px, 2fr)", gap: 18 }}>
+    <div className="analyse-variation">
       <div>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+        <div className="analyse-figure-titre" style={{ marginBottom: 6 }}>
           Tenu fixe pendant le balayage
         </div>
-        <p style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.5, margin: "0 0 8px" }}>
+        <p className="ui-champ-aide" style={{ margin: "0 0 8px" }}>
           Cw, Sr, Bw et Am sont des <strong>entrées</strong> de la méthode Cw&nbsp;% :
           le balayage ne remplace que le paramètre choisi, les autres gardent la
           valeur de la recette de base.
         </p>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <div className="mix-tableau-defilant">
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <tbody>
             {fixe.map((l) => (
               <tr key={l.label}>
-                <td style={{ padding: "3px 6px", color: "#64748b" }}>{l.label}</td>
-                <td style={{ ...td, fontVariantNumeric: "tabular-nums", color: "#0f172a" }}>{l.valeur}</td>
+                <td style={{ padding: "4px 6px", color: "var(--texte-2)", borderTop: "1px solid var(--filet)" }}>{l.label}</td>
+                <td style={{ ...td, fontVariantNumeric: "tabular-nums", color: "var(--texte)" }}>{l.valeur}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       <div>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+        <div className="analyse-figure-titre" style={{ marginBottom: 6 }}>
           Ce qui varie sur la plage
         </div>
-        <p style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.5, margin: "0 0 8px" }}>
+        <p className="ui-champ-aide" style={{ margin: "0 0 8px" }}>
           Toutes les grandeurs calculées, cochées ou non. Δ est l&apos;écart brut entre
           le premier et le dernier point ; aucune grandeur n&apos;est normalisée ni classée.
         </p>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <div className="mix-tableau-defilant">
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr>
               <th style={{ ...th, textAlign: "left" }}>Grandeur</th>
@@ -100,21 +103,22 @@ export default function PanneauVariation({
           <tbody>
             {lignes.map(({ meta, stats, vRef }) => (
               <tr key={meta.cle}>
-                <td style={{ padding: "3px 6px", color: meta.couleur, fontWeight: 600 }}>{meta.label}</td>
+                <td style={{ padding: "4px 6px", color: meta.couleur, fontWeight: 600, borderTop: "1px solid var(--filet)" }}>{meta.label}</td>
                 <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>
                   {vRef !== null && vRef !== undefined && Number.isFinite(vRef) ? fmt(vRef, meta.unite) : "—"}
                 </td>
                 <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{fmt(stats.min, meta.unite)}</td>
                 <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{fmt(stats.max, meta.unite)}</td>
-                <td style={{ ...td, fontVariantNumeric: "tabular-nums", fontWeight: 600, color: "#0f172a" }}>
+                <td style={{ ...td, fontVariantNumeric: "tabular-nums", fontWeight: 600, color: "var(--texte)" }}>
                   {fmt(stats.variation, meta.unite)}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
         {iRef === null && (
-          <p style={{ fontSize: 11, color: "#b45309", margin: "8px 0 0" }}>
+          <p style={{ fontSize: 12.5, color: "var(--alerte-texte)", margin: "8px 0 0" }}>
             La valeur de la recette de base est hors de la plage balayée : la colonne
             « à la référence » reste vide plutôt que d&apos;afficher un point arbitraire.
           </p>

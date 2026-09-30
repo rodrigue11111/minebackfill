@@ -11,6 +11,10 @@ import { APP_NAME_VERSION, MODULE_ID } from "@/lib/branding";
 import { SOLVER_VERSION, useStore } from "@/lib/store";
 import { packById, solverVersionActive } from "@/lib/conventions";
 import { useHydrated } from "@/lib/use-hydrated";
+import { Page, EnTetePage } from "@/components/ui/Page";
+import { Carte } from "@/components/ui/Carte";
+import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
+import { Pastille, type TonPastille } from "@/components/ui/Pastille";
 
 type EtatBackend = "verification" | "operationnel" | "injoignable";
 
@@ -52,30 +56,6 @@ function lireStockageLocal(): EntreeStockage[] {
   }
   entrees.sort((a, b) => a.cle.localeCompare(b.cle));
   return entrees;
-}
-
-const ligneStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 16,
-  padding: "7px 0",
-  borderBottom: "1px solid var(--border)",
-  fontSize: 13.5,
-};
-const etiquetteStyle: React.CSSProperties = { color: "var(--muted-foreground)" };
-const valeurStyle: React.CSSProperties = {
-  fontWeight: 600,
-  textAlign: "right",
-  wordBreak: "break-word",
-};
-
-function Ligne({ etiquette, valeur }: { etiquette: string; valeur: string }) {
-  return (
-    <div style={ligneStyle}>
-      <span style={etiquetteStyle}>{etiquette}</span>
-      <span style={valeurStyle}>{valeur}</span>
-    </div>
-  );
 }
 
 export default function DiagnosticPage() {
@@ -139,12 +119,12 @@ export default function DiagnosticPage() {
       : etatBackend === "operationnel"
         ? `Backend opérationnel${latenceMs !== null ? ` (${latenceMs} ms)` : ""}`
         : "Backend injoignable";
-  const backendCouleur =
+  const backendTon: TonPastille =
     etatBackend === "verification"
-      ? "var(--muted-foreground)"
+      ? "neutre"
       : etatBackend === "operationnel"
-        ? "#15803d"
-        : "#b91c1c";
+        ? "succes"
+        : "danger";
 
   // ── Copie du diagnostic ──
   const [copie, setCopie] = useState(false);
@@ -181,122 +161,90 @@ export default function DiagnosticPage() {
   };
 
   return (
-    <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
-      <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px 64px" }}>
-        <div className="form-card">
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, marginBottom: 8 }}>
-            Diagnostic technique
-          </h1>
-          <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, margin: 0 }}>
-            Cette page rassemble les informations utiles au dépannage à distance.
-            Cliquez sur « Copier le diagnostic » puis collez le résultat dans votre
-            message à l&apos;enseignant ou à l&apos;assistant.
+    <Page etroite>
+      <EnTetePage
+        titre="Diagnostic technique"
+        sousTitre={<>Cette page rassemble les informations utiles au dépannage à distance.
+          Cliquez sur « Copier le diagnostic » puis collez le résultat dans votre
+          message à l&apos;enseignant ou à l&apos;assistant.</>}
+        actions={
+          <>
+            <Link href="/reglages" className="btn-discret">Retour aux réglages</Link>
+            <button type="button" className="btn-primary" onClick={copierDiagnostic}>
+              {copie ? "Copié" : "Copier le diagnostic"}
+            </button>
+          </>
+        }
+      />
+
+      {/* ── Application ── */}
+      <Carte titre="Application">
+        <ListeGroupee>
+          <LigneListe libelle="Application" valeur={`${APP_NAME_VERSION} — ${MODULE_ID}`} />
+          <LigneListe libelle="Solveur (référence)" valeur={SOLVER_VERSION} />
+          <LigneListe libelle="Estampille du solveur actif" valeur={hydrated ? estampille : "…"} />
+        </ListeGroupee>
+      </Carte>
+
+      {/* ── Backend ── */}
+      <Carte titre="Backend">
+        <ListeGroupee
+          pied="La vérification envoie une requête vide au serveur de calcul : toute réponse (même une erreur de validation) confirme qu'il est joignable."
+        >
+          <LigneListe libelle="État du serveur de calcul" accent={<Pastille point ton={backendTon} />} valeur={backendTexte} />
+        </ListeGroupee>
+      </Carte>
+
+      {/* ── Stockage local ── */}
+      <Carte titre="Stockage local">
+        {!hydrated ? (
+          <p className="classe-rien">Lecture…</p>
+        ) : stockage.length === 0 ? (
+          <p className="classe-rien">
+            Aucune donnée MineBackfill dans ce navigateur.
           </p>
-        </div>
-
-        {/* ── Application ── */}
-        <div className="form-card" style={{ marginTop: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px" }}>Application</h2>
-          <Ligne etiquette="Application" valeur={`${APP_NAME_VERSION} — ${MODULE_ID}`} />
-          <Ligne etiquette="Solveur (référence)" valeur={SOLVER_VERSION} />
-          <Ligne etiquette="Estampille du solveur actif" valeur={hydrated ? estampille : "…"} />
-        </div>
-
-        {/* ── Backend ── */}
-        <div className="form-card" style={{ marginTop: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px" }}>Backend</h2>
-          <div style={{ ...ligneStyle, borderBottom: "none" }}>
-            <span style={etiquetteStyle}>État du serveur de calcul</span>
-            <span style={{ ...valeurStyle, color: backendCouleur }}>{backendTexte}</span>
-          </div>
-          <p style={{ color: "var(--muted-foreground)", fontSize: 12.5, margin: "6px 0 0" }}>
-            La vérification envoie une requête vide au serveur de calcul : toute
-            réponse (même une erreur de validation) confirme qu&apos;il est joignable.
-          </p>
-        </div>
-
-        {/* ── Stockage local ── */}
-        <div className="form-card" style={{ marginTop: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px" }}>Stockage local</h2>
-          {!hydrated ? (
-            <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>Lecture…</p>
-          ) : stockage.length === 0 ? (
-            <p style={{ color: "var(--muted-foreground)", fontSize: 13, margin: 0 }}>
-              Aucune donnée MineBackfill dans ce navigateur.
-            </p>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        ) : (
+          <>
+            <div className="mix-tableau-defilant">
+              <table className="result-table">
                 <thead>
                   <tr>
-                    {["Clé", "Taille (Ko)", "Version", "Éléments"].map((titre, i) => (
-                      <th
-                        key={titre}
-                        style={{
-                          textAlign: i === 0 ? "left" : "right",
-                          padding: "6px 8px",
-                          borderBottom: "2px solid var(--border)",
-                          color: "var(--muted-foreground)",
-                          fontWeight: 600,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {titre}
-                      </th>
-                    ))}
+                    <th>Clé</th>
+                    <th style={{ textAlign: "right" }}>Taille (Ko)</th>
+                    <th style={{ textAlign: "right" }}>Version</th>
+                    <th style={{ textAlign: "right" }}>Éléments</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stockage.map((e) => (
                     <tr key={e.cle}>
-                      <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", fontFamily: "var(--font-geist-mono, monospace)", fontSize: 12 }}>
-                        {e.cle}
-                      </td>
-                      <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", textAlign: "right" }}>
-                        {e.taille_ko.toFixed(1)}
-                      </td>
-                      <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", textAlign: "right" }}>
-                        {e.version}
-                      </td>
-                      <td style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", textAlign: "right" }}>
-                        {e.nb_elements ?? "—"}
-                      </td>
+                      <td style={{ fontFamily: "var(--font-geist-mono, monospace)", fontSize: 12.5 }}>{e.cle}</td>
+                      <td style={{ textAlign: "right" }}>{e.taille_ko.toFixed(1)}</td>
+                      <td style={{ textAlign: "right" }}>{e.version}</td>
+                      <td style={{ textAlign: "right" }}>{e.nb_elements ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <p style={{ color: "var(--muted-foreground)", fontSize: 12.5, margin: "8px 0 0" }}>
-                Total : <strong>{totalKo.toFixed(1)} Ko</strong>. La plupart des navigateurs
-                plafonnent vers 5 000 Ko par site ; au-delà, les modifications ne sont plus
-                enregistrées et un bandeau rouge l&apos;annonce.
-              </p>
             </div>
-          )}
-        </div>
+            <p className="ui-liste-pied" style={{ margin: 0 }}>
+              Total : <strong>{totalKo.toFixed(1)} Ko</strong>. La plupart des navigateurs
+              plafonnent vers 5 000 Ko par site ; au-delà, les modifications ne sont plus
+              enregistrées et un bandeau rouge l&apos;annonce.
+            </p>
+          </>
+        )}
+      </Carte>
 
-        {/* ── Navigateur ── */}
-        <div className="form-card" style={{ marginTop: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px" }}>Navigateur</h2>
-          <Ligne etiquette="Agent utilisateur" valeur={navigateur ? navigateur.user_agent : "…"} />
-          <Ligne etiquette="Langue" valeur={navigateur ? navigateur.langue : "…"} />
-        </div>
-
-        {/* ── Copie ── */}
-        <div className="form-card" style={{ marginTop: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <button type="button" className="btn-primary" onClick={copierDiagnostic}>
-              {copie ? "Copié" : "Copier le diagnostic"}
-            </button>
-            <Link href="/reglages" className="btn-secondary" style={{ textDecoration: "none" }}>
-              Retour aux réglages
-            </Link>
-          </div>
-          <p style={{ color: "var(--muted-foreground)", fontSize: 12.5, margin: "10px 0 0" }}>
-            Rien n&apos;est envoyé : ces informations restent sur votre machine tant que
-            vous ne les partagez pas.
-          </p>
-        </div>
-      </div>
-    </div>
+      {/* ── Navigateur ── */}
+      <Carte titre="Navigateur">
+        <ListeGroupee
+          pied="Rien n'est envoyé : ces informations restent sur votre machine tant que vous ne les partagez pas."
+        >
+          <LigneListe libelle="Agent utilisateur" detail={navigateur ? navigateur.user_agent : "…"} />
+          <LigneListe libelle="Langue" valeur={navigateur ? navigateur.langue : "…"} />
+        </ListeGroupee>
+      </Carte>
+    </Page>
   );
 }

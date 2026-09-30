@@ -16,6 +16,9 @@ import { useStore } from "@/lib/store";
 import { getSupabase, cloudConfigure } from "@/lib/supabase";
 import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
 import { useHydrated } from "@/lib/use-hydrated";
+import { Page, EnTetePage } from "@/components/ui/Page";
+import { Carte } from "@/components/ui/Carte";
+import { Bandeau } from "@/components/ui/Bandeau";
 
 interface MessageAffiche {
   auteur: string;
@@ -131,136 +134,117 @@ export default function AssistantPage() {
     finRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  const card: React.CSSProperties = {
-    background: "#fff", border: "1px solid var(--border)", borderRadius: 12,
-  };
-
   return (
-    <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
-      <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px 64px" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Assistant IA</h1>
-        <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 20, lineHeight: 1.55 }}>
-          Décrivez la modification souhaitée comme à un assistant humain. L&apos;IA
+    <Page etroite>
+      <EnTetePage
+        titre="Assistant IA"
+        sousTitre={<>Décrivez la modification souhaitée comme à un assistant humain. L&apos;IA
           travaille dans le dépôt du projet et ouvre une <strong>Pull Request</strong> —
           tests automatiques et aperçu cliquable — <strong>rien ne part en
           production sans votre validation</strong>. Comptez quelques minutes par
-          réponse.
-        </p>
+          réponse.</>}
+      />
 
-        {!monte ? null : !MODE_TEST_SANS_COMPTE && (!cloudConfigure() || !session) ? (
-          <div style={{ ...card, padding: "24px 22px" }}>
-            <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Accès réservé</p>
-            <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-              Cette page est réservée au compte enseignant.{" "}
-              <Link href="/compte" style={{ color: "var(--primary)", fontWeight: 600 }}>
-                Se connecter
-              </Link>
-            </p>
-          </div>
-        ) : !accesChat ? (
-          <div style={{ ...card, padding: "24px 22px" }}>
-            <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Accès réservé à l&apos;enseignant</p>
-            <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-              Votre compte ({session?.email ?? "?"}) n&apos;a pas le rôle enseignant.
-            </p>
-          </div>
-        ) : nonConfigure ? (
-          <div style={{ ...card, padding: "24px 22px" }}>
-            <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Assistant non configuré</p>
-            <p style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
-              Les variables serveur <code>ASSISTANT_GITHUB_TOKEN</code> et{" "}
-              <code>ASSISTANT_GITHUB_REPO</code> ne sont pas définies sur cette
-              instance. Voir docs/OPERATIONS.md, section « assistant sur le site ».
-            </p>
-          </div>
-        ) : (
-          <>
-            {MODE_TEST_SANS_COMPTE && (
-              <div style={{ marginBottom: 14, padding: "9px 13px", borderRadius: 8, background: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", fontSize: 12.5, lineHeight: 1.5 }}>
-                Mode test : accès temporairement ouvert sans compte (phase
-                d&apos;évaluation). Les demandes sont publiées dans le dépôt GitHub
-                du projet. À la fin du projet, cette page redeviendra réservée au
-                compte enseignant.
-              </div>
-            )}
-            {/* ── Conversation ── */}
-            <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "#f8fafc" }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: "#374151" }}>
-                  {issue ? `Conversation n° ${issue}${etat === "closed" ? " (fermée)" : ""}` : "Nouvelle demande"}
-                </span>
-                <span style={{ display: "flex", gap: 10 }}>
-                  {urlIssue && (
-                    <a href={urlIssue} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "var(--primary)", fontWeight: 600 }}>
-                      Ouvrir dans GitHub
-                    </a>
-                  )}
-                  {issue && (
-                    <button type="button" onClick={nouvelleConversation} style={{ border: "none", background: "transparent", color: "var(--muted-foreground)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      Nouvelle demande
-                    </button>
-                  )}
-                </span>
-              </div>
-
-              <div style={{ maxHeight: 420, overflowY: "auto", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-                {messages.length === 0 && (
-                  <p style={{ fontSize: 13, color: "#94a3b8", padding: "18px 4px" }}>
-                    {issue ? "Chargement de la conversation..." : "Exemples : « Ajoute le liant GUb-SF (Gs 2,95) aux liants officiels. » — « Le bouton d'export PDF affiche une erreur, corrige-le. »"}
-                  </p>
+      {!monte ? null : !MODE_TEST_SANS_COMPTE && (!cloudConfigure() || !session) ? (
+        <Carte titre="Accès réservé">
+          <p className="classe-rien">
+            Cette page est réservée au compte enseignant.
+          </p>
+          <Link href="/compte" className="btn-primary" style={{ alignSelf: "flex-start" }}>
+            Se connecter
+          </Link>
+        </Carte>
+      ) : !accesChat ? (
+        <Carte titre="Accès réservé à l'enseignant">
+          <p className="classe-rien">
+            Votre compte ({session?.email ?? "?"}) n&apos;a pas le rôle enseignant.
+          </p>
+        </Carte>
+      ) : nonConfigure ? (
+        <Carte titre="Assistant non configuré">
+          <p className="classe-rien">
+            Les variables serveur <code>ASSISTANT_GITHUB_TOKEN</code> et{" "}
+            <code>ASSISTANT_GITHUB_REPO</code> ne sont pas définies sur cette
+            instance. Voir docs/OPERATIONS.md, section « assistant sur le site ».
+          </p>
+        </Carte>
+      ) : (
+        <>
+          {MODE_TEST_SANS_COMPTE && (
+            <Bandeau ton="alerte">
+              Mode test : accès temporairement ouvert sans compte (phase
+              d&apos;évaluation). Les demandes sont publiées dans le dépôt GitHub
+              du projet. À la fin du projet, cette page redeviendra réservée au
+              compte enseignant.
+            </Bandeau>
+          )}
+          {/* ── Conversation ── */}
+          <Carte
+            sansMarge
+            titre={issue ? `Conversation n° ${issue}${etat === "closed" ? " (fermée)" : ""}` : "Nouvelle demande"}
+            actions={
+              <span className="regl-actions">
+                {urlIssue && (
+                  <a href={urlIssue} target="_blank" rel="noopener noreferrer" className="btn-discret">
+                    Ouvrir dans GitHub
+                  </a>
                 )}
-                {messages.map((m, i) => {
-                  const estIa = /\[bot\]|claude|github-actions/i.test(m.auteur);
-                  return (
-                    <div key={i} style={{
-                      alignSelf: estIa ? "flex-start" : "flex-end",
-                      maxWidth: "85%",
-                      background: estIa ? "#f1f5f9" : "var(--primary-light)",
-                      border: `1px solid ${estIa ? "var(--border)" : "var(--primary-mid)"}`,
-                      borderRadius: 10, padding: "8px 12px",
-                    }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: estIa ? "#64748b" : "var(--primary)", marginBottom: 3 }}>
-                        {estIa ? "Assistant" : "Vous"} — {new Date(m.date).toLocaleString("fr-CA")}
-                      </div>
-                      <div style={{ fontSize: 13, whiteSpace: "pre-wrap", lineHeight: 1.5, color: "#0f172a", wordBreak: "break-word" }}>
-                        {m.corps}
-                      </div>
+                {issue && (
+                  <button type="button" className="btn-discret" onClick={nouvelleConversation}>
+                    Nouvelle demande
+                  </button>
+                )}
+              </span>
+            }
+          >
+            <div className="assistant-fil">
+              {messages.length === 0 && (
+                <p className="classe-rien" style={{ padding: "18px 4px" }}>
+                  {issue ? "Chargement de la conversation..." : "Exemples : « Ajoute le liant GUb-SF (Gs 2,95) aux liants officiels. » — « Le bouton d'export PDF affiche une erreur, corrige-le. »"}
+                </p>
+              )}
+              {messages.map((m, i) => {
+                const estIa = /\[bot\]|claude|github-actions/i.test(m.auteur);
+                return (
+                  <div key={i} className={estIa ? "assistant-bulle assistant-bulle-ia" : "assistant-bulle assistant-bulle-moi"}>
+                    <div className="assistant-bulle-tete">
+                      {estIa ? "Assistant" : "Vous"} — {new Date(m.date).toLocaleString("fr-CA")}
                     </div>
-                  );
-                })}
-                <div ref={finRef} />
-              </div>
-
-              <form onSubmit={envoyer} style={{ display: "flex", gap: 8, padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
-                <textarea
-                  className="field-input"
-                  style={{ flex: 1, minHeight: 64, resize: "vertical", fontFamily: "inherit" }}
-                  placeholder="Décrivez la modification souhaitée..."
-                  value={saisie}
-                  maxLength={4000}
-                  onChange={(e) => setSaisie(e.target.value)}
-                />
-                <button type="submit" className="btn-primary" disabled={envoi || !saisie.trim()} style={{ alignSelf: "flex-end" }}>
-                  {envoi ? "Envoi..." : "Envoyer"}
-                </button>
-              </form>
+                    <div className="assistant-bulle-corps">
+                      {m.corps}
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={finRef} />
             </div>
 
-            {erreur && (
-              <div style={{ marginTop: 12, fontSize: 12.5, color: "var(--danger)", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "8px 12px" }}>
-                {erreur}
-              </div>
-            )}
+            <form onSubmit={envoyer} className="assistant-saisie">
+              <textarea
+                className="field-input"
+                style={{ flex: 1, minHeight: 64, resize: "vertical", fontFamily: "inherit" }}
+                placeholder="Décrivez la modification souhaitée..."
+                aria-label="Message à l'assistant"
+                value={saisie}
+                maxLength={4000}
+                onChange={(e) => setSaisie(e.target.value)}
+              />
+              <button type="submit" className="btn-primary" disabled={envoi || !saisie.trim()} style={{ alignSelf: "flex-end" }}>
+                {envoi ? "Envoi..." : "Envoyer"}
+              </button>
+            </form>
+          </Carte>
 
-            <p style={{ marginTop: 14, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.55 }}>
-              Chaque demande devient une issue GitHub traitée par l&apos;IA mainteneuse
-              du dépôt. La modification arrive sous forme de Pull Request avec tests
-              et aperçu — c&apos;est votre clic « Merge » (dans GitHub) qui met en ligne.
-              L&apos;actualisation ici est automatique (20 s).
-            </p>
-          </>
-        )}
-      </div>
-    </div>
+          {erreur && <Bandeau ton="danger" role="alert">{erreur}</Bandeau>}
+
+          <p className="ui-liste-pied">
+            Chaque demande devient une issue GitHub traitée par l&apos;IA mainteneuse
+            du dépôt. La modification arrive sous forme de Pull Request avec tests
+            et aperçu — c&apos;est votre clic « Merge » (dans GitHub) qui met en ligne.
+            L&apos;actualisation ici est automatique (20 s).
+          </p>
+        </>
+      )}
+    </Page>
   );
 }

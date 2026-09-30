@@ -50,7 +50,7 @@ function CarteGroupe({ groupe, onOuvrir }: { groupe: GroupeComparaison; onOuvrir
                   <td style={tdNum}>{nombre(l.wcRatio, 2)}</td>
                   <td style={{ ...tdNum, fontWeight: 700 }}>{nombre(l.moyenneKpa, 0)}</td>
                   <td style={tdNum}>{nombre(l.ecartTypeKpa, 0)}</td>
-                  <td style={tdNum}>{l.n}{l.nExclus > 0 && <span style={{ color: "#94a3b8" }}> (+{l.nExclus} exclue{l.nExclus > 1 ? "s" : ""})</span>}</td>
+                  <td style={tdNum}>{l.n}{l.nExclus > 0 && <span style={{ color: "var(--texte-3)" }}> (+{l.nExclus} exclue{l.nExclus > 1 ? "s" : ""})</span>}</td>
                   <td style={tdNum}>{l.cvPct === null ? "—" : `${nombre(l.cvPct, 1)} %`}</td>
                   <td style={{ ...tdNum, color: l.ecartMedianePct === null ? "var(--texte-3)" : Math.abs(l.ecartMedianePct) > SEUILS_ALERTES.ecartMedianePct ? "var(--hors-tolerance-texte)" : "var(--texte)" }}>
                     {l.ecartMedianePct === null ? "—" : `${l.ecartMedianePct > 0 ? "+" : ""}${nombre(l.ecartMedianePct, 0)} %`}

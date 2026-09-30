@@ -254,7 +254,7 @@ export default function ClassePage() {
                 <FiltreSession sessions={sessions} valeur={filtreEffectif} onChange={(v) => { setFiltre(v); setSelId(null); }} />
                 <Menu
                   className="btn-secondary"
-                  declencheur={<>{exportEnCours ? "Export…" : "Exporter"} <Icone nom="chevron" taille={11} epaisseur={2.4} /></>}
+                  declencheur={<>{exportEnCours ? "Export…" : "Exporter"} <span className="ui-chevron-bas"><Icone nom="chevron" taille={11} epaisseur={2.4} /></span></>}
                   titre="Données d'étudiants : à ranger hors de GitHub"
                   elements={[
                     { libelle: "Éprouvettes (CSV)", detail: "Une ligne par éprouvette (valeurs mesurées), pour Excel", desactive: etat !== "pret", onSelect: () => exporterCsv("eprouvettes") },
