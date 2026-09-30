@@ -141,7 +141,7 @@ let client: SupabaseClient | null | undefined; // undefined = pas encore résolu
 export function getSupabase(): SupabaseClient | null {
   if (client !== undefined) return client;
   // Mode test (mode-test.ts) : on se comporte comme « non configuré » — un seul
-  // point de coupure désactive tout le cloud/compte (NavBar, /compte, CloudSync,
+  // point de coupure désactive tout le cloud/compte (barre haute, /compte, CloudSync,
   // publication) sans toucher à chaque site d'appel.
   if (MODE_TEST_SANS_COMPTE) {
     client = null;

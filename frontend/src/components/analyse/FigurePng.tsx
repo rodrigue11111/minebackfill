@@ -6,20 +6,16 @@
 // (conversion SVG -> canvas -> PNG). Le bouton n'étant pas un enfant du <svg>,
 // il n'apparaît jamais dans le PNG exporté.
 
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import { svgVersPng, nomFichier } from "@/lib/export-fig";
 
 export default function FigurePng({ nom, children }: { nom: string; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [survol, setSurvol] = useState(false);
 
+  // Le bouton apparaît au survol ou au focus clavier (CSS .ui-figure), et
+  // reste visible sur les écrans tactiles, qui n'ont pas de survol.
   return (
-    <div
-      ref={ref}
-      style={{ position: "relative" }}
-      onMouseEnter={() => setSurvol(true)}
-      onMouseLeave={() => setSurvol(false)}
-    >
+    <div ref={ref} className="ui-figure">
       {children}
       <button
         type="button"
@@ -34,12 +30,7 @@ export default function FigurePng({ nom, children }: { nom: string; children: Re
             window.alert("Export PNG impossible dans ce navigateur — utilise plutôt l'export CSV ou JSON."),
           );
         }}
-        style={{
-          position: "absolute", top: 4, right: 4, padding: "2px 8px", borderRadius: 6,
-          fontSize: 10.5, fontWeight: 700, cursor: "pointer",
-          border: "1px solid #e2e8f0", background: "rgba(255,255,255,0.95)", color: "#64748b",
-          opacity: survol ? 1 : 0, transition: "opacity 0.15s", pointerEvents: survol ? "auto" : "none",
-        }}
+        className="ui-figure-png"
       >
         PNG
       </button>

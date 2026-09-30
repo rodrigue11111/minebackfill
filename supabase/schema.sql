@@ -594,6 +594,49 @@ begin
     returning a.id, a.created_at, a.updated_at;
 end $$;
 
+-- Réponse ANCRÉE (refonte du Labo, 2026-10) : mêmes contrôles que
+-- repondre_annotation ; l'ancre, si elle est donnée, doit être celle d'un
+-- commentaire de l'enseignant sur ce document — la réponse s'affiche alors
+-- sous cette note (une pesée, une éprouvette) au lieu du fil général.
+-- Additive : repondre_annotation reste en place, et le client s'y replie tant
+-- que la base n'a pas cette fonction (la réponse va alors au fil général).
+create or replace function public.repondre_annotation_ancree(
+  p_attendu uuid, p_kind text, p_id text, p_rev bigint, p_texte text, p_ancre text
+) returns table (annotation_id uuid, cree_serveur timestamptz, maj_serveur timestamptz)
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_texte text := btrim(coalesce(p_texte, ''));
+  v_ancre text := nullif(btrim(coalesce(p_ancre, '')), '');
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  if char_length(v_texte) not between 1 and 4000 then
+    raise exception 'réponse vide ou trop longue (4000 caractères au plus)' using errcode = '22023';
+  end if;
+  if v_ancre is not null and char_length(v_ancre) > 200 then
+    raise exception 'ancre trop longue (200 caractères au plus)' using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.user_docs d
+                  where d.user_id = v_uid and d.kind = p_kind and d.id = p_id and not d.deleted) then
+    raise exception 'document introuvable en ligne' using errcode = '42501';
+  end if;
+  if not exists (select 1 from public.annotations a
+                  where a.owner_id = v_uid and a.target_kind = p_kind and a.target_id = p_id
+                    and a.auteur_id <> v_uid and not a.deleted
+                    and (v_ancre is null or a.ancre = v_ancre)) then
+    raise exception 'aucun commentaire de l''enseignant à qui répondre' using errcode = '42501';
+  end if;
+  if (select count(*) from public.annotations a where a.owner_id = v_uid and a.auteur_id = v_uid) >= 500 then
+    raise exception 'nombre maximal de réponses atteint' using errcode = '53400';
+  end if;
+  return query
+    insert into public.annotations as a (owner_id, target_kind, target_id, target_rev, ancre, auteur_id, texte)
+    values (v_uid, p_kind, p_id, p_rev, v_ancre, v_uid, v_texte)
+    returning a.id, a.created_at, a.updated_at;
+end $$;
+
 -- Accusé de lecture, posé par le DESTINATAIRE seulement : l'étudiant pour les
 -- messages d'autrui sur SON travail, l'enseignant pour les réponses des
 -- étudiants. Jamais sur ses propres messages. Un accusé déjà posé reste.
@@ -728,6 +771,7 @@ revoke execute on function public.lire_annotations(uuid, timestamptz, uuid, inte
 revoke execute on function public.definir_nom(text) from public, anon;
 revoke execute on function public.lire_fil_annotations(uuid, timestamptz, uuid, integer, integer) from public, anon;
 revoke execute on function public.repondre_annotation(uuid, text, text, bigint, text) from public, anon;
+revoke execute on function public.repondre_annotation_ancree(uuid, text, text, bigint, text, text) from public, anon;
 revoke execute on function public.marquer_annotations_lues(uuid[]) from public, anon;
 revoke execute on function public.nb_reponses_non_lues() from public, anon;
 revoke execute on function public.lister_comptes() from public, anon;
@@ -740,6 +784,7 @@ grant execute on function public.lire_annotations(uuid, timestamptz, uuid, integ
 grant execute on function public.definir_nom(text) to authenticated;
 grant execute on function public.lire_fil_annotations(uuid, timestamptz, uuid, integer, integer) to authenticated;
 grant execute on function public.repondre_annotation(uuid, text, text, bigint, text) to authenticated;
+grant execute on function public.repondre_annotation_ancree(uuid, text, text, bigint, text, text) to authenticated;
 grant execute on function public.marquer_annotations_lues(uuid[]) to authenticated;
 grant execute on function public.nb_reponses_non_lues() to authenticated;
 grant execute on function public.lister_comptes() to authenticated;

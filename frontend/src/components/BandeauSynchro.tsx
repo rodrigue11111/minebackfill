@@ -33,13 +33,14 @@ function useNomDoc(): (kind: "resultat" | "gachee", id: string) => { nom: string
     : { nom: `La gâchée ${gachees.find((g) => g.id === id)?.code ?? id}`, e: "e", il: "Elle" };
 }
 
-const boite = (fond: string, bord: string, texte: string): React.CSSProperties => ({
-  background: fond, borderBottom: `1px solid ${bord}`, color: texte,
-  fontSize: 13, lineHeight: 1.5, padding: "10px 16px",
+// Bandeaux pleine largeur sous la barre haute : fond pâle, filet discret.
+const boite = (fond: string, texte: string): React.CSSProperties => ({
+  background: fond, borderBottom: "1px solid rgba(0, 0, 0, 0.05)", color: texte,
+  fontSize: 13.5, lineHeight: 1.5, padding: "10px max(24px, env(safe-area-inset-left))",
   display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap",
 });
 
-const bouton: React.CSSProperties = { fontSize: 12.5, padding: "4px 12px" };
+const bouton: React.CSSProperties = { fontSize: 13, minHeight: 30, padding: "0 14px" };
 
 export default function BandeauSynchro() {
   const s = useSyncExternalStore(abonnerSync, instantaneSync, instantaneSyncServeur);
@@ -58,7 +59,7 @@ export default function BandeauSynchro() {
       gachees > 0 ? `${gachees} gâchée${gachees > 1 ? "s" : ""}` : null,
     ].filter(Boolean).join(" et ");
     elements.push(
-      <div key="rattacher" role="status" style={boite("#eff6ff", "#bfdbfe", "#1e3a8a")}>
+      <div key="rattacher" role="status" style={boite("#E8F1FC", "#0B4F9C")}>
         <span>
           Cet appareil contient {quoi} {accordCree(resultats, gachees)} sans compte. Les
           rattacher à votre compte{email ? ` (${email})` : ""} pour les sauvegarder en ligne et les
@@ -76,7 +77,7 @@ export default function BandeauSynchro() {
     // Ne survient plus qu'en cas d'échec du changement de compte : le
     // stockage du navigateur a refusé de mettre de côté l'autre compte.
     elements.push(
-      <div key="autre" role="alert" style={boite("#fffbeb", "#fde68a", "#92400e")}>
+      <div key="autre" role="alert" style={boite("#FFF3DF", "#8A4B00")}>
         <span>
           La sauvegarde en ligne n&apos;a pas pu démarrer pour {email ?? "ce compte"} : le stockage du
           navigateur est plein, le travail de l&apos;autre compte n&apos;a pas pu être mis de côté. Rien
@@ -104,7 +105,7 @@ export default function BandeauSynchro() {
     if (reste > 0) noms.push(`${reste} autre${reste > 1 ? "s" : ""} document${reste > 1 ? "s" : ""}`);
     const liste = noms.length > 1 ? `${noms.slice(0, -1).join(", ")} et ${noms[noms.length - 1]}` : noms[0];
     elements.push(
-      <div key="annotations" role="status" style={boite("#eef2ff", "#c7d2fe", "#3730a3")}>
+      <div key="annotations" role="status" style={boite("#F0ECFB", "#5B3CC4")}>
         <span>
           L&apos;enseignant a laissé {n} commentaire{n > 1 ? "s" : ""} non lu{n > 1 ? "s" : ""} sur{" "}
           {liste}.
@@ -119,7 +120,7 @@ export default function BandeauSynchro() {
 
   if (s.erreur?.nature === "session") {
     elements.push(
-      <div key="session" role="alert" style={boite("#fef2f2", "#fecaca", "#991b1b")}>
+      <div key="session" role="alert" style={boite("#FDEDEC", "#B3261E")}>
         <span>Session inattendue : la sauvegarde en ligne est interrompue. Déconnectez-vous puis reconnectez-vous.</span>
       </div>,
     );
@@ -145,7 +146,7 @@ export default function BandeauSynchro() {
   s.avis.forEach((a, i) => {
     const grave = a.type === "refuse";
     elements.push(
-      <div key={`avis-${i}`} role="status" style={boite(grave ? "#fef2f2" : "#f8fafc", grave ? "#fecaca" : "#e2e8f0", grave ? "#991b1b" : "#334155")}>
+      <div key={`avis-${i}`} role="status" style={boite(grave ? "#FDEDEC" : "#F5F5F7", grave ? "#B3261E" : "#3A3A3C")}>
         <span>{texteAvis(a)}</span>
         <span style={{ display: "flex", gap: 8 }}>
           {a.type === "suppressions_suspendues" ? (

@@ -7,7 +7,7 @@
 export interface InstantaneAnalyse {
   date: string; // ISO
   categorie: string; // "RPC" | "RPG"
-  methode: string; // "Cw%"
+  methode: string; // « Dosage selon Cw »
   /** Balayage (mode courbes) — absent en composition. */
   parametre?: { label: string; min: number; max: number; points: number };
   recette: {
@@ -58,7 +58,7 @@ export function lignesResume(inst: InstantaneAnalyse): string[] {
     `Sr ${f(r.srPct, 0)} %`, `Bw ${f(r.bwPct, 2)} %`,
   ];
   if (r.amPct !== undefined) rec.push(`Am ${f(r.amPct, 1)} %`);
-  if (r.gsAgregat !== undefined) rec.push(`Gs agrégat ${f(r.gsAgregat)}`);
+  if (r.gsAgregat !== undefined) rec.push(`Gs granulat ${f(r.gsAgregat)}`);
   lignes.push(`Recette de base : ${rec.join(" · ")}`);
   lignes.push(
     "Liants : " + (inst.liants.length
@@ -67,12 +67,12 @@ export function lignesResume(inst: InstantaneAnalyse): string[] {
   );
   const c = inst.constantes;
   lignes.push(`Pack de conventions : ${c.packLabel} · convention Gs « ${c.conventionGs} » · règle liant « ${c.regleLiant} »`);
-  lignes.push(`Constantes : ρ_eau ${f(c.masseVolEau, 0)} · g ${f(c.gravite)} · facteur cône ${f(c.facteurCone)} · coeff slump ${f(c.coeffSlump, 0)} · const slump ${f(c.constSlump)}`);
+  lignes.push(`Constantes : ρ_eau ${f(c.masseVolEau, 0)} · g ${f(c.gravite)} · facteur cône ${f(c.facteurCone)} · coeff. du modèle prédictif ${f(c.coeffSlump, 0)} · constante du modèle prédictif ${f(c.constSlump)}`);
   if (inst.contenant) {
     const geo = [`type ${inst.contenant.type}`];
     if (inst.contenant.description) geo.push(inst.contenant.description);
     if (inst.contenants !== undefined) geo.push(`${f(inst.contenants, 0)} contenant(s)`);
-    if (inst.facteurSecurite !== undefined) geo.push(`facteur de sécurité ${f(inst.facteurSecurite)}`);
+    if (inst.facteurSecurite !== undefined) geo.push(`facteur de perte κ ${f(inst.facteurSecurite)}`);
     lignes.push(`Contenant : ${geo.join(" · ")}`);
   }
   if (inst.variantes?.length) {

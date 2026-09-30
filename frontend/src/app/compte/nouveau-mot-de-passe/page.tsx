@@ -18,6 +18,10 @@ import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
 import { messageErreurAuth } from "@/lib/auth-messages";
+import { Page, EnTetePage } from "@/components/ui/Page";
+import { Carte } from "@/components/ui/Carte";
+import { Champ } from "@/components/ui/Champ";
+import { Bandeau } from "@/components/ui/Bandeau";
 
 /** Erreur renvoyée par Supabase dans l'adresse (lien expiré…). */
 function erreurDuLien(): string | null {
@@ -87,36 +91,32 @@ export default function NouveauMotDePassePage() {
     }
   };
 
-  const carte: React.CSSProperties = {
-    maxWidth: 460, margin: "0 auto", background: "#fff",
-    border: "1px solid var(--border)", borderRadius: 12, padding: "28px 26px",
-  };
   const lienCompte = (
-    <Link href="/compte?oubli=1" style={{ color: "var(--primary)", fontSize: 13, fontWeight: 600 }}>
+    <Link href="/compte?oubli=1" className="btn-discret" style={{ alignSelf: "flex-start" }}>
       Redemander un lien
     </Link>
   );
 
   return (
-    <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px 64px" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Nouveau mot de passe</h1>
-        {!monte ? null : (
-          <div style={carte}>
+    <Page etroite>
+      <EnTetePage titre="Nouveau mot de passe" />
+      {!monte ? null : (
+        <div className="compte-formulaire">
+          <Carte>
             {erreurLien ? (
               <>
-                <p style={{ fontSize: 13.5, color: "#991b1b", marginTop: 0 }}>{erreurLien}</p>
+                <Bandeau ton="danger" role="alert">{erreurLien}</Bandeau>
                 {lienCompte}
               </>
             ) : !getSupabase() ? (
-              <p style={{ fontSize: 13.5, color: "var(--muted-foreground)", margin: 0 }}>
+              <p className="classe-rien">
                 Les comptes ne sont pas activés sur ce site.
               </p>
             ) : etat === "verification" ? (
-              <p style={{ fontSize: 13.5, color: "var(--muted-foreground)", margin: 0 }}>Vérification du lien…</p>
+              <p className="classe-rien">Vérification du lien…</p>
             ) : etat === "sansSession" ? (
               <>
-                <p style={{ fontSize: 13.5, color: "#475569", marginTop: 0 }}>
+                <p className="classe-rien">
                   Ce lien n&apos;est plus valable (il ne sert qu&apos;une fois, pendant une heure),
                   ou la page a été ouverte sans passer par le courriel.
                 </p>
@@ -124,29 +124,32 @@ export default function NouveauMotDePassePage() {
               </>
             ) : etat === "fait" ? (
               <>
-                <p style={{ fontSize: 13.5, color: "var(--success)", marginTop: 0 }}>
+                <Bandeau ton="succes" role="status">
                   Mot de passe changé. Vous êtes connecté.
-                </p>
-                <Link href="/compte" style={{ color: "var(--primary)", fontSize: 13, fontWeight: 600 }}>Aller à mon compte</Link>
+                </Bandeau>
+                <Link href="/compte" className="btn-primary" style={{ alignSelf: "flex-start" }}>Aller à mon compte</Link>
               </>
             ) : (
-              <form onSubmit={soumettre} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <input type="password" className="field-input" placeholder="Nouveau mot de passe (8 caractères au moins)"
-                  autoComplete="new-password" value={mdp} onChange={(e) => setMdp(e.target.value)} />
-                <input type="password" className="field-input" placeholder="Confirmer le nouveau mot de passe"
-                  autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
+              <form onSubmit={soumettre} className="compte-pile">
+                <Champ libelle="Nouveau mot de passe" aide="8 caractères au moins.">
+                  <input type="password" className="field-input"
+                    autoComplete="new-password" value={mdp} onChange={(e) => setMdp(e.target.value)} />
+                </Champ>
+                <Champ libelle="Confirmer le nouveau mot de passe">
+                  <input type="password" className="field-input"
+                    autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
+                </Champ>
                 {erreur && (
-                  <div style={{ fontSize: 12.5, color: "var(--danger)", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "8px 12px" }}>
+                  <Bandeau ton="danger" role="alert" actions={/expiré/.test(erreur) ? lienCompte : undefined}>
                     {erreur}
-                    {/expiré/.test(erreur) && <div style={{ marginTop: 6 }}>{lienCompte}</div>}
-                  </div>
+                  </Bandeau>
                 )}
-                <button type="submit" className="btn-primary" disabled={occupe}>{occupe ? "…" : "Enregistrer le mot de passe"}</button>
+                <button type="submit" className="btn-primary compte-soumettre" disabled={occupe}>{occupe ? "…" : "Enregistrer le mot de passe"}</button>
               </form>
             )}
-          </div>
-        )}
-      </div>
-    </div>
+          </Carte>
+        </div>
+      )}
+    </Page>
   );
 }

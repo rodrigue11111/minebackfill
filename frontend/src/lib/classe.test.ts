@@ -6,7 +6,7 @@ import {
 } from "./classe";
 import { annotationsDe, fusionnerAnnotations, migrerAnnotationV1, nonLuesDeLEnseignant, type Annotation } from "./annotations";
 import {
-  ErreurClasse, lireAnnotationsClasse, lireClasse, lireComptes, lireDocComplet, lireMesAnnotations, messageErreurClasse, retirerAnnotation,
+  ErreurClasse, lireAnnotationsClasse, lireClasse, lireComptes, lireDocComplet, lireMesAnnotations, messageErreurClasse, repondreAnnotation, retirerAnnotation,
 } from "./classe-reseau";
 import { confirmationAction } from "@/components/classe/OngletComptes";
 import type { Eprouvette } from "./eprouvette";
@@ -216,6 +216,31 @@ describe("classe-reseau", () => {
     const r = await lireMesAnnotations(ancienne, A, null);
     expect(r.annotations[0]).toMatchObject({ auteur: "enseignant", creeLe: "m1", luLe: null });
     expect(appels).toEqual(["lire_fil_annotations", "lire_annotations", "lire_annotations"]);
+  });
+
+  it("réponse ancrée ; base pas à jour → repli sur la réponse au fil général", async () => {
+    const ok = { annotation_id: "r1", cree_serveur: "c1", maj_serveur: "m1" };
+    const appels: { fn: string; params: Record<string, unknown> }[] = [];
+    const client = (absente: boolean) => ({
+      rpc(fn: string, params: Record<string, unknown>) {
+        appels.push({ fn, params });
+        if (absente && fn === "repondre_annotation_ancree") return Promise.resolve({ data: null, error: { code: "PGRST202", message: "Could not find the function" } });
+        return Promise.resolve({ data: [ok], error: null });
+      },
+    }) as unknown as SupabaseClient;
+    const r = { attendu: A, kind: "gachee" as const, id: "g1", rev: 3, texte: " Je repèse. ", ancre: "Pesée : Liant" };
+    expect(await repondreAnnotation(client(false), r)).toMatchObject({ ancre: "Pesée : Liant", texte: "Je repèse.", auteur: "moi" });
+    expect(appels.map((x) => x.fn)).toEqual(["repondre_annotation_ancree"]);
+    expect(appels[0].params).toMatchObject({ p_ancre: "Pesée : Liant", p_rev: 3 });
+
+    appels.length = 0;
+    expect(await repondreAnnotation(client(true), r)).toMatchObject({ ancre: null });
+    expect(appels.map((x) => x.fn)).toEqual(["repondre_annotation_ancree", "repondre_annotation"]);
+    expect(appels[1].params).not.toHaveProperty("p_ancre");
+
+    appels.length = 0;
+    await repondreAnnotation(client(false), { ...r, ancre: null });
+    expect(appels.map((x) => x.fn)).toEqual(["repondre_annotation"]);
   });
 
   it("retrait : zéro ligne touchée (message d'autrui) est une ERREUR, pas un succès silencieux", async () => {

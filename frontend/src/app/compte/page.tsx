@@ -9,6 +9,13 @@ import { messageErreurAuth } from "@/lib/auth-messages";
 import {
   abonnerSync, instantaneSync, instantaneSyncServeur, type InstantaneSync,
 } from "@/lib/sync-client";
+import { Page, EnTetePage } from "@/components/ui/Page";
+import { Carte } from "@/components/ui/Carte";
+import { Champ } from "@/components/ui/Champ";
+import { Bandeau } from "@/components/ui/Bandeau";
+import { Pastille, type TonPastille } from "@/components/ui/Pastille";
+import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
+import Segmente from "@/components/ui/Segmente";
 
 // La sauvegarde est AUTOMATIQUE : quelques secondes après chaque modification,
 // tout de suite en quittant l'onglet, et toutes les 10 minutes. On n'affiche
@@ -63,23 +70,27 @@ function ChangerMotDePasse() {
 
   if (!ouvert) {
     return (
-      <button type="button" className="btn-secondary" style={{ fontSize: 12.5, marginTop: 10 }} onClick={() => setOuvert(true)}>
+      <button type="button" className="btn-secondary" style={{ alignSelf: "flex-start" }} onClick={() => setOuvert(true)}>
         Changer le mot de passe
       </button>
     );
   }
   return (
-    <form onSubmit={soumettre} style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-      <input type="password" className="field-input" placeholder="Nouveau mot de passe" autoComplete="new-password"
-        value={mdp} onChange={(e) => setMdp(e.target.value)} />
-      <input type="password" className="field-input" placeholder="Confirmer le nouveau mot de passe" autoComplete="new-password"
-        value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
+    <form onSubmit={soumettre} className="compte-pile">
+      <Champ libelle="Nouveau mot de passe">
+        <input type="password" className="field-input" autoComplete="new-password"
+          value={mdp} onChange={(e) => setMdp(e.target.value)} />
+      </Champ>
+      <Champ libelle="Confirmer le nouveau mot de passe">
+        <input type="password" className="field-input" autoComplete="new-password"
+          value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
+      </Champ>
       {etat && (
-        <div style={{ fontSize: 12.5, color: etat.type === "ok" ? "var(--success)" : "var(--danger)" }}>{etat.texte}</div>
+        <Bandeau ton={etat.type === "ok" ? "succes" : "danger"} role={etat.type === "ok" ? "status" : "alert"}>{etat.texte}</Bandeau>
       )}
-      <div style={{ display: "flex", gap: 8 }}>
-        <button type="submit" className="btn-primary" style={{ fontSize: 12.5 }} disabled={occupe}>{occupe ? "…" : "Enregistrer"}</button>
-        <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => { setOuvert(false); setEtat(null); }}>Annuler</button>
+      <div className="regl-actions">
+        <button type="submit" className="btn-primary" disabled={occupe}>{occupe ? "…" : "Enregistrer"}</button>
+        <button type="button" className="btn-discret" onClick={() => { setOuvert(false); setEtat(null); }}>Annuler</button>
       </div>
     </form>
   );
@@ -107,22 +118,22 @@ function NomAffiche() {
 
   if (edition === null) {
     return (
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-        <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>{session.displayName || "Nom non renseigné"}</p>
-        <button type="button" onClick={() => setEdition(session.displayName ?? "")}
-          style={{ fontSize: 12, color: "var(--primary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+      <LigneListe libelle="Nom affiché" detail="Visible par l'enseignant">
+        <span className="ui-ligne-valeur">{session.displayName || "Nom non renseigné"}</span>
+        <button type="button" className="btn-discret" onClick={() => setEdition(session.displayName ?? "")}>
           Modifier
         </button>
-      </div>
+      </LigneListe>
     );
   }
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+    <div className="compte-nom-edition">
       <input type="text" className="field-input" style={{ flex: "1 1 180px" }} maxLength={80} value={edition}
+        aria-label="Nom affiché"
         onChange={(e) => setEdition(e.target.value)} placeholder="Prénom Nom" autoComplete="name" />
-      <button type="button" className="btn-primary" style={{ fontSize: 12.5 }} onClick={() => void enregistrer()}>Enregistrer</button>
-      <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => { setEdition(null); setErreur(null); }}>Annuler</button>
-      {erreur && <div style={{ fontSize: 12.5, color: "var(--danger)", width: "100%" }}>{erreur}</div>}
+      <button type="button" className="btn-primary" onClick={() => void enregistrer()}>Enregistrer</button>
+      <button type="button" className="btn-discret" onClick={() => { setEdition(null); setErreur(null); }}>Annuler</button>
+      {erreur && <div className="ui-champ-erreur" style={{ width: "100%" }}>{erreur}</div>}
     </div>
   );
 }
@@ -133,29 +144,29 @@ function EtatSynchro() {
 
   if (s.liaison === "autre_compte") {
     return (
-      <p style={{ fontSize: 12.5, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 7, padding: "8px 12px", marginTop: 14, lineHeight: 1.5 }}>
+      <Bandeau ton="alerte">
         La sauvegarde en ligne n&apos;a pas pu démarrer : le stockage du navigateur est plein
         (le travail de l&apos;autre compte n&apos;a pas pu être mis de côté). Rien n&apos;est perdu ;
         libérez de la place, puis rechargez la page.
-      </p>
+      </Bandeau>
     );
   }
   if (s.liaison !== "synchroniser") return null;
 
-  const pastille = s.statut === "a_jour" ? "#22c55e"
-    : s.statut === "hors_ligne" ? "#94a3b8"
-      : s.statut === "erreur" || s.statut === "pause" ? "#f87171" : "#fbbf24";
+  const ton: TonPastille = s.statut === "a_jour" ? "succes"
+    : s.statut === "hors_ligne" ? "neutre"
+      : s.statut === "erreur" || s.statut === "pause" ? "danger" : "alerte";
   return (
-    <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>Sauvegarde en ligne automatique</div>
-      <p style={{ fontSize: 12.5, color: "var(--muted-foreground)", margin: 0, display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-        <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: pastille, flexShrink: 0 }} />
+    <LigneListe
+      libelle="Sauvegarde en ligne automatique"
+      accent={<Pastille point ton={ton} />}
+      detail={<>
         {LIBELLES_STATUT[s.statut]}
         {s.statut === "en_attente" && s.enAttente > 0 ? ` (${s.enAttente} modification${s.enAttente > 1 ? "s" : ""})` : ""}
         {s.derniereReussite ? ` · dernière sauvegarde à ${new Date(s.derniereReussite).toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}` : ""}
         {s.erreur && s.statut === "erreur" ? ` · code ${s.erreur.code}` : ""}
-      </p>
-    </div>
+      </>}
+    />
   );
 }
 
@@ -253,154 +264,117 @@ export default function ComptePage() {
     setLoading(false);
   };
 
-  const card: React.CSSProperties = {
-    maxWidth: 460, margin: "0 auto", background: "#fff",
-    border: "1px solid var(--border)", borderRadius: 12, padding: "28px 26px",
-  };
-
   return (
-    <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px 64px" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Compte</h1>
-        <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 24 }}>
-          La synchronisation en ligne est optionnelle. Sans compte, MineBackfill
-          fonctionne entièrement en local dans votre navigateur.
-        </p>
+    <Page etroite>
+      <EnTetePage
+        titre="Compte"
+        pastille={monte && configure && session ? <Pastille ton="succes">Connecté</Pastille> : undefined}
+        sousTitre="La synchronisation en ligne est optionnelle. Sans compte, MineBackfill fonctionne entièrement en local dans votre navigateur."
+      />
 
-        {!monte ? null : !configure ? (
-          <div style={card}>
-            <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-              Synchronisation en ligne non configurée
-            </p>
-            <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-              Cette instance n&apos;a pas de connexion Supabase. Toutes vos données
-              restent enregistrées localement. Voir <code>supabase/README.md</code>{" "}
-              pour l&apos;activer.
-            </p>
-            <Link href="/" style={{ display: "inline-block", marginTop: 16, color: "var(--primary)", fontSize: 13, fontWeight: 600 }}>
-              ← Retour
-            </Link>
-          </div>
-        ) : session ? (
-          <div style={card}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-              Connecté
-            </div>
-            <NomAffiche />
-            <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>{session.email}</p>
-            <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>
-              Rôle : {session.role === "prof" ? "Enseignant" : "Étudiant"}
-            </p>
-            <p style={{ fontSize: 12.5, color: "var(--muted-foreground)", marginTop: 14, lineHeight: 1.5 }}>
+      {!monte ? null : !configure ? (
+        <Carte titre="Synchronisation en ligne non configurée">
+          <p className="classe-rien">
+            Cette instance n&apos;a pas de connexion Supabase. Toutes vos données
+            restent enregistrées localement. Voir <code>supabase/README.md</code>{" "}
+            pour l&apos;activer.
+          </p>
+          <Link href="/" className="btn-discret" style={{ alignSelf: "flex-start" }}>Retour aux informations</Link>
+        </Carte>
+      ) : session ? (
+        <>
+          <Carte titre="Profil">
+            <ListeGroupee>
+              <NomAffiche />
+              <LigneListe libelle="Courriel" valeur={session.email} />
+              <LigneListe libelle="Rôle" valeur={session.role === "prof" ? "Enseignant" : "Étudiant"} />
+              <EtatSynchro />
+            </ListeGroupee>
+            <p className="classe-intro">
               Vos résultats sauvegardés et vos gâchées sont sauvegardés en ligne et
               visibles par l&apos;enseignant ; les courbes de presse restent sur cet
               appareil. Les catalogues officiels publiés par l&apos;enseignant sont
               appliqués automatiquement (vos matériaux personnels sont conservés).
             </p>
-            <EtatSynchro />
-            <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-              <ChangerMotDePasse />
-            </div>
-            <button type="button" className="btn-secondary" onClick={deconnexion} disabled={loading} style={{ marginTop: 18 }}>
+          </Carte>
+          <Carte titre="Sécurité">
+            <ChangerMotDePasse />
+            <button type="button" className="btn-discret btn-danger" onClick={deconnexion} disabled={loading} style={{ alignSelf: "flex-start" }}>
               {loading ? "…" : "Se déconnecter"}
             </button>
-          </div>
-        ) : (
-          <div style={card}>
-            {mode === "oubli" ? (
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 14px" }}>Mot de passe oublié</h2>
-            ) : (
-            <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-              {(["connexion", "inscription"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => changerMode(m)}
-                  style={{
-                    flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 13, fontWeight: 600,
-                    border: `1.5px solid ${mode === m ? "var(--primary)" : "var(--border)"}`,
-                    background: mode === m ? "var(--primary)" : "#fff",
-                    color: mode === m ? "#fff" : "#374151", cursor: "pointer",
-                  }}
-                >
-                  {m === "connexion" ? "Connexion" : "Inscription"}
-                </button>
-              ))}
-            </div>
+          </Carte>
+        </>
+      ) : (
+        <div className="compte-formulaire">
+          <Carte titre={mode === "oubli" ? "Mot de passe oublié" : undefined}>
+            {mode !== "oubli" && (
+              <Segmente
+                ariaLabel="Connexion ou inscription"
+                pleineLargeur
+                valeur={mode}
+                onChange={(m) => changerMode(m)}
+                options={[
+                  { valeur: "connexion", libelle: "Connexion" },
+                  { valeur: "inscription", libelle: "Inscription" },
+                ]}
+              />
             )}
-            <form onSubmit={soumettre} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <form onSubmit={soumettre} className="compte-pile">
               {mode === "oubli" && (
-                <p style={{ fontSize: 13, color: "#475569", margin: 0, lineHeight: 1.5 }}>
+                <p className="classe-rien">
                   Indiquez le courriel de votre compte : vous recevrez un lien pour choisir un
                   nouveau mot de passe. Votre travail n&apos;est pas touché.
                 </p>
               )}
               {mode === "inscription" && (
-                <div>
-                  <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                    Prénom et nom (visible par l&apos;enseignant)
-                  </label>
-                  <input type="text" required maxLength={80} className="field-input" value={nom}
-                    autoComplete="name" onChange={(e) => setNom(e.target.value)} placeholder="Prénom Nom" />
+                <>
+                  <Champ libelle="Prénom et nom (visible par l'enseignant)">
+                    <input type="text" required maxLength={80} className="field-input" value={nom}
+                      autoComplete="name" onChange={(e) => setNom(e.target.value)} placeholder="Prénom Nom" />
+                  </Champ>
                   {!enseignant ? (
-                    <button type="button" onClick={() => setEnseignant(true)}
-                      style={{ marginTop: 6, background: "none", border: "none", padding: 0, fontSize: 12, color: "var(--primary)", cursor: "pointer" }}>
+                    <button type="button" className="btn-discret" style={{ alignSelf: "flex-start" }} onClick={() => setEnseignant(true)}>
                       Je suis l&apos;enseignant
                     </button>
                   ) : (
-                    <div style={{ marginTop: 10 }}>
-                      <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                        Code enseignant (fourni par l&apos;administrateur du site)
-                      </label>
+                    <Champ libelle="Code enseignant (fourni par l'administrateur du site)">
                       <input type="password" className="field-input" value={code} autoComplete="off"
                         onChange={(e) => setCode(e.target.value)} placeholder="Code enseignant" />
-                    </div>
+                    </Champ>
                   )}
-                </div>
+                </>
               )}
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>Courriel</label>
+              <Champ libelle="Courriel">
                 <input type="email" required className="field-input" value={email}
                   autoComplete="email"
                   onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.ca" />
-              </div>
+              </Champ>
               {mode !== "oubli" && (
-                <div>
-                  <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>Mot de passe</label>
+                <Champ libelle="Mot de passe">
                   <input type="password" required className="field-input" value={motDePasse}
                     autoComplete={mode === "inscription" ? "new-password" : "current-password"}
                     onChange={(e) => setMotDePasse(e.target.value)} placeholder="••••••••" />
-                  {mode === "connexion" && (
-                    <button type="button" onClick={() => changerMode("oubli")}
-                      style={{ marginTop: 6, background: "none", border: "none", padding: 0, fontSize: 12, color: "var(--primary)", cursor: "pointer" }}>
-                      Mot de passe oublié ?
-                    </button>
-                  )}
-                </div>
+                </Champ>
               )}
-              {erreur && (
-                <div style={{ fontSize: 12.5, color: "var(--danger)", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "8px 12px" }}>
-                  {erreur}
-                </div>
+              {mode === "connexion" && (
+                <button type="button" className="btn-discret" style={{ alignSelf: "flex-start" }} onClick={() => changerMode("oubli")}>
+                  Mot de passe oublié ?
+                </button>
               )}
-              {info && (
-                <div style={{ fontSize: 12.5, color: "var(--success)", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "8px 12px" }}>
-                  {info}
-                </div>
-              )}
-              <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: 4 }}>
+              {erreur && <Bandeau ton="danger" role="alert">{erreur}</Bandeau>}
+              {info && <Bandeau ton="succes" role="status">{info}</Bandeau>}
+              <button type="submit" className="btn-primary compte-soumettre" disabled={loading}>
                 {loading ? "…" : mode === "connexion" ? "Se connecter" : mode === "oubli" ? "Envoyer le lien" : "Créer le compte"}
               </button>
               {mode === "oubli" && (
-                <button type="button" onClick={() => changerMode("connexion")}
-                  style={{ background: "none", border: "none", padding: 0, fontSize: 12.5, color: "var(--primary)", cursor: "pointer" }}>
-                  ← Retour à la connexion
+                <button type="button" className="btn-discret" style={{ alignSelf: "center" }} onClick={() => changerMode("connexion")}>
+                  Retour à la connexion
                 </button>
               )}
             </form>
-          </div>
-        )}
-      </div>
-    </div>
+          </Carte>
+        </div>
+      )}
+    </Page>
   );
 }

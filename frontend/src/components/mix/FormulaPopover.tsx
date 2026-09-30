@@ -188,8 +188,8 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
         width: popoverW,
         maxHeight: "70vh",
         overflowY: "auto",
-        background: "#fff",
-        border: "1px solid #e2e8f0",
+        background: "var(--surface)",
+        border: "1px solid var(--filet-fort)",
         borderRadius: 10,
         boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
         zIndex: 100,
@@ -204,23 +204,23 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
         ].filter((id) => !formulaIds.includes(id)).slice(0, 4);
 
         return (
-          <div key={formula.id} style={{ padding: "14px 16px", borderTop: fi > 0 ? "1px solid #f1f5f9" : "none" }}>
+          <div key={formula.id} style={{ padding: "14px 16px", borderTop: fi > 0 ? "1px solid var(--filet)" : "none" }}>
             {/* Header */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span style={{
-                fontSize: 10, fontWeight: 700, color: "#2563eb", background: "#eff6ff",
+                fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accent-pale)",
                 padding: "2px 7px", borderRadius: 4, letterSpacing: "0.04em",
               }}>
                 {formula.id}
               </span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--texte)" }}>
                 {formula.title}
               </span>
             </div>
 
             {/* Equation */}
             <div style={{
-              background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8,
+              background: "var(--champ)", border: "1px solid var(--filet-fort)", borderRadius: 8,
               padding: "6px 12px", marginBottom: 10,
             }}>
               <KaTeXBlock latex={formula.equationLatex} />
@@ -228,22 +228,22 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
 
             {/* Variables with values */}
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--texte-2)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
                 Variables
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 {values.map((v, vi) => (
                   <div key={vi} style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 12 }}>
-                    <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#2563eb", minWidth: 60 }}>
+                    <span style={{ fontFamily: "monospace", fontWeight: 600, color: "var(--accent)", minWidth: 60 }}>
                       {v.symbol}
                     </span>
-                    <span style={{ color: "#64748b", flex: 1 }}>
+                    <span style={{ color: "var(--texte-2)", flex: 1 }}>
                       {v.description}
                     </span>
                     {v.value !== null && (
-                      <span style={{ fontWeight: 700, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
+                      <span style={{ fontWeight: 700, color: "var(--texte)", fontVariantNumeric: "tabular-nums" }}>
                         = {fmtVal(v.value)}
-                        {v.unit && <span style={{ color: "#94a3b8", fontWeight: 400, marginLeft: 2 }}>{v.unit}</span>}
+                        {v.unit && <span style={{ color: "var(--texte-3)", fontWeight: 400, marginLeft: 2 }}>{v.unit}</span>}
                       </span>
                     )}
                   </div>
@@ -253,25 +253,25 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
 
             {/* Context */}
             {formula.contextSnippet && (
-              <p style={{ fontSize: 11.5, color: "#64748b", margin: "0 0 8px", lineHeight: 1.5 }}>
+              <p style={{ fontSize: 11.5, color: "var(--texte-2)", margin: "0 0 8px", lineHeight: 1.5 }}>
                 {formula.contextSnippet}
               </p>
             )}
 
             {/* Derivation note */}
             {formula.derivationLinks.derivationNote && (
-              <div style={{ fontSize: 11, color: "#7c3aed", background: "#f5f3ff", borderRadius: 6, padding: "5px 10px", marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: "var(--violet-texte)", background: "var(--violet-pale)", borderRadius: 6, padding: "5px 10px", marginBottom: 8 }}>
                 {formula.derivationLinks.derivationNote}
               </div>
             )}
 
             {/* Reference */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "#94a3b8" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "var(--texte-3)" }}>
               <span>Ref : {formula.chapter}, p.{formula.pageNumber}</span>
               {related.length > 0 && (
                 <span>
                   Voir aussi : {related.map((id) => (
-                    <span key={id} style={{ color: "#2563eb", fontWeight: 600, marginLeft: 4 }}>{id}</span>
+                    <span key={id} style={{ color: "var(--accent)", fontWeight: 600, marginLeft: 4 }}>{id}</span>
                   ))}
                 </span>
               )}

@@ -5,40 +5,36 @@
 // déjà calculées. Purement présentationnel (reçoit recipes, ne calcule rien).
 
 import React, { useState } from "react";
+import Segmente from "@/components/ui/Segmente";
 import type { Recipe } from "@/lib/types";
 import type { BasePhases, BaseTernaire } from "@/lib/composition";
 import BarresPhases from "./BarresPhases";
 import DiagrammeTernaire from "./DiagrammeTernaire";
 import EchantillonCylindre from "./EchantillonCylindre";
 import FigurePng from "./FigurePng";
-import { RECIPE_COLORS } from "@/lib/recipe-theme";
 
-function Bascule<T extends string>({ valeur, options, onChange }: {
+function Bascule<T extends string>({ valeur, options, onChange, ariaLabel }: {
   valeur: T;
   options: { v: T; label: string }[];
   onChange: (v: T) => void;
+  ariaLabel: string;
 }) {
   return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-      {options.map((o) => {
-        const actif = valeur === o.v;
-        return (
-          <button key={o.v} type="button" onClick={() => onChange(o.v)}
-            style={{ padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
-              border: `1.5px solid ${actif ? "#2563eb" : "#e2e8f0"}`, background: actif ? "#2563eb" : "#fff", color: actif ? "#fff" : "#64748b" }}>
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
+    <Segmente
+      ariaLabel={ariaLabel}
+      taille="compact"
+      valeur={valeur}
+      onChange={onChange}
+      options={options.map((o) => ({ valeur: o.v, libelle: o.label }))}
+    />
   );
 }
 
 function Sous({ titre, extra, children }: { titre: string; extra?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "14px 16px", background: "#fff" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>{titre}</span>
+    <div className="analyse-figure">
+      <div className="analyse-figure-tete">
+        <span className="analyse-figure-titre">{titre}</span>
         {extra}
       </div>
       {children}
@@ -55,18 +51,18 @@ export default function CompositionVue({ recipes }: { recipes: Recipe[] }) {
   const iSel = Math.min(sel, recipes.length - 1);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div className="analyse-pile">
       <Sous
         titre={`Barres de phases (${recipes.length} recette${recipes.length > 1 ? "s" : ""})`}
-        extra={<Bascule valeur={baseBarres} options={[{ v: "volume", label: "Volume" }, { v: "masse", label: "Masse" }]} onChange={setBaseBarres} />}
+        extra={<Bascule ariaLabel="Base des barres de phases" valeur={baseBarres} options={[{ v: "volume", label: "Volume" }, { v: "masse", label: "Masse" }]} onChange={setBaseBarres} />}
       >
         <BarresPhases recipes={recipes} base={baseBarres} />
       </Sous>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+      <div className="analyse-duo">
         <Sous
           titre="Diagramme ternaire"
-          extra={<Bascule valeur={baseTern} options={[{ v: "phases", label: "Solides/Eau/Air" }, { v: "solides", label: "Résidu/Granulat/Liant" }]} onChange={setBaseTern} />}
+          extra={<Bascule ariaLabel="Base du diagramme ternaire" valeur={baseTern} options={[{ v: "phases", label: "Solides/Eau/Air" }, { v: "solides", label: "Résidu/Granulat/Liant" }]} onChange={setBaseTern} />}
         >
           <FigurePng nom="composition-ternaire">
             <DiagrammeTernaire recipes={recipes} base={baseTern} />
@@ -76,19 +72,13 @@ export default function CompositionVue({ recipes }: { recipes: Recipe[] }) {
         <Sous
           titre="Schéma volumique illustratif"
           extra={recipes.length > 1 ? (
-            <div style={{ display: "flex", gap: 6 }}>
-              {recipes.map((_, i) => {
-                const actif = i === iSel;
-                return (
-                  <button key={i} type="button" onClick={() => setSel(i)}
-                    style={{ width: 30, height: 28, borderRadius: 6, fontSize: 12.5, fontWeight: 700, cursor: "pointer",
-                      border: `1.5px solid ${actif ? (RECIPE_COLORS[i] ?? "#2563eb") : "#e2e8f0"}`,
-                      background: actif ? (RECIPE_COLORS[i] ?? "#2563eb") : "#fff", color: actif ? "#fff" : "#64748b" }}>
-                    {i + 1}
-                  </button>
-                );
-              })}
-            </div>
+            <Segmente
+              ariaLabel="Recette illustrée"
+              taille="compact"
+              valeur={String(iSel)}
+              onChange={(v) => setSel(Number(v))}
+              options={recipes.map((_, i) => ({ valeur: String(i), libelle: `R${i + 1}` }))}
+            />
           ) : undefined}
         >
           <FigurePng nom={`composition-echantillon-r${iSel + 1}`}>

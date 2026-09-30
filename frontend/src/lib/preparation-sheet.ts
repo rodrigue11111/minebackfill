@@ -23,6 +23,7 @@ const masseAjoutComposantN = (c: RecipeComponents | null | undefined, i: number)
 };
 import { fmt as fmtNum } from "@/lib/format";
 import { APP_NAME } from "@/lib/branding";
+import { assainirTextePdf } from "@/lib/texte-pdf";
 
 const NAVY: [number, number, number] = [12, 30, 66];
 const WHITE: [number, number, number] = [255, 255, 255];
@@ -50,7 +51,7 @@ export async function exportPreparationPdf(
   units: UnitPreferences,
 ) {
   const { default: jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const doc = assainirTextePdf(new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }));
 
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -201,7 +202,7 @@ export async function exportPreparationPdf(
     doc.setFontSize(9.5);
     doc.setTextColor(...TEXT_DARK);
     const mesures = [
-      "Slump mesuré (mm)", "Tare (g)", "Tare + pâte humide m_h (g)",
+      "Affaissement mesuré (mm)", "Tare (g)", "Tare + pâte humide m_h (g)",
       "Tare + pâte sèche m_s (g)", "w mesuré (%)", "Cw mesuré (%)",
     ];
     const colW = contentW / 2;
@@ -218,7 +219,8 @@ export async function exportPreparationPdf(
     doc.setFontSize(8);
     doc.setTextColor(...TEXT_MUTED);
     doc.text("w mesuré = (m_h − m_s) / (m_s − tare)     Cw mesuré = (m_s − tare) / (m_h − tare)", mL, y);
-    y += 10;
+    doc.text("Affaissement : cône d'Abrams, ASTM C143/C143M.   Teneur en eau massique : ASTM D2216 (étuve).", mL, y + 4);
+    y += 12;
 
     // ── Signature ──
     doc.setFontSize(9.5);
@@ -234,6 +236,6 @@ export async function exportPreparationPdf(
     doc.text(`Recette ${idx + 1}/${recipes.length}`, pageW - mR, pageH - 8, { align: "right" });
   });
 
-  const filename = `MineBackfill_preparation_${category}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filename = `MineBackfill_preparation_${category}_${methodLabel(category as Category, method, "fichier")}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
 }

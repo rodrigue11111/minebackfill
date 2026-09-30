@@ -34,7 +34,8 @@ describe("report-schema — structure", () => {
     // Chaque section est un tableau distinct : à l'écran, le libellé sert de
     // clé React. Deux lignes de la MÊME section ne doivent jamais collisionner.
     // (Un même libellé dans deux sections différentes est légitime — ex.
-    // « Liant Bw% » ouvre les sections 1 et 2.) Testé pour chaque contexte réel.
+    // « Taux massique de liant Bw » ouvre les sections 1 et 2.) Testé pour
+    // chaque contexte réel.
     for (const c of [
       ctx(),                                   // RPC dosage
       ctx({ isEssai: true }),                  // RPC essai
@@ -53,10 +54,10 @@ describe("report-schema — gating (when)", () => {
   it("les lignes granulat n'apparaissent qu'en RPG", () => {
     const rpc = rowsForSection(2, ctx()).map((r) => r.label(CTX_BASE));
     const rpg = rowsForSection(2, ctx({ isRpg: true })).map((r) => r.label(ctx({ isRpg: true })));
-    expect(rpc.some((l) => l.includes("Granulat"))).toBe(false);
-    expect(rpg.some((l) => l.includes("Granulat"))).toBe(true);
-    // La section 5 (volumes) gagne « Volume granulat V_g » en RPG.
-    expect(rowsForSection(5, ctx({ isRpg: true })).some((r) => r.label(CTX_BASE).includes("granulat V_g"))).toBe(true);
+    expect(rpc.some((l) => /granulat/i.test(l))).toBe(false);
+    expect(rpg.some((l) => /granulat/i.test(l))).toBe(true);
+    // La section 5 (volumes) gagne « Volume du granulat Vg » en RPG.
+    expect(rowsForSection(5, ctx({ isRpg: true })).some((r) => r.label(CTX_BASE).includes("granulat Vg"))).toBe(true);
   });
 
   it("les lignes liant « à ajouter/retirer » n'apparaissent qu'en essai", () => {
@@ -87,10 +88,10 @@ describe("report-schema — gating (when)", () => {
     expect(row5!.getter(recette, ctx({ bcount: 5 }))).toBeCloseTo(55, 6);
   });
 
-  it("le libellé Bw% bascule sur « atteint » en essai (D89, pas la cible)", () => {
+  it("le libellé Bw bascule sur « atteint » en essai (D89, pas la cible)", () => {
     const bw = REPORT_ROWS.find((r) => r.section === 1 && r.formulaIds?.includes("F016"))!;
-    expect(bw.label(ctx())).toBe("Liant Bw%");
-    expect(bw.label(ctx({ isEssai: true }))).toBe("Bw% atteint");
+    expect(bw.label(ctx())).toBe("Taux massique de liant Bw");
+    expect(bw.label(ctx({ isEssai: true }))).toBe("Taux massique de liant Bw atteint");
   });
 });
 
@@ -144,7 +145,27 @@ describe("report-schema — RRC", () => {
   });
 
   it("le libellé RRC interpole l'unité de masse", () => {
-    const masse = RRC_ROWS.find((r) => r.label("kg").includes("M_CRF"))!;
+    const masse = RRC_ROWS.find((r) => r.label("kg").startsWith("Masse totale de RRC"))!;
     expect(masse.label("lb")).toContain("(lb)");
+  });
+});
+
+describe("report-schema — vocabulaire du cours", () => {
+  it("les noms scientifiques remplacent les anciens libellés", () => {
+    const tous = [ctx(), ctx({ isEssai: true }), ctx({ isRpg: true, isEssai: true, bcount: 2 })]
+      .flatMap((c) => REPORT_ROWS.filter((r) => !r.when || r.when(c)).map((r) => r.label(c)));
+    expect(tous).toContain("Rapport eau/liant E/L");
+    expect(tous).toContain("Pourcentage solide massique Cw");
+    expect(tous).toContain("Degré de saturation Sr");
+    expect(tous).toContain("Masse volumique humide ρh");
+    for (const ancien of ["Rapport E/C", "Liant Bw%", "Solides Cw%", "Agrégat", "rho_h", "calcule ("]) {
+      expect(tous.some((l) => l.includes(ancien))).toBe(false);
+    }
+  });
+
+  it("le RRC parle de rapport E/L du coulis, pas de W/C seul", () => {
+    const libelles = RRC_ROWS.map((r) => r.label("kg"));
+    expect(libelles).toContain("Rapport E/L du coulis (W/C)");
+    expect(libelles.some((l) => l.includes("CRF"))).toBe(false);
   });
 });

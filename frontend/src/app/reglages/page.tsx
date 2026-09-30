@@ -14,6 +14,13 @@ import MaterialCatalogueCard from "@/components/MaterialCatalogueCard";
 import BackupButtons from "@/components/BackupButtons";
 import SessionsCard from "@/components/SessionsCard";
 import type { Session } from "@/lib/sessions";
+import { APP_NAME_VERSION, MODULE_ID, MODULE_LABEL } from "@/lib/branding";
+import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
+import { Page, EnTetePage } from "@/components/ui/Page";
+import { Carte } from "@/components/ui/Carte";
+import { Champ } from "@/components/ui/Champ";
+import { Pastille } from "@/components/ui/Pastille";
+import Segmente from "@/components/ui/Segmente";
 
 export default function ReglagesPage() {
   const {
@@ -82,346 +89,177 @@ export default function ReglagesPage() {
     );
   }, [catalogue_liants]);
 
+  const champConstante = (libelle: string, unite: string | undefined, valeur: number, onChange: (n: number) => void, aide?: string) => (
+    <Champ libelle={libelle} unite={unite} aide={aide}>
+      <input type="number" step="any" className="field-input" value={valeur}
+        onChange={(e) => onChange(Number(e.target.value || 0))} />
+    </Champ>
+  );
+
   return (
-    <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
-      <div style={{ maxWidth: 1140, margin: "0 auto", padding: "32px 24px 64px" }}>
-        <div className="form-card">
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, marginBottom: 8 }}>
-            Réglage des constantes
-          </h1>
-          <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 16 }}>
-            Ces valeurs sont globales et sont utilisées dans les méthodes Cw%, E/C, Slump et essai-erreur.
-          </p>
+    <Page>
+      <EnTetePage
+        titre="Réglages"
+        sousTitre="Constantes de calcul, catalogues de matériaux, sessions de cours, unités et données locales."
+      />
 
-          {isProf && (
-            <div style={{ marginBottom: 16 }}>
-              <button type="button" className="btn-primary" style={{ fontSize: 12 }} onClick={publierConstantes}>
-                Publier les constantes
-              </button>
-            </div>
-          )}
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0,1fr))",
-              gap: "12px 16px",
-              marginBottom: 18,
-            }}
-          >
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                Masse volumique de l&apos;eau (kg/m³)
-              </label>
-              <input
-                type="number"
-                step="any"
-                className="field-input"
-                value={constantes.masse_volumique_eau_kg_m3}
-                onChange={(e) =>
-                  setConstantes({ masse_volumique_eau_kg_m3: Number(e.target.value || 0) })
-                }
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                Gravité g (m/s²)
-              </label>
-              <input
-                type="number"
-                step="any"
-                className="field-input"
-                value={constantes.gravite_m_s2}
-                onChange={(e) => setConstantes({ gravite_m_s2: Number(e.target.value || 0) })}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                Facteur petit cône vers grand cône
-              </label>
-              <input
-                type="number"
-                step="any"
-                className="field-input"
-                value={constantes.facteur_petit_cone_vers_grand_cone}
-                onChange={(e) =>
-                  setConstantes({
-                    facteur_petit_cone_vers_grand_cone: Number(e.target.value || 0),
-                  })
-                }
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                Coefficient modèle slump
-              </label>
-              <input
-                type="number"
-                step="any"
-                className="field-input"
-                value={constantes.coefficient_modele_slump}
-                onChange={(e) =>
-                  setConstantes({ coefficient_modele_slump: Number(e.target.value || 0) })
-                }
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5 }}>
-                Constante modèle slump
-              </label>
-              <input
-                type="number"
-                step="any"
-                className="field-input"
-                value={constantes.constante_modele_slump}
-                onChange={(e) =>
-                  setConstantes({ constante_modele_slump: Number(e.target.value || 0) })
-                }
-              />
-            </div>
-          </div>
+      <Carte titre="Constantes de calcul"
+        actions={isProf ? <button type="button" className="btn-primary" onClick={publierConstantes}>Publier les constantes</button> : undefined}>
+        <p className="classe-intro">
+          Ces valeurs sont globales ; elles servent au dosage selon Cw, au dosage selon E/L, au modèle prédictif et à la méthode essai-erreur.
+        </p>
+        <div className="grille-2">
+          {champConstante("Masse volumique de l'eau ρw", "kg/m³", constantes.masse_volumique_eau_kg_m3, (n) => setConstantes({ masse_volumique_eau_kg_m3: n }))}
+          {champConstante("Accélération de la pesanteur g", "m/s²", constantes.gravite_m_s2, (n) => setConstantes({ gravite_m_s2: n }))}
+          {champConstante("Facteur petit cône vers cône d'Abrams", undefined, constantes.facteur_petit_cone_vers_grand_cone, (n) => setConstantes({ facteur_petit_cone_vers_grand_cone: n }),
+            "Convertit l'affaissement lu au petit cône (non normalisé) en affaissement au cône d'Abrams (ASTM C143/C143M).")}
+          {champConstante("Coefficient du modèle prédictif (affaissement)", undefined, constantes.coefficient_modele_slump, (n) => setConstantes({ coefficient_modele_slump: n }))}
+          {champConstante("Constante du modèle prédictif (affaissement)", undefined, constantes.constante_modele_slump, (n) => setConstantes({ constante_modele_slump: n }))}
         </div>
+      </Carte>
 
-        <div className="form-card" style={{ marginTop: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Catalogue des liants</h2>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={restaurerLiantsOfficiels}>
-                Restaurer valeurs officielles
-              </button>
-              <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={ajouterLiant}>
-                + Ajouter un liant
-              </button>
-              {isProf && (
-                <button type="button" className="btn-primary" style={{ fontSize: 12 }} onClick={publierLiants}>
-                  Publier en ligne
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {catalogue_liants.map((liant: LiantCatalogueItem, index: number) => {
-              const code = String(liant.code ?? "");
-              const duplique = code && codesDupliques.has(code);
-              // En vue enseignant, les liants officiels sont éditables.
-              const verrou = estOfficiel(liant) && !vueAdmin;
-              return (
-                <div
-                  key={liant.id}
-                  style={{
-                    border: `1px solid ${duplique ? "#fecaca" : "var(--border)"}`,
-                    background: duplique ? "#fef2f2" : verrou ? "#f8fafc" : "#fff",
-                    borderRadius: 8,
-                    padding: 10,
-                    display: "grid",
-                    gridTemplateColumns: "1.2fr 2fr 1fr auto",
-                    gap: 8,
-                    alignItems: "end",
-                  }}
-                >
-                  <div>
-                    <label style={{ display: "block", fontSize: 11.5, color: "#64748b", marginBottom: 4 }}>
-                      Code
-                    </label>
-                    <input
-                      className="field-input"
-                      value={liant.code}
-                      disabled={verrou}
-                      onChange={(e) =>
-                        modifierLiant(index, {
-                          code: String(e.target.value || "").trim().toUpperCase(),
-                        }, vueAdmin)
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 11.5, color: "#64748b", marginBottom: 4 }}>
-                      Nom
-                    </label>
-                    <input
-                      className="field-input"
-                      value={liant.nom}
-                      disabled={verrou}
-                      onChange={(e) => modifierLiant(index, { nom: e.target.value }, vueAdmin)}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 11.5, color: "#64748b", marginBottom: 4 }}>
-                      Gs
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="field-input"
-                      value={liant.gs}
-                      disabled={verrou}
-                      onChange={(e) => modifierLiant(index, { gs: Number(e.target.value || 0) }, vueAdmin)}
-                    />
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingBottom: 2 }}>
-                    {estOfficiel(liant) && (
-                      <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--primary)", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
-                        officiel
-                      </span>
-                    )}
-                    {!verrou && (
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        style={{ fontSize: 12, padding: "6px 12px" }}
-                        onClick={() => supprimerLiant(index, vueAdmin)}
-                        disabled={catalogue_liants.length <= 1}
-                      >
-                        Supprimer
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {codesDupliques.size > 0 && (
-            <p style={{ marginTop: 8, color: "#b91c1c", fontSize: 12.5 }}>
-              Les codes de liants doivent être uniques.
-            </p>
-          )}
-
-          <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <Link href="/" className="btn-secondary" style={{ textDecoration: "none" }}>
-              Retour Informations
-            </Link>
-            <Link href="/mix" className="btn-primary" style={{ textDecoration: "none" }}>
-              Aller aux calculs
-            </Link>
-          </div>
-        </div>
-
-        {/* ── Bibliothèques de matériaux ── */}
-        <MaterialCatalogueCard
-          kind="residus"
-          title="Bibliothèque de résidus"
-          sub="Résidus miniers réutilisables : sélectionnez-les dans les formulaires pour remplir Gs et w0."
-          adminMode={vueAdmin}
-          onPublish={isProf ? () => publierMateriaux("residus", "residus", MATERIALS_VERSION) : undefined}
-          columns={[
-            { key: "nom", label: "Nom", type: "text", flex: 2 },
-            { key: "gs", label: "Gs", type: "number" },
-            { key: "w0_pct", label: "w0 (%)", type: "number" },
-            { key: "provenance", label: "Provenance", type: "text", flex: 1.5 },
-          ]}
-        />
-        <MaterialCatalogueCard
-          kind="granulats"
-          title="Bibliothèque de granulats"
-          sub="Granulats pour le remblai en pâte granulaire (RPG)."
-          adminMode={vueAdmin}
-          onPublish={isProf ? () => publierMateriaux("granulats", "granulats", MATERIALS_VERSION) : undefined}
-          columns={[
-            { key: "nom", label: "Nom", type: "text", flex: 2 },
-            { key: "gs", label: "Gs", type: "number" },
-            { key: "humidite_pct", label: "Humidité (%)", type: "number" },
-            { key: "fraction_defaut_pct", label: "Xg défaut (%)", type: "number" },
-            { key: "provenance", label: "Provenance", type: "text", flex: 1.5 },
-          ]}
-        />
-        <MaterialCatalogueCard
-          kind="retardateurs"
-          title="Bibliothèque de retardateurs"
-          sub="Retardateurs de prise pour le remblai rocheux cimenté (RRC)."
-          adminMode={vueAdmin}
-          onPublish={isProf ? () => publierMateriaux("retardateurs", "retardateurs", MATERIALS_VERSION) : undefined}
-          columns={[
-            { key: "nom", label: "Nom", type: "text", flex: 2 },
-            { key: "densite_g_ml", label: "Densité (g/ml)", type: "number" },
-            { key: "dosage_d0_ml_100kg", label: "Dosage D0 (ml/100 kg)", type: "number" },
-          ]}
-        />
-
-        <SessionsCard vueAdmin={vueAdmin} peutPublier={isProf} onPublier={publierSessions} />
-
-        {/* ── Unit preferences ── */}
-        <div className="form-card" style={{ marginTop: 20 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 6px" }}>
-            Unités de mesure
-          </h2>
-          <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 16 }}>
-            Choisissez les unités d&apos;affichage pour les entrées et les résultats. L&apos;aire et le
-            volume suivent automatiquement l&apos;unité de longueur (son carré et son cube).
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0,1fr))",
-              gap: "14px 20px",
-            }}
-          >
-            {UNIT_CATEGORIES.filter((cat) => cat.key !== "area" && cat.key !== "volume").map((cat) => (
-              <div key={cat.key}>
-                <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 5, fontWeight: 600 }}>
-                  {cat.key === "length" ? "Longueur (aire et volume suivent)" : cat.label}
-                </label>
-                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                  {cat.options.map((opt) => {
-                    const active = units[cat.key] === opt;
-                    const displayLabel = cat.labels[opt] ?? opt;
-                    return (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() =>
-                          cat.key === "length"
-                            ? setUnits(unitsForLength(opt as LengthUnit))
-                            : setUnits({ [cat.key]: opt })
-                        }
-                        style={{
-                          padding: "5px 12px",
-                          fontSize: 12.5,
-                          fontWeight: active ? 700 : 500,
-                          border: active ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
-                          borderRadius: 6,
-                          background: active ? "var(--primary-light)" : "#fff",
-                          color: active ? "var(--primary)" : "#374151",
-                          cursor: "pointer",
-                          transition: "all 0.12s",
-                        }}
-                      >
-                        {displayLabel}
-                      </button>
-                    );
-                  })}
+      <Carte titre="Catalogue des liants"
+        actions={
+          <span className="regl-actions">
+            <button type="button" className="btn-discret" onClick={restaurerLiantsOfficiels}>Restaurer valeurs officielles</button>
+            <button type="button" className="btn-secondary" onClick={ajouterLiant}>Ajouter un liant</button>
+            {isProf && <button type="button" className="btn-primary" onClick={publierLiants}>Publier en ligne</button>}
+          </span>
+        }>
+        <p className="classe-intro">
+          Ciment Portland (CSA A3001) et ajouts cimentaires (laitier, ASTM C989 ; cendres volantes, ASTM C618). La densité relative Gs se mesure selon ASTM C188.
+        </p>
+        <div className="regl-lignes">
+          {catalogue_liants.map((liant: LiantCatalogueItem, index: number) => {
+            const code = String(liant.code ?? "");
+            const duplique = code && codesDupliques.has(code);
+            // En vue enseignant, les liants officiels sont éditables.
+            const verrou = estOfficiel(liant) && !vueAdmin;
+            return (
+              <div key={liant.id} className={duplique ? "regl-ligne regl-liant regl-duplique" : "regl-ligne regl-liant"}>
+                <Champ libelle="Code">
+                  <input className="field-input" value={liant.code} disabled={verrou}
+                    onChange={(e) => modifierLiant(index, { code: String(e.target.value || "").trim().toUpperCase() }, vueAdmin)} />
+                </Champ>
+                <Champ libelle="Nom">
+                  <input className="field-input" value={liant.nom} disabled={verrou}
+                    onChange={(e) => modifierLiant(index, { nom: e.target.value }, vueAdmin)} />
+                </Champ>
+                <Champ libelle="Densité relative Gs">
+                  <input type="number" step="any" className="field-input" value={liant.gs} disabled={verrou}
+                    onChange={(e) => modifierLiant(index, { gs: Number(e.target.value || 0) }, vueAdmin)} />
+                </Champ>
+                <div className="regl-ligne-fin">
+                  {estOfficiel(liant) && <Pastille ton="accent">officiel</Pastille>}
+                  {!verrou && (
+                    <button type="button" className="btn-discret btn-danger"
+                      onClick={() => supprimerLiant(index, vueAdmin)} disabled={catalogue_liants.length <= 1}>
+                      Supprimer
+                    </button>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-
-        <div className="form-card" style={{ marginTop: 20 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, marginBottom: 8 }}>Données locales</h2>
-          <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, marginBottom: 14 }}>
-            Vos résultats sauvegardés, vos mesures de laboratoire (gâchées, éprouvettes, essais
-            UCS) et vos réglages sont stockés dans ce navigateur uniquement. Exportez-les
-            régulièrement pour ne rien perdre, ou pour les transférer sur un autre poste.
-          </p>
-          <BackupButtons />
+        {codesDupliques.size > 0 && (
+          <p className="ui-champ-erreur" style={{ margin: 0 }}>Les codes de liants doivent être uniques.</p>
+        )}
+        <div className="regl-actions" style={{ justifyContent: "flex-end" }}>
+          <Link href="/" className="btn-discret">Retour aux informations</Link>
+          <Link href="/mix" className="btn-primary">Aller aux calculs</Link>
         </div>
+      </Carte>
 
-        <p style={{ marginTop: 28, textAlign: "center", fontSize: 12.5, color: "var(--muted-foreground)" }}>
-          Support :{" "}
-          <Link href="/diagnostic" style={{ color: "var(--primary)", textDecoration: "underline" }}>
-            Diagnostic technique
-          </Link>
-          {vueAdmin && (
-            <>
-              {" "}·{" "}
-              <Link href="/assistant" style={{ color: "var(--primary)", textDecoration: "underline" }}>
-                Assistant IA (modifications)
-              </Link>
-            </>
-          )}
+      {/* ── Bibliothèques de matériaux ── */}
+      <MaterialCatalogueCard
+        kind="residus"
+        title="Bibliothèque de résidus"
+        sub="Résidus miniers réutilisables : sélectionnez-les dans les formulaires pour remplir Gs et w₀ (ASTM D854, ASTM D2216)."
+        adminMode={vueAdmin}
+        onPublish={isProf ? () => publierMateriaux("residus", "residus", MATERIALS_VERSION) : undefined}
+        columns={[
+          { key: "nom", label: "Nom", type: "text", flex: 2 },
+          { key: "gs", label: "Gs", type: "number" },
+          { key: "w0_pct", label: "w₀ (%)", type: "number" },
+          { key: "provenance", label: "Provenance", type: "text", flex: 1.5 },
+        ]}
+      />
+      <MaterialCatalogueCard
+        kind="granulats"
+        title="Bibliothèque de granulats"
+        sub="Granulats pour le remblai en pâte granulaire (RPG)."
+        adminMode={vueAdmin}
+        onPublish={isProf ? () => publierMateriaux("granulats", "granulats", MATERIALS_VERSION) : undefined}
+        columns={[
+          { key: "nom", label: "Nom", type: "text", flex: 2 },
+          { key: "gs", label: "Gs", type: "number" },
+          { key: "humidite_pct", label: "Teneur en eau (%)", type: "number" },
+          { key: "fraction_defaut_pct", label: "Am par défaut (%)", type: "number" },
+          { key: "provenance", label: "Provenance", type: "text", flex: 1.5 },
+        ]}
+      />
+      <MaterialCatalogueCard
+        kind="retardateurs"
+        title="Bibliothèque de retardateurs de prise"
+        sub="Retardateurs de prise pour le coulis du remblai rocheux cimenté (RRC)."
+        adminMode={vueAdmin}
+        onPublish={isProf ? () => publierMateriaux("retardateurs", "retardateurs", MATERIALS_VERSION) : undefined}
+        columns={[
+          { key: "nom", label: "Nom", type: "text", flex: 2 },
+          { key: "densite_g_ml", label: "Masse volumique (g/ml)", type: "number" },
+          { key: "dosage_d0_ml_100kg", label: "Dosage D0 (ml/100 kg)", type: "number" },
+        ]}
+      />
+
+      <SessionsCard vueAdmin={vueAdmin} peutPublier={isProf} onPublier={publierSessions} />
+
+      {/* ── Unités ── */}
+      <Carte titre="Unités de mesure">
+        <p className="classe-intro">
+          Choisissez les unités d&apos;affichage pour les entrées et les résultats. L&apos;aire et le
+          volume suivent automatiquement l&apos;unité de longueur (son carré et son cube).
         </p>
-      </div>
-    </div>
+        <div className="regl-unites">
+          {UNIT_CATEGORIES.filter((cat) => cat.key !== "area" && cat.key !== "volume").map((cat) => (
+            <div key={cat.key} className="ui-champ">
+              <span className="ui-champ-libelle" style={{ marginBottom: 6 }}>
+                {cat.key === "length" ? "Longueur (aire et volume suivent)" : cat.label}
+              </span>
+              <Segmente
+                ariaLabel={cat.label}
+                taille="compact"
+                valeur={String(units[cat.key])}
+                onChange={(opt) => (cat.key === "length"
+                  ? setUnits(unitsForLength(opt as LengthUnit))
+                  : setUnits({ [cat.key]: opt }))}
+                options={cat.options.map((opt) => ({ valeur: opt, libelle: cat.labels[opt] ?? opt }))}
+              />
+            </div>
+          ))}
+        </div>
+      </Carte>
+
+      <Carte titre="Données locales">
+        <p className="classe-intro">
+          Vos résultats sauvegardés, vos mesures de laboratoire (gâchées, éprouvettes, essais
+          UCS) et vos réglages sont stockés dans ce navigateur uniquement. Exportez-les
+          régulièrement pour ne rien perdre, ou pour les transférer sur un autre poste.
+        </p>
+        <BackupButtons />
+      </Carte>
+
+      {/* La barre d'état du bas a été retirée (refonte) : la version vit ici
+          et dans la feuille « Plus » du téléphone. */}
+      <Carte titre="À propos">
+        <ListeGroupee>
+          <LigneListe libelle="Application" valeur={APP_NAME_VERSION} />
+          <LigneListe libelle="Module" valeur={`${MODULE_ID} — ${MODULE_LABEL}`} />
+          <LigneListe libelle="Glossaire et essais normalisés" href="/guide#glossaire" />
+          <LigneListe libelle="Diagnostic technique" href="/diagnostic" />
+          {vueAdmin && <LigneListe libelle="Assistant IA (modifications)" href="/assistant" />}
+        </ListeGroupee>
+      </Carte>
+    </Page>
   );
 }

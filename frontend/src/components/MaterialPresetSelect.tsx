@@ -1,6 +1,5 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import { useStore } from "@/lib/store";
 import type { MaterialKind, MaterialItem } from "@/lib/materials";
 
@@ -9,8 +8,6 @@ const SLICE = {
   granulats: "catalogue_granulats",
   retardateurs: "catalogue_retardateurs",
 } as const;
-
-const LABEL: CSSProperties = { display: "block", fontSize: 11.5, fontWeight: 600, color: "#374151", marginBottom: 4 };
 
 /**
  * Liste déroulante de préréglages de matériaux : remplit les champs du
@@ -35,8 +32,8 @@ export default function MaterialPresetSelect({ kind, role, label, onPick, matche
   const selectedItem = rawSelectedId ? items.find((m) => m.id === rawSelectedId) : undefined;
   const selectedId = selectedItem && (!matches || matches(selectedItem)) ? rawSelectedId : "";
   return (
-    <div>
-      <label style={LABEL}>{label ?? "Préréglage"}</label>
+    <label className="ui-champ ui-champ-etiquette">
+      <span className="ui-champ-libelle">{label ?? "Préréglage"}</span>
       <select
         className="field-input"
         style={{ cursor: "pointer" }}
@@ -54,6 +51,6 @@ export default function MaterialPresetSelect({ kind, role, label, onPick, matche
           return <option key={m.id} value={m.id}>{m.nom}{prov}</option>;
         })}
       </select>
-    </div>
+    </label>
   );
 }

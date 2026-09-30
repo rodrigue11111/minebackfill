@@ -29,55 +29,45 @@ interface SessionInfo {
   email: string | null;
 }
 
+function Chevron({ taille = 14 }: { taille?: number }) {
+  return (
+    <svg width={taille} height={taille} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+function Marque() {
+  return (
+    <span className="p-marque-pastille" aria-hidden="true">
+      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+        <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+      </svg>
+    </span>
+  );
+}
+
 function CarteProjet({ p }: { p: Projet }) {
   return (
     <a className="carte-projet" href={p.url} target="_blank" rel="noopener noreferrer">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <h2 style={{ fontSize: 19, fontWeight: 800, color: "var(--navy)" }}>{p.nom}</h2>
+      <div className="carte-projet-tete">
+        <h2 className="carte-projet-nom">{p.nom}</h2>
         {p.statut && (
-          <span
-            style={{
-              fontSize: 10.5,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              padding: "3px 9px",
-              borderRadius: 999,
-              color: p.statut === "stable" ? "var(--success)" : "var(--warning)",
-              background: p.statut === "stable" ? "#f0fdf4" : "#fef3c7",
-              border: `1px solid ${p.statut === "stable" ? "#bbf7d0" : "#fcd34d"}`,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {p.statut}
+          <span className={p.statut === "stable" ? "p-pastille p-pastille-succes" : "p-pastille p-pastille-alerte"}>
+            {p.statut === "stable" ? "Stable" : "Bêta"}
           </span>
         )}
       </div>
-      <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--muted)", flex: 1 }}>
-        {p.description}
-      </p>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 4 }}>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <p className="carte-projet-description">{p.description}</p>
+      <div className="carte-projet-pied">
+        <div className="carte-projet-etiquettes">
           {p.tags.map((t) => (
-            <span
-              key={t}
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "var(--primary)",
-                background: "var(--primary-light)",
-                border: "1px solid var(--primary-mid)",
-                borderRadius: 6,
-                padding: "2px 8px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {t}
-            </span>
+            <span key={t} className="p-etiquette">{t}</span>
           ))}
         </div>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)", whiteSpace: "nowrap" }}>
-          Ouvrir →
+        <span className="carte-projet-ouvrir">
+          Ouvrir <Chevron />
         </span>
       </div>
     </a>
@@ -154,226 +144,166 @@ export default function PortailPage() {
   const accesProjets = monte && (!configuree || session !== null);
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* ── Bandeau ── */}
-      <header style={{ background: "var(--navy)" }}>
-        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "34px 24px 26px" }}>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", marginBottom: 8 }}>
-            Recherche et enseignement
-          </p>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: 30, fontWeight: 800, color: "#fff", letterSpacing: "0.01em" }}>
-              Progiciel Belem
-            </h1>
-            {monte && configuree && session && (
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)" }}>{session.email}</span>
-                <button
-                  type="button"
-                  onClick={deconnexion}
-                  style={{
-                    background: "rgba(255,255,255,0.1)",
-                    border: "1px solid rgba(255,255,255,0.25)",
-                    color: "#fff",
-                    borderRadius: 7,
-                    padding: "6px 12px",
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Se déconnecter
-                </button>
-              </div>
-            )}
-          </div>
-          <p style={{ fontSize: 14.5, color: "rgba(255,255,255,0.7)", marginTop: 8, maxWidth: 640, lineHeight: 1.5 }}>
+    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
+      {/* ── Barre haute ── */}
+      <header className="p-barre">
+        <div className="p-barre-contenu">
+          <span className="p-marque">
+            <Marque />
+            Progiciel Belem
+          </span>
+          {monte && configuree && session && (
+            <div className="p-compte">
+              <span className="p-compte-courriel">{session.email}</span>
+              <button type="button" className="btn-discret" onClick={deconnexion}>
+                Se déconnecter
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* ── Contenu ── */}
+      <main className="p-page" style={{ flex: 1, width: "100%" }}>
+        <div className="p-entete">
+          <p className="p-surtitre">Recherche et enseignement</p>
+          <h1 className="p-titre">Projets</h1>
+          <p className="p-sous-titre">
             Portail des outils du programme : remblais miniers en pâte, optimisation
             de recettes, et les projets à venir.
           </p>
         </div>
-        <div style={{ height: 4, background: "var(--primary)" }} />
-      </header>
 
-      {/* ── Contenu ── */}
-      <main style={{ flex: 1, maxWidth: 1080, width: "100%", margin: "0 auto", padding: "34px 24px 60px" }}>
         {!monte || !pretAffichage ? null : accesProjets ? (
           <>
             {!configuree && !MODE_TEST_SANS_COMPTE && (
-              <div
-                style={{
-                  marginBottom: 20,
-                  padding: "10px 14px",
-                  borderRadius: 8,
-                  background: "#fffbeb",
-                  border: "1px solid #fcd34d",
-                  color: "var(--warning)",
-                  fontSize: 12.5,
-                }}
-              >
+              <div className="p-bandeau p-bandeau-alerte">
                 Mode ouvert : la connexion n&apos;est pas configurée sur cette instance
                 (variables Supabase absentes). Voir le README pour l&apos;activer.
               </div>
             )}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-                gap: 18,
-              }}
-            >
+            <div className="p-projets">
               {PROJETS.map((p) => (
                 <CarteProjet key={p.id} p={p} />
               ))}
             </div>
-            <p style={{ marginTop: 28, fontSize: 12.5, color: "var(--muted)" }}>
-              {PROJETS.length} projet{PROJETS.length > 1 ? "s" : ""} — chaque application
+            <p className="p-note">
+              {PROJETS.length} projet{PROJETS.length > 1 ? "s" : ""}{" "}— chaque application
               s&apos;ouvre dans un nouvel onglet.
             </p>
           </>
         ) : (
           /* ── Porte de connexion ── */
-          <div
-            style={{
-              maxWidth: 440,
-              margin: "24px auto 0",
-              background: "var(--card)",
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: "28px 26px",
-            }}
-          >
-            <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Accès réservé</h2>
-            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 18, lineHeight: 1.5 }}>
-              Connectez-vous avec votre compte du programme (le même que MineBackfill).
-            </p>
-            <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+          <section className="p-connexion" aria-labelledby="titre-connexion">
+            <div>
+              <h2 id="titre-connexion" className="p-connexion-titre">Accès réservé</h2>
+              <p className="p-note" style={{ marginTop: 4, fontSize: 14, lineHeight: 1.5 }}>
+                Connectez-vous avec votre compte du programme (le même que MineBackfill).
+              </p>
+            </div>
+            <div className="p-segmente" role="radiogroup" aria-label="Connexion ou inscription">
               {(["connexion", "inscription"] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
+                  role="radio"
+                  aria-checked={mode === m}
+                  className="p-segment"
                   onClick={() => {
                     setMode(m);
                     setErreur(null);
                     setInfo(null);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "8px 0",
-                    borderRadius: 7,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    border: `1.5px solid ${mode === m ? "var(--primary)" : "var(--border)"}`,
-                    background: mode === m ? "var(--primary)" : "#fff",
-                    color: mode === m ? "#fff" : "#374151",
-                    cursor: "pointer",
                   }}
                 >
                   {m === "connexion" ? "Connexion" : "Inscription"}
                 </button>
               ))}
             </div>
-            <form onSubmit={soumettre} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {mode === "inscription" && (
-                <div>
-                  <label style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>
-                    Prénom et nom (visible par l&apos;enseignant)
+            <form onSubmit={soumettre} className="p-formulaire">
+              <div className="p-liste">
+                {mode === "inscription" && (
+                  <label className="p-ligne">
+                    <span className="p-ligne-libelle">Nom complet</span>
+                    <input
+                      type="text"
+                      required
+                      maxLength={80}
+                      value={nom}
+                      autoComplete="name"
+                      onChange={(e) => setNom(e.target.value)}
+                      placeholder="Prénom Nom"
+                    />
                   </label>
+                )}
+                {mode === "inscription" && enseignant && (
+                  <label className="p-ligne">
+                    <span className="p-ligne-libelle">Code enseignant</span>
+                    <input
+                      type="password"
+                      value={code}
+                      autoComplete="off"
+                      onChange={(e) => setCode(e.target.value)}
+                      placeholder="Requis"
+                    />
+                  </label>
+                )}
+                <label className="p-ligne">
+                  <span className="p-ligne-libelle">Courriel</span>
                   <input
-                    type="text"
+                    type="email"
                     required
-                    maxLength={80}
-                    className="field-input"
-                    value={nom}
-                    autoComplete="name"
-                    onChange={(e) => setNom(e.target.value)}
-                    placeholder="Prénom Nom"
+                    value={email}
+                    autoComplete="email"
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="vous@exemple.ca"
                   />
-                  {!enseignant ? (
-                    <button type="button" onClick={() => setEnseignant(true)}
-                      style={{ marginTop: 6, background: "none", border: "none", padding: 0, fontSize: 12, color: "var(--primary)", cursor: "pointer" }}>
+                </label>
+                <label className="p-ligne">
+                  <span className="p-ligne-libelle">Mot de passe</span>
+                  <input
+                    type="password"
+                    required
+                    value={motDePasse}
+                    autoComplete={mode === "inscription" ? "new-password" : "current-password"}
+                    onChange={(e) => setMotDePasse(e.target.value)}
+                    placeholder="Requis"
+                  />
+                </label>
+              </div>
+              {mode === "inscription" && (
+                <p className="p-note">
+                  Le prénom et le nom sont visibles par l&apos;enseignant.{" "}
+                  {enseignant && "Le code enseignant est fourni par l'administrateur du site."}
+                  {!enseignant && (
+                    <button type="button" className="btn-discret" style={{ padding: 0, fontSize: 13 }} onClick={() => setEnseignant(true)}>
                       Je suis l&apos;enseignant
                     </button>
-                  ) : (
-                    <div style={{ marginTop: 10 }}>
-                      <label style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>
-                        Code enseignant (fourni par l&apos;administrateur du site)
-                      </label>
-                      <input
-                        type="password"
-                        className="field-input"
-                        value={code}
-                        autoComplete="off"
-                        onChange={(e) => setCode(e.target.value)}
-                        placeholder="Code enseignant"
-                      />
-                    </div>
                   )}
-                </div>
+                </p>
               )}
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>
-                  Courriel
-                </label>
-                <input
-                  type="email"
-                  required
-                  className="field-input"
-                  value={email}
-                  autoComplete="email"
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="vous@exemple.ca"
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>
-                  Mot de passe
-                </label>
-                <input
-                  type="password"
-                  required
-                  className="field-input"
-                  value={motDePasse}
-                  autoComplete={mode === "inscription" ? "new-password" : "current-password"}
-                  onChange={(e) => setMotDePasse(e.target.value)}
-                  placeholder="••••••••"
-                />
-              </div>
-              {erreur && (
-                <div style={{ fontSize: 12.5, color: "var(--danger)", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "8px 12px" }}>
-                  {erreur}
-                </div>
-              )}
-              {info && (
-                <div style={{ fontSize: 12.5, color: "var(--success)", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "8px 12px" }}>
-                  {info}
-                </div>
-              )}
+              {erreur && <div className="p-bandeau p-bandeau-danger" role="alert">{erreur}</div>}
+              {info && <div className="p-bandeau p-bandeau-succes" role="status">{info}</div>}
+              <button type="submit" className="btn-primary p-soumettre" disabled={loading}>
+                {loading ? "…" : mode === "connexion" ? "Se connecter" : "Créer le compte"}
+              </button>
               {mode === "connexion" && (
                 // Mêmes comptes que MineBackfill : la réinitialisation s'y fait
                 // (une seule page, un seul lien de retour à autoriser dans Supabase).
-                <a href={`${PROJETS.find((p) => p.id === "minebackfill")?.url ?? ""}/compte?oubli=1`}
-                  style={{ fontSize: 12, color: "var(--primary)", textDecoration: "none", marginTop: -4 }}>
+                <a className="btn-discret" style={{ alignSelf: "center" }}
+                  href={`${PROJETS.find((p) => p.id === "minebackfill")?.url ?? ""}/compte?oubli=1`}>
                   Mot de passe oublié ?
                 </a>
               )}
-              <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: 4 }}>
-                {loading ? "…" : mode === "connexion" ? "Se connecter" : "Créer le compte"}
-              </button>
             </form>
-          </div>
+          </section>
         )}
       </main>
 
       {/* ── Pied ── */}
-      <footer style={{ borderTop: "1px solid var(--border)", background: "#fff" }}>
-        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "14px 24px", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>
-            Progiciel Belem — portail des projets
-          </span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>
-            Programme de M. Belem
-          </span>
+      <footer className="p-pied">
+        <div className="p-pied-contenu">
+          <span>Progiciel Belem — portail des projets</span>
+          <span>Programme de M. Belem</span>
         </div>
       </footer>
     </div>

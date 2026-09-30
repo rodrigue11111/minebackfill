@@ -185,12 +185,12 @@ export async function marquerCommentairesLus(ids: string[]): Promise<void> {
 }
 
 /** L'étudiant répond sur SON document. Rend un message d'erreur, ou null. */
-export async function repondreCommentaire(kind: "resultat" | "gachee", id: string, texte: string): Promise<string | null> {
+export async function repondreCommentaire(kind: "resultat" | "gachee", id: string, texte: string, ancre: string | null = null): Promise<string | null> {
   const c = courant;
   if (!c) return "connectez-vous pour répondre";
   try {
     const rev = chargerEtatSync().docs[cleDoc(kind, id)]?.rev ?? null;
-    const a = await repondreAnnotation(c.sb, { attendu: c.uid, kind, id, rev, texte });
+    const a = await repondreAnnotation(c.sb, { attendu: c.uid, kind, id, rev, texte, ancre });
     if (courant === c) enregistrerAnnotations(fusionnerAnnotations(loadAnnotationsFromStorage().annotations, [a]));
     return null;
   } catch (e) {

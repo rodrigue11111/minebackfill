@@ -3,7 +3,8 @@
 
 import type React from "react";
 import { Carte, CarteProtocolesFiges } from "@/components/labo/Carte";
-import { ecart, parametresEffectifs, type Gachee } from "@/lib/gachee";
+import { parametresEffectifs, type Gachee } from "@/lib/gachee";
+import Pesees from "@/components/labo/Pesees";
 import {
   agregerParAge, ageReelJours, contrainteKpa, dateCoulee, dateEcheance,
 } from "@/lib/eprouvette";
@@ -15,8 +16,8 @@ import { nombre, Pastille, td, tdNum, th } from "./commun";
 function Info({ label, valeur }: { label: string; valeur: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
-      <div style={{ fontSize: 13.5, color: "#0f172a", marginTop: 2 }}>{valeur ?? "—"}</div>
+      <div style={{ fontSize: 13, color: "var(--texte-2)" }}>{label}</div>
+      <div style={{ fontSize: 15, color: "var(--texte)", marginTop: 2 }}>{valeur ?? "—"}</div>
     </div>
   );
 }
@@ -43,44 +44,19 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
           <Info label="Catégorie" valeur={g.categorie} />
           <Info label="Recette" valeur={`R${(g.recetteIndex ?? 0) + 1}`} />
           <Info label="Cw (%)" valeur={nombre(p?.cwPct, 2)} />
-          <Info label="W/C" valeur={nombre(p?.wcRatio, 3)} />
+          <Info label="E/L" valeur={nombre(p?.wcRatio, 3)} />
           <Info label="Bw (%)" valeur={nombre(p?.bwPct, 2)} />
           <Info label="w (%)" valeur={nombre(p?.wPct, 2)} />
           <Info label="Version des formules" valeur={g.solverVersion ?? "—"} />
         </div>
         {!p && (
-          <p style={{ fontSize: 12, color: "#92400e", margin: "10px 0 0" }}>
+          <p style={{ fontSize: 12, color: "var(--alerte-texte)", margin: "10px 0 0" }}>
             Paramètres de formulation inconnus : la formulation d&apos;origine n&apos;est plus dans les résultats de l&apos;étudiant.
           </p>
         )}
       </Carte>
 
-      <Carte titre="Pesées : cible vs réelle" extra={<span style={{ fontSize: 12, color: "#64748b" }}>Tolérance ± {nombre(g.tolerancePct, 1)} %</span>}>
-        {g.composants.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: "#94a3b8", margin: 0 }}>Aucune pesée enregistrée.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr><th style={th}>Composant</th><th style={{ ...th, textAlign: "right" }}>Cible (kg)</th><th style={{ ...th, textAlign: "right" }}>Pesée (kg)</th><th style={{ ...th, textAlign: "right" }}>Écart</th></tr></thead>
-            <tbody>
-              {g.composants.map((c) => {
-                const e = ecart(c);
-                const hors = e !== null && Math.abs(e.pct) > g.tolerancePct;
-                return (
-                  <tr key={c.cle}>
-                    <td style={{ ...td, fontWeight: 600 }}>{c.label}</td>
-                    <td style={tdNum}>{fmt(c.cibleKg, 1)}</td>
-                    <td style={tdNum}>{c.peseeKg === undefined ? "—" : fmt(c.peseeKg, 1)}</td>
-                    <td style={{ ...tdNum, fontWeight: 600, color: e === null ? "#cbd5e1" : hors ? "#dc2626" : "#16a34a" }}>
-                      {e === null ? "—" : `${e.kg >= 0 ? "+" : ""}${fmt(e.kg, 1)} kg (${e.pct >= 0 ? "+" : ""}${fmt(e.pct, 1)} %)`}
-                      {hors && <> <Pastille ton="rouge">hors tolérance</Pastille></>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </Carte>
+      <Pesees gachee={g} lectureSeule />
 
       <Carte titre="Matériaux et pâte fraîche">
         <div style={grille}>
@@ -88,7 +64,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
           <Info label="Lot de granulat" valeur={g.lotGranulat || "—"} />
           <Info label="Lot de liant" valeur={g.lotLiant || "—"} />
           <Info label="w₀ mesuré (%)" valeur={nombre(g.w0MesurePct, 2)} />
-          <Info label="Slump (mm)" valeur={nombre(g.slumpMesureMm, 0)} />
+          <Info label="Affaissement (mm)" valeur={nombre(g.slumpMesureMm, 0)} />
           <Info label="Température (°C)" valeur={nombre(g.temperatureC, 1)} />
           <Info label="w mesuré (%)" valeur={nombre(g.wMesurePct, 2)} />
           <Info label="Cw mesuré (%)" valeur={nombre(g.cwMesurePct, 2)} />
@@ -97,7 +73,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
 
       <Carte titre="Ajustements (essai-erreur)">
         {g.ajustements.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: "#94a3b8", margin: 0 }}>Aucun ajustement.</p>
+          <p style={{ fontSize: 12.5, color: "var(--texte-3)", margin: 0 }}>Aucun ajustement.</p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr><th style={th}>Ajout</th><th style={{ ...th, textAlign: "right" }}>Masse (kg)</th><th style={th}>Note</th></tr></thead>
@@ -112,7 +88,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
 
       <Carte titre={`Éprouvettes (${g.eprouvettes.length})`}>
         {eprouvettes.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: "#94a3b8", margin: 0 }}>Aucune éprouvette.</p>
+          <p style={{ fontSize: 12.5, color: "var(--texte-3)", margin: 0 }}>Aucune éprouvette.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
@@ -133,7 +109,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
                     <tr key={e.id}>
                       <td style={{ ...td, fontWeight: 600 }}>
                         {e.code}
-                        {e.moule && <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>{e.moule}</div>}
+                        {e.moule && <div style={{ fontSize: 11, color: "var(--texte-3)", fontWeight: 400 }}>{e.moule}</div>}
                       </td>
                       <td style={td}>{e.ageJours} j</td>
                       <td style={td}>{fmtDate(dateCoulee(e))}</td>
@@ -153,7 +129,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
               </tbody>
             </table>
             {eprouvettes.some((e) => e.essai?.exclu || e.essai?.sourcePresse) && (
-              <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 12, color: "#475569", display: "flex", flexDirection: "column", gap: 3 }}>
+              <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 12, color: "var(--texte-2)", display: "flex", flexDirection: "column", gap: 3 }}>
                 {eprouvettes.filter((e) => e.essai?.exclu).map((e) => (
                   <li key={`x-${e.id}`}><strong>{e.code}</strong> exclue de la moyenne : {e.essai?.justificationExclusion || "sans justification"}</li>
                 ))}
@@ -176,7 +152,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
           </div>
         )}
         {nbCourbes > 0 && (
-          <p style={{ fontSize: 11.5, color: "#94a3b8", margin: "10px 0 0" }}>
+          <p style={{ fontSize: 11.5, color: "var(--texte-3)", margin: "10px 0 0" }}>
             Les courbes contrainte-déformation restent sur l&apos;appareil de l&apos;étudiant : elles ne sont pas sauvegardées en ligne.
           </p>
         )}
@@ -184,7 +160,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
 
       <Carte titre="UCS par âge (moyenne des essais retenus)">
         {parAge.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: "#94a3b8", margin: 0 }}>Aucun essai exploitable.</p>
+          <p style={{ fontSize: 12.5, color: "var(--texte-3)", margin: 0 }}>Aucun essai exploitable.</p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>{["Âge", "n", "Moyenne (kPa)", "± écart-type", "CV", "Exclues"].map((t, i) => <th key={t} style={i > 0 ? { ...th, textAlign: "right" } : th}>{t}</th>)}</tr></thead>
@@ -208,7 +184,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
 
       {g.observations && (
         <Carte titre="Observations">
-          <p style={{ fontSize: 13, color: "#334155", whiteSpace: "pre-wrap", margin: 0, lineHeight: 1.5 }}>{g.observations}</p>
+          <p style={{ fontSize: 13, color: "var(--texte)", whiteSpace: "pre-wrap", margin: 0, lineHeight: 1.5 }}>{g.observations}</p>
         </Carte>
       )}
     </div>

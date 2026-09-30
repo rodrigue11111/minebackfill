@@ -73,7 +73,7 @@ export interface Gachee {
   // Éprouvettes moulées à partir de cette gâchée (mise en cure, écrasement).
   eprouvettes: Eprouvette[];
 
-  // Instantané des paramètres de la recette (Cw, W/C, Bw, w) — traçabilité.
+  // Instantané des paramètres de la recette (Cw, E/L, Bw, w) — traçabilité.
   parametres?: ParametresFormulation;
 
   // Instantané FIGÉ des protocoles suivis (procédures au moment de la gâchée).
@@ -163,7 +163,7 @@ export function composantsDepuisRecette(r: Recipe, nomLiant: (i: number) => stri
   return out;
 }
 
-/** Instantané des paramètres (Cw, W/C, Bw, w) d'une recette calculée. */
+/** Instantané des paramètres (Cw, E/L, Bw, w) d'une recette calculée. */
 export function parametresDepuisRecette(r: Recipe): ParametresFormulation {
   const val = (v: number | null | undefined): number | undefined =>
     typeof v === "number" && Number.isFinite(v) ? v : undefined;

@@ -2,12 +2,16 @@
 // commentaires. Remplace le contenu de l'onglet ; « Retour » ramène à la classe.
 
 import type { SavedResult } from "@/lib/store";
+import { ancresGachee } from "@/lib/ancres";
 import type { UnitPreferences } from "@/lib/units";
 import { normaliserGachee, type EtudiantClasse } from "@/lib/classe";
 import type { DocComplet, LigneAnnotation } from "@/lib/classe-reseau";
 import GacheeLecture from "./GacheeLecture";
 import ResultatLecture from "./ResultatLecture";
 import FilCommentaires from "./FilCommentaires";
+import { EnTetePage } from "@/components/ui/Page";
+import { Carte } from "@/components/ui/Carte";
+import { Bandeau } from "@/components/ui/Bandeau";
 import type { ContexteFil, NouvelleAnnotation } from "./DetailEtudiant";
 import { dateCourte, dateHeure, Pastille, type RefDoc } from "./commun";
 
@@ -37,36 +41,29 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
   const commentaires = annotations.filter((a) => a.owner_id === ref.etudiantId && a.target_kind === ref.kind && a.target_id === ref.id);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div>
-        <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={onRetour}>← Retour à la classe</button>
-      </div>
-      <div className="form-card">
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          {ref.kind === "gachee" ? "Gâchée" : "Résultat sauvegardé"} de {etudiant?.nom ?? "l’étudiant"} · lecture seule
-        </div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: "4px 0 6px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {titre}
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <EnTetePage
+        retour={{ onClick: onRetour, libelle: "Retour à la classe" }}
+        taille="moyen"
+        surtitre={`${ref.kind === "gachee" ? "Gâchée" : "Résultat sauvegardé"} de ${etudiant?.nom ?? "l’étudiant"} · lecture seule`}
+        titre={titre}
+        pastille={<>
           {conflit && <Pastille ton="ambre" title={`Copie de conflit du ${dateCourte(conflit.le)}`}>copie de conflit</Pastille>}
           {gachee && <Pastille ton={gachee.statut === "terminee" ? "vert" : "gris"}>{gachee.statut === "terminee" ? "terminée" : "brouillon"}</Pastille>}
-        </h2>
-        <div style={{ fontSize: 12.5, color: "#64748b" }}>
+        </>}
+        sousTitre={<>
           {gachee && <>Créée le {dateCourte(gachee.creeLe)} · </>}
           {resultat && <>Sauvegardé le {dateCourte(resultat.savedAt)} · </>}
           {doc.etat === "pret" && <>version en ligne du {dateHeure(doc.doc.maj)}</>}
-        </div>
-      </div>
+        </>}
+      />
 
-      {doc.etat === "chargement" && <p style={{ fontSize: 13, color: "#64748b" }}>Lecture du document…</p>}
+      {doc.etat === "chargement" && <p className="classe-rien">Lecture du document…</p>}
       {doc.etat === "erreur" && (
-        <p role="alert" style={{ fontSize: 13, color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 12px", margin: 0 }}>
-          Lecture impossible : {doc.message}.
-        </p>
+        <Bandeau ton="danger" role="alert">Lecture impossible : {doc.message}.</Bandeau>
       )}
       {(doc.etat === "absent" || (doc.etat === "pret" && doc.doc.supprime)) && (
-        <p style={{ fontSize: 13, color: "#475569", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px", margin: 0 }}>
-          Ce document n&apos;existe plus en ligne : l&apos;étudiant l&apos;a supprimé.
-        </p>
+        <Bandeau ton="neutre">Ce document n&apos;existe plus en ligne : l&apos;étudiant l&apos;a supprimé.</Bandeau>
       )}
 
       {gachee && (
@@ -76,12 +73,11 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
       {resultat && <ResultatLecture resultat={resultat} units={units} />}
 
       {contenu !== null && (
-        <div className="form-card">
-          <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px" }}>Commentaires</h3>
+        <Carte titre="Commentaires" aside="visibles par cet étudiant seulement">
           <FilCommentaires liste={commentaires} moi={ctx.moi} nomEtudiant={etudiant?.nom ?? "Étudiant"} nouvelles={ctx.nouvelles}
-            onRetirer={ctx.onRetirer} ancres={gachee ? gachee.eprouvettes.map((e) => e.code) : []}
+            onRetirer={ctx.onRetirer} ancres={gachee ? ancresGachee(gachee) : []}
             onAjouter={(texte, ancre) => onAnnoter({ kind: ref.kind, id: ref.id, rev: doc.etat === "pret" ? doc.doc.rev : null, ancre, texte })} />
-        </div>
+        </Carte>
       )}
     </div>
   );

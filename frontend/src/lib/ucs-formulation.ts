@@ -5,7 +5,7 @@
 // C'est la boucle qui manquait : les étudiants fabriquent des mélanges, les
 // écrasent, et la relation entre le dosage et la résistance n'apparaissait
 // nulle part. Elle est pourtant déjà à portée — la table « Détail des
-// mesures » croise depuis toujours Cw, W/C et Bw avec l'UCS moyenne ; seul le
+// mesures » croise depuis toujours Cw, E/L et Bw avec l'UCS moyenne ; seul le
 // graphique manquait.
 //
 // AUCUNE FORMULE NOUVELLE. On croise deux choses déjà présentes : des mesures
@@ -35,10 +35,10 @@ export interface AxeMeta {
 }
 
 export const AXES_FORMULATION: AxeMeta[] = [
-  { cle: "wcRatio", label: "W/C — rapport eau/liant", unite: "—" },
-  { cle: "bwPct", label: "Bw — dosage de liant", unite: "%" },
-  { cle: "cwPct", label: "Cw — solides massiques", unite: "%" },
-  { cle: "wPct", label: "w — teneur en eau", unite: "%" },
+  { cle: "wcRatio", label: "E/L — rapport eau/liant", unite: "—" },
+  { cle: "bwPct", label: "Bw — taux massique de liant", unite: "%" },
+  { cle: "cwPct", label: "Cw — pourcentage solide massique", unite: "%" },
+  { cle: "wPct", label: "w — teneur en eau massique", unite: "%" },
 ];
 
 export const axeMeta = (cle: string) => AXES_FORMULATION.find((a) => a.cle === cle);

@@ -32,7 +32,8 @@ const DEFAUTS: Protocole[] = [
       "2. Homogénéiser les solides à sec (30 s).\n" +
       "3. Ajouter l'eau de gâchage progressivement en malaxant.\n" +
       "4. Malaxer 5 min jusqu'à consistance homogène.\n" +
-      "5. Contrôler l'affaissement (slump) et noter la mesure.",
+      "5. Contrôler l'affaissement au cône d'Abrams (ASTM C143/C143M) et noter la mesure.\n" +
+      "6. Prélever un échantillon pour la teneur en eau massique (étuve, ASTM D2216 ; 50 °C 48 h ou 105 °C 24 h pour un remblai cimenté).",
   },
   {
     id: "coulee-cure",
@@ -41,17 +42,19 @@ const DEFAUTS: Protocole[] = [
       "1. Remplir les moules en trois couches, piquer chaque couche.\n" +
       "2. Araser, identifier l'éprouvette (code de gâchée + numéro).\n" +
       "3. Conserver en chambre humide (température et humidité contrôlées).\n" +
-      "4. Démouler après la prise, remettre en cure jusqu'à l'échéance.",
+      "4. Démouler après la prise, remettre en cure jusqu'à l'échéance.\n" +
+      "Références : confection et cure ASTM C192/C192M ; moules cylindriques ASTM C470/C470M.",
   },
   {
     id: "essai-ucs",
-    titre: "Essai de compression (UCS)",
+    titre: "Essai de compression uniaxiale (UCS)",
     contenu:
       "1. Sortir l'éprouvette à l'échéance, mesurer diamètre et hauteur.\n" +
       "2. Surfacer si nécessaire pour des faces planes et parallèles.\n" +
-      "3. Charger à vitesse constante jusqu'à la rupture.\n" +
+      "3. Charger à vitesse constante jusqu'à la rupture (vitesse à valider par l'enseignant).\n" +
       "4. Noter la charge à la rupture et le mode de rupture.\n" +
-      "5. Reporter la contrainte (charge / section) dans la gâchée.",
+      "5. Reporter la contrainte (charge / section) dans la gâchée.\n" +
+      "Référence : ASTM C39/C39M (éprouvettes cylindriques).",
   },
 ];
 

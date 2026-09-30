@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { EcheanceClasse } from "@/lib/classe-echeancier";
 import { COULEUR_ECHEANCE, fmtDate } from "@/lib/echeance-affichage";
 import { lienBouton, td, th, type RefDoc } from "./commun";
+import { Carte } from "@/components/ui/Carte";
 
 const SECTIONS: { cle: EcheanceClasse["classe"]; titre: string; vide: string }[] = [
   { cle: "retard", titre: "En retard", vide: "Aucune éprouvette en retard." },
@@ -26,27 +27,25 @@ export default function OngletEcheancier({ echeances, onOuvrir, onIcs, onCsv }: 
 }) {
   const [toutPlusTard, setToutPlusTard] = useState(false);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <p style={{ fontSize: 12.5, color: "var(--muted-foreground)", margin: 0, maxWidth: 640, lineHeight: 1.5 }}>
+        <p className="classe-intro">
           Les éprouvettes encore en cure de tous les étudiants (documents de la session affichée), classées par
           date d&apos;écrasement prévue. Copies de conflit exclues.
         </p>
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={onIcs} disabled={echeances.length === 0}>Calendrier (.ics)</button>
-          <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={onCsv} disabled={echeances.length === 0}>Liste (CSV)</button>
+          <button type="button" className="btn-secondary" onClick={onIcs} disabled={echeances.length === 0}>Calendrier (.ics)</button>
+          <button type="button" className="btn-secondary" onClick={onCsv} disabled={echeances.length === 0}>Liste (CSV)</button>
         </div>
       </div>
       {SECTIONS.map((s) => {
         const tous = echeances.filter((x) => x.classe === s.cle);
         const liste = s.cle === "planifie" && !toutPlusTard ? tous.slice(0, PLUS_TARD_VISIBLES) : tous;
         return (
-          <div key={s.cle} className="form-card" style={{ padding: 0, overflow: "hidden", borderLeft: `4px solid ${COULEUR_ECHEANCE[s.cle]}` }}>
-            <div style={{ padding: "10px 14px", fontSize: 13.5, fontWeight: 700, background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-              {s.titre} ({tous.length})
-            </div>
+          <Carte key={s.cle} titre={`${s.titre} (${tous.length})`} aria-label={s.titre}
+            actions={<span className="ui-point" style={{ background: COULEUR_ECHEANCE[s.cle] }} aria-hidden="true" />}>
             {tous.length === 0 ? (
-              <p style={{ fontSize: 12.5, color: "#94a3b8", margin: 0, padding: "10px 14px" }}>{s.vide}</p>
+              <p className="classe-rien">{s.vide}</p>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
@@ -68,16 +67,16 @@ export default function OngletEcheancier({ echeances, onOuvrir, onIcs, onCsv }: 
                   </tbody>
                 </table>
                 {tous.length > liste.length && (
-                  <button type="button" style={{ ...lienBouton, margin: "8px 14px" }} onClick={() => setToutPlusTard(true)}>
+                  <button type="button" style={{ ...lienBouton, margin: "10px 0 0" }} onClick={() => setToutPlusTard(true)}>
                     Afficher les {tous.length - liste.length} autres
                   </button>
                 )}
               </div>
             )}
-          </div>
+          </Carte>
         );
       })}
-      <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>Échéance = jour de coulée + âge de cure visé (au jour près).</p>
+      <p className="classe-intro">Échéance = jour de coulée + âge de cure visé (au jour près).</p>
     </div>
   );
 }

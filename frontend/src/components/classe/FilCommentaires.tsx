@@ -32,25 +32,24 @@ export default function FilCommentaires({ liste, moi, nomEtudiant, nouvelles, on
         const auteur = reponse ? nomEtudiant : a.auteur_id === moi ? "Vous" : "Autre enseignant";
         return (
           <div key={a.id} style={{
-            fontSize: 12.5, borderRadius: 6, padding: "6px 9px", marginTop: 6, display: "flex", justifyContent: "space-between", gap: 8,
-            color: reponse ? "#0f172a" : "#3730a3",
-            background: reponse ? (nouvelle ? "#fffbeb" : "#fff") : "#eef2ff",
-            border: reponse ? `1px solid ${nouvelle ? "#fcd34d" : "#e2e8f0"}` : "1px solid transparent",
-            marginLeft: reponse ? 18 : 0,
+            fontSize: 14, lineHeight: 1.45, borderRadius: 14, padding: "10px 14px", marginTop: 8, display: "flex", justifyContent: "space-between", gap: 8,
+            color: "var(--texte)",
+            background: reponse ? (nouvelle ? "var(--alerte-pale)" : "var(--accent-pale)") : "var(--fond)",
+            marginLeft: reponse ? 24 : 0,
           }}>
             <span style={{ whiteSpace: "pre-wrap", minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: reponse ? "#475569" : "#4338ca" }}>
-                {auteur}{nouvelle && <span style={{ color: "#b45309" }}> · nouvelle réponse</span>}
+              <span style={{ display: "block", fontSize: 13, fontWeight: 600 }}>
+                {auteur}{nouvelle && <span style={{ color: "var(--alerte-texte)" }}> · nouvelle réponse</span>}
               </span>
               {a.ancre ? <strong>{a.ancre} — </strong> : null}{a.texte}
-              <span style={{ display: "block", fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+              <span style={{ display: "block", fontSize: 12.5, color: "var(--texte-2)", marginTop: 3 }}>
                 {dateHeure(a.created_at ?? a.updated_at)}
                 {!reponse && a.lu_le !== undefined && (a.lu_le ? ` · vu par l'étudiant le ${dateHeure(a.lu_le)}` : " · pas encore vu")}
               </span>
             </span>
             {!reponse && a.auteur_id === moi && (
               <button type="button" onClick={() => void onRetirer(a.id)}
-                style={{ background: "none", border: "none", color: "#6366f1", cursor: "pointer", fontSize: 12, flexShrink: 0, alignSelf: "flex-start" }}>
+                style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, fontFamily: "inherit", flexShrink: 0, alignSelf: "flex-start" }}>
                 Retirer
               </button>
             )}
@@ -59,23 +58,23 @@ export default function FilCommentaires({ liste, moi, nomEtudiant, nouvelles, on
       })}
       {!ouvert ? (
         <button type="button" onClick={() => setOuvert(true)}
-          style={{ marginTop: 6, background: "none", border: "none", color: "var(--primary)", cursor: "pointer", fontSize: 12.5, padding: 0 }}>
+          className="btn-discret" style={{ marginTop: 8 }}>
           + Commenter
         </button>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
           {ancres.length > 0 && (
-            <select value={ancre} onChange={(e) => setAncre(e.target.value)}
-              style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "4px 8px", fontSize: 12.5, alignSelf: "flex-start" }}>
-              <option value="">Toute la gâchée</option>
+            <select value={ancre} onChange={(e) => setAncre(e.target.value)} aria-label="Endroit visé par le commentaire"
+              className="field-input" style={{ alignSelf: "flex-start", width: "auto", minHeight: 36, padding: "4px 34px 4px 12px", fontSize: 14 }}>
+              <option value="">Toute la gâchée (fil général)</option>
               {ancres.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
           )}
           <textarea value={texte} onChange={(e) => setTexte(e.target.value)} maxLength={4000} rows={3}
             placeholder="Votre commentaire (visible par cet étudiant seulement ; il pourra y répondre)"
-            style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "6px 8px", fontSize: 13, fontFamily: "inherit" }} />
+            className="field-input" />
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="btn-primary" style={{ fontSize: 12.5 }} disabled={occupe || !texte.trim()}
+            <button type="button" className="btn-primary" disabled={occupe || !texte.trim()}
               onClick={async () => {
                 setOccupe(true);
                 const ok = await onAjouter(texte.trim(), ancre || null);
@@ -85,7 +84,7 @@ export default function FilCommentaires({ liste, moi, nomEtudiant, nouvelles, on
               }}>
               {occupe ? "…" : "Publier le commentaire"}
             </button>
-            <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => setOuvert(false)}>Annuler</button>
+            <button type="button" className="btn-secondary" onClick={() => setOuvert(false)}>Annuler</button>
           </div>
         </div>
       )}

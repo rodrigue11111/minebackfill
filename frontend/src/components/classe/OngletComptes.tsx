@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { bloquerCompte, definirRole, lireComptes, messageErreurClasse, type CompteClasse } from "@/lib/classe-reseau";
 import { dateCourte, Pastille, td, th } from "./commun";
+import { Carte } from "@/components/ui/Carte";
+import { Bandeau } from "@/components/ui/Bandeau";
 
 const nomDe = (c: CompteClasse) => c.nom?.trim() || c.courriel || `Compte ${c.id.slice(0, 8)}`;
 
@@ -67,24 +69,23 @@ export default function OngletComptes({ moi, onChangement }: {
   };
 
   const bouton = (c: CompteClasse, action: "nommer" | "retirer" | "bloquer" | "debloquer", libelle: string, desactive = false) => (
-    <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: "3px 9px" }}
+    <button type="button" className="btn-secondary" style={{ fontSize: 13, minHeight: 30, padding: "0 12px" }}
       disabled={occupe !== null || desactive} onClick={() => void agir(c, action)}>{libelle}</button>
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p style={{ fontSize: 12.5, color: "var(--muted-foreground)", margin: 0, maxWidth: 820, lineHeight: 1.55 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <p className="classe-intro">
         Tous les comptes inscrits. Un enseignant voit le travail de toute la classe : ne nommez que des
         personnes de confiance. Bloquer refuse la connexion sans rien effacer.
       </p>
       {etat === "erreur" && (
-        <p role="alert" style={{ fontSize: 13, color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 12px", margin: 0 }}>
-          Lecture des comptes impossible : {erreur}.
-        </p>
+        <Bandeau ton="danger" role="alert">Lecture des comptes impossible : {erreur}.</Bandeau>
       )}
-      {etat === "chargement" && <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>Lecture des comptes…</p>}
+      {etat === "chargement" && <p className="classe-rien">Lecture des comptes…</p>}
       {etat === "pret" && (
-        <div className="form-card" style={{ padding: 0, overflowX: "auto" }}>
+        <Carte titre="Comptes" aside={`${comptes.length}`} sansMarge>
+          <div className="classe-tableau">
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
             <thead>
               <tr>{["Nom", "Courriel", "Rôle", "Inscrit le", "Dernière connexion", "Travail en ligne", "Dernière activité", "État", ""].map((t, i) => <th key={i} style={th}>{t}</th>)}</tr>
@@ -94,7 +95,7 @@ export default function OngletComptes({ moi, onChangement }: {
                 const soi = c.id === moi;
                 const bloque = c.bloqueJusquA !== null;
                 return (
-                  <tr key={c.id} style={{ background: bloque ? "#fef2f2" : undefined }}>
+                  <tr key={c.id} style={{ background: bloque ? "var(--danger-pale)" : undefined }}>
                     <td style={{ ...td, fontWeight: 600 }}>{c.nom?.trim() || "—"}</td>
                     <td style={td}>{c.courriel ?? "—"}</td>
                     <td style={td}>{c.role === "prof" ? <Pastille ton="bleu">enseignant</Pastille> : "étudiant"}</td>
@@ -104,7 +105,7 @@ export default function OngletComptes({ moi, onChangement }: {
                     <td style={td}>{dateCourte(c.derniereActivite)}</td>
                     <td style={td}>{bloque ? <Pastille ton="rouge">bloqué</Pastille> : "actif"}</td>
                     <td style={{ ...td, whiteSpace: "nowrap" }}>
-                      {soi ? <span style={{ color: "#94a3b8", fontSize: 12 }}>vous</span> : (
+                      {soi ? <span style={{ color: "var(--texte-3)", fontSize: 13 }}>vous</span> : (
                         <span style={{ display: "inline-flex", gap: 6 }}>
                           {c.role === "prof"
                             ? bouton(c, "retirer", "Retirer le rôle enseignant")
@@ -120,9 +121,10 @@ export default function OngletComptes({ moi, onChangement }: {
               })}
             </tbody>
           </table>
-        </div>
+          </div>
+        </Carte>
       )}
-      <p style={{ fontSize: 12, color: "#64748b", margin: 0, lineHeight: 1.5 }}>
+      <p className="classe-intro">
         Supprimer définitivement un compte et son travail est irréversible : ce n&apos;est pas un bouton, mais une
         procédure SQL à suivre pas à pas (docs/OPERATIONS.md, « Effacer le compte d&apos;un étudiant »). Le même blocage existe dans
         Supabase Studio (Authentication → Users → « Ban user ») ; un compte bloqué là apparaît bloqué ici.

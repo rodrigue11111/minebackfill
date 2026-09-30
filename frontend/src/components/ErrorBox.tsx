@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * Boîte d'erreur des formulaires de calcul. Sur les longs formulaires
@@ -22,14 +22,7 @@ export default function ErrorBox({ message }: { message: string | null }) {
     <div
       ref={ref}
       role="alert"
-      style={{
-        background: "#fef2f2",
-        border: "1px solid #fecaca",
-        borderRadius: 7,
-        padding: "10px 14px",
-        fontSize: 13,
-        color: "#dc2626",
-      }}
+      className="ui-bandeau ui-bandeau-danger"
     >
       {message}
     </div>

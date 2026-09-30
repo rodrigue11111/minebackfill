@@ -4,10 +4,15 @@
 //  • Courbes de réponse (balayage d'un paramètre, endpoint /analyse/balayage) ;
 //  • Composition (barres de phases + ternaire + échantillon d'une recette
 //    calculée via /rpc/cw ou /rpg/cw).
-// Les deux REPRENNENT la recette Cw% déjà saisie dans Calculs. Aucun calcul
+// Les deux REPRENNENT la recette « Dosage selon Cw » déjà saisie dans Calculs. Aucun calcul
 // n'est réimplémenté côté client.
 
 import React, { useMemo, useRef, useState } from "react";
+import { Page, EnTetePage } from "@/components/ui/Page";
+import { Carte } from "@/components/ui/Carte";
+import { Champ } from "@/components/ui/Champ";
+import { Bandeau } from "@/components/ui/Bandeau";
+import Segmente from "@/components/ui/Segmente";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import type { Recipe } from "@/lib/types";
@@ -47,21 +52,6 @@ interface Balayage {
 type Mode = "courbes" | "composition";
 const DEFAUT_SORTIES = ["wc_ratio", "void_ratio"];
 
-function Carte({ titre, children }: { titre: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-      <div style={{ padding: "10px 18px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#64748b" }}>
-        {titre}
-      </div>
-      <div style={{ padding: "16px 18px" }}>{children}</div>
-    </div>
-  );
-}
-
-const inputStyle: React.CSSProperties = {
-  width: "100%", border: "1px solid #cbd5e1", borderRadius: 6, padding: "7px 11px",
-  background: "#fff", fontSize: 13.5, outline: "none",
-};
 
 function fmtStat(v: number, unite: string): string {
   // « kg » doit être branché ici : sans lui, une masse tombe dans la branche
@@ -78,16 +68,15 @@ function PanneauProvenance({ meta, boutons, ouvert, onToggle }: {
   onToggle: () => void;
 }) {
   return (
-    <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
+    <div style={{ marginTop: 12, borderTop: "1px solid var(--filet)", paddingTop: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         {boutons}
-        <button type="button" onClick={onToggle}
-          style={{ border: "none", background: "transparent", color: "var(--primary)", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
-          {ouvert ? "▾" : "▸"} Reproductibilité / provenance
+        <button type="button" onClick={onToggle} className="btn-discret" aria-expanded={ouvert}>
+          {ouvert ? "Masquer" : "Afficher"} la reproductibilité et la provenance
         </button>
       </div>
       {ouvert && (
-        <div style={{ marginTop: 8, fontSize: 11.5, color: "#64748b", lineHeight: 1.65, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
+        <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--texte-2)", lineHeight: 1.65, background: "var(--fond)", borderRadius: 12, padding: "10px 14px" }}>
           {lignesResume(meta).map((l, i) => <div key={i}>{l}</div>)}
         </div>
       )}
@@ -172,9 +161,9 @@ export default function AnalysePage() {
     if (!general.container_type)
       return "Choisis d'abord un type de contenant dans Informations : il est nécessaire au calcul des volumes.";
     if (!(base.residue_sg > 0) || !(base.solid_mass_pct > 0) || !(base.saturation_pct > 0))
-      return `Renseigne d'abord une recette dans Calculs → ${categorie} (méthode Cw%) : Gs du résidu, Cw% et Sr (> 0).`;
+      return `Renseigne d'abord une recette dans Calculs → ${categorie} (dosage selon Cw) : Gs du résidu, Cw et Sr (> 0).`;
     if (categorie === "RPG" && !(rpgCw.aggregate_sg > 0))
-      return "Renseigne le Gs de l'agrégat dans Calculs → RPG (Cw%).";
+      return "Renseigne le Gs du granulat dans Calculs → RPG (dosage selon Cw).";
     return null;
   }
 
@@ -218,7 +207,7 @@ export default function AnalysePage() {
     });
     return {
       date: new Date().toISOString(),
-      categorie, methode: "Cw%",
+      categorie, methode: "Dosage selon Cw",
       parametre: avecParametre ? { label: xLabel, min: xMin, max: xMax, points: steps } : undefined,
       recette: {
         gsResidu: base.residue_sg || 0, w0Pct: base.residue_w_pct || 0,
@@ -352,17 +341,13 @@ export default function AnalysePage() {
 
   // ── Exports (les données brutes, pleine précision ; l'en-tête porte la
   //    provenance figée au calcul -> figure traçable et reproductible). ──
-  const boutonExport: React.CSSProperties = {
-    padding: "5px 12px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer",
-    border: "1px solid #cbd5e1", background: "#fff", color: "#374151",
-  };
 
   function exporterCsvCourbes() {
     if (!res || !resMeta || !resultats) return;
     const meta = lignesMetaCsv(resMeta).map((l) => [l] as (string | number | null)[]);
 
     // En comparaison : un GROUPE de colonnes par variante, l'en-tête portant
-    // la recette (« Bw 3 % — W/C ») pour que le fichier reste lisible seul.
+    // la recette (« Bw 3 % — E/L ») pour que le fichier reste lisible seul.
     const colonnes = comparaisonActive && resultats.length > 1
       ? sorties.flatMap((cle) => {
           const m = sortieMeta(cle);
@@ -473,62 +458,46 @@ export default function AnalysePage() {
     tracesEcart.every((t) => t.valeurs.every((v) => v === null || !Number.isFinite(v)));
 
   return (
-    <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 24px 64px", display: "flex", flexDirection: "column", gap: 16 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Analyse</h1>
-          <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, lineHeight: 1.55 }}>
-            Visualise ta recette : <strong>courbes de réponse</strong> (fais varier un paramètre)
-            ou <strong>composition</strong> (phases du mélange). Tout repart du solveur — mêmes
-            formules que Calculs.
-          </p>
-        </div>
+    <Page>
+      <EnTetePage
+        titre="Analyse"
+        sousTitre={<>Visualise ta recette : <strong>courbes de réponse</strong> (fais varier un paramètre) ou <strong>composition</strong> (phases du mélange). Tout repart du solveur — mêmes formules que Calculs.</>}
+      />
 
-        {/* ── Mode ── */}
-        <div style={{ display: "flex", gap: 8 }}>
-          {([["courbes", "Courbes de réponse"], ["composition", "Composition"]] as const).map(([m, label]) => {
-            const actif = mode === m;
-            return (
-              <button key={m} type="button" onClick={() => { setMode(m); setError(null); }}
-                style={{ padding: "8px 18px", borderRadius: 8, fontSize: 13.5, fontWeight: 700, cursor: "pointer",
-                  border: `1.5px solid ${actif ? "#16a34a" : "#e2e8f0"}`, background: actif ? "#16a34a" : "#fff", color: actif ? "#fff" : "#374151" }}>
-                {label}
-              </button>
-            );
-          })}
-        </div>
+      <div className="mix-choix">
+        <Segmente
+          ariaLabel="Mode d'analyse"
+          valeur={mode}
+          onChange={(m) => { setMode(m); setError(null); }}
+          options={[{ valeur: "courbes" as const, libelle: "Courbes de réponse", libelleCourt: "Courbes" }, { valeur: "composition" as const, libelle: "Composition" }]}
+        />
+        <Segmente
+          ariaLabel="Catégorie de remblai"
+          valeur={categorie}
+          onChange={changerCategorie}
+          options={(["RPC", "RPG"] as const).map((c) => ({ valeur: c, libelle: c }))}
+        />
+      </div>
 
-        {/* ── Recette de base (catégorie + valeurs reprises) ── */}
+        {/* ── Recette de base (valeurs reprises de Calculs) ── */}
         <Carte titre="Recette de base (reprise de Calculs)">
-          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            {(["RPC", "RPG"] as const).map((c) => {
-              const actif = categorie === c;
-              return (
-                <button key={c} type="button" onClick={() => changerCategorie(c)}
-                  style={{ padding: "6px 15px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer",
-                    border: `1.5px solid ${actif ? "#2563eb" : "#e2e8f0"}`, background: actif ? "#2563eb" : "#fff", color: actif ? "#fff" : "#374151" }}>
-                  {c}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 18, fontSize: 13, color: "#374151" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 18, fontSize: 14, color: "var(--texte)" }}>
             <span>Gs résidu : <strong>{fmt(base.residue_sg, 3)}</strong></span>
             <span>w₀ : <strong>{fmt(base.residue_w_pct, 1)} %</strong></span>
             <span>Cw : <strong>{fmt(base.solid_mass_pct, 1)} %</strong></span>
             <span>Sr : <strong>{fmt(base.saturation_pct, 0)} %</strong></span>
             <span>Bw (recette 1) : <strong>{fmt(bwAffiche, 2)} %</strong></span>
             {categorie === "RPG" && <span>Am : <strong>{fmt(rpgCw.aggregate_fraction_pct, 1)} %</strong></span>}
-            <Link href="/mix" style={{ color: "var(--primary)", fontWeight: 600, textDecoration: "underline" }}>Modifier dans Calculs</Link>
+            <Link href="/mix" style={{ fontWeight: 500 }}>Modifier dans Calculs</Link>
           </div>
           {/* Découvrabilité : les deux modules vivaient côte à côte dans la
               barre sans que rien ne les relie. Cette page ne trace QUE du
               calculé ; les mesures réelles sont dans Labo. */}
-          <p style={{ fontSize: 11.5, color: "#64748b", marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+          <p className="ui-liste-pied" style={{ margin: 0 }}>
             Cette page trace uniquement des valeurs <strong>calculées</strong> par les solveurs.
             Pour vos <strong>mesures</strong> de laboratoire — gâchées réelles, éprouvettes et
             essais UCS —, voir{" "}
-            <Link href="/labo" style={{ color: "var(--primary)", fontWeight: 600, textDecoration: "underline" }}>
+            <Link href="/labo" style={{ fontWeight: 500 }}>
               Labo → Résultats UCS
             </Link>.
           </p>
@@ -538,37 +507,34 @@ export default function AnalysePage() {
           <>
             <Carte titre="Paramètres de la courbe">
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "10px 14px", alignItems: "end" }}>
+                <div className="analyse-plage">
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 5 }}>Paramètre à faire varier (X)</label>
-                    <select style={inputStyle} value={param} onChange={(e) => changerParam(e.target.value)}>
-                      {paramsDispo.map((p) => <option key={p.cle} value={p.cle}>{p.label}</option>)}
-                    </select>
+                    <Champ libelle="Paramètre à faire varier (X)">
+                      <select className="field-input" value={param} onChange={(e) => changerParam(e.target.value)}>
+                        {paramsDispo.map((p) => <option key={p.cle} value={p.cle}>{p.label}</option>)}
+                      </select>
+                    </Champ>
                   </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 5 }}>De</label>
-                    <input type="number" step="any" style={inputStyle} value={xMin} onChange={(e) => setXMin(num(e.target.value))} />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 5 }}>À</label>
-                    <input type="number" step="any" style={inputStyle} value={xMax} onChange={(e) => setXMax(num(e.target.value))} />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 5 }}>Points</label>
-                    <input type="number" min={2} max={200} style={inputStyle} value={steps} onChange={(e) => setSteps(Math.max(2, Math.min(200, Math.round(num(e.target.value)) || 2)))} />
-                  </div>
+                  <Champ libelle="De">
+                    <input type="number" step="any" className="field-input" value={xMin} onChange={(e) => setXMin(num(e.target.value))} />
+                  </Champ>
+                  <Champ libelle="À">
+                    <input type="number" step="any" className="field-input" value={xMax} onChange={(e) => setXMax(num(e.target.value))} />
+                  </Champ>
+                  <Champ libelle="Points">
+                    <input type="number" min={2} max={200} className="field-input" value={steps} onChange={(e) => setSteps(Math.max(2, Math.min(200, Math.round(num(e.target.value)) || 2)))} />
+                  </Champ>
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 7 }}>Grandeurs à tracer (Y)</label>
+                  <span className="ui-champ-libelle" style={{ display: "block", marginBottom: 8 }}>Grandeurs à tracer (Y)</span>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {sortiesDispo.map((s) => {
                       const actif = sorties.includes(s.cle);
                       return (
-                        <button key={s.cle} type="button" onClick={() => basculerSortie(s.cle)}
-                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
-                            border: `1.5px solid ${actif ? s.couleur : "#e2e8f0"}`, background: actif ? `${s.couleur}12` : "#fff", color: actif ? "#0f172a" : "#64748b" }}>
-                          <span style={{ width: 10, height: 10, borderRadius: 3, background: actif ? s.couleur : "#cbd5e1" }} />
+                        <button key={s.cle} type="button" onClick={() => basculerSortie(s.cle)} aria-pressed={actif}
+                          className={actif ? "analyse-sortie analyse-sortie-active" : "analyse-sortie"}>
+                          <span style={{ width: 10, height: 10, borderRadius: 3, background: actif ? s.couleur : "#C7C7CC" }} />
                           {s.label}
                         </button>
                       );
@@ -576,8 +542,8 @@ export default function AnalysePage() {
                   </div>
                 </div>
 
-                <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: garde.ok ? "#0f172a" : "#94a3b8", cursor: garde.ok ? "pointer" : "not-allowed" }}>
+                <div style={{ borderTop: "1px solid var(--filet)", paddingTop: 14 }}>
+                  <label className="mix-case" style={{ color: garde.ok ? "var(--texte)" : "var(--texte-3)", cursor: garde.ok ? "pointer" : "not-allowed" }}>
                     <input type="checkbox" checked={comparaisonActive} disabled={!garde.ok}
                       onChange={(e) => setComparer(e.target.checked)} />
                     Comparer les {variantes.length} recette{variantes.length > 1 ? "s" : ""} de Calculs
@@ -586,7 +552,7 @@ export default function AnalysePage() {
                   {!garde.ok && (
                     // Dire POURQUOI c'est indisponible : une case grisée sans
                     // explication est plus frustrante qu'une case absente.
-                    <p style={{ fontSize: 11.5, color: "#b45309", margin: "6px 0 0" }}>{garde.raison}</p>
+                    <p style={{ fontSize: 13, color: "var(--alerte-texte)", margin: "6px 0 0" }}>{garde.raison}</p>
                   )}
                 </div>
 
@@ -595,7 +561,6 @@ export default function AnalysePage() {
                     {loading ? "Calcul en cours…" : "Tracer la courbe"}
                   </button>
                   <button type="button" onClick={() => fichierRef.current?.click()} className="btn-secondary"
-                    style={{ padding: "7px 14px", fontSize: 12.5 }}
                     title="Rouvre un balayage exporté en JSON, avec sa provenance d'origine">
                     Recharger un balayage (.json)
                   </button>
@@ -608,42 +573,37 @@ export default function AnalysePage() {
             {res && (
               <Carte titre="Courbe de réponse">
                 {recharge && (
-                  <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 7, background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e3a8a", fontSize: 12.5 }}>
+                  <Bandeau ton="info">
                     Balayage <strong>rechargé depuis un fichier</strong>. Le bloc de provenance ci-dessous
                     est celui d&apos;origine, pas celui de la recette actuellement saisie dans Calculs.
                     Relancez « Tracer la courbe » pour repartir de votre recette.
-                  </div>
+                  </Bandeau>
                 )}
                 {perime && !recharge && (
-                  <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 7, background: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", fontSize: 12.5 }}>
+                  <Bandeau ton="alerte">
                     Paramètres modifiés — relance « Tracer la courbe » pour mettre à jour cette courbe.
-                  </div>
+                  </Bandeau>
                 )}
                 {toutNul ? (
-                  <div style={{ padding: "28px 8px", textAlign: "center", color: "#b45309", fontSize: 13, lineHeight: 1.55 }}>
+                  <div style={{ padding: "28px 8px", textAlign: "center", color: "var(--alerte-texte)", fontSize: 14, lineHeight: 1.55 }}>
                     Aucun point n&apos;a pu être calculé sur cette plage. Vérifie la recette de base
                     (type de contenant dans Informations, Sr, Gs…) et la plage choisie.
                   </div>
                 ) : (
                   <>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        {([["absolu", "Valeurs"], ["ecart", "Écart % vs référence"]] as const).map(([m, label]) => {
-                          const actif = modeCourbe === m;
-                          return (
-                            <button key={m} type="button" onClick={() => setModeCourbe(m)}
-                              style={{ padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
-                                border: `1.5px solid ${actif ? "#2563eb" : "#e2e8f0"}`, background: actif ? "#2563eb" : "#fff", color: actif ? "#fff" : "#64748b" }}>
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <Segmente
+                        ariaLabel="Affichage de la courbe"
+                        taille="compact"
+                        valeur={modeCourbe}
+                        onChange={setModeCourbe}
+                        options={[{ valeur: "absolu" as const, libelle: "Valeurs" }, { valeur: "ecart" as const, libelle: "Écart % vs référence" }]}
+                      />
                       {referenceX !== null && (
                         refDansPlage ? (
-                          <span style={{ fontSize: 11.5, color: "#b45309" }}>Référence (trait orange) : {paramCourt} = {fmt(referenceX, 2)}</span>
+                          <span style={{ fontSize: 13, color: "var(--alerte-texte)" }}>Référence (trait orange) : {paramCourt} = {fmt(referenceX, 2)}</span>
                         ) : (
-                          <span style={{ fontSize: 11.5, color: "#64748b" }}>Référence ({paramCourt} = {fmt(referenceX, 2)}) hors de la plage balayée</span>
+                          <span style={{ fontSize: 13, color: "var(--texte-2)" }}>Référence ({paramCourt} = {fmt(referenceX, 2)}) hors de la plage balayée</span>
                         )
                       )}
                     </div>
@@ -653,20 +613,20 @@ export default function AnalysePage() {
                       // par recette). Un seul axe Y suffit puisqu'on compare la
                       // MÊME grandeur entre variantes — c'est ce qui évite
                       // d'introduire un second axe.
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 14 }}>
+                      <div className="analyse-figures">
                         {sorties.map((cle) => {
                           const meta = sortieMeta(cle);
                           if (!meta) return null;
                           const tv = construireTracesVariantes(resultats, cle, variantes)
                             .map((t, i) => ({ ...t, unite: meta.unite, tirets: variantes[i]?.tirets }));
                           return (
-                            <div key={cle} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px" }}>
-                              <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>
+                            <div key={cle} className="analyse-figure">
+                              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--texte)", marginBottom: 4 }}>
                                 {meta.label}{meta.unite !== "—" ? ` (${meta.unite})` : ""}
                               </div>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 4 }}>
                                 {variantes.map((v) => (
-                                  <span key={v.bwPct} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "#475569" }}>
+                                  <span key={v.bwPct} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--texte-2)" }}>
                                     <svg width={20} height={6} aria-hidden="true">
                                       <line x1={0} y1={3} x2={20} y2={3} stroke={v.couleur} strokeWidth={2}
                                         strokeDasharray={v.tirets || undefined} />
@@ -684,19 +644,19 @@ export default function AnalysePage() {
                         })}
                       </div>
                     ) : modeCourbe === "absolu" ? (
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 14 }}>
+                      <div className="analyse-figures">
                         {traces.map((t) => {
                           const s = statsSerie(res.x, t.valeurs);
                           return (
-                            <div key={t.cle} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px" }}>
-                              <div style={{ fontSize: 12.5, fontWeight: 700, color: t.couleur, marginBottom: 2 }}>
+                            <div key={t.cle} className="analyse-figure">
+                              <div style={{ fontSize: 14, fontWeight: 600, color: t.couleur, marginBottom: 2 }}>
                                 {t.label}{t.unite !== "—" ? ` (${t.unite})` : ""}
                               </div>
                               <FigurePng nom={`analyse-${categorie}-${t.cle}`}>
                                 <CourbeSvg x={res.x} xLabel={xLabel} series={[t]} reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
                               </FigurePng>
                               {s && (
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 12.5, color: "var(--texte-2)", marginTop: 2 }}>
                                   <span>min {fmtStat(s.min, t.unite)}</span>
                                   <span>max {fmtStat(s.max, t.unite)}</span>
                                   <span>Δ {fmtStat(s.variation, t.unite)}</span>
@@ -708,14 +668,14 @@ export default function AnalysePage() {
                         })}
                       </div>
                     ) : ecartToutNul ? (
-                      <div style={{ padding: "24px 8px", textAlign: "center", color: "#b45309", fontSize: 13, lineHeight: 1.55 }}>
+                      <div style={{ padding: "24px 8px", textAlign: "center", color: "var(--alerte-texte)", fontSize: 14, lineHeight: 1.55 }}>
                         L&apos;écart % n&apos;est pas calculable ici : la valeur de référence est nulle pour les grandeurs sélectionnées.
                       </div>
                     ) : (
                       <>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 6 }}>
                           {traces.map((t) => (
-                            <span key={t.cle} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151" }}>
+                            <span key={t.cle} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--texte)" }}>
                               <span style={{ width: 14, height: 3, background: t.couleur, borderRadius: 2 }} />
                               {t.label}
                             </span>
@@ -724,7 +684,7 @@ export default function AnalysePage() {
                         <FigurePng nom={`analyse-${categorie}-ecart`}>
                           <CourbeSvg x={res.x} xLabel={xLabel} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} />
                         </FigurePng>
-                        <p style={{ fontSize: 11.5, color: "#64748b", marginTop: 6, lineHeight: 1.5 }}>
+                        <p className="ui-liste-pied" style={{ marginTop: 6 }}>
                           {refDansPlage
                             ? "Écart relatif (%) de chaque grandeur par rapport à sa valeur à la recette de référence (trait orange)."
                             : `Écart relatif (%) par rapport au 1er point balayé (${paramCourt} = ${fmt(res.x[0], 2)}) — la recette de référence est hors de la plage.`}
@@ -734,7 +694,7 @@ export default function AnalysePage() {
                     )}
 
                     {resMeta && estParamCle(param) && (
-                      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #e2e8f0" }}>
+                      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--filet)" }}>
                         <PanneauVariation
                           instantane={resMeta}
                           param={param}
@@ -754,8 +714,8 @@ export default function AnalysePage() {
                         onToggle={() => setDetailsProv((v) => !v)}
                         boutons={
                           <>
-                            <button type="button" onClick={exporterCsvCourbes} style={boutonExport}>Export CSV</button>
-                            <button type="button" onClick={exporterJsonCourbes} style={boutonExport}>Export JSON</button>
+                            <button type="button" onClick={exporterCsvCourbes} className="btn-contour">Export CSV</button>
+                            <button type="button" onClick={exporterJsonCourbes} className="btn-contour">Export JSON</button>
                           </>
                         }
                       />
@@ -772,7 +732,7 @@ export default function AnalysePage() {
                 <button type="button" onClick={calculerComposition} disabled={loading} className="btn-primary">
                   {loading ? "Calcul en cours…" : "Calculer la composition"}
                 </button>
-                <span style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>
+                <span className="ui-liste-pied">
                   Calcule les {base.num_recipes || 1} recette{(base.num_recipes || 1) > 1 ? "s" : ""} et affiche leurs phases.
                 </span>
               </div>
@@ -787,7 +747,7 @@ export default function AnalysePage() {
                       meta={compMeta}
                       ouvert={detailsProv}
                       onToggle={() => setDetailsProv((v) => !v)}
-                      boutons={<button type="button" onClick={exporterCsvComposition} style={boutonExport}>Export CSV (phases)</button>}
+                      boutons={<button type="button" onClick={exporterCsvComposition} className="btn-contour">Export CSV (phases)</button>}
                     />
                   </Carte>
                 )}
@@ -795,7 +755,7 @@ export default function AnalysePage() {
             )}
             {recettes && recettes.length === 0 && (
               <Carte titre="Composition du mélange">
-                <div style={{ padding: "12px 4px", color: "#b45309", fontSize: 13 }}>
+                <div style={{ padding: "12px 4px", color: "var(--alerte-texte)", fontSize: 14 }}>
                   Aucune recette calculable. Vérifie la recette de base (type de contenant, Gs, Cw, Sr).
                 </div>
               </Carte>
@@ -804,7 +764,6 @@ export default function AnalysePage() {
         )}
 
         <ErrorBox message={error} />
-      </div>
-    </div>
+    </Page>
   );
 }

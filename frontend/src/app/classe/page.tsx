@@ -8,7 +8,7 @@
 // l'enseignant, qui garde son propre travail intact. Un document ouvert en
 // entier est relu à la demande (lireDocComplet).
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { getSupabase, cloudConfigure } from "@/lib/supabase";
@@ -38,6 +38,13 @@ import { echeancierClasse, icsClasse, lignesCsvEcheancier } from "@/lib/classe-e
 import OngletEcheancier from "@/components/classe/OngletEcheancier";
 import OngletComptes from "@/components/classe/OngletComptes";
 import CarteAlertes from "@/components/classe/CarteAlertes";
+import { resumeClasse } from "@/lib/classe-resume";
+import { Page, EnTetePage } from "@/components/ui/Page";
+import { Carte } from "@/components/ui/Carte";
+import { Bandeau } from "@/components/ui/Bandeau";
+import { BandeChiffres } from "@/components/ui/Chiffres";
+import Menu from "@/components/ui/Menu";
+import { Icone } from "@/components/ui/Icones";
 
 type CleOnglet = "etudiants" | "echeancier" | "comparaison" | "comptes";
 
@@ -62,7 +69,6 @@ export default function ClassePage() {
   const [doc, setDoc] = useState<EtatDoc | null>(null);
   const [onglet, setOnglet] = useState<CleOnglet>("etudiants");
   const jetonDoc = useRef(0);
-  const defilement = useRef<HTMLDivElement>(null);
 
   const estProf = session?.role === "prof";
   // Par défaut : la session active (sinon toutes). Choisi une fois les
@@ -136,7 +142,7 @@ export default function ClassePage() {
       a.owner_id === ref.etudiantId && a.target_kind === ref.kind && a.target_id === ref.id)));
     const jeton = ++jetonDoc.current;
     setDoc({ ref, etat: "chargement" });
-    defilement.current?.scrollTo({ top: 0 });
+    document.querySelector(".ui-page")?.scrollTo({ top: 0 });
     lireDocComplet(sb, ref.etudiantId, ref.kind, ref.id)
       .then((d) => { if (jeton === jetonDoc.current) setDoc(d ? { ref, etat: "pret", doc: d } : { ref, etat: "absent" }); })
       .catch((e) => { if (jeton === jetonDoc.current) setDoc({ ref, etat: "erreur", message: messageErreurClasse(e) }); });
@@ -214,108 +220,107 @@ export default function ClassePage() {
     }
   };
 
-  const conteneur: React.CSSProperties = { maxWidth: 1100, margin: "0 auto", padding: "28px 18px 64px", display: "flex", flexDirection: "column", gap: 16 };
-
   if (!monte) return null;
   if (!cloudConfigure() || !estProf) {
     return (
-      <div style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
-        <div style={conteneur}>
-          <div className="form-card">
-            <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 6px" }}>Classe</h1>
-            <p style={{ fontSize: 13.5, color: "var(--muted-foreground)", margin: 0 }}>
-              Ce tableau de bord est réservé à l&apos;enseignant connecté.{" "}
-              <Link href="/compte" style={{ color: "var(--primary)" }}>Se connecter</Link>
-            </p>
-          </div>
-        </div>
-      </div>
+      <Page>
+        <EnTetePage titre="Classe" />
+        <Carte>
+          <p className="classe-rien">
+            Ce tableau de bord est réservé à l&apos;enseignant connecté.{" "}
+            <Link href="/compte">Se connecter</Link>
+          </p>
+        </Carte>
+      </Page>
     );
   }
 
   const sel = etudiants.find((e) => e.id === selId) ?? null;
+  const resume = resumeClasse(etudiants, echeances, annotations);
 
   return (
-    <div ref={defilement} style={{ background: "var(--background)", flex: 1, overflowY: "auto" }}>
-      <div style={conteneur}>
-        {doc ? (
-          <VueDocument doc={doc} etudiant={etudiants.find((e) => e.id === doc.ref.etudiantId)}
-            annotations={annotations} onAnnoter={annoter(doc.ref.etudiantId)} ctx={ctx}
-            onRetour={fermerDoc} maintenant={maintenant} units={units} />
-        ) : (
-          <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-              <div>
-                <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>Classe</h1>
-                <p style={{ fontSize: 13.5, color: "var(--muted-foreground)", margin: 0, maxWidth: 640, lineHeight: 1.5 }}>
-                  Le travail sauvegardé en ligne par chaque étudiant, en lecture seule. Vos commentaires
-                  apparaissent chez l&apos;étudiant concerné, et chez lui seulement.
-                </p>
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => void charger()} disabled={etat === "chargement"}>
+    <Page>
+      {doc ? (
+        <VueDocument doc={doc} etudiant={etudiants.find((e) => e.id === doc.ref.etudiantId)}
+          annotations={annotations} onAnnoter={annoter(doc.ref.etudiantId)} ctx={ctx}
+          onRetour={fermerDoc} maintenant={maintenant} units={units} />
+      ) : (
+        <>
+          <EnTetePage
+            titre="Classe"
+            sousTitre="Le travail sauvegardé en ligne par chaque étudiant, en lecture seule. Vos commentaires apparaissent chez l'étudiant concerné, et chez lui seulement."
+            actions={
+              <>
+                <FiltreSession sessions={sessions} valeur={filtreEffectif} onChange={(v) => { setFiltre(v); setSelId(null); }} />
+                <Menu
+                  className="btn-secondary"
+                  declencheur={<>{exportEnCours ? "Export…" : "Exporter"} <span className="ui-chevron-bas"><Icone nom="chevron" taille={11} epaisseur={2.4} /></span></>}
+                  titre="Données d'étudiants : à ranger hors de GitHub"
+                  elements={[
+                    { libelle: "Éprouvettes (CSV)", detail: "Une ligne par éprouvette (valeurs mesurées), pour Excel", desactive: etat !== "pret", onSelect: () => exporterCsv("eprouvettes") },
+                    { libelle: "Synthèse (CSV)", detail: "Par gâchée et par âge : n, moyenne, écart-type, CV", desactive: etat !== "pret", onSelect: () => exporterCsv("synthese") },
+                    { libelle: "Classe (JSON)", detail: "Copie de sauvegarde (Supabase gratuit n'en fait aucune)", desactive: exportEnCours || etat !== "pret", onSelect: () => void exporter() },
+                  ]}
+                />
+                <button type="button" className="btn-sombre" onClick={() => void exporterPdf()} disabled={etat !== "pret"}
+                  title="Synthèse de la classe puis un chapitre par étudiant (documents de la session affichée). Contient des données d'étudiants : à ranger hors de GitHub.">
+                  Rapport de session
+                </button>
+                <button type="button" className="btn-discret" onClick={() => void charger()} disabled={etat === "chargement"}>
+                  <Icone nom="actualiser" taille={14} epaisseur={2.2} />
                   {etat === "chargement" ? "Lecture…" : "Actualiser"}
                 </button>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 12.5, color: "#475569" }}>
-              <span style={{ fontWeight: 600 }}>Exporter :</span>
-              <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => exporterCsv("eprouvettes")} disabled={etat !== "pret"}
-                title="Une ligne par éprouvette (valeurs mesurées), pour Excel. Contient des données d'étudiants : à ranger hors de GitHub.">
-                Éprouvettes (CSV)
-              </button>
-              <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => exporterCsv("synthese")} disabled={etat !== "pret"}
-                title="Une ligne par gâchée et par âge : n, moyenne, écart-type, CV des essais retenus de CETTE gâchée.">
-                Synthèse (CSV)
-              </button>
-              <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => void exporter()} disabled={exportEnCours || etat !== "pret"}
-                title="Copie de sauvegarde de la classe (JSON). L'offre gratuite de Supabase n'en fait aucune. À ranger hors de GitHub : elle contient des données d'étudiants.">
-                {exportEnCours ? "Export…" : "Classe (JSON)"}
-              </button>
-              <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => void exporterPdf()} disabled={etat !== "pret"}
-                title="Synthèse de la classe puis un chapitre par étudiant (documents de la session affichée). Contient des données d'étudiants : à ranger hors de GitHub.">
-                Rapport de session (PDF)
-              </button>
-            </div>
-
-            <FiltreSession sessions={sessions} valeur={filtreEffectif} onChange={(v) => { setFiltre(v); setSelId(null); }} />
-
-            {etat === "erreur" && (
-              <p role="alert" style={{ fontSize: 13, color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 12px", margin: 0 }}>
-                Lecture de la classe impossible : {erreur}. Rien n&apos;est affiché plutôt qu&apos;une classe vide trompeuse ; réessayez avec « Actualiser ».
-              </p>
-            )}
-
-            {etat === "pret" && (
-              <>
-                <Onglets<CleOnglet> actif={onglet} onChoisir={setOnglet} onglets={[
-                  { cle: "etudiants", label: "Étudiants", compte: alertes.length || null },
-                  { cle: "echeancier", label: "Échéancier", compte: echeances.filter((x) => x.classe === "retard" || x.classe === "aujourdhui").length || null },
-                  { cle: "comparaison", label: "Comparaison", compte: comparaison.groupes.length || null },
-                  { cle: "comptes", label: "Comptes" },
-                ]} />
-                {onglet === "etudiants" && (
-                  <>
-                    <CarteAlertes alertes={alertes} onOuvrir={ouvrirDoc} />
-                    <TableauEtudiants etudiants={etudiants} annotations={annotations} selId={selId} onChoisir={setSelId}
-                      couleurDe={couleurDe} alertesParEtudiant={alertesParEtudiant} />
-                    {sel && (
-                      <DetailEtudiant etudiant={sel} annotations={annotations} lignes={lignes}
-                        onAnnoter={annoter(sel.id)} ctx={ctx} onOuvrir={ouvrirDoc} onRapport={() => void exporterPdf(sel)} />
-                    )}
-                    <FigureClasse etudiants={etudiants} couleurDe={couleurDe} />
-                  </>
-                )}
-                {onglet === "echeancier" && (
-                  <OngletEcheancier echeances={echeances} onOuvrir={ouvrirDoc} onIcs={exporterIcs} onCsv={exporterCsvEcheancier} />
-                )}
-                {onglet === "comparaison" && <OngletComparaison comparaison={comparaison} onOuvrir={ouvrirDoc} />}
-                {onglet === "comptes" && <OngletComptes moi={session.userId} onChangement={() => void charger()} />}
               </>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+            }
+          />
+
+          {etat === "erreur" && (
+            <Bandeau ton="danger" role="alert">
+              Lecture de la classe impossible : {erreur}. Rien n&apos;est affiché plutôt qu&apos;une classe vide trompeuse ; réessayez avec « Actualiser ».
+            </Bandeau>
+          )}
+          {etat === "chargement" && lignes.length === 0 && <p className="classe-rien">Lecture de la classe…</p>}
+
+          {etat === "pret" && (
+            <>
+              <Onglets<CleOnglet> actif={onglet} onChoisir={setOnglet} onglets={[
+                { cle: "etudiants", label: "Étudiants", compte: alertes.length || null },
+                { cle: "echeancier", label: "Échéancier", compte: echeances.filter((x) => x.classe === "retard" || x.classe === "aujourdhui").length || null },
+                { cle: "comparaison", label: "Comparaison", compte: comparaison.groupes.length || null },
+                { cle: "comptes", label: "Comptes" },
+              ]} />
+              {onglet === "etudiants" && (
+                <>
+                  <BandeChiffres ariaLabel="Résumé de la classe" chiffres={[
+                    { libelle: "Essais valides", valeur: resume.essaisValides },
+                    { libelle: "Gâchées", valeur: resume.gachees },
+                    { libelle: "À écraser aujourd'hui", valeur: resume.aEcraser, ton: resume.enRetard > 0 ? "danger" : "normal",
+                      detail: resume.enRetard > 0 ? `dont ${resume.enRetard} en retard` : undefined },
+                    { libelle: "Réponses non lues", valeur: resume.reponsesNonLues, ton: resume.reponsesNonLues > 0 ? "accent" : "normal" },
+                  ]} />
+                  <div className="classe-grille">
+                    <CarteAlertes alertes={alertes} onOuvrir={ouvrirDoc} />
+                    <div className="classe-colonne">
+                      <TableauEtudiants etudiants={etudiants} annotations={annotations} selId={selId} onChoisir={setSelId}
+                        couleurDe={couleurDe} alertesParEtudiant={alertesParEtudiant} />
+                      {sel && (
+                        <DetailEtudiant etudiant={sel} annotations={annotations} lignes={lignes}
+                          onAnnoter={annoter(sel.id)} ctx={ctx} onOuvrir={ouvrirDoc} onRapport={() => void exporterPdf(sel)} />
+                      )}
+                    </div>
+                  </div>
+                  <FigureClasse etudiants={etudiants} couleurDe={couleurDe} />
+                </>
+              )}
+              {onglet === "echeancier" && (
+                <OngletEcheancier echeances={echeances} onOuvrir={ouvrirDoc} onIcs={exporterIcs} onCsv={exporterCsvEcheancier} />
+              )}
+              {onglet === "comparaison" && <OngletComparaison comparaison={comparaison} onOuvrir={ouvrirDoc} />}
+              {onglet === "comptes" && <OngletComptes moi={session.userId} onChangement={() => void charger()} />}
+            </>
+          )}
+        </>
+      )}
+    </Page>
   );
 }

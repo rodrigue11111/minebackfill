@@ -289,7 +289,7 @@ def apply_essai_adjustments(*,
         # mb_ad = (eau ajoutée)/wc_base : le liant suit l'eau, pas les solides.
         if mb_base <= 0.0 or mw_base <= 0.0:
             raise ValueError(
-                "Dosage du liant par W/C impossible : la recette de base doit "
+                "Dosage du liant selon le rapport E/L impossible : la recette de base doit "
                 "avoir un liant (Bw > 0) et de l'eau (Cw < 100 %)."
             )
         wc_base = mw_base / mb_base

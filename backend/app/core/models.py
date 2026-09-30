@@ -435,7 +435,7 @@ def _verifier_dose_binder_by_wc(base, adjustments, num_recipes: int) -> None:
             bw = float(bw_list[i]) if i < len(bw_list) else 0.0
             if bw <= 0.0:
                 raise ValueError(
-                    f"Recette {i + 1} : le dosage du liant par W/C "
+                    f"Recette {i + 1} : le dosage du liant selon le rapport E/L "
                     "(option de l'essai, Belem et al. 2018 §3.2.3) exige un "
                     "Bw > 0 sur la recette de base."
                 )

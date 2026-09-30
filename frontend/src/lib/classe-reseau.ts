@@ -213,18 +213,29 @@ export async function nbReponsesNonLues(sb: SupabaseClient): Promise<number> {
   return Number(data) || 0;
 }
 
-/** Étudiant : répond sur SON document (repondre_annotation fait les contrôles). */
+/**
+ * Étudiant : répond sur SON document (le serveur fait les contrôles). Avec une
+ * ancre (une pesée, une éprouvette), la réponse va sous la note de
+ * l'enseignant visée (repondre_annotation_ancree). Base pas encore à jour :
+ * repli sur repondre_annotation — la réponse part alors au fil général.
+ */
 export async function repondreAnnotation(sb: SupabaseClient, r: {
-  attendu: string; kind: "resultat" | "gachee"; id: string; rev: number | null; texte: string;
+  attendu: string; kind: "resultat" | "gachee"; id: string; rev: number | null; texte: string; ancre?: string | null;
 }): Promise<Annotation> {
-  const { data, error } = await sb.rpc("repondre_annotation", {
-    p_attendu: r.attendu, p_kind: r.kind, p_id: r.id, p_rev: r.rev, p_texte: r.texte,
-  });
+  const base = { p_attendu: r.attendu, p_kind: r.kind, p_id: r.id, p_rev: r.rev, p_texte: r.texte };
+  let ancre = r.ancre ?? null;
+  let { data, error } = ancre
+    ? await sb.rpc("repondre_annotation_ancree", { ...base, p_ancre: ancre })
+    : await sb.rpc("repondre_annotation", base);
+  if (error && ancre && schemaPasAJour(error.code)) {
+    ancre = null;
+    ({ data, error } = await sb.rpc("repondre_annotation", base));
+  }
   if (error) throw echec(error);
   const x = (Array.isArray(data) ? data[0] : data) as { annotation_id: string; cree_serveur: string; maj_serveur: string } | undefined;
   if (!x) throw new ErreurClasse("reseau", "réponse non enregistrée");
   return {
-    id: x.annotation_id, cibleKind: r.kind, cibleId: r.id, cibleRev: r.rev, ancre: null, texte: r.texte.trim(),
+    id: x.annotation_id, cibleKind: r.kind, cibleId: r.id, cibleRev: r.rev, ancre: ancre?.trim() || null, texte: r.texte.trim(),
     supprime: false, maj: x.maj_serveur, auteur: "moi", creeLe: x.cree_serveur, luLe: null,
   };
 }

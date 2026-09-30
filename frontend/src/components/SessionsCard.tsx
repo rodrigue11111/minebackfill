@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Carte } from "@/components/ui/Carte";
+import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
 import { useStore } from "@/lib/store";
 import { erreursSession, sessionActive, type Session } from "@/lib/sessions";
 
@@ -36,19 +38,15 @@ export default function SessionsCard({ vueAdmin, peutPublier, onPublier }: {
   const erreurs = liste.map(erreursSession);
   const valide = erreurs.every((e) => e.length === 0) && new Set(liste.map((s) => s.id)).size === liste.length;
 
-  const champ: React.CSSProperties = { border: "1px solid #cbd5e1", borderRadius: 6, padding: "5px 8px", fontSize: 12.5 };
+  const champ: React.CSSProperties = { minHeight: 38, padding: "6px 12px", fontSize: 14, width: "auto" };
 
   return (
-    <div className="form-card" style={{ marginTop: 20 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Sessions de cours</h2>
-        {vueAdmin && peutPublier && brouillon === null && sessions.length > 0 && (
-          <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => onPublier(sessions)}>
-            Publier en ligne
-          </button>
-        )}
-      </div>
-      <p style={{ color: "var(--muted-foreground)", fontSize: 13.5, margin: "6px 0 14px" }}>
+    <Carte titre="Sessions de cours" actions={vueAdmin && peutPublier && brouillon === null && sessions.length > 0 ? (
+      <button type="button" className="btn-secondary" onClick={() => onPublier(sessions)}>
+        Publier en ligne
+      </button>
+    ) : undefined}>
+      <p className="classe-intro">
         Chaque résultat et chaque gâchée créés pendant une session la portent : l&apos;Historique,
         le Labo et le tableau de bord de la classe se filtrent par session, d&apos;une année à
         l&apos;autre. Le travail antérieur est rangé d&apos;après sa date ; hors de toute session, il
@@ -57,35 +55,37 @@ export default function SessionsCard({ vueAdmin, peutPublier, onPublier }: {
       </p>
 
       {liste.length === 0 ? (
-        <p style={{ fontSize: 13, color: "#94a3b8" }}>Aucune session définie.</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <p className="classe-rien">Aucune session définie.</p>
+      ) : !vueAdmin ? (
+        <ListeGroupee encadree>
           {liste.map((s, i) => (
-            <div key={i}>
-              {vueAdmin ? (
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <input style={{ ...champ, width: 110 }} value={s.id} aria-label="Identifiant"
+            <LigneListe key={i} libelle={s.nom} valeur={`du ${s.debut} au ${s.fin}`} />
+          ))}
+        </ListeGroupee>
+      ) : (
+        <div className="regl-lignes">
+          {liste.map((s, i) => (
+            <div key={i} className="regl-session">
+              {vueAdmin && (
+                <div className="regl-session-champs">
+                  <input className="field-input" style={{ ...champ, width: 120 }} value={s.id} aria-label="Identifiant"
                     onChange={(e) => modifier(i, { id: e.target.value.trim() })} />
-                  <input style={{ ...champ, flex: "1 1 160px" }} value={s.nom} aria-label="Nom"
+                  <input className="field-input" style={{ ...champ, flex: "1 1 160px" }} value={s.nom} aria-label="Nom"
                     onChange={(e) => modifier(i, { nom: e.target.value })} />
-                  <label style={{ fontSize: 12, color: "#64748b" }}>du{" "}
-                    <input type="date" style={champ} value={s.debut} onChange={(e) => modifier(i, { debut: e.target.value })} />
+                  <label className="ui-filtre">du{" "}
+                    <input type="date" className="field-input" style={champ} value={s.debut} onChange={(e) => modifier(i, { debut: e.target.value })} />
                   </label>
-                  <label style={{ fontSize: 12, color: "#64748b" }}>au{" "}
-                    <input type="date" style={champ} value={s.fin} onChange={(e) => modifier(i, { fin: e.target.value })} />
+                  <label className="ui-filtre">au{" "}
+                    <input type="date" className="field-input" style={champ} value={s.fin} onChange={(e) => modifier(i, { fin: e.target.value })} />
                   </label>
-                  <button type="button" className="btn-secondary" style={{ fontSize: 12, color: "#b91c1c" }}
+                  <button type="button" className="btn-discret btn-danger"
                     onClick={() => setBrouillon(liste.filter((_, j) => j !== i))}>
                     Retirer
                   </button>
                 </div>
-              ) : (
-                <div style={{ fontSize: 13.5 }}>
-                  <strong>{s.nom}</strong> — du {s.debut} au {s.fin}
-                </div>
               )}
               {erreurs[i].length > 0 && (
-                <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 3 }}>{erreurs[i].join(" ")}</div>
+                <div className="ui-champ-erreur">{erreurs[i].join(" ")}</div>
               )}
             </div>
           ))}
@@ -93,22 +93,22 @@ export default function SessionsCard({ vueAdmin, peutPublier, onPublier }: {
       )}
 
       {vueAdmin && (
-        <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
-          <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={ajouter}>Ajouter une session</button>
+        <div className="regl-actions">
+          <button type="button" className="btn-secondary" onClick={ajouter}>Ajouter une session</button>
           {brouillon !== null && (
             <>
-              <button type="button" className="btn-primary" style={{ fontSize: 12.5 }} disabled={!valide}
+              <button type="button" className="btn-primary" disabled={!valide}
                 onClick={() => { definirSessions(brouillon); setBrouillon(null); }}>
                 Enregistrer
               </button>
-              <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => setBrouillon(null)}>
+              <button type="button" className="btn-secondary" onClick={() => setBrouillon(null)}>
                 Annuler
               </button>
-              {!valide && <span style={{ fontSize: 12, color: "#b91c1c" }}>Corrigez les erreurs (identifiants uniques).</span>}
+              {!valide && <span className="ui-champ-erreur">Corrigez les erreurs (identifiants uniques).</span>}
             </>
           )}
         </div>
       )}
-    </div>
+    </Carte>
   );
 }

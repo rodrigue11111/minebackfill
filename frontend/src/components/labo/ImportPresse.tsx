@@ -19,9 +19,13 @@ import type { Eprouvette, EssaiUCS } from "@/lib/eprouvette";
  * de commentaires libre. Deviner la correspondance placerait une mesure sur
  * la mauvaise éprouvette sans que personne ne s'en aperçoive.
  */
-export default function ImportPresse({ eprouvettes, onAppliquer }: {
+export default function ImportPresse({ eprouvettes, onAppliquer, idEntree, sansBouton = false }: {
   eprouvettes: Eprouvette[];
   onAppliquer: (affectations: { eprouvetteId: string; essai: Partial<EssaiUCS> }[]) => void;
+  /** Id du champ fichier : un <label htmlFor> ailleurs (en-tête de la gâchée) peut l'ouvrir. */
+  idEntree?: string;
+  /** Le bouton est ailleurs (en-tête) : ne garder que le champ et l'aperçu. */
+  sansBouton?: boolean;
 }) {
   const ref = React.useRef<HTMLInputElement>(null);
   const [essais, setEssais] = React.useState<EssaiPresse[] | null>(null);
@@ -88,30 +92,41 @@ export default function ImportPresse({ eprouvettes, onAppliquer }: {
   }
 
   const nbAffectes = essais ? new Set(Object.values(cible).filter(Boolean)).size : 0;
-  const td: React.CSSProperties = { padding: "4px 6px", fontSize: 12, whiteSpace: "nowrap" };
+  const td: React.CSSProperties = { padding: "6px 8px", fontSize: 13, whiteSpace: "nowrap", borderTop: "1px solid var(--filet)" };
+
+  if (sansBouton && !essais && !erreur && !occupe) {
+    return (
+      <input id={idEntree} ref={ref} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        style={{ display: "none" }}
+        onChange={(e) => { void choisir(e.target.files?.[0]); e.target.value = ""; }} />
+    );
+  }
 
   return (
     <div>
-      <button type="button" className="btn-secondary" style={{ fontSize: 12 }}
-        disabled={occupe || eprouvettes.length === 0}
-        onClick={() => ref.current?.click()}
-        title="Lit un classeur de presse et remplit les essais, sans ressaisie">
-        {occupe ? "Lecture…" : "Importer un fichier de presse (.xlsx)"}
-      </button>
-      <input ref={ref} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      {!sansBouton && (
+        <button type="button" className="btn-secondary"
+          disabled={occupe || eprouvettes.length === 0}
+          onClick={() => ref.current?.click()}
+          title="Lit un classeur de presse et remplit les essais, sans ressaisie">
+          {occupe ? "Lecture…" : "Importer un fichier de presse (.xlsx)"}
+        </button>
+      )}
+      {sansBouton && occupe && <p className="labo-vide">Lecture du fichier de presse…</p>}
+      <input id={idEntree} ref={ref} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         style={{ display: "none" }}
         onChange={(e) => { void choisir(e.target.files?.[0]); e.target.value = ""; }} />
 
       {erreur && (
-        <p style={{ marginTop: 8, fontSize: 12.5, color: "#b91c1c" }}>{erreur}</p>
+        <p role="alert" className="ui-champ-erreur" style={{ marginTop: 8 }}>{erreur}</p>
       )}
 
       {essais && (
-        <div style={{ marginTop: 12, border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 8, padding: "10px 12px" }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#1e3a8a", marginBottom: 8 }}>
+        <div className="labo-import">
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
             {essais.length} essai{essais.length > 1 ? "s" : ""} lu{essais.length > 1 ? "s" : ""} dans « {nomFichier} »
           </div>
-          <p style={{ fontSize: 11.5, color: "#1e40af", margin: "0 0 10px", lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: "var(--texte-2)", margin: "0 0 10px", lineHeight: 1.5 }}>
             Le fichier ne porte aucun code d&apos;éprouvette : choisissez vous-même à quelle
             éprouvette chaque essai correspond. Les propositions ci-dessous ne sont qu&apos;un
             ordre de remplissage, pas une déduction.
@@ -119,7 +134,7 @@ export default function ImportPresse({ eprouvettes, onAppliquer }: {
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
               <thead>
-                <tr style={{ textAlign: "left", color: "#475569" }}>
+                <tr style={{ textAlign: "left", color: "var(--texte-2)" }}>
                   <th style={td}>Échantillon</th>
                   <th style={td}>Contrainte</th>
                   <th style={td}>Module E</th>
@@ -130,7 +145,7 @@ export default function ImportPresse({ eprouvettes, onAppliquer }: {
               </thead>
               <tbody>
                 {essais.map((e) => (
-                  <tr key={e.echantillon} style={{ borderTop: "1px solid #dbeafe" }}>
+                  <tr key={e.echantillon}>
                     <td style={td}>{e.echantillon}</td>
                     <td style={{ ...td, fontWeight: 700 }}>
                       {e.contrainteKpa !== null ? `${Math.round(e.contrainteKpa).toLocaleString("fr-CA")} kPa` : "—"}
@@ -143,7 +158,7 @@ export default function ImportPresse({ eprouvettes, onAppliquer }: {
                     <td style={td}>
                       <select value={cible[e.echantillon] ?? ""}
                         onChange={(ev) => setCible((c) => ({ ...c, [e.echantillon]: ev.target.value }))}
-                        style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "4px 8px", fontSize: 12, maxWidth: 190 }}>
+                        className="field-input" style={{ minHeight: 34, padding: "4px 30px 4px 10px", fontSize: 13, maxWidth: 220 }}>
                         <option value="">— ne pas importer —</option>
                         {eprouvettes.map((ep) => (
                           <option key={ep.id} value={ep.id}>
@@ -159,26 +174,26 @@ export default function ImportPresse({ eprouvettes, onAppliquer }: {
           </div>
 
           {courbes.size > 0 && (
-            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12, color: "#1e40af" }}>
+            <label className="mix-case" style={{ marginTop: 10 }}>
               <input type="checkbox" checked={garderCourbe} onChange={(ev) => setGarderCourbe(ev.target.checked)} />
               Conserver la courbe contrainte-déformation
-              <span style={{ color: "#475569" }}>
+              <span style={{ color: "var(--texte-2)" }}>
                 ({[...courbes.entries()].map(([k, v]) => `${origine.get(k)?.toLocaleString("fr-CA")} points réduits à ${v.length}`).join(" · ")})
               </span>
             </label>
           )}
-          <p style={{ fontSize: 11, color: "#475569", margin: "6px 0 0", lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12.5, color: "var(--texte-2)", margin: "6px 0 0", lineHeight: 1.5 }}>
             La courbe complète pèse plusieurs mégaoctets : seule une sélection de points
             <strong> réellement mesurés</strong> est conservée, dont le point de contrainte maximale.
             Aucune valeur n&apos;est moyennée ni interpolée.
           </p>
 
           <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-            <button type="button" className="btn-primary" style={{ fontSize: 12.5 }}
+            <button type="button" className="btn-primary"
               disabled={nbAffectes === 0} onClick={appliquer}>
               Importer {nbAffectes} essai{nbAffectes > 1 ? "s" : ""}
             </button>
-            <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }}
+            <button type="button" className="btn-secondary"
               onClick={() => { setEssais(null); setCible({}); }}>
               Annuler
             </button>

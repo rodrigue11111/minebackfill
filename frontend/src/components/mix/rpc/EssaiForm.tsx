@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
@@ -12,36 +12,8 @@ import {
 } from "@/lib/rpc_payload";
 import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
 import { num } from "@/lib/format";
-import { RECIPE_COLORS } from "@/lib/recipe-theme";
-
-const inputStyle: React.CSSProperties = {
-  display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6,
-  padding: "7px 11px", background: "#fff", fontSize: 13.5, outline: "none",
-};
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>{label}</label>
-      {children}
-      {hint && <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{hint}</p>}
-    </div>
-  );
-}
-
-function CardSection({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-      <div style={{ padding: "10px 18px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.07em", color: "#64748b" }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 2 }}>{subtitle}</div>}
-      </div>
-      <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column" as const, gap: 14 }}>
-        {children}
-      </div>
-    </div>
-  );
-}
+import { Field, CardSection, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
+import { Bandeau } from "@/components/ui/Bandeau";
 
 export default function EssaiForm() {
   const {
@@ -140,86 +112,52 @@ export default function EssaiForm() {
   const numRecipes = baseMethod === "dosage_cw" ? (cw.num_recipes || 1) : (wb.num_recipes || 1);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="mix-formulaire">
+      <Bandeau ton="info">
+        <strong>Méthode essai-erreur :</strong> reprend les données de la méthode de base (dosage selon Cw ou selon E/L) et permet d&apos;entrer, par recette, les ajouts réels faits après la mesure de l&apos;affaissement.
+      </Bandeau>
 
-      {/* ── Info banner ── */}
-      <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#0369a1" }}>
-        <strong>Méthode essai-erreur :</strong> réutilise les données de la méthode de base (Cw% ou E/C) et permet d&apos;ajouter des ajustements manuels par recette après mesure du slump.
-      </div>
-
-      {/* ── Base method choice ── */}
-      <CardSection title="Méthode de base" subtitle="Les paramètres sont repris depuis le formulaire correspondant">
-        <div style={{ display: "flex", gap: 10 }}>
-          {[
-            { value: "dosage_cw", label: "Dosage Cw (%)", sub: `${cw.num_recipes || 1} recette${(cw.num_recipes || 1) > 1 ? "s" : ""}` },
-            { value: "wb", label: "Rapport E/C", sub: `${wb.num_recipes || 1} recette${(wb.num_recipes || 1) > 1 ? "s" : ""}` },
-          ].map((opt) => {
-            const active = baseMethod === opt.value;
-            return (
-              <label
-                key={opt.value}
-                style={{
-                  display: "flex", flexDirection: "column" as const, gap: 2, padding: "10px 16px",
-                  borderRadius: 8, border: `1.5px solid ${active ? "#2563eb" : "#e2e8f0"}`,
-                  background: active ? "#eff6ff" : "#fff", cursor: "pointer", minWidth: 160, transition: "all 0.13s",
-                }}
-              >
-                <input type="radio" name="base_method" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setEssai({ base_method: opt.value as "dosage_cw" | "wb" })} />
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: active ? "#2563eb" : "#374151" }}>{opt.label}</span>
-                <span style={{ fontSize: 11.5, color: active ? "#60a5fa" : "#94a3b8" }}>{opt.sub}</span>
-              </label>
-            );
-          })}
-        </div>
+      <CardSection title="Méthode de base" subtitle="Les paramètres sont repris du formulaire correspondant">
+        <ChoixOptions
+          libelle="Recette de base"
+          valeur={baseMethod}
+          onChange={(v) => setEssai({ base_method: v })}
+          options={[
+            { valeur: "dosage_cw", libelle: "Dosage selon Cw", detail: `${cw.num_recipes || 1} recette${(cw.num_recipes || 1) > 1 ? "s" : ""} dans le dosage selon Cw` },
+            { valeur: "wb", libelle: "Dosage selon E/L", detail: `${wb.num_recipes || 1} recette${(wb.num_recipes || 1) > 1 ? "s" : ""} dans le dosage selon E/L` },
+          ]}
+        />
       </CardSection>
 
-      {/* ── Adjustments ── */}
-      <CardSection title={`Ajustements par recette — ${numRecipes} recette${numRecipes > 1 ? "s" : ""}`} subtitle={`Quantités à ajouter après le premier malaxage (${massLabel})`}>
-        <div style={{ display: "flex", flexDirection: "column" as const, gap: 10 }}>
-          {Array.from({ length: numRecipes }).map((_, i) => {
-            const aj = essai.ajustements?.[i] || {};
-            return (
-              <div
-                key={i}
-                style={{
-                  background: "#f8fafc", borderRadius: 8,
-                  borderLeft: `4px solid ${RECIPE_COLORS[i]}`,
-                  padding: "12px 14px",
-                }}
-              >
-                <div style={{ fontSize: 12, fontWeight: 700, color: RECIPE_COLORS[i], textTransform: "uppercase" as const, letterSpacing: "0.05em", marginBottom: 10 }}>
-                  Recette {i + 1}
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px 12px" }}>
-                  <Field label={`Résidu sec (${massLabel})`}>
-                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_residu_sec, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_sec: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
-                  </Field>
-                  <Field label={`Résidu humide (${massLabel})`}>
-                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
-                  </Field>
-                  <Field label={`Eau (${massLabel})`}>
-                    <input type="number" step="any" style={inputStyle} placeholder="0" value={fromStoreMass(aj.ajout_eau, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_eau: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
-                  </Field>
-                </div>
+      <CardSection title="Ajouts par recette" subtitle={`Quantités ajoutées après le premier malaxage (${massLabel})`}>
+        {Array.from({ length: numRecipes }).map((_, i) => {
+          const aj = essai.ajustements?.[i] || {};
+          return (
+            <div key={i} className="mix-recette">
+              <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
+              <div className="mix-grille-3">
+                <Field label="Résidu sec" unit={massLabel}>
+                  <input type="number" step="any" className="field-input" placeholder="0" value={fromStoreMass(aj.ajout_residu_sec, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_sec: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
+                </Field>
+                <Field label="Résidu humide" unit={massLabel}>
+                  <input type="number" step="any" className="field-input" placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
+                </Field>
+                <Field label="Eau" unit={massLabel}>
+                  <input type="number" step="any" className="field-input" placeholder="0" value={fromStoreMass(aj.ajout_eau, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_eau: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
+                </Field>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </CardSection>
 
-      {/* ── Mesures laboratoire (feuille Intra 2017, lignes 72-77) ── */}
       <MesuresLabo numRecipes={numRecipes} recipes={essaiResult?.recipes} />
 
-      {/* ── Actions ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button type="button" onClick={handleCompute} disabled={loading} className="btn-primary">
-          {loading ? (<><span style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Calcul en cours…</>) : "▶ Lancer le calcul"}
-        </button>
-        <button type="button" className="btn-secondary" onClick={() => { setEssai({ base_method: "dosage_cw", ajustements: [] }); setEssaiResult(null); setError(null); }}>
-          Réinitialiser
-        </button>
-      </div>
-
+      <PiedFormulaire
+        loading={loading}
+        onCalculer={handleCompute}
+        onReinitialiser={() => { setEssai({ base_method: "dosage_cw", ajustements: [] }); setEssaiResult(null); setError(null); }}
+      />
       <ErrorBox message={error} />
     </div>
   );

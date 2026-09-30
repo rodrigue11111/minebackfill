@@ -2,14 +2,15 @@
 // Registre UNIQUE des catégories et méthodes de calcul. Toute la connaissance
 // « quelle méthode existe, pour quelle catégorie, avec quel libellé, quel
 // endpoint et quelles tranches de store » vit ici — au lieu d'être éparpillée
-// en tableaux/échelles ternaires divergents (LeftPane, mix/page, ResultsPanel,
+// en tableaux/échelles ternaires divergents (page Calculs, ResultsPanel,
 // store, historique, exports). Ajouter une méthode = 1 entrée ici + 1
 // composant de formulaire + 1 solveur backend.
 //
 // Import type-only depuis le store (effacé à la compilation : pas de cycle —
 // le store importe ce module en valeur, ce module n'importe que des types).
 
-import type { Category, SavedMethod } from "./store";
+import type { Category, RpcMethod, SavedMethod } from "./store";
+import { T } from "./glossaire";
 
 /** Clés des tranches d'état/résultat du store (une paire par méthode). */
 export type MethodStateKey =
@@ -30,6 +31,10 @@ export interface MethodDescriptor {
     long: string;
     /** Libellé court (historique, sous-titres d'exports). */
     court: string;
+    /** Fragment de nom de fichier (exports) : ASCII, sans espace. */
+    fichier: string;
+    /** Très court, pour le contrôle segmenté du téléphone. */
+    telephone: string;
   };
   /** Complément affiché dans le panneau de gauche. */
   description: string;
@@ -40,61 +45,61 @@ export interface MethodDescriptor {
 }
 
 export const CATEGORY_INFO: { id: Category; label: string; desc: string }[] = [
-  { id: "RPC", label: "RPC", desc: "Remblai en pâte cimenté" },
-  { id: "RPG", label: "RPG", desc: "Remblai pâte granulaire" },
-  { id: "RRC", label: "RRC", desc: "Remblai rocheux cimenté" },
+  { id: "RPC", label: T.rpc.court, desc: T.rpc.long },
+  { id: "RPG", label: T.rpg.court, desc: T.rpg.long },
+  { id: "RRC", label: T.rrc.court, desc: T.rrc.long },
 ];
 
 export const METHOD_REGISTRY: MethodDescriptor[] = [
   // ── RPC ──
   {
     category: "RPC", method: "dosage_cw",
-    labels: { long: "Dosage selon Cw (%)", court: "Cw%" },
-    description: "% solide massique fixe",
+    labels: { long: "Dosage selon Cw", court: "Selon Cw", fichier: "dosage-Cw", telephone: "Cw" },
+    description: "Pourcentage solide massique fixé",
     endpoint: "/rpc/cw", stateKey: "cw", resultKey: "cwResult",
   },
   {
     category: "RPC", method: "wb",
-    labels: { long: "Rapport eau/ciment (W/C)", court: "E/C" },
-    description: "Rapport eau / ciment",
+    labels: { long: "Dosage selon E/L", court: "Selon E/L", fichier: "dosage-EL", telephone: "E/L" },
+    description: "Rapport eau/liant fixé",
     endpoint: "/rpc/wb", stateKey: "wb", resultKey: "wbResult",
   },
   {
     category: "RPC", method: "slump",
-    labels: { long: "Ajustement pour slump", court: "Slump" },
-    description: "Correction par affaissement",
+    labels: { long: "Modèle prédictif (affaissement)", court: "Modèle prédictif", fichier: "modele-predictif", telephone: "Prédictif" },
+    description: "Cw prédit à partir de l'affaissement visé",
     endpoint: "/rpc/slump", stateKey: "slump", resultKey: "slumpResult",
   },
   {
     category: "RPC", method: "essai",
-    labels: { long: "Méthode essai-erreur", court: "Essai-erreur" },
-    description: "Ajustements manuels",
+    labels: { long: "Méthode essai-erreur", court: "Essai-erreur", fichier: "essai-erreur", telephone: "Essai" },
+    description: "Ajouts réels après mesure de l'affaissement",
     endpoint: "/rpc/essai", stateKey: "essai", resultKey: "essaiResult",
   },
-  // ── RPG (pas de slump : méthode empirique spécifique RPC) ──
+  // ── RPG (pas de modèle prédictif : il est calé sur le RPC) ──
   {
     category: "RPG", method: "dosage_cw",
-    labels: { long: "Dosage selon Cw (%)", court: "Cw%" },
-    description: "% solide massique fixe",
+    labels: { long: "Dosage selon Cw", court: "Selon Cw", fichier: "dosage-Cw", telephone: "Cw" },
+    description: "Pourcentage solide massique fixé",
     endpoint: "/rpg/cw", stateKey: "rpgCw", resultKey: "rpgCwResult",
   },
   {
     category: "RPG", method: "wb",
-    labels: { long: "Rapport eau/ciment (W/C)", court: "E/C" },
-    description: "Rapport eau / ciment",
+    labels: { long: "Dosage selon E/L", court: "Selon E/L", fichier: "dosage-EL", telephone: "E/L" },
+    description: "Rapport eau/liant fixé",
     endpoint: "/rpg/wb", stateKey: "rpgWb", resultKey: "rpgWbResult",
   },
   {
     category: "RPG", method: "essai",
-    labels: { long: "Méthode essai-erreur", court: "Essai-erreur" },
-    description: "Ajustements manuels",
+    labels: { long: "Méthode essai-erreur", court: "Essai-erreur", fichier: "essai-erreur", telephone: "Essai" },
+    description: "Ajouts réels après mesure de l'affaissement",
     endpoint: "/rpg/essai", stateKey: "rpgEssai", resultKey: "rpgEssaiResult",
   },
   // ── RRC ──
   {
     category: "RRC", method: "rrc",
-    labels: { long: "Dosage Bw et W/C (CRF)", court: "CRF" },
-    description: "Remblai rocheux cimenté",
+    labels: { long: "Dosage selon Bw et E/L du coulis", court: "Bw et E/L du coulis", fichier: "RRC", telephone: "RRC" },
+    description: T.rrc.long,
     endpoint: "/rrc/dosage", stateKey: "rrc", resultKey: "rrcResult",
   },
 ];
@@ -122,7 +127,20 @@ export function methodsFor(category: Category): MethodDescriptor[] {
 export function methodLabel(
   category: Category,
   method: string,
-  forme: "long" | "court" = "court",
+  forme: "long" | "court" | "fichier" = "court",
 ): string {
   return descriptorFor(category, method)?.labels[forme] ?? method;
+}
+
+/**
+ * Méthode à garder quand on change de catégorie : la méthode courante si la
+ * nouvelle catégorie la propose, sinon le dosage selon Cw (ex. modèle
+ * prédictif -> RPG). RRC n'a pas de liste (formulaire unique) : la méthode est
+ * gardée, pour qu'un aller-retour RPC -> RRC -> RPC retrouve la méthode et ses
+ * résultats.
+ */
+export function methodeApresChangementCategorie(categorie: Category, methode: RpcMethod): RpcMethod {
+  const methodes = methodsFor(categorie);
+  if (methodes.length === 0) return methode;
+  return methodes.some((d) => d.method === methode) ? methode : "dosage_cw";
 }

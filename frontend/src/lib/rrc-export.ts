@@ -1,4 +1,4 @@
-// Exports RRC/CRF — Excel (tableau complet) et feuille de préparation PDF.
+// Exports RRC — Excel (tableau complet) et feuille de préparation PDF.
 // Le RRC a sa propre forme de résultat (RrcRecipe), distincte des recettes
 // pâte (MixState) : exports dédiés, plus simples.
 
@@ -9,6 +9,7 @@ import type { GeneralInfo } from "@/lib/store";
 import { RRC_ROWS } from "@/lib/report-schema";
 import { fmt as fmtNum } from "@/lib/format";
 import { APP_NAME } from "@/lib/branding";
+import { assainirTextePdf } from "@/lib/texte-pdf";
 
 export async function exportRrcExcel(
   recipes: RrcRecipe[],
@@ -22,7 +23,7 @@ export async function exportRrcExcel(
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("RRC");
-  ws.addRow(["MINEBACKFILL — RRC / Remblai rocheux cimenté (CRF)"]).font = { bold: true, size: 14 };
+  ws.addRow(["MINEBACKFILL — Remblai rocheux cimenté (RRC)"]).font = { bold: true, size: 14 };
   ws.addRow([`Projet : ${general.project_name ?? "—"}`, `Opérateur : ${general.operator_name ?? "—"}`]);
   ws.addRow([`Date : ${new Date().toLocaleDateString("fr-CA")}`]);
   ws.addRow([]);
@@ -49,7 +50,7 @@ export async function exportRrcPdf(
   units: UnitPreferences,
 ) {
   const { default: jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const doc = assainirTextePdf(new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }));
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const mL = 14;
@@ -68,13 +69,13 @@ export async function exportRrcPdf(
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(255, 255, 255);
-    doc.text("FEUILLE DE PRÉPARATION — RRC / CRF", mL, 11.5);
+    doc.text("FEUILLE DE PRÉPARATION — REMBLAI ROCHEUX CIMENTÉ", mL, 11.5);
     doc.setFillColor(26, 58, 138);
     doc.rect(0, 18, pageW, 8, "F");
     doc.setFontSize(9);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(200, 210, 240);
-    doc.text(`Recette ${idx + 1}/${recipes.length}  |  Bw = ${fmtNum(r.bw_mass_pct, 2)} %  |  W/C = ${fmtNum(r.wc_ratio, 2)}`, mL, 23.5);
+    doc.text(`Recette ${idx + 1}/${recipes.length}  |  Bw = ${fmtNum(r.bw_mass_pct, 2)} %  |  E/L du coulis = ${fmtNum(r.wc_ratio, 2)}`, mL, 23.5);
 
     let y = 34;
     doc.setFontSize(9.5);
@@ -83,7 +84,7 @@ export async function exportRrcPdf(
       ["Projet", general.project_name || "________________________"],
       ["Opérateur", general.operator_name || "________________________"],
       ["Date", new Date().toLocaleDateString("fr-CA")],
-      ["Chantier", `V = ${fmtNum(r.crf_volume_m3, 1)} m3 — M_CRF = ${fmtNum(toMass(r.total_mass_kg), 0)} ${massLabel}`],
+      ["Chantier", `V = ${fmtNum(r.crf_volume_m3, 1)} m3 — masse totale de RRC = ${fmtNum(toMass(r.total_mass_kg), 0)} ${massLabel}`],
     ];
     infos.forEach(([k, v]) => {
       doc.setFont("helvetica", "bold");
@@ -107,7 +108,7 @@ export async function exportRrcPdf(
       [`Roches stériles M_WR (${massLabel})`, fmtNum(toMass(r.waste_rock_mass_kg), 1)],
       [`Ciment M_c (${massLabel})`, fmtNum(toMass(r.cement_mass_kg), 1)],
       [`Eau M_w (${massLabel})`, fmtNum(toMass(r.water_mass_kg), 1)],
-      ["Retardateur V_SR (L)", fmtNum(r.retarder_volume_l, 2)],
+      ["Retardateur de prise V_SR (L)", fmtNum(r.retarder_volume_l, 2)],
     ];
     doc.setFontSize(9.5);
     rows.forEach(([label, value], i) => {
@@ -132,15 +133,15 @@ export async function exportRrcPdf(
     // Coulis
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("Coulis cimentaire (ciment + eau + retardateur)", mL, y);
+    doc.text("Coulis de ciment (ciment + eau + retardateur de prise)", mL, y);
     y += 5.5;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
-    doc.text(`Masse : ${fmtNum(toMass(r.slurry_mass_kg), 1)} ${massLabel}   —   Volume : ${fmtNum(r.slurry_volume_m3, 2)} m3   —   Dosage retardateur D_m : ${fmtNum(r.retarder_dosage_mass_pct, 3)} % de M_c`, mL, y);
+    doc.text(`Masse : ${fmtNum(toMass(r.slurry_mass_kg), 1)} ${massLabel}   —   Volume : ${fmtNum(r.slurry_volume_m3, 2)} m3   —   Dosage en retardateur D_m : ${fmtNum(r.retarder_dosage_mass_pct, 3)} % de M_c`, mL, y);
     y += 8;
 
     doc.setFontSize(9.5);
-    doc.text(`Contrôles : w = ${fmtNum(r.w_mass_pct, 2)} %   Cw = ${fmtNum(r.solids_mass_pct, 2)} %`, mL, y);
+    doc.text(`Contrôles : teneur en eau massique w = ${fmtNum(r.w_mass_pct, 2)} %   pourcentage solide massique Cw = ${fmtNum(r.solids_mass_pct, 2)} %`, mL, y);
     y += 12;
 
     doc.text("Préparé par : ______________________", mL, y);
@@ -148,7 +149,7 @@ export async function exportRrcPdf(
 
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
-    doc.text(`${APP_NAME} — RRC/CRF  |  ${new Date().toLocaleDateString("fr-CA")}`, mL, pageH - 8);
+    doc.text(`${APP_NAME} — RRC  |  ${new Date().toLocaleDateString("fr-CA")}`, mL, pageH - 8);
   });
 
   doc.save(`MineBackfill_RRC_preparation_${new Date().toISOString().slice(0, 10)}.pdf`);

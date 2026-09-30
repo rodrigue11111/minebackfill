@@ -63,7 +63,7 @@ const tete = (c: Contexte): CelluleCsv[] => [
   c.e.nom, c.e.email ?? "", c.session, c.g.code, jour(c.g.creeLe), c.g.categorie, c.g.formulationLabel ?? "",
   c.p?.cwPct ?? null, c.p?.wcRatio ?? null, c.p?.bwPct ?? null, c.p?.wPct ?? null,
 ];
-const EN_TETE_COMMUN = ["Étudiant", "Courriel", "Session", "Gâchée", "Date de gâchée", "Catégorie", "Formulation", "Cw (%)", "W/C", "Bw (%)", "w (%)"];
+const EN_TETE_COMMUN = ["Étudiant", "Courriel", "Session", "Gâchée", "Date de gâchée", "Catégorie", "Formulation", "Cw (%)", "E/L", "Bw (%)", "w (%)"];
 
 export const EN_TETES_EPROUVETTES = [
   ...EN_TETE_COMMUN, "Éprouvette", "Coulée le", "Âge cible (j)", "Échéance", "Statut", "Date d'essai", "Âge réel (j)",

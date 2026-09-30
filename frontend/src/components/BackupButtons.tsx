@@ -54,7 +54,6 @@ export default function BackupButtons() {
       <button
         type="button"
         className="btn-secondary"
-        style={{ padding: "7px 14px", fontSize: 12.5 }}
         onClick={() => exporterDonnees()}
         title="Télécharge un fichier JSON contenant toutes vos données locales : résultats sauvegardés, mesures de laboratoire (gâchées, éprouvettes, essais UCS), protocoles, réglages et unités"
       >
@@ -63,7 +62,6 @@ export default function BackupButtons() {
       <button
         type="button"
         className="btn-secondary"
-        style={{ padding: "7px 14px", fontSize: 12.5 }}
         onClick={() => fileRef.current?.click()}
         title="Restaure une sauvegarde : les entrées sont fusionnées, les réglages remplacés"
       >
@@ -80,7 +78,7 @@ export default function BackupButtons() {
         }}
       />
       {message && (
-        <span style={{ fontSize: 12, fontWeight: 600, color: message.ok ? "#16a34a" : "#dc2626" }}>
+        <span role={message.ok ? "status" : "alert"} style={{ fontSize: 13.5, fontWeight: 600, color: message.ok ? "var(--succes-texte)" : "var(--danger-texte)" }}>
           {message.texte}
         </span>
       )}

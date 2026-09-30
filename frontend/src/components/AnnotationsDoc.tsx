@@ -22,12 +22,17 @@ export default function AnnotationsDoc({ kind, id }: { kind: "resultat" | "gache
   return <FilEtudiant kind={kind} id={id} liste={annotationsDe(toutes, kind, id)} connecte={connecte} />;
 }
 
-/** Le fil lui-même, à partir de données simples (testable sans magasin). */
-export function FilEtudiant({ kind, id, liste, connecte }: {
+/**
+ * Le fil lui-même, à partir de données simples (testable sans magasin).
+ * `ancre` : fil d'une note EN CONTEXTE (une pesée, une éprouvette) — la
+ * réponse part sous cette note, et le cadre est allégé.
+ */
+export function FilEtudiant({ kind, id, liste, connecte, ancre = null }: {
   kind: "resultat" | "gachee";
   id: string;
   liste: Annotation[];
   connecte: boolean;
+  ancre?: string | null;
 }) {
   const [texte, setTexte] = useState("");
   const [ouvert, setOuvert] = useState(false);
@@ -45,7 +50,7 @@ export function FilEtudiant({ kind, id, liste, connecte }: {
   const envoyer = async () => {
     setOccupe(true);
     setErreur(null);
-    const e = await repondreCommentaire(kind, id, texte);
+    const e = await repondreCommentaire(kind, id, texte, ancre);
     setOccupe(false);
     // Texte gardé en cas d'échec : rien n'est perdu.
     if (e) { setErreur(e); return; }
@@ -59,55 +64,56 @@ export function FilEtudiant({ kind, id, liste, connecte }: {
   };
 
   return (
-    <div style={{ marginTop: 12, border: "1px solid #c7d2fe", background: "#eef2ff", borderRadius: 8, padding: "10px 12px" }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#3730a3", marginBottom: 6 }}>Échanges avec l&apos;enseignant</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div className={ancre ? "fil fil-contexte" : "fil"}>
+      {!ancre && <div className="fil-titre">Échanges avec l&apos;enseignant</div>}
+      <div className="fil-liste">
         {liste.map((a) => {
           const moi = a.auteur === "moi";
           return (
-            <div key={a.id} style={{
-              fontSize: 13, color: "#1e1b4b", lineHeight: 1.5,
-              ...(moi ? { background: "#fff", border: "1px solid #e0e7ff", borderRadius: 6, padding: "6px 9px", marginLeft: 18 } : {}),
-            }}>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: moi ? "#475569" : "#3730a3" }}>{moi ? "Vous" : "Enseignant"}</div>
-              {a.ancre && <span style={{ fontWeight: 700 }}>{a.ancre} — </span>}
-              <span style={{ whiteSpace: "pre-wrap" }}>{a.texte}</span>
-              <div style={{ fontSize: 11.5, color: "#6366f1", marginTop: 2, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "baseline" }}>
-                <span>
-                  {dateHeure(a.creeLe)}
-                  {!moi && a.cibleRev !== null && revActuelle !== null && revActuelle > a.cibleRev
-                    ? " · écrit sur une version antérieure, modifiée depuis" : ""}
-                  {moi && (a.luLe ? ` · vu par l'enseignant le ${dateHeure(a.luLe)}` : " · pas encore lu par l'enseignant")}
-                </span>
-                {moi && (
-                  <button type="button" onClick={() => void retirer(a.id)}
-                    style={{ background: "none", border: "none", color: "#6366f1", cursor: "pointer", fontSize: 11.5, padding: 0 }}>
-                    Retirer
-                  </button>
-                )}
+            <div key={a.id} className={moi ? "fil-message fil-moi" : "fil-message"}>
+              <span className={moi ? "fil-avatar fil-avatar-moi" : "fil-avatar"} aria-hidden="true">{moi ? "V" : "E"}</span>
+              <div className="fil-bulle">
+                <div className="fil-auteur">
+                  <strong>{moi ? "Vous" : "Enseignant"}</strong>
+                  <span className="fil-date"> · {dateHeure(a.creeLe)}</span>
+                </div>
+                <div className="fil-texte">
+                  {a.ancre && !ancre && <strong>{a.ancre} — </strong>}
+                  <span style={{ whiteSpace: "pre-wrap" }}>{a.texte}</span>
+                </div>
+                <div className="fil-pied">
+                  <span>
+                    {!moi && a.cibleRev !== null && revActuelle !== null && revActuelle > a.cibleRev
+                      ? "écrit sur une version antérieure, modifiée depuis" : ""}
+                    {moi && (a.luLe ? `vu par l'enseignant le ${dateHeure(a.luLe)}` : "pas encore lu par l'enseignant")}
+                  </span>
+                  {moi && (
+                    <button type="button" className="fil-lien" onClick={() => void retirer(a.id)}>
+                      Retirer
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
       {!connecte ? (
-        <p style={{ fontSize: 12, color: "#6366f1", margin: "8px 0 0" }}>Connectez-vous (page Compte) pour répondre.</p>
+        <p className="fil-note">Connectez-vous (page Compte) pour répondre.</p>
       ) : !ouvert ? (
-        <button type="button" onClick={() => setOuvert(true)}
-          style={{ marginTop: 8, background: "none", border: "none", color: "#3730a3", cursor: "pointer", fontSize: 12.5, padding: 0, fontWeight: 600 }}>
+        <button type="button" className="btn-discret fil-repondre" onClick={() => setOuvert(true)}>
           Répondre
         </button>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-          <textarea value={texte} onChange={(e) => setTexte(e.target.value)} maxLength={4000} rows={3}
-            placeholder="Votre réponse (visible par l'enseignant)"
-            style={{ border: "1px solid #c7d2fe", borderRadius: 6, padding: "6px 8px", fontSize: 13, fontFamily: "inherit", background: "#fff" }} />
-          {erreur && <div role="alert" style={{ fontSize: 12, color: "#991b1b" }}>Réponse non envoyée : {erreur}. Votre texte est conservé.</div>}
+        <div className="fil-formulaire">
+          <textarea className="field-input" value={texte} onChange={(e) => setTexte(e.target.value)} maxLength={4000} rows={3}
+            placeholder="Votre réponse (visible par l'enseignant)" />
+          {erreur && <div role="alert" className="ui-champ-erreur">Réponse non envoyée : {erreur}. Votre texte est conservé.</div>}
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="btn-primary" style={{ fontSize: 12.5 }} disabled={occupe || !texte.trim()} onClick={() => void envoyer()}>
+            <button type="button" className="btn-primary" disabled={occupe || !texte.trim()} onClick={() => void envoyer()}>
               {occupe ? "…" : "Envoyer la réponse"}
             </button>
-            <button type="button" className="btn-secondary" style={{ fontSize: 12.5 }} onClick={() => { setOuvert(false); setErreur(null); }}>Annuler</button>
+            <button type="button" className="btn-secondary" onClick={() => { setOuvert(false); setErreur(null); }}>Annuler</button>
           </div>
         </div>
       )}

@@ -58,13 +58,13 @@ describe("analyse-fixe — tenuFixe", () => {
     expect(labels("aggregate_fraction_pct")).not.toContain("Am —");
   });
 
-  it("n'annonce Am et le Gs de l'agrégat qu'en RPG", () => {
+  it("n'annonce Am et le Gs du granulat qu'en RPG", () => {
     const rpc = tenuFixe(inst(), "binder_mass_pct").map((x) => x.label).join(" | ");
     expect(rpc).not.toContain("Am —");
-    expect(rpc).not.toContain("Gs de l'agrégat");
+    expect(rpc).not.toContain("Gs du granulat");
     const rpg = tenuFixe(instRpg(), "binder_mass_pct").map((x) => x.label).join(" | ");
     expect(rpg).toContain("Am —");
-    expect(rpg).toContain("Gs de l'agrégat");
+    expect(rpg).toContain("Gs du granulat");
   });
 
   it("dit que le balayage réduit la base à une seule recette", () => {
@@ -78,7 +78,7 @@ describe("analyse-fixe — tenuFixe", () => {
   it("omet le contenant quand l'instantané est ancien (champs absents)", () => {
     const labels = tenuFixe(inst(), "binder_mass_pct").map((x) => x.label);
     expect(labels).not.toContain("Contenant");
-    expect(labels).not.toContain("Facteur de sécurité");
+    expect(labels).not.toContain("Facteur de perte κ");
   });
 
   it("imprime le contenant et l'extensivité quand ils sont présents", () => {

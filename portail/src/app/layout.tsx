@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -18,6 +18,15 @@ export const metadata: Metadata = {
     "Portail des outils de recherche et d'enseignement du programme de M. Belem : remblais miniers en pâte, optimisation de recettes CPB, et plus.",
 };
 
+// Téléphone : le contenu va jusqu'aux bords (encoche) ; la barre haute et le
+// pied réservent les zones de sécurité (env(safe-area-inset-*)).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#FBFBFD",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -25,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}>
+      <body>
         {children}
       </body>
     </html>

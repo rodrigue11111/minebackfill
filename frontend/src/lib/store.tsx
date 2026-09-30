@@ -202,7 +202,7 @@ export interface RpgCwState {
   residue_sg: number;
   residue_w_pct: number;
   aggregate_fraction_pct: number;  // A_m%
-  aggregate_sg: number;            // Gs agrégat
+  aggregate_sg: number;            // Gs du granulat
   num_recipes: 1 | 2 | 3 | 4;
   desired_qty: number;
   safety_factor: number;
@@ -251,7 +251,7 @@ export interface RpgEssaiState {
   base_cw?: RpgCwState;
   base_wb?: RpgWbState;
   ajustements: RpgEssaiAdjustment[];
-  /** Cible de slump du protocole essai-erreur (mm) — défaut 178 (7 po). */
+  /** Affaissement visé du protocole essai-erreur (mm) — défaut 178 (7 po). */
   slump_cible_mm?: number;
 }
 
@@ -261,7 +261,7 @@ export interface RrcState {
   wet_density_kg_m3: number;
   total_mass_kg: number;
   num_recipes: 1 | 2 | 3 | 4;
-  binder_pct: number[];   // Bw% par recette
+  binder_pct: number[];   // Bw (%) par recette
   wc_ratio: number[];     // W/C par recette
   cement_sg: number;
   retarder_d0: number;    // ml/100 kg de ciment
@@ -684,13 +684,23 @@ const zeros4 = () => [0, 0, 0, 0];
 const makeLiantId = () =>
   `liant_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+// Noms selon CSA A3001 (types GU, HS) et les feuilles de calcul du professeur
+// (« (T10) GU », « (T50) HS », « Slag (GGBFS) ») ; ids, codes et Gs inchangés.
 const catalogueLiantsDefaut: LiantCatalogueItem[] = [
-  { id: "liant_cp10", code: "CP10", nom: "Ciment CP10", gs: 3.1543, origine: "officiel" },
-  { id: "liant_cp50", code: "CP50", nom: "Ciment CP50", gs: 3.1887, origine: "officiel" },
-  { id: "liant_slag", code: "SLAG", nom: "Laitier", gs: 2.8426, origine: "officiel" },
-  { id: "liant_fly_ash", code: "FLY_ASH", nom: "Fly Ash", gs: 2.6114, origine: "officiel" },
+  { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.1543, origine: "officiel" },
+  { id: "liant_cp50", code: "CP50", nom: "Ciment Portland HS (anc. type 50)", gs: 3.1887, origine: "officiel" },
+  { id: "liant_slag", code: "SLAG", nom: "Laitier de haut fourneau (GGBFS)", gs: 2.8426, origine: "officiel" },
+  { id: "liant_fly_ash", code: "FLY_ASH", nom: "Cendres volantes (FA)", gs: 2.6114, origine: "officiel" },
   { id: "liant_chaux", code: "CHAUX", nom: "Chaux", gs: 2.6, origine: "officiel" },
 ];
+// Noms par défaut jusqu'à la v2 : seul un liant qui porte ENCORE ce nom est
+// renommé en v3 (un nom modifié par l'enseignant ou l'étudiant est conservé).
+const NOMS_LIANTS_V2: Record<string, string> = {
+  liant_cp10: "Ciment CP10",
+  liant_cp50: "Ciment CP50",
+  liant_slag: "Laitier",
+  liant_fly_ash: "Fly Ash",
+};
 const CODES_LIANTS_OFFICIELS = new Set(catalogueLiantsDefaut.map((l) => l.code));
 
 const generalDefaut: GeneralInfo = {
@@ -726,7 +736,7 @@ const constantesDefaut: ConstantesCalcul = {
    ces réglages sont enveloppés dès l'origine par persisted.ts : ils pourront
    être migrés proprement quand leur schéma évoluera (P2 : bibliothèques). */
 const CATALOGUE_KEY = "minebackfill_catalogue_liants";
-export const CATALOGUE_VERSION = 2; // v2 : ajout du champ `origine`
+export const CATALOGUE_VERSION = 3; // v2 : champ `origine` ; v3 : noms normalisés des liants
 const CONSTANTES_KEY = "minebackfill_constantes";
 const GENERAL_KEY = "minebackfill_general";
 // Versions scindées (elles partageaient SETTINGS_VERSION) : les constantes
@@ -743,12 +753,20 @@ const identityMigration = (d: unknown) => d;
 
 // v0/v1 -> v2 : les liants sans `origine` reçoivent « officiel » pour les codes
 // par défaut du professeur, « perso » sinon.
-const migrationCatalogueLiants = (d: unknown): unknown => {
+// v2 -> v3 : un liant par défaut qui porte encore son ancien nom reçoit le nom
+// normalisé ; tout autre nom (modifié à la main) est laissé tel quel.
+const nomsV3 = new Map(catalogueLiantsDefaut.map((l) => [l.id, l.nom]));
+export const migrationCatalogueLiants = (d: unknown, fromVersion = 0): unknown => {
   if (!Array.isArray(d)) return d;
   return d.map((item) => {
-    const it = item as LiantCatalogueItem;
-    if (it.origine) return it;
-    return { ...it, origine: CODES_LIANTS_OFFICIELS.has(it.code) ? "officiel" : "perso" };
+    let it = item as LiantCatalogueItem;
+    if (fromVersion < 2 && !it.origine) {
+      it = { ...it, origine: CODES_LIANTS_OFFICIELS.has(it.code) ? "officiel" : "perso" };
+    }
+    if (fromVersion < 3 && it && typeof it.id === "string" && NOMS_LIANTS_V2[it.id] === it.nom) {
+      it = { ...it, nom: nomsV3.get(it.id) ?? it.nom };
+    }
+    return it;
   });
 };
 
@@ -844,7 +862,7 @@ function persistGeneral(g: GeneralInfo) {
  */
 export function migrerCatalogueLiantsCloud(env: { v: number; data: unknown } | null | undefined): LiantCatalogueItem[] | null {
   if (!env || typeof env.v !== "number" || env.v > CATALOGUE_VERSION) return null;
-  const data = env.v < CATALOGUE_VERSION ? migrationCatalogueLiants(env.data) : env.data;
+  const data = env.v < CATALOGUE_VERSION ? migrationCatalogueLiants(env.data, env.v) : env.data;
   if (!Array.isArray(data) || data.length === 0) return null;
   if (!data.every((i) => i && typeof (i as { id?: unknown }).id === "string")) return null;
   return data as LiantCatalogueItem[];
@@ -1255,7 +1273,7 @@ export const useStore = create<AppState>((set, get) => ({
   rpgEssaiResult: null,
   setRpgEssaiResult: (res) => set({ rpgEssaiResult: res }),
 
-  // ── RRC / CRF ── valeurs par défaut prêtes pour la démo (Dias 66-70)
+  // ── RRC ── valeurs par défaut prêtes pour la démo (Dias 66-70)
   rrc: {
     quantity_mode: "volume",
     volume_m3: 1000,
@@ -1291,7 +1309,7 @@ export const useStore = create<AppState>((set, get) => ({
       const cwPct = 70;                      // Cw initial
       const aggSg = 2.8;                     // Gs granulat (concassé LaRonde)
       const aggPct = 30;                     // Xg pour la démo RPG
-      const bwLevels = [4.5, 3, 5, 6];       // Bw% par recette (recette 1 = 4.5 %, comme la feuille)
+      const bwLevels = [4.5, 3, 5, 6];       // Bw (%) par recette (recette 1 = 4.5 %, comme la feuille)
       const wcLevels = [9.9524, 7, 8, 10];   // W/C recette 1 = valeur D26 de la feuille
 
       // Liants de la feuille : 20 % GU (Gs 3.15) + 80 % Slag GGBFS (Gs 2.9).
@@ -1478,7 +1496,7 @@ export const useStore = create<AppState>((set, get) => ({
       const isRpg = state.category === "RPG";
       const m = state.method;
       // Valeurs de résidu/granulat effectivement envoyées au calcul (l'essai
-      // réutilise l'état de la méthode de base Cw ou E/C) — via le registre.
+      // réutilise l'état de la méthode de base Cw ou E/L) — via le registre.
       const methodeEffective = m === "essai"
         ? (isRpg ? state.rpgEssai : state.essai).base_method
         : m;

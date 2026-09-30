@@ -4,12 +4,13 @@
 
 import { classeEcheance, joursRestants, type ClasseEcheance, type Eprouvette } from "./eprouvette";
 
+// Couleurs de TEXTE (contraste suffisant sur fond blanc), palette de la refonte.
 export const COULEUR_ECHEANCE: Record<ClasseEcheance, string> = {
-  retard: "#dc2626",
-  aujourdhui: "#d97706",
-  proche: "#2563eb",
-  planifie: "#64748b",
-  fait: "#16a34a",
+  retard: "#B3261E",
+  aujourdhui: "#8A4B00",
+  proche: "#0071E3",
+  planifie: "#6E6E73",
+  fait: "#1F7A45",
 };
 
 const p2 = (n: number) => String(n).padStart(2, "0");

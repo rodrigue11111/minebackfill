@@ -160,6 +160,72 @@ la presse, dialoguer, gérer les comptes, archiver la session. Décisions :
   (lecture `select("*")`, repli sur l'ancienne fonction, message « exécutez
   supabase/schema.sql »).
 
+## Refonte épurée et vocabulaire du domaine (2026-09-30)
+Demande : une interface « à la Apple », épurée, choisie sur un canevas de
+maquettes (Calculs : la version « A » d'origine ; le reste : « A améliorée »,
+avec une mise en page téléphone ; le portail dans le même style), et partout
+les termes scientifiques des remblais en pâte cimentés et de l'industrie, avec
+les vrais noms des essais normalisés. Décisions :
+- **Jetons et kit plutôt que retouche page par page.** L'interface comptait
+  1 562 styles en ligne et 1 310 couleurs codées en dur, pour 5 classes
+  globales. Les anciens noms de variables (`--primary`, `--navy`…) pointent
+  vers les nouveaux jetons : tout ce qui les utilisait a changé d'un coup ; les
+  pages ont ensuite été reprises avec le kit `components/ui/`. Les règles CSS
+  transitoires qui visaient des styles en ligne (`div[style*=…]`) ont été
+  retirées à la fin : elles cassaient à la moindre retouche d'un style.
+- **Un seul défilement par page.** Calculs avait trois conteneurs défilants
+  et une poignée de redimensionnement ; ils sont supprimés. Un seul
+  défilement garde les ancres, la recherche du navigateur et le téléphone
+  prévisibles.
+- **Composants du kit sans hook** quand c'est possible : le Guide est un
+  composant serveur et doit pouvoir les employer.
+- **Pas de hook de largeur d'écran.** La vue téléphone (barre d'onglets,
+  sections du Labo, libellés courts) se décide en CSS : même rendu serveur
+  et client, et aucun `setState` dans un effet (lint du React Compiler).
+  Même raison pour `Menu` (API Popover) et `Feuille` (`<dialog>`) : le
+  navigateur gère l'ouverture, Échap et le focus.
+- **Les figures SVG gardent leurs couleurs en ligne.** L'export PNG
+  sérialise le SVG seul ; une variable CSS y deviendrait noire.
+- **Écran court, exports complets.** La carte Résultats n'affiche qu'un
+  résumé (drapeau `resume` dans `report-schema.ts`) et renvoie au rapport
+  complet ; les exports Excel et PDF ignorent ce drapeau : leur contenu ne
+  change pas, un fichier exporté reste complet.
+- **Vocabulaire : une source, sourcée, gardée.** `lib/glossaire.ts` porte les
+  libellés (`T`), le glossaire (chaque entrée cite le cours, un classeur ou le
+  programme) et les normes. Corrections de fond : la méthode « Ajustement
+  pour slump » est le « Modèle prédictif » du professeur ; Bw est rapporté à
+  la masse sèche de résidu (et de granulat), pas au mélange ; Gs est une
+  densité relative sans unité ; « masse volumique » pour ρ. Un test
+  (`terminologie.test.ts`) échoue si un libellé retiré revient. Les symboles
+  du catalogue de formules ne bougent pas : la fenêtre « fx » les relie aux
+  valeurs par `SYMBOL_TO_RECIPE`.
+- **Normes citées, mais à confirmer.** Le cours ne cite aucune norme d'essai.
+  Celles retenues (ASTM C39/C39M pour l'UCS, décision de l'utilisateur ;
+  C143/C143M, C192/C192M, D2216, D854, C188, CSA A3001…) sont les normes
+  usuelles nord-américaines ; le glossaire et le Guide disent qu'elles
+  attendent la validation du professeur.
+- **Catalogue des liants v3 : renommer sans écraser.** Les noms par défaut
+  deviennent « Ciment Portland GU (anc. type 10) », etc. La migration ne
+  renomme qu'un nom resté identique à celui d'origine : un nom choisi par
+  l'enseignant est gardé. Ids, codes et Gs inchangés ; les anciens résultats
+  gardent les noms figés dans leur instantané.
+- **Texte des PDF par une seule fonction.** `pourPdf` (`lib/texte-pdf.ts`)
+  translittère les lettres grecques et remplace les signes hors WinAnsi ; il
+  s'applique à tous les PDF. Cela a corrigé un défaut existant : un « − »
+  illisible dans la feuille labo.
+- **Réponse de l'étudiant sous la note de l'enseignant** : nouvelle fonction
+  SQL `repondre_annotation_ancree`, AJOUTÉE à côté de `repondre_annotation`
+  (même patron de compatibilité que le tableau de bord : l'ancien site marche
+  avec la nouvelle base ; le nouveau site, sur une base pas à jour, répond
+  dans le fil général).
+- **Portail : copie des jetons.** Le portail est une application séparée
+  (build et déploiement propres) ; un paquet partagé aurait coûté plus qu'une
+  copie de 30 lignes, signalée « GARDER EN PHASE ».
+- **Accessibilité des libellés courts.** Sous 720 px, un contrôle segmenté
+  affiche un libellé court ; le long reste lu par les lecteurs d'écran
+  (masqué visuellement, pas `display: none`), sinon le bouton n'a plus de nom.
+- **Hors périmètre, signalé** : `/industrie` (non liée) n'a pas été refaite.
+
 ## Ce que ça implique pour la suite
 - Les golden tests + oracles sont le filet : toute évolution des formules
   passe par eux (recette 6 de `docs/MAINTENANCE.md`).

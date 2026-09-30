@@ -1,6 +1,11 @@
 "use client";
 
 import { useRef } from "react";
+import { Carte } from "@/components/ui/Carte";
+import { Champ } from "@/components/ui/Champ";
+import { Pastille } from "@/components/ui/Pastille";
+import { Icone } from "@/components/ui/Icones";
+import Menu from "@/components/ui/Menu";
 import { useStore } from "@/lib/store";
 import { estOfficiel, type MaterialKind, type MaterialItem } from "@/lib/materials";
 import { materialsVersJson, materialsVersCsv, materialsDepuisFichier } from "@/lib/materials-io";
@@ -49,30 +54,27 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, admin
   };
 
   return (
-    <div className="form-card" style={{ marginTop: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, gap: 8, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{title}</h2>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={() => materialsVersCsv(kind, items)}>
-            Export CSV
+    <Carte titre={title} actions={
+      <span className="regl-actions">
+        <Menu
+          className="btn-discret"
+          declencheur={<>Importer, exporter <span className="ui-chevron-bas"><Icone nom="chevron" taille={11} epaisseur={2.4} /></span></>}
+          elements={[
+            { libelle: "Export CSV", onSelect: () => materialsVersCsv(kind, items) },
+            { libelle: "Export JSON", onSelect: () => materialsVersJson(kind, items) },
+            { libelle: "Importer…", detail: "Fichier CSV ou JSON", onSelect: () => fileRef.current?.click() },
+            "separateur",
+            { libelle: "Restaurer valeurs officielles", onSelect: () => store.restoreOfficialMaterials(kind) },
+          ]}
+        />
+        <button type="button" className="btn-secondary" onClick={() => store.addMaterial(kind, adminMode)}>
+          Ajouter
+        </button>
+        {adminMode && onPublish && (
+          <button type="button" className="btn-primary" onClick={onPublish}>
+            Publier en ligne
           </button>
-          <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={() => materialsVersJson(kind, items)}>
-            Export JSON
-          </button>
-          <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={() => fileRef.current?.click()}>
-            Importer…
-          </button>
-          <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={() => store.restoreOfficialMaterials(kind)}>
-            Restaurer valeurs officielles
-          </button>
-          <button type="button" className="btn-secondary" style={{ fontSize: 12 }} onClick={() => store.addMaterial(kind, adminMode)}>
-            + Ajouter
-          </button>
-          {adminMode && onPublish && (
-            <button type="button" className="btn-primary" style={{ fontSize: 12 }} onClick={onPublish}>
-              Publier en ligne
-            </button>
-          )}
+        )}
           <input
             ref={fileRef}
             type="file"
@@ -80,13 +82,13 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, admin
             style={{ display: "none" }}
             onChange={(e) => { onImport(e.target.files?.[0]); e.target.value = ""; }}
           />
-        </div>
-      </div>
-      {sub && <p style={{ color: "var(--muted-foreground)", fontSize: 12.5, margin: "0 0 12px" }}>{sub}</p>}
+      </span>
+    }>
+      {sub && <p className="classe-intro">{sub}</p>}
 
       {/* Défilement horizontal sur écran étroit : les colonnes gardent une
           largeur lisible au lieu d'écraser les champs. */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowX: "auto" }}>
+      <div className="regl-lignes" style={{ overflowX: "auto" }}>
         {items.map((item, index) => {
           // En mode enseignant, les entrées officielles sont éditables.
           const verrou = estOfficiel(item) && !adminMode;
@@ -94,16 +96,11 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, admin
           return (
             <div
               key={item.id}
-              style={{
-                display: "grid", gridTemplateColumns: gridCols, gap: 8, alignItems: "end",
-                border: "1px solid var(--border)", borderRadius: 8, padding: 10,
-                background: verrou ? "#f8fafc" : "#fff",
-                minWidth: 120 * columns.length + 90,
-              }}
+              className="regl-ligne"
+              style={{ gridTemplateColumns: gridCols, minWidth: 120 * columns.length + 90 }}
             >
               {columns.map((col) => (
-                <div key={col.key}>
-                  <label style={{ display: "block", fontSize: 11.5, color: "#64748b", marginBottom: 4 }}>{col.label}</label>
+                <Champ key={col.key} libelle={col.label}>
                   <input
                     className="field-input"
                     type={col.type === "number" ? "number" : "text"}
@@ -116,16 +113,12 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, admin
                       } as Partial<MaterialItem>, adminMode)
                     }
                   />
-                </div>
+                </Champ>
               ))}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingBottom: 2 }}>
-                {estOfficiel(item) && (
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--primary)", background: "var(--primary-light)", border: "1px solid var(--primary-mid)", padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
-                    officiel
-                  </span>
-                )}
+              <div className="regl-ligne-fin">
+                {estOfficiel(item) && <Pastille ton="accent">officiel</Pastille>}
                 {!verrou && (
-                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: "6px 12px" }} onClick={() => store.deleteMaterial(kind, index, adminMode)}>
+                  <button type="button" className="btn-discret btn-danger" onClick={() => store.deleteMaterial(kind, index, adminMode)}>
                     Supprimer
                   </button>
                 )}
@@ -133,8 +126,8 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, admin
             </div>
           );
         })}
-        {items.length === 0 && <p style={{ fontSize: 12.5, color: "#94a3b8", margin: 0 }}>Aucune entrée.</p>}
+        {items.length === 0 && <p className="classe-rien">Aucune entrée.</p>}
       </div>
-    </div>
+    </Carte>
   );
 }
