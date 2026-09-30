@@ -14,6 +14,8 @@ import MaterialCatalogueCard from "@/components/MaterialCatalogueCard";
 import BackupButtons from "@/components/BackupButtons";
 import SessionsCard from "@/components/SessionsCard";
 import type { Session } from "@/lib/sessions";
+import { APP_NAME_VERSION, MODULE_ID, MODULE_LABEL } from "@/lib/branding";
+import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
 
 export default function ReglagesPage() {
   const {
@@ -405,6 +407,17 @@ export default function ReglagesPage() {
             régulièrement pour ne rien perdre, ou pour les transférer sur un autre poste.
           </p>
           <BackupButtons />
+        </div>
+
+        {/* La barre d'état du bas a été retirée (refonte) : la version vit ici
+            et dans la feuille « Plus » du téléphone. */}
+        <div className="form-card" style={{ marginTop: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, marginBottom: 8 }}>À propos</h2>
+          <ListeGroupee>
+            <LigneListe libelle="Application" valeur={APP_NAME_VERSION} />
+            <LigneListe libelle="Module" valeur={`${MODULE_ID} — ${MODULE_LABEL}`} />
+            <LigneListe libelle="Glossaire et essais normalisés" href="/guide#glossaire" />
+          </ListeGroupee>
         </div>
 
         <p style={{ marginTop: 28, textAlign: "center", fontSize: 12.5, color: "var(--muted-foreground)" }}>

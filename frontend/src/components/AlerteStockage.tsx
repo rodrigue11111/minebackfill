@@ -38,20 +38,20 @@ export default function AlerteStockage() {
     <div
       role="alert"
       style={{
-        background: "#fef2f2",
-        borderBottom: "1px solid #fecaca",
-        color: "#991b1b",
-        fontSize: 13,
+        background: "#FDEDEC",
+        borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
+        color: "#B3261E",
+        fontSize: 13.5,
         lineHeight: 1.5,
-        padding: "10px 16px",
+        padding: "10px max(24px, env(safe-area-inset-left))",
       }}
     >
       <strong>Enregistrement impossible : le stockage du navigateur est plein ou bloqué.</strong>{" "}
       Vos dernières modifications ({quoi}) seront perdues au rechargement de la page.
       Exportez une sauvegarde depuis les{" "}
-      <Link href="/reglages" style={{ color: "#991b1b", fontWeight: 700 }}>Réglages</Link>
+      <Link href="/reglages" style={{ color: "inherit", fontWeight: 700 }}>Réglages</Link>
       , puis consultez le{" "}
-      <Link href="/diagnostic" style={{ color: "#991b1b", fontWeight: 700 }}>Diagnostic</Link>
+      <Link href="/diagnostic" style={{ color: "inherit", fontWeight: 700 }}>Diagnostic</Link>
       {" "}pour voir ce qui occupe la place.
     </div>
   );

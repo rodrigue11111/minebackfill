@@ -2,17 +2,11 @@
 
 import type React from "react";
 import type { ProtocoleFige } from "@/lib/protocole";
+import { Carte as CarteUi } from "@/components/ui/Carte";
 
+/** Carte du kit, avec l'ancienne signature (titre + zone « extra » à droite). */
 export function Carte({ titre, extra, children }: { titre: string; extra?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b" }}>{titre}</span>
-        {extra}
-      </div>
-      <div style={{ padding: "16px" }}>{children}</div>
-    </div>
-  );
+  return <CarteUi titre={titre} actions={extra}>{children}</CarteUi>;
 }
 
 /** Protocole FIGÉ d'une gâchée (lecture seule) : la procédure réellement suivie. */
@@ -23,8 +17,8 @@ export function CarteProtocolesFiges({ snapshot }: { snapshot: ProtocoleFige[] |
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {snapshot.map((p, i) => (
           <div key={i}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 3 }}>{p.titre}</div>
-            <div style={{ fontSize: 12.5, color: "#475569", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{p.contenu}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--texte)", marginBottom: 4 }}>{p.titre}</div>
+            <div style={{ fontSize: 13.5, color: "var(--texte-2)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{p.contenu}</div>
           </div>
         ))}
       </div>

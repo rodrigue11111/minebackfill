@@ -1,14 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
-import NavBar from "@/components/NavBar";
+import BarreHaut from "@/components/ui/BarreHaut";
+import BarreOnglets from "@/components/ui/BarreOnglets";
 import GlobalInputEnhancer from "@/components/GlobalInputEnhancer";
 import StoreHydrator from "@/components/StoreHydrator";
 import CloudSync from "@/components/CloudSync";
 import AlerteStockage from "@/components/AlerteStockage";
 import BandeauSynchro from "@/components/BandeauSynchro";
-import { APP_NAME, APP_NAME_VERSION, MODULE_ID, MODULE_LABEL } from "@/lib/branding";
+import { APP_NAME } from "@/lib/branding";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,8 +22,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} — Outil de dimensionnement`,
-  description: "Outil de calcul des mélanges de remblai cimenté en pâte",
+  title: `${APP_NAME} — Calcul des remblais miniers cimentés`,
+  description: "Calcul des mélanges de remblais miniers cimentés (RPC, RPG, RRC) et suivi du laboratoire",
+};
+
+// Téléphone : le contenu va jusqu'aux bords (encoche, barre du bas) et la
+// barre d'onglets réserve la zone de sécurité (env(safe-area-inset-bottom)).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#FBFBFD",
 };
 
 export default function RootLayout({
@@ -34,25 +44,18 @@ export default function RootLayout({
     <html lang="fr">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
+        style={{ display: "flex", flexDirection: "column" }}
       >
         <GlobalInputEnhancer />
         <StoreHydrator />
         <CloudSync />
-        <NavBar />
+        <BarreHaut />
         <AlerteStockage />
         <BandeauSynchro />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
           {children}
         </div>
-        {/* ── Desktop status bar ── */}
-        <footer className="status-bar">
-          <span className="status-bar-dot" />
-          <span>{APP_NAME_VERSION}</span>
-          <span className="status-bar-sep" />
-          <span>{MODULE_ID} — {MODULE_LABEL}</span>
-          <span style={{ marginLeft: "auto" }}>Desktop</span>
-        </footer>
+        <BarreOnglets />
       </body>
     </html>
   );

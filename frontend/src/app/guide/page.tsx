@@ -704,10 +704,12 @@ export default function GuidePage() {
         {/* ─────────────────────────────────────────── */}
         {/* 9. Glossaire et essais normalisés */}
         {/* ─────────────────────────────────────────── */}
-        <Card accent>
-          <SectionTitle>9. Glossaire et essais normalisés</SectionTitle>
-          <SectionGlossaire />
-        </Card>
+        <div id="glossaire" style={{ scrollMarginTop: 16 }}>
+          <Card accent>
+            <SectionTitle>9. Glossaire et essais normalisés</SectionTitle>
+            <SectionGlossaire />
+          </Card>
+        </div>
 
         {COMPTES_OUVERTS && (
           <Card>

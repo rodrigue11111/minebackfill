@@ -1,6 +1,7 @@
 // Petits éléments partagés du tableau de bord de l'enseignant (/classe).
 
 import type React from "react";
+import { Pastille as PastilleUi, type TonPastille } from "@/components/ui/Pastille";
 
 /** Une couleur par étudiant (figure, pastilles). */
 export const COULEURS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4d7c0f", "#0f766e", "#9333ea"];
@@ -23,24 +24,17 @@ export function nombre(v: number | null | undefined, decimales = 0): string {
   return v.toLocaleString("fr-CA", { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
 }
 
+const TONS: Record<"gris" | "ambre" | "rouge" | "bleu" | "vert" | "violet", TonPastille> = {
+  gris: "neutre", ambre: "alerte", rouge: "danger", bleu: "accent", vert: "succes", violet: "violet",
+};
+
+/** Pastille du kit, avec les anciens noms de tons de la Classe. */
 export function Pastille({ children, ton = "gris", title }: {
   children: React.ReactNode;
-  ton?: "gris" | "ambre" | "rouge" | "bleu" | "vert" | "violet";
+  ton?: keyof typeof TONS;
   title?: string;
 }) {
-  const t = {
-    gris: ["#f1f5f9", "#e2e8f0", "#475569"],
-    ambre: ["#fffbeb", "#fde68a", "#92400e"],
-    rouge: ["#fef2f2", "#fecaca", "#991b1b"],
-    bleu: ["#eff6ff", "#bfdbfe", "#1e40af"],
-    vert: ["#f0fdf4", "#bbf7d0", "#166534"],
-    violet: ["#eef2ff", "#c7d2fe", "#3730a3"],
-  }[ton];
-  return (
-    <span title={title} style={{ display: "inline-block", fontSize: 11, fontWeight: 600, background: t[0], border: `1px solid ${t[1]}`, color: t[2], borderRadius: 999, padding: "1px 8px", whiteSpace: "nowrap" }}>
-      {children}
-    </span>
-  );
+  return <PastilleUi ton={TONS[ton]} title={title}>{children}</PastilleUi>;
 }
 
 export const th: React.CSSProperties = { padding: "8px 10px", borderBottom: "2px solid var(--border)", textAlign: "left", color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" };
