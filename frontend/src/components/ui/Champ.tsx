@@ -6,7 +6,7 @@ export function Champ({ libelle, unite, aide, children, htmlFor, erreur }: {
   libelle: React.ReactNode;
   unite?: React.ReactNode;
   aide?: React.ReactNode;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   /** Id du contrôle (sinon l'étiquette l'enveloppe). */
   htmlFor?: string;
   erreur?: React.ReactNode;

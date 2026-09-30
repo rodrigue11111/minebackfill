@@ -43,7 +43,7 @@ export async function exporterResultat(sr: SavedResult, format: FormatExportResu
   }
   const args = [sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method as RpcMethod, units] as const;
   if (format === "excel") {
-    const { exportToExcel } = await import("@/components/mix/ResultsPanel");
+    const { exportToExcel } = await import("./excel-report");
     exportToExcel(...args);
   } else if (format === "pdf") {
     const { exportToPdf } = await import("./pdf-report");

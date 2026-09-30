@@ -9,6 +9,8 @@
 export interface OptionSegment<V extends string> {
   valeur: V;
   libelle: React.ReactNode;
+  /** Libellé court affiché sur téléphone (≤ 720 px), si le libellé est long. */
+  libelleCourt?: React.ReactNode;
   /** Compteur ou point à droite du libellé. */
   badge?: React.ReactNode;
   desactive?: boolean;
@@ -70,7 +72,12 @@ export default function Segmente<V extends string>({ options, valeur, onChange, 
             className={actif ? "ui-segment ui-segment-actif" : "ui-segment"}
             onClick={() => onChange(o.valeur)}
           >
-            {o.libelle}
+            {o.libelleCourt ? (
+              <>
+                <span className="ui-segment-long">{o.libelle}</span>
+                <span className="ui-segment-court" aria-hidden="true">{o.libelleCourt}</span>
+              </>
+            ) : o.libelle}
             {o.badge}
           </button>
         );

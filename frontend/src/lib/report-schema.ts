@@ -65,6 +65,12 @@ export interface ReportRow {
   when?: (ctx: ReportCtx) => boolean;
   /** Formules liées (popover de l'écran). */
   formulaIds?: string[];
+  /**
+   * Rang dans le tableau RÉSUMÉ de la page Calculs (1 = en tête). Absent : la
+   * ligne n'apparaît que dans le rapport complet. Les exports Excel et PDF
+   * ignorent ce drapeau (ils donnent toujours le rapport complet).
+   */
+  resume?: number;
 }
 
 export const REPORT_SECTIONS: {
@@ -90,13 +96,13 @@ export const REPORT_ROWS: ReportRow[] = [
   /* ── 1. Données du mélange ── */
   // En essai, bw_mass_pct est le Bw ATTEINT (D89) : égal à la cible sous
   // Intra 2017, dilué par un ajout de granulat sous la règle « gramme ».
-  { section: 1, label: (c) => (c.isEssai ? `${libelle("bw")} atteint` : libelle("bw")), unit: cst("%"), getter: (r) => r.bw_mass_pct, digits: 2, bold: true, formulaIds: ["F016"] },
+  { section: 1, label: (c) => (c.isEssai ? `${libelle("bw")} atteint` : libelle("bw")), unit: cst("%"), getter: (r) => r.bw_mass_pct, digits: 2, bold: true, formulaIds: ["F016"], resume: 1 },
   { section: 1, label: cst(libelle("bv")), unit: cst("%"), getter: (r) => r.bv_vol_pct, digits: 2, formulaIds: ["F022"] },
-  { section: 1, label: (c) => (c.isEssai ? "Résidu sec total Mr" : "Résidu sec Mr"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_dry_mass_kg, c.units.mass), digits: 3, bold: true },
-  { section: 1, label: cst("Granulat sec Ma"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.aggregate_dry_mass_kg, c.units.mass), digits: 3, bold: true, when: (c) => c.isRpg },
-  { section: 1, label: (c) => (c.isEssai ? "Liant total Mb" : "Liant Mb"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_total_mass_kg, c.units.mass), digits: 3, bold: true },
+  { section: 1, label: (c) => (c.isEssai ? "Résidu sec total Mr" : "Résidu sec Mr"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_dry_mass_kg, c.units.mass), digits: 3, bold: true, resume: 9 },
+  { section: 1, label: cst("Granulat sec Ma"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.aggregate_dry_mass_kg, c.units.mass), digits: 3, bold: true, when: (c) => c.isRpg, resume: 10 },
+  { section: 1, label: (c) => (c.isEssai ? "Liant total Mb" : "Liant Mb"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_total_mass_kg, c.units.mass), digits: 3, bold: true, resume: 7 },
   { section: 1, label: cst("Résidu humide Mr-hum"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_wet_mass_kg, c.units.mass), digits: 3 },
-  { section: 1, label: cst("Eau totale Mw"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_total_mass_kg, c.units.mass), digits: 3 },
+  { section: 1, label: cst("Eau totale Mw"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_total_mass_kg, c.units.mass), digits: 3, resume: 8 },
   { section: 1, label: cst("Eau à ajouter/retirer Mw-aj"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_to_add_mass_kg, c.units.mass), digits: 3 },
   // Masses par composant de liant (N composants) — générées par index.
   ...Array.from({ length: MAX_BINDER_ROWS }, (_, i): ReportRow => ({
@@ -107,7 +113,7 @@ export const REPORT_ROWS: ReportRow[] = [
     digits: 3,
     when: (c) => c.bcount >= i + 1,
   })),
-  { section: 1, label: cst("Liant à ajouter/retirer Mb-ad"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_to_add_mass_kg, c.units.mass), digits: 3, when: (c) => c.isEssai },
+  { section: 1, label: cst("Liant à ajouter/retirer Mb-ad"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_to_add_mass_kg, c.units.mass), digits: 3, when: (c) => c.isEssai, resume: 11 },
   // Masses « à ajouter » par composant (essai) — générées par index.
   ...Array.from({ length: MAX_BINDER_ROWS }, (_, i): ReportRow => ({
     section: 1,
@@ -120,11 +126,11 @@ export const REPORT_ROWS: ReportRow[] = [
 
   /* ── 2. Paramètres géotechniques ── */
   { section: 2, label: cst(libelle("bw")), unit: cst("%"), getter: (r) => r.bw_mass_pct, digits: 2, bold: true, formulaIds: ["F016"] },
-  { section: 2, label: cst(libelle("cw")), unit: cst("%"), getter: (r) => r.solids_mass_pct, digits: 2, formulaIds: ["F009"] },
+  { section: 2, label: cst(libelle("cw")), unit: cst("%"), getter: (r) => r.solids_mass_pct, digits: 2, formulaIds: ["F009"], resume: 2 },
   { section: 2, label: cst(libelle("cv")), unit: cst("%"), getter: (r) => r.cv_vol_pct, digits: 2, formulaIds: ["F010"] },
-  { section: 2, label: cst(libelle("w")), unit: cst("%"), getter: (r) => r.w_mass_pct, digits: 2, formulaIds: ["F001"] },
-  { section: 2, label: cst(libelle("el")), unit: sansUnite, getter: (r) => r.wc_ratio, digits: 3, formulaIds: ["F028"] },
-  { section: 2, label: cst(libelle("sr")), unit: cst("%"), getter: (r) => r.saturation_pct, digits: 1, formulaIds: ["F003"] },
+  { section: 2, label: cst(libelle("w")), unit: cst("%"), getter: (r) => r.w_mass_pct, digits: 2, formulaIds: ["F001"], resume: 5 },
+  { section: 2, label: cst(libelle("el")), unit: sansUnite, getter: (r) => r.wc_ratio, digits: 3, formulaIds: ["F028"], resume: 3 },
+  { section: 2, label: cst(libelle("sr")), unit: cst("%"), getter: (r) => r.saturation_pct, digits: 1, formulaIds: ["F003"], resume: 6 },
   { section: 2, label: cst(libelle("am")), unit: cst("%"), getter: (r) => r.aggregate_mass_pct, digits: 2, when: (c) => c.isRpg },
   { section: 2, label: cst("Fraction volumique de granulat / résidu"), unit: cst("%"), getter: (r) => r.aggregate_vol_pct_of_residue, digits: 2, when: (c) => c.isRpg },
   { section: 2, label: cst("Fraction volumique de granulat / remblai"), unit: cst("%"), getter: (r) => r.aggregate_vol_pct_of_backfill, digits: 2, when: (c) => c.isRpg },
@@ -138,7 +144,7 @@ export const REPORT_ROWS: ReportRow[] = [
   { section: 3, label: cst("Poids volumique des grains γs"), unit: cst("kN/m3"), getter: (r) => gammaSolideKNM3(r), digits: 2 },
 
   /* ── 4. Indice des vides et structure ── */
-  { section: 4, label: cst(libelle("e")), unit: sansUnite, getter: (r) => r.void_ratio, digits: 5, bold: true, formulaIds: ["F004"] },
+  { section: 4, label: cst(libelle("e")), unit: sansUnite, getter: (r) => r.void_ratio, digits: 5, bold: true, formulaIds: ["F004"], resume: 4 },
   { section: 4, label: cst(libelle("n")), unit: sansUnite, getter: (r) => r.porosity, digits: 5, formulaIds: ["F005"] },
   { section: 4, label: cst(libelle("theta")), unit: cst("%"), getter: (r) => r.theta_pct, digits: 2, formulaIds: ["F002"] },
   { section: 4, label: cst("Densité relative Gs du remblai"), unit: sansUnite, getter: (r) => r.gs_backfill, digits: 5, formulaIds: ["F026"] },
@@ -169,6 +175,18 @@ export const REPORT_ROWS: ReportRow[] = [
 /** Lignes visibles d'une section pour un contexte donné. */
 export function rowsForSection(section: ReportSectionId, ctx: ReportCtx): ReportRow[] {
   return REPORT_ROWS.filter((row) => row.section === section && (!row.when || row.when(ctx)));
+}
+
+/** Lignes du tableau résumé (page Calculs), dans l'ordre de leur rang. */
+export function lignesResume(ctx: ReportCtx): ReportRow[] {
+  return REPORT_ROWS
+    .filter((row) => row.resume !== undefined && (!row.when || row.when(ctx)))
+    .sort((a, b) => (a.resume ?? 0) - (b.resume ?? 0));
+}
+
+/** Nombre de lignes du rapport complet pour ce contexte (lien « Voir les N lignes »). */
+export function nbLignesRapport(ctx: ReportCtx): number {
+  return REPORT_SECTIONS.reduce((n, s) => n + rowsForSection(s.id, ctx).length, 0);
 }
 
 /* ── RRC : liste unique (écran + exports) ── */

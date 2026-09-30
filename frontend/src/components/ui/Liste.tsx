@@ -8,7 +8,7 @@ export function ListeGroupee({ titre, pied, children, encadree = false }: {
   titre?: React.ReactNode;
   /** Note sous la liste. */
   pied?: React.ReactNode;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   /** Dans son propre cadre blanc (hors d'une Carte). */
   encadree?: boolean;
 }) {

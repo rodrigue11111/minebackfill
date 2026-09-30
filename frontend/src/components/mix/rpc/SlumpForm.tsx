@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
@@ -13,34 +13,9 @@ import {
 } from "@/lib/rpc_payload";
 import { fromStoreSlump, toStoreSlump, SLUMP_LABELS } from "@/lib/units";
 import { num } from "@/lib/format";
-import { RECIPE_COLORS } from "@/lib/recipe-theme";
+import { Field, CardSection, GrilleChamps, ChoixNombreRecettes, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
 
-const inputStyle: React.CSSProperties = {
-  display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6, padding: "7px 11px", background: "#fff", fontSize: 13.5, outline: "none",
-};
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>{label}</label>
-      {children}
-      {hint && <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{hint}</p>}
-    </div>
-  );
-}
-
-function CardSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-      <div style={{ padding: "10px 18px", borderBottom: "1px solid #f1f5f9", fontSize: 12, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.07em", color: "#64748b", background: "#f8fafc" }}>
-        {title}
-      </div>
-      <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column" as const, gap: 14 }}>
-        {children}
-      </div>
-    </div>
-  );
-}
+const KAPPA_AIDE = "1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).";
 
 export default function SlumpForm() {
   const {
@@ -98,120 +73,71 @@ export default function SlumpForm() {
   const coneType = slump.cone_type ?? "mini";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-      {/* ── Slump target ── */}
-      <CardSection title="Affaissement visé">
-        <div>
-          <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Type de cône</label>
-          <div style={{ display: "flex", gap: 10 }}>
-            {(["mini", "grand"] as const).map((t) => {
-              const active = coneType === t;
-              return (
-                <label
-                  key={t}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "8px 16px",
-                    borderRadius: 7,
-                    border: `1.5px solid ${active ? "#2563eb" : "#e2e8f0"}`,
-                    background: active ? "#eff6ff" : "#fff",
-                    cursor: "pointer",
-                    fontSize: 13,
-                    fontWeight: active ? 600 : 400,
-                    color: active ? "#2563eb" : "#374151",
-                    transition: "all 0.13s",
-                  }}
-                >
-                  <input type="radio" name="cone_type" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setSlump({ cone_type: t })} />
-                  {t === "mini" ? "Petit cône" : "Cône d'Abrams (300 mm)"}
-                </label>
-              );
-            })}
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <Field label={`Affaissement visé S (${slumpLabel})`} hint="Essai au cône d'Abrams, ASTM C143/C143M ; le petit cône n'est pas normalisé">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 180" value={fromStoreSlump(slump.slump_mm, units.slump) ?? ""} onChange={(e) => setSlump({ slump_mm: toStoreSlump(num(e.target.value), units.slump) ?? undefined })} />
+    <div className="mix-formulaire">
+      <CardSection title="Affaissement visé" subtitle="Essai au cône d'Abrams, ASTM C143/C143M ; le petit cône n'est pas normalisé et sa lecture est convertie (Réglages).">
+        <ChoixOptions
+          libelle="Type de cône"
+          valeur={coneType}
+          onChange={(t) => setSlump({ cone_type: t })}
+          options={[
+            { valeur: "mini", libelle: "Petit cône" },
+            { valeur: "grand", libelle: "Cône d'Abrams (300 mm)" },
+          ]}
+        />
+        <GrilleChamps>
+          <Field label="Affaissement visé S" unit={slumpLabel}>
+            <input type="number" step="any" className="field-input" placeholder="ex : 180" value={fromStoreSlump(slump.slump_mm, units.slump) ?? ""} onChange={(e) => setSlump({ slump_mm: toStoreSlump(num(e.target.value), units.slump) ?? undefined })} />
           </Field>
-          <Field label="Degré de saturation Sr (%)" hint="100 % = pâte saturée">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 100" value={slump.saturation_pct ?? ""} onChange={(e) => setSlump({ saturation_pct: num(e.target.value) })} />
+          <Field label="Degré de saturation Sr" unit="%" hint="100 % = pâte saturée">
+            <input type="number" step="any" className="field-input" placeholder="ex : 100" value={slump.saturation_pct ?? ""} onChange={(e) => setSlump({ saturation_pct: num(e.target.value) })} />
           </Field>
-        </div>
+        </GrilleChamps>
       </CardSection>
 
-      {/* ── Residue ── */}
       <CardSection title="Résidu">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
-            onPick={(m) => { const r = m as ResiduItem; setSlump({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
-            matches={(m) => { const r = m as ResiduItem; return r.gs === slump.residue_sg && r.w0_pct === slump.residue_w_pct; }} />
-          <div />
-          <Field label="Densité relative des grains du résidu Gs">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4" value={slump.residue_sg ?? ""} onChange={(e) => setSlump({ residue_sg: num(e.target.value) })} />
-          </Field>
-          <Field label="Teneur en eau massique du résidu w₀ (%)">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 23.8" value={slump.residue_w_pct ?? ""} onChange={(e) => setSlump({ residue_w_pct: num(e.target.value) })} />
-          </Field>
-        </div>
-      </CardSection>
-
-      {/* ── Mix metadata ── */}
-      <CardSection title="Paramètres du mélange">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <Field label="Nombre de moules par recette">
-            <input type="number" style={inputStyle} min={1} value={slump.desired_qty ?? 1} onChange={(e) => setSlump({ desired_qty: num(e.target.value) })} />
-          </Field>
-          <Field label="Facteur de perte κ" hint="1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).">
-            <input type="number" step="any" style={inputStyle} min={1} value={slump.safety_factor ?? 1} onChange={(e) => setSlump({ safety_factor: num(e.target.value) })} />
-          </Field>
-        </div>
-        <div>
-          <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Nombre de recettes</label>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[1, 2, 3, 4].map((n) => {
-              const active = numRecipes === n;
-              return (
-                <label key={n} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 34, borderRadius: 6, border: `1.5px solid ${active ? "#2563eb" : "#e2e8f0"}`, background: active ? "#2563eb" : "#fff", cursor: "pointer", fontWeight: 700, fontSize: 14, color: active ? "#fff" : "#374151", transition: "all 0.13s" }}>
-                  <input type="radio" name="slump_num_recipes" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setSlump({ num_recipes: n as 1 | 2 | 3 | 4 })} />
-                  {n}
-                </label>
-              );
-            })}
+        <GrilleChamps>
+          <div className="mix-pleine">
+            <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
+              onPick={(m) => { const r = m as ResiduItem; setSlump({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
+              matches={(m) => { const r = m as ResiduItem; return r.gs === slump.residue_sg && r.w0_pct === slump.residue_w_pct; }} />
           </div>
-        </div>
+          <Field label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
+            <input type="number" step="any" className="field-input" placeholder="ex : 3.4" value={slump.residue_sg ?? ""} onChange={(e) => setSlump({ residue_sg: num(e.target.value) })} />
+          </Field>
+          <Field label="Teneur en eau massique du résidu w₀" unit="%">
+            <input type="number" step="any" className="field-input" placeholder="ex : 23.8" value={slump.residue_w_pct ?? ""} onChange={(e) => setSlump({ residue_w_pct: num(e.target.value) })} />
+          </Field>
+        </GrilleChamps>
       </CardSection>
 
-      {/* ── Bw par recette ── */}
-      <CardSection title={`Taux massique de liant Bw par recette (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}>
-        <div style={{ display: "grid", gridTemplateColumns: numRecipes === 1 ? "1fr" : "repeat(2, 1fr)", gap: "12px 16px" }}>
+      <CardSection title="Paramètres du mélange">
+        <GrilleChamps>
+          <Field label="Nombre de moules par recette">
+            <input type="number" className="field-input" min={1} value={slump.desired_qty ?? 1} onChange={(e) => setSlump({ desired_qty: num(e.target.value) })} />
+          </Field>
+          <Field label="Facteur de perte κ" hint={KAPPA_AIDE}>
+            <input type="number" step="any" className="field-input" min={1} value={slump.safety_factor ?? 1} onChange={(e) => setSlump({ safety_factor: num(e.target.value) })} />
+          </Field>
+        </GrilleChamps>
+        <ChoixNombreRecettes valeur={numRecipes} onChange={(n) => setSlump({ num_recipes: n })} />
+      </CardSection>
+
+      <CardSection title="Taux massique de liant Bw par recette">
+        <GrilleChamps une={numRecipes === 1}>
           {Array.from({ length: numRecipes }).map((_, i) => (
-            <Field key={i} label={`Recette ${i + 1} — Bw (%)`}>
-              <input
-                type="number"
-                step="any"
-                style={{ ...inputStyle, borderLeft: `3px solid ${RECIPE_COLORS[i]}` }}
-                placeholder="ex : 4.5"
-                value={slump.binder_pct?.[i] ?? ""}
-                onChange={(e) => setSlumpRecipe(i, { binder_pct: num(e.target.value) })}
-              />
+            <Field key={i} label={<><PointRecette i={i} />Recette {i + 1} — Bw</>} unit="%">
+              <input type="number" step="any" className="field-input" placeholder="ex : 4.5"
+                value={slump.binder_pct?.[i] ?? ""} onChange={(e) => setSlumpRecipe(i, { binder_pct: num(e.target.value) })} />
             </Field>
           ))}
-        </div>
+        </GrilleChamps>
       </CardSection>
 
-      {/* ── Actions ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button type="button" onClick={handleCompute} disabled={loading} className="btn-primary">
-          {loading ? (<><span style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Calcul en cours…</>) : "▶ Lancer le calcul"}
-        </button>
-        <button type="button" className="btn-secondary" onClick={() => { setSlump({ cone_type: "mini", slump_mm: 0, saturation_pct: 0, residue_sg: 0, residue_w_pct: 0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [0,0,0,0] }); setSlumpResult(null); setError(null); }}>
-          Réinitialiser
-        </button>
-      </div>
-
+      <PiedFormulaire
+        loading={loading}
+        onCalculer={handleCompute}
+        onReinitialiser={() => { setSlump({ cone_type: "mini", slump_mm: 0, saturation_pct: 0, residue_sg: 0, residue_w_pct: 0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [0, 0, 0, 0] }); setSlumpResult(null); setError(null); }}
+      />
       <ErrorBox message={error} />
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
@@ -12,37 +12,11 @@ import {
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
 import { num } from "@/lib/format";
-import { RECIPE_COLORS } from "@/lib/recipe-theme";
 import ChampFractionGranulat from "./ChampFractionGranulat";
+import { Field, CardSection, GrilleChamps, ChoixNombreRecettes, PiedFormulaire, PointRecette } from "@/components/mix/champs";
+import { Bandeau } from "@/components/ui/Bandeau";
 
-const inputStyle: React.CSSProperties = {
-  display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6,
-  padding: "7px 11px", background: "#fff", fontSize: 13.5, outline: "none",
-};
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>{label}</label>
-      {children}
-      {hint && <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{hint}</p>}
-    </div>
-  );
-}
-
-function CardSection({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-      <div style={{ padding: "10px 18px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.07em", color: "#64748b" }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 2 }}>{subtitle}</div>}
-      </div>
-      <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column" as const, gap: 14 }}>
-        {children}
-      </div>
-    </div>
-  );
-}
+const KAPPA_AIDE = "1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).";
 
 export default function RpgCwForm() {
   const {
@@ -102,27 +76,20 @@ export default function RpgCwForm() {
   const numRecipes = rpgCw.num_recipes || 1;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="mix-formulaire">
+      <Bandeau ton="succes">
+        <strong>Remblai en pâte granulaire :</strong> formules du RPG actives. Le granulat est pris en compte dans le Gs équivalent et dans la répartition des masses.
+      </Bandeau>
 
-      {/* ── Bandeau RPG ── */}
-      <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#15803d" }}>
-        <strong>Remblai en pâte granulaire :</strong> formules du RPG actives.
-        Le granulat est pris en compte dans le Gs équivalent et dans la répartition des masses.
-      </div>
-
-      {/* ── Granulat (propre au RPG) ── */}
       <CardSection title="Granulat" subtitle="Paramètres propres au remblai en pâte granulaire">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <MaterialPresetSelect
-            kind="granulats"
-            role="aggregateId"
-            label="Granulat (bibliothèque)"
-            onPick={(m) => { const g = m as GranulatItem; setRpgCw({ aggregate_sg: g.gs, aggregate_fraction_pct: g.fraction_defaut_pct ?? rpgCw.aggregate_fraction_pct }); }}
-            matches={(m) => (m as GranulatItem).gs === rpgCw.aggregate_sg}
-          />
-          <div />
+        <GrilleChamps>
+          <div className="mix-pleine">
+            <MaterialPresetSelect kind="granulats" role="aggregateId" label="Granulat (bibliothèque)"
+              onPick={(m) => { const g = m as GranulatItem; setRpgCw({ aggregate_sg: g.gs, aggregate_fraction_pct: g.fraction_defaut_pct ?? rpgCw.aggregate_fraction_pct }); }}
+              matches={(m) => (m as GranulatItem).gs === rpgCw.aggregate_sg} />
+          </div>
           <Field label="Densité relative du granulat Gs" hint="Sans unité : Gs = ρs/ρw">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 2.65"
+            <input type="number" step="any" className="field-input" placeholder="ex : 2.65"
               value={rpgCw.aggregate_sg || ""}
               onChange={(e) => setRpgCw({ aggregate_sg: num(e.target.value) })} />
           </Field>
@@ -132,101 +99,67 @@ export default function RpgCwForm() {
             gsGranulat={rpgCw.aggregate_sg || 0}
             onChangeAm={(am) => setRpgCw({ aggregate_fraction_pct: am })}
           />
-        </div>
+        </GrilleChamps>
       </CardSection>
 
-      {/* ── Résidu ── */}
       <CardSection title="Résidu">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <MaterialPresetSelect
-            kind="residus"
-            role="residueId"
-            label="Résidu (bibliothèque)"
-            onPick={(m) => { const r = m as ResiduItem; setRpgCw({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
-            matches={(m) => { const r = m as ResiduItem; return r.gs === rpgCw.residue_sg && r.w0_pct === rpgCw.residue_w_pct; }}
-          />
-          <div />
+        <GrilleChamps>
+          <div className="mix-pleine">
+            <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
+              onPick={(m) => { const r = m as ResiduItem; setRpgCw({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
+              matches={(m) => { const r = m as ResiduItem; return r.gs === rpgCw.residue_sg && r.w0_pct === rpgCw.residue_w_pct; }} />
+          </div>
           <Field label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4"
-              value={rpgCw.residue_sg || ""}
-              onChange={(e) => setRpgCw({ residue_sg: num(e.target.value) })} />
+            <input type="number" step="any" className="field-input" placeholder="ex : 3.4"
+              value={rpgCw.residue_sg || ""} onChange={(e) => setRpgCw({ residue_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Teneur en eau massique du résidu w₀ (%)">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 23.8"
-              value={rpgCw.residue_w_pct || ""}
-              onChange={(e) => setRpgCw({ residue_w_pct: num(e.target.value) })} />
+          <Field label="Teneur en eau massique du résidu w₀" unit="%">
+            <input type="number" step="any" className="field-input" placeholder="ex : 23.8"
+              value={rpgCw.residue_w_pct || ""} onChange={(e) => setRpgCw({ residue_w_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Pourcentage solide massique Cw (%)" hint="Masse des solides / masse totale du remblai">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 78"
-              value={rpgCw.solid_mass_pct || ""}
-              onChange={(e) => setRpgCw({ solid_mass_pct: num(e.target.value) })} />
+          <Field label="Pourcentage solide massique Cw" unit="%" hint="Masse des solides / masse totale du remblai">
+            <input type="number" step="any" className="field-input" placeholder="ex : 78"
+              value={rpgCw.solid_mass_pct || ""} onChange={(e) => setRpgCw({ solid_mass_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Degré de saturation Sr (%)">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 100"
-              value={rpgCw.saturation_pct || ""}
-              onChange={(e) => setRpgCw({ saturation_pct: num(e.target.value) })} />
+          <Field label="Degré de saturation Sr" unit="%">
+            <input type="number" step="any" className="field-input" placeholder="ex : 100"
+              value={rpgCw.saturation_pct || ""} onChange={(e) => setRpgCw({ saturation_pct: num(e.target.value) })} />
           </Field>
-        </div>
+        </GrilleChamps>
       </CardSection>
 
-      {/* ── Paramètres du mélange ── */}
       <CardSection title="Paramètres du mélange">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
+        <GrilleChamps>
           <Field label="Nombre de moules par recette">
-            <input type="number" style={inputStyle} min={1}
+            <input type="number" className="field-input" min={1}
               value={rpgCw.desired_qty ?? 1}
               onChange={(e) => setRpgCw({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de perte κ" hint="1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).">
-            <input type="number" step="any" style={inputStyle} min={1}
+          <Field label="Facteur de perte κ" hint={KAPPA_AIDE}>
+            <input type="number" step="any" className="field-input" min={1}
               value={rpgCw.safety_factor ?? 1}
               onChange={(e) => setRpgCw({ safety_factor: num(e.target.value) })} />
           </Field>
-        </div>
-        <div>
-          <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Nombre de recettes</label>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[1, 2, 3, 4].map((n) => {
-              const active = numRecipes === n;
-              return (
-                <label key={n} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 34, borderRadius: 6, border: `1.5px solid ${active ? "#2563eb" : "#e2e8f0"}`, background: active ? "#2563eb" : "#fff", cursor: "pointer", fontWeight: 700, fontSize: 14, color: active ? "#fff" : "#374151", transition: "all 0.13s" }}>
-                  <input type="radio" name="rpg_cw_num_recipes" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} checked={active} onChange={() => setRpgCw({ num_recipes: n as 1 | 2 | 3 | 4 })} />
-                  {n}
-                </label>
-              );
-            })}
-          </div>
-        </div>
+        </GrilleChamps>
+        <ChoixNombreRecettes valeur={numRecipes} onChange={(n) => setRpgCw({ num_recipes: n })} />
       </CardSection>
 
-      {/* ── Bw par recette ── */}
-      <CardSection title={`Taux massique de liant Bw par recette (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}
-        subtitle="Bw = Mb / (Mr + Ma) × 100, masses sèches">
-        <div style={{ display: "grid", gridTemplateColumns: numRecipes === 1 ? "1fr" : "repeat(2, 1fr)", gap: "12px 16px" }}>
+      <CardSection title="Taux massique de liant Bw par recette" subtitle="Bw = Mb / (Mr + Ma) × 100, masses sèches">
+        <GrilleChamps une={numRecipes === 1}>
           {Array.from({ length: numRecipes }).map((_, i) => (
-            <Field key={i} label={`Recette ${i + 1} — Bw (%)`}>
-              <input
-                type="number" step="any"
-                style={{ ...inputStyle, borderLeft: `3px solid ${RECIPE_COLORS[i]}` }}
-                placeholder="ex : 5"
-                value={rpgCw.binder_pct?.[i] ?? ""}
-                onChange={(e) => setRpgCwRecipe(i, { binder_pct: num(e.target.value) })}
-              />
+            <Field key={i} label={<><PointRecette i={i} />Recette {i + 1} — Bw</>} unit="%">
+              <input type="number" step="any" className="field-input" placeholder="ex : 5"
+                value={rpgCw.binder_pct?.[i] ?? ""} onChange={(e) => setRpgCwRecipe(i, { binder_pct: num(e.target.value) })} />
             </Field>
           ))}
-        </div>
+        </GrilleChamps>
       </CardSection>
 
-      {/* ── Actions ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button type="button" onClick={handleCompute} disabled={loading} className="btn-primary">
-          {loading ? (<><span style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Calcul en cours…</>) : "▶ Lancer le calcul"}
-        </button>
-        <button type="button" className="btn-secondary" onClick={() => { setRpgCw({ solid_mass_pct: 0, saturation_pct: 0, residue_sg: 0, residue_w_pct: 0, aggregate_fraction_pct: 0, aggregate_sg: 0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [0, 0, 0, 0] }); setRpgCwResult(null); setError(null); }}>
-          Réinitialiser
-        </button>
-      </div>
-
+      <PiedFormulaire
+        loading={loading}
+        onCalculer={handleCompute}
+        onReinitialiser={() => { setRpgCw({ solid_mass_pct: 0, saturation_pct: 0, residue_sg: 0, residue_w_pct: 0, aggregate_fraction_pct: 0, aggregate_sg: 0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [0, 0, 0, 0] }); setRpgCwResult(null); setError(null); }}
+      />
       <ErrorBox message={error} />
     </div>
   );

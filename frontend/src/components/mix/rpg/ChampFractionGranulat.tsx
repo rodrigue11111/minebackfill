@@ -10,14 +10,9 @@
 // Pendant la frappe, un tampon local préserve le texte tel que tapé (pas de
 // réécriture par l'aller-retour de conversion).
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { amDepuisAv, avDepuisAm } from "@/lib/granulats";
 import { num } from "@/lib/format";
-
-const inputStyle: React.CSSProperties = {
-  display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6,
-  padding: "7px 11px", background: "#fff", fontSize: 13.5, outline: "none",
-};
 
 function arrondi(v: number): number {
   return Math.round(v * 10000) / 10000;
@@ -80,14 +75,8 @@ export default function ChampFractionGranulat({
         disabled={desactive}
         onClick={() => changerMode(m)}
         title={desactive ? "Gs du résidu et du granulat requis" : undefined}
-        style={{
-          padding: "2px 9px", borderRadius: 999, fontSize: 10.5, fontWeight: 700,
-          border: `1px solid ${actif ? "#2563eb" : "#e2e8f0"}`,
-          background: actif ? "#2563eb" : "#fff",
-          color: actif ? "#fff" : desactive ? "#cbd5e1" : "#64748b",
-          cursor: desactive ? "not-allowed" : "pointer",
-          transition: "all 0.13s",
-        }}
+        aria-pressed={actif}
+        className={actif ? "mix-bascule mix-bascule-active" : "mix-bascule"}
       >
         {libelle}
       </button>
@@ -97,7 +86,7 @@ export default function ChampFractionGranulat({
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
-        <label style={{ fontSize: 12.5, fontWeight: 600, color: "#374151" }}>
+        <label className="ui-champ-libelle" htmlFor="fraction-granulat">
           {modeEffectif === "am" ? "Fraction massique de granulat Am (%)" : "Fraction volumique de granulat Av (%)"}
         </label>
         <span style={{ display: "flex", gap: 4 }}>
@@ -110,7 +99,8 @@ export default function ChampFractionGranulat({
         step="any"
         min={0}
         max={100}
-        style={inputStyle}
+        id="fraction-granulat"
+        className="field-input"
         placeholder={modeEffectif === "am" ? "ex : 30" : "ex : 33"}
         value={valeurAffichee}
         onChange={(e) => {
@@ -125,7 +115,7 @@ export default function ChampFractionGranulat({
         }}
         onBlur={() => setSaisieAv(null)}
       />
-      <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>
+      <p className="ui-champ-aide" style={{ margin: "6px 0 0" }}>
         {modeEffectif === "am"
           ? `Ma/(Ma+Mr)×100 — part du granulat dans les solides hors liant. ${equivalence}`
           : `Va/(Va+Vr)×100 — % du volume des grains (la grandeur pilotée par l'article). ${equivalence}`}

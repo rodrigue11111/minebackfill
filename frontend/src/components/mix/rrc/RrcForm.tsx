@@ -1,47 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
 import type { RetardateurItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import { num } from "@/lib/format";
-import { RECIPE_COLORS } from "@/lib/recipe-theme";
 import { construireConstantesPayload } from "@/lib/rpc_payload";
-
+import { Field, CardSection, GrilleChamps, ChoixNombreRecettes, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
 /**
  * Formulaire RRC — remblai rocheux cimenté.
  * Méthode unique du cours (Dias 66-70) : dosage par Bw (liant / roches
  * stériles) et rapport E/L du coulis (fluide = eau + retardateur de prise).
  */
-
-const inputStyle: React.CSSProperties = {
-  display: "block", width: "100%", border: "1px solid #cbd5e1", borderRadius: 6,
-  padding: "7px 11px", background: "#fff", fontSize: 13.5, outline: "none",
-};
-
-function CardSection({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  return (
-    <div className="form-card">
-      <div style={{ marginBottom: 12 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: "var(--foreground)" }}>{title}</h3>
-        {subtitle && <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>{subtitle}</p>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>{label}</label>
-      {children}
-      {hint && <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{hint}</p>}
-    </div>
-  );
-}
 
 export default function RrcForm() {
   const { API, general, constantes, rrc, setRrc, setRrcRecipe, setRrcResult } = useStore();
@@ -92,152 +64,96 @@ export default function RrcForm() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-      {/* ── Quantité de RRC ── */}
+    <div className="mix-formulaire">
       <CardSection title="Quantité de remblai rocheux cimenté" subtitle="Volume du chantier à remblayer, ou masse totale directe">
-        <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-          {[
-            { value: "volume", label: "Par volume", sub: "V × masse volumique humide" },
-            { value: "masse", label: "Par masse", sub: "Masse totale de RRC" },
-          ].map((opt) => {
-            const active = rrc.quantity_mode === opt.value;
-            return (
-              <label
-                key={opt.value}
-                style={{
-                  display: "flex", flexDirection: "column", gap: 2, padding: "10px 16px",
-                  borderRadius: 8, border: `1.5px solid ${active ? "#2563eb" : "#e2e8f0"}`,
-                  background: active ? "#eff6ff" : "#fff", cursor: "pointer", minWidth: 160, transition: "all 0.13s",
-                }}
-              >
-                <input type="radio" name="rrc_mode" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
-                  checked={active} onChange={() => setRrc({ quantity_mode: opt.value as "volume" | "masse" })} />
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: active ? "#2563eb" : "#374151" }}>{opt.label}</span>
-                <span style={{ fontSize: 11.5, color: active ? "#60a5fa" : "#94a3b8" }}>{opt.sub}</span>
-              </label>
-            );
-          })}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
+        <ChoixOptions
+          libelle="Quantité"
+          valeur={rrc.quantity_mode === "masse" ? "masse" : "volume"}
+          onChange={(v) => setRrc({ quantity_mode: v })}
+          options={[
+            { valeur: "volume", libelle: "Par volume", detail: "V × masse volumique humide" },
+            { valeur: "masse", libelle: "Par masse", detail: "Masse totale de RRC" },
+          ]}
+        />
+        <GrilleChamps>
           {modeVolume ? (
             <>
-              <Field label="Volume du chantier à remblayer (m³)">
-                <input type="number" step="any" style={inputStyle} placeholder="ex : 1000"
+              <Field label="Volume du chantier à remblayer" unit="m³">
+                <input type="number" step="any" className="field-input" placeholder="ex : 1000"
                   value={rrc.volume_m3 || ""} onChange={(e) => setRrc({ volume_m3: num(e.target.value) })} />
               </Field>
-              <Field label="Masse volumique humide (kg/m³)" hint="Masse volumique humide du RRC en place (typ. 1800 à 2400)">
-                <input type="number" step="any" style={inputStyle} placeholder="ex : 2200"
+              <Field label="Masse volumique humide" unit="kg/m³" hint="Masse volumique humide du RRC en place (typ. 1800 à 2400)">
+                <input type="number" step="any" className="field-input" placeholder="ex : 2200"
                   value={rrc.wet_density_kg_m3 || ""} onChange={(e) => setRrc({ wet_density_kg_m3: num(e.target.value) })} />
               </Field>
             </>
           ) : (
             <>
-              <Field label="Masse totale de RRC (kg)">
-                <input type="number" step="any" style={inputStyle} placeholder="ex : 2200000"
+              <Field label="Masse totale de RRC" unit="kg">
+                <input type="number" step="any" className="field-input" placeholder="ex : 2200000"
                   value={rrc.total_mass_kg || ""} onChange={(e) => setRrc({ total_mass_kg: num(e.target.value) })} />
               </Field>
-              <Field label="Masse volumique humide (kg/m³)" hint="Optionnelle — sert au calcul du volume équivalent">
-                <input type="number" step="any" style={inputStyle} placeholder="ex : 2200"
+              <Field label="Masse volumique humide" unit="kg/m³" hint="Facultative — sert au calcul du volume équivalent">
+                <input type="number" step="any" className="field-input" placeholder="ex : 2200"
                   value={rrc.wet_density_kg_m3 || ""} onChange={(e) => setRrc({ wet_density_kg_m3: num(e.target.value) })} />
               </Field>
             </>
           )}
-        </div>
+        </GrilleChamps>
       </CardSection>
 
-      {/* ── Coulis & retardateur ── */}
       <CardSection title="Coulis de ciment et retardateur de prise"
         subtitle="Le fluide du coulis = eau + retardateur ; dosage D0 recommandé : 50 à 260 ml/100 kg de ciment">
-        <div style={{ maxWidth: 320, marginBottom: 14 }}>
-          <MaterialPresetSelect
-            kind="retardateurs"
-            role="retarderId"
-            label="Retardateur (bibliothèque)"
-            onPick={(m) => { const r = m as RetardateurItem; setRrc({ retarder_density: r.densite_g_ml, retarder_d0: r.dosage_d0_ml_100kg ?? rrc.retarder_d0 }); }}
-            matches={(m) => (m as RetardateurItem).densite_g_ml === rrc.retarder_density}
-          />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px 16px" }}>
+        <GrilleChamps>
+          <div className="mix-pleine">
+            <MaterialPresetSelect
+              kind="retardateurs"
+              role="retarderId"
+              label="Retardateur (bibliothèque)"
+              onPick={(m) => { const r = m as RetardateurItem; setRrc({ retarder_density: r.densite_g_ml, retarder_d0: r.dosage_d0_ml_100kg ?? rrc.retarder_d0 }); }}
+              matches={(m) => (m as RetardateurItem).densite_g_ml === rrc.retarder_density}
+            />
+          </div>
           <Field label="Densité relative du ciment Gs" hint="Pour le volume du coulis (ASTM C188)">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 3.15"
+            <input type="number" step="any" className="field-input" placeholder="ex : 3.15"
               value={rrc.cement_sg || ""} onChange={(e) => setRrc({ cement_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Dosage en retardateur D0 (ml/100 kg de ciment)" hint="0 = aucun retardateur">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 100"
+          <Field label="Dosage en retardateur D0" unit="ml/100 kg" hint="Par 100 kg de ciment ; 0 = aucun retardateur">
+            <input type="number" step="any" className="field-input" placeholder="ex : 100"
               value={rrc.retarder_d0 ?? ""} onChange={(e) => setRrc({ retarder_d0: num(e.target.value) })} />
           </Field>
-          <Field label="Masse volumique du retardateur (g/ml)">
-            <input type="number" step="any" style={inputStyle} placeholder="ex : 1.2"
+          <Field label="Masse volumique du retardateur" unit="g/ml">
+            <input type="number" step="any" className="field-input" placeholder="ex : 1.2"
               value={rrc.retarder_density || ""} onChange={(e) => setRrc({ retarder_density: num(e.target.value) })} />
           </Field>
-        </div>
+        </GrilleChamps>
       </CardSection>
 
-      {/* ── Recettes ── */}
-      <CardSection title={`Recettes — Bw et rapport E/L du coulis (${numRecipes} recette${numRecipes > 1 ? "s" : ""})`}
+      <CardSection title="Taux massique de liant Bw et rapport E/L du coulis par recette"
         subtitle="Bw = Mc / MWR (ciment / roches stériles) ; E/L = fluide / ciment">
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-            Nombre de recettes
-          </label>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[1, 2, 3, 4].map((n) => {
-              const active = numRecipes === n;
-              return (
-                <label key={n}
-                  style={{
-                    padding: "7px 16px", borderRadius: 7, fontSize: 13, fontWeight: 600,
-                    border: `1.5px solid ${active ? "#2563eb" : "#e2e8f0"}`,
-                    background: active ? "#eff6ff" : "#fff",
-                    color: active ? "#2563eb" : "#64748b", cursor: "pointer",
-                  }}
-                >
-                  <input type="radio" name="rrc_num_recipes" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
-                    checked={active} onChange={() => setRrc({ num_recipes: n as 1 | 2 | 3 | 4 })} />
-                  {n}
-                </label>
-              );
-            })}
+        <ChoixNombreRecettes valeur={numRecipes} onChange={(n) => setRrc({ num_recipes: n })} />
+        {Array.from({ length: numRecipes }).map((_, i) => (
+          <div key={i} className="mix-recette">
+            <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
+            <GrilleChamps>
+              <Field label="Taux massique de liant Bw" unit="%">
+                <input type="number" step="any" className="field-input" placeholder="ex : 5"
+                  value={rrc.binder_pct?.[i] || ""} onChange={(e) => setRrcRecipe(i, { binder_pct: num(e.target.value) })} />
+              </Field>
+              <Field label="Rapport E/L du coulis" hint="Noté aussi W/C">
+                <input type="number" step="any" className="field-input" placeholder="ex : 1.0"
+                  value={rrc.wc_ratio?.[i] || ""} onChange={(e) => setRrcRecipe(i, { wc_ratio: num(e.target.value) })} />
+              </Field>
+            </GrilleChamps>
           </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {Array.from({ length: numRecipes }).map((_, i) => (
-            <div key={i}
-              style={{
-                background: "#f8fafc", borderRadius: 8,
-                borderLeft: `4px solid ${RECIPE_COLORS[i]}`,
-                padding: "12px 14px",
-              }}
-            >
-              <div style={{ fontSize: 12, fontWeight: 700, color: RECIPE_COLORS[i], textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-                Recette {i + 1}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px" }}>
-                <Field label="Taux massique de liant Bw (%)">
-                  <input type="number" step="any" style={inputStyle} placeholder="ex : 5"
-                    value={rrc.binder_pct?.[i] || ""} onChange={(e) => setRrcRecipe(i, { binder_pct: num(e.target.value) })} />
-                </Field>
-                <Field label="Rapport E/L du coulis (W/C)">
-                  <input type="number" step="any" style={inputStyle} placeholder="ex : 1.0"
-                    value={rrc.wc_ratio?.[i] || ""} onChange={(e) => setRrcRecipe(i, { wc_ratio: num(e.target.value) })} />
-                </Field>
-              </div>
-            </div>
-          ))}
-        </div>
+        ))}
       </CardSection>
 
-      {/* ── Actions ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button type="button" onClick={handleCompute} disabled={loading} className="btn-primary">
-          {loading ? (<><span style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Calcul en cours…</>) : "▶ Lancer le calcul"}
-        </button>
-        <button type="button" className="btn-secondary" onClick={() => { setRrcResult(null); setError(null); }}>
-          Réinitialiser
-        </button>
-      </div>
-
+      <PiedFormulaire
+        loading={loading}
+        onCalculer={handleCompute}
+        onReinitialiser={() => { setRrcResult(null); setError(null); }}
+      />
       <ErrorBox message={error} />
     </div>
   );
