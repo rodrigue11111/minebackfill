@@ -167,7 +167,7 @@ export default function DiagnosticPage() {
         titre="Diagnostic technique"
         sousTitre={<>Cette page rassemble les informations utiles au dépannage à distance.
           Cliquez sur « Copier le diagnostic » puis collez le résultat dans votre
-          message à l&apos;enseignant ou à l&apos;assistant.</>}
+          message à l&apos;enseignant.</>}
         actions={
           <>
             <Link href="/reglages" className="btn-discret">Retour aux réglages</Link>

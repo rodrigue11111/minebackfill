@@ -257,7 +257,10 @@ export default function ReglagesPage() {
           <LigneListe libelle="Module" valeur={`${MODULE_ID} : ${MODULE_LABEL}`} />
           <LigneListe libelle="Glossaire et essais normalisés" href="/guide#glossaire" />
           <LigneListe libelle="Diagnostic technique" href="/diagnostic" />
-          {vueAdmin && <LigneListe libelle="Assistant IA (modifications)" href="/assistant" />}
+          {/* Lien réservé à un VRAI compte enseignant (isProf), pas à vueAdmin :
+              en mode test tout le monde a la vue enseignant, étudiants compris.
+              En mode test, la page reste ouverte par son adresse /assistant. */}
+          {isProf && <LigneListe libelle="Assistant IA (modifications)" href="/assistant" />}
         </ListeGroupee>
       </Carte>
     </Page>

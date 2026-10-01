@@ -201,9 +201,12 @@ mode** (elle exige un vrai compte prof), le reste fonctionne 100 % en local.
   projets** (MineBackfill et portail), et par environnement : on peut ouvrir
   les comptes sur les aperçus (Preview, reliés à un projet Supabase de
   préproduction) en gardant la production en mode test.
-- **Assistant IA** : en mode test, la page `/assistant` (et son lien dans
-  Réglages) est OUVERTE sans compte — la route `/api/assistant` saute la
-  vérification du rôle dans ce mode uniquement (bandeau affiché sur la page).
+- **Assistant IA** : en mode test, la page `/assistant` est OUVERTE sans
+  compte, par son adresse. Son lien dans Réglages, lui, n'apparaît qu'à un
+  vrai compte enseignant (`isProf`, pas `vueAdmin`) : en mode test, tout le
+  monde a la vue enseignant, étudiants compris (décision du 2026-09-30). La
+  route `/api/assistant` saute la vérification du rôle dans ce mode
+  uniquement (bandeau affiché sur la page).
   Il reste 503 « non configuré » tant que `ASSISTANT_GITHUB_TOKEN` /
   `ASSISTANT_GITHUB_REPO` ne sont pas définies sur Vercel. Conséquence
   assumée : quiconque connaît l'URL peut créer une issue GitHub pendant la
