@@ -52,6 +52,8 @@ export interface Colonne<C> {
 }
 
 interface CtxGachee {
+  /** Compte de l'étudiant (interne : jamais exporté, seul le pseudonyme sort). */
+  ownerId: string;
   operateur: string;
   session: string;
   g: Gachee;
@@ -66,6 +68,8 @@ interface CtxGachee {
 }
 interface CtxEssai extends CtxGachee {
   ep: Eprouvette;
+  /** La courbe de presse est en ligne (null : inconnu). */
+  courbeEnLigne: boolean | null;
 }
 export interface LigneMateriau {
   type: "residu" | "granulat" | "liant";
@@ -266,6 +270,8 @@ const COLONNES_EPROUVETTE: Colonne<CtxEssai>[] = [
   { cle: "presse", libelle: "Presse", type: "texte libre", val: (c) => txt(c.ep.essai?.presse), description: "Presse employée, telle que saisie." },
   { cle: "import_presse", libelle: "Importé de la presse", type: "booléen", val: (c) => !!c.ep.essai?.sourcePresse,
     description: "Les mesures viennent d'un fichier de presse importé (et non d'une saisie)." },
+  { cle: "courbe_en_ligne", libelle: "Courbe de presse en ligne", type: "booléen", val: (c) => c.courbeEnLigne,
+    description: "La courbe contrainte-déformation de l'éprouvette est sauvegardée en ligne (lisible par l'enseignant, et incluse dans l'export « Classe (JSON) »). Vide si l'information n'a pas pu être lue." },
   { cle: "eprouvette_ecartee", libelle: "Écartée par l'enseignant", type: "booléen", val: (c) => (c.revue ? c.revue.ecartees.includes(c.ep.id) : null),
     description: "L'enseignant a écarté cette éprouvette lors de sa revue (la gâchée de l'étudiant n'est pas modifiée). Vide sans revue." },
 ];
@@ -321,6 +327,8 @@ export interface EntreesJeuEssais {
   revueDe?: RevueDe;
   /** Seulement les gâchées ACCEPTÉES par l'enseignant et non modifiées depuis. */
   seulementAcceptees?: boolean;
+  /** Courbes en ligne, « compte|éprouvette » (absent : inconnu, colonne vide). */
+  courbesEnLigne?: Set<string>;
 }
 
 export type Ligne = Record<string, Valeur>;
@@ -383,7 +391,7 @@ export function construireJeuEssais(x: EntreesJeuEssais): JeuEssais {
       const revue = x.revueDe?.(e.id, g.id);
       if (x.seulementAcceptees && !(revue?.decision === "acceptee" && !revue.perimee)) continue;
       ctxs.push({
-        operateur, g, m, materiauxSource, revue,
+        ownerId: e.id, operateur, g, m, materiauxSource, revue,
         residuCatalogue: m.residu?.id ? catalogues.residus.find((x) => x.id === m.residu?.id) : undefined,
         session: sessionEffective({ sessionId: g.sessionId, date: g.creeLe }, x.sessions)?.nom ?? "Sans session",
         p: parametresEffectifs(g, formulations),
@@ -394,7 +402,11 @@ export function construireJeuEssais(x: EntreesJeuEssais): JeuEssais {
 
   const essais: Ligne[] = [];
   for (const c of ctxs) {
-    for (const ep of [...c.g.eprouvettes].sort((a, b) => a.code.localeCompare(b.code))) essais.push(ligne(COLONNES_ESSAIS, { ...c, ep }));
+    const ownerId = c.ownerId;
+    for (const ep of [...c.g.eprouvettes].sort((a, b) => a.code.localeCompare(b.code))) {
+      const courbeEnLigne = x.courbesEnLigne ? x.courbesEnLigne.has(`${ownerId}|${ep.id}`) : null;
+      essais.push(ligne(COLONNES_ESSAIS, { ...c, ep, courbeEnLigne }));
+    }
   }
   const materiaux = materiauxDuJeu(ctxs, catalogues);
 

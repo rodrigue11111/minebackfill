@@ -755,3 +755,64 @@ describe("schema.sql — revues de l'enseignant", () => {
     await expect(poser(R1, R1, "rg2", "acceptee", null)).rejects.toMatchObject({ code: "42501" });
   });
 });
+
+describe("schema.sql — courbes en ligne et leur nettoyage", () => {
+  // Comptes propres à ce bloc.
+  const C1 = "00000000-0000-4000-8000-0000000000b1";
+  const C2 = "00000000-0000-4000-8000-0000000000b2";
+  const courbe = (id: string, g: string) => ({ v: 1, eprouvetteId: id, gacheeId: g, t: [0, 1], f: [0, 10], d: [0, 0.1], s: [0, 5], e: [0, 0.1] });
+  const vieillir = async (uid: string, ids: string[]) => {
+    await db.exec("alter table public.user_docs disable trigger user_docs_normaliser");
+    await db.query("update public.user_docs set updated_at = now() - interval '2 hours' where user_id = $1 and kind = 'courbe' and id = any($2)", [uid, ids]);
+    await db.exec("alter table public.user_docs enable trigger user_docs_normaliser");
+  };
+  const etat = async (uid: string, id: string) => (await db.query<{ deleted: boolean; vide: boolean }>(
+    "select deleted, payload is null as vide from public.user_docs where user_id = $1 and kind = 'courbe' and id = $2", [uid, id])).rows[0];
+  const purger = (uid: string | null, attendu: string) => comme<{ n: number }>(uid, "select public.purger_mes_courbes($1) as n", [attendu]);
+
+  beforeAll(async () => {
+    await creerCompte(C1, "c1@exemple.ca");
+    await creerCompte(C2, "c2@exemple.ca");
+  });
+
+  it("une courbe s'écrit comme un document ; jamais relue par la synchronisation", async () => {
+    await ecrire(C1, "gachee", "cg1", { id: "cg1", eprouvettes: [{ id: "ep-1" }, { id: "ep-2" }] }, null);
+    for (const id of ["ep-1", "ep-2", "ep-orpheline", "ep-recente"]) {
+      expect((await ecrire(C1, "courbe", id, courbe(id, "cg1"), null))[0].ok).toBe(true);
+    }
+    expect((await ecrire(C2, "courbe", "ep-autre", courbe("ep-autre", "x"), null))[0].ok).toBe(true);
+    expect((await lire(C1, null)).map((x) => x.doc_kind)).not.toContain("courbe");
+    // Déjà en ligne : la création est refusée et la ligne serveur est rendue (réponse perdue).
+    const r = await ecrire(C1, "courbe", "ep-1", courbe("ep-1", "cg1"), null);
+    expect(r[0]).toMatchObject({ ok: false });
+    expect(r[0].contenu_serveur).toMatchObject({ eprouvetteId: "ep-1" });
+  });
+
+  it("purge : orpheline ancienne retirée ; récente, référencée ou d'un autre compte, gardée", async () => {
+    await vieillir(C1, ["ep-1", "ep-2", "ep-orpheline"]);
+    await vieillir(C2, ["ep-autre"]);
+    expect((await purger(C1, C1)).rows[0].n).toBe(1);
+    expect(await etat(C1, "ep-orpheline")).toEqual({ deleted: true, vide: true });
+    expect(await etat(C1, "ep-1")).toEqual({ deleted: false, vide: false });
+    expect(await etat(C1, "ep-recente")).toEqual({ deleted: false, vide: false }); // moins d'une heure
+    expect(await etat(C2, "ep-autre")).toEqual({ deleted: false, vide: false });
+    expect((await purger(C1, C1)).rows[0].n).toBe(0); // rien de plus
+  });
+
+  it("gâchée supprimée : ses courbes deviennent orphelines ; une copie de conflit les garde", async () => {
+    await ecrire(C1, "gachee", "cg1-conflit", { id: "cg1-conflit", conflit: { de: "cg1" }, eprouvettes: [{ id: "ep-2" }] }, null);
+    const [g] = (await lire(C1, null)).filter((x) => x.doc_id === "cg1");
+    await ecrire(C1, "gachee", "cg1", null, g.doc_rev, true);
+    await vieillir(C1, ["ep-1", "ep-2"]);
+    expect((await purger(C1, C1)).rows[0].n).toBe(1);
+    expect((await etat(C1, "ep-1")).deleted).toBe(true);
+    expect((await etat(C1, "ep-2")).deleted).toBe(false); // encore dans la copie de conflit
+  });
+
+  it("gardes : session vérifiée, anonyme refusé, l'enseignant ne purge que les siennes", async () => {
+    await expect(purger(C1, C2)).rejects.toMatchObject({ code: "28000" });
+    await expect(purger(null, C1)).rejects.toMatchObject({ code: "42501" });
+    expect((await purger(PROF, PROF)).rows[0].n).toBe(0);
+    expect(await etat(C2, "ep-autre")).toEqual({ deleted: false, vide: false });
+  });
+});

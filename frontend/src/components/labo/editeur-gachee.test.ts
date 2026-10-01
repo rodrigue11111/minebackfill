@@ -7,6 +7,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import EditeurGachee from "./EditeurGachee";
 import FormEssaiUCS from "./FormEssaiUCS";
+import CourbeContrainteDeformation from "./CourbeContrainteDeformation";
 import type { Gachee } from "@/lib/gachee";
 import type { Annotation } from "@/lib/annotations";
 
@@ -171,5 +172,34 @@ describe("éditeur : revue de l'enseignant", () => {
     expect(html).toContain("Revue : acceptée");
     expect(html).not.toContain("Revue de l&#x27;enseignant");
     expect(avec(undefined)).not.toContain("Revue :");
+  });
+});
+
+describe("courbe contrainte-déformation", () => {
+  const essai = (p: Record<string, unknown>) => ({ contrainteKpaSaisie: 400, sourcePresse: { fichier: "p.xlsx", echantillon: "1", importeLe: coulee }, ...p });
+  const form = (es: Record<string, unknown>, props: Record<string, unknown>) => renderToStaticMarkup(createElement(FormEssaiUCS, {
+    eprouvette: { id: "e1", code: "E01", couleLe: coulee, ageJours: 7, statut: "ecrase", essai: essai(es) }, onChange: () => {}, ...props,
+  }));
+  const charger = async () => null;
+
+  it("courbe sur cet appareil : bouton avec le nombre de points ; ailleurs : « Courbe en ligne : afficher »", () => {
+    expect(form({ courbeInfo: { nbPoints: 151 } }, { chargerCourbe: charger })).toContain("Afficher la courbe (151 points)");
+    const enLigne = form({}, { chargerCourbe: charger, chercherCourbeEnLigne: charger });
+    expect(enLigne).toContain("Courbe en ligne : afficher");
+    expect(form({}, { chargerCourbe: charger })).not.toContain("Courbe en ligne"); // hors connexion
+    expect(renderToStaticMarkup(createElement(FormEssaiUCS, {
+      eprouvette: { id: "e2", code: "E02", couleLe: coulee, ageJours: 7, statut: "ecrase", essai: { contrainteKpaSaisie: 400 } },
+      onChange: () => {}, chercherCourbeEnLigne: charger,
+    }))).not.toContain("Courbe en ligne"); // saisie à la main : pas de courbe à chercher
+  });
+
+  it("le tracé : axes nommés, maximum marqué, description accessible", () => {
+    const pts = [0, 0.1, 0.2, 0.3].map((e, i) => ({ tempsS: i, chargeN: i * 10, deplacementMm: i / 10, deformationPct: e, contrainteKpa: [0, 300, 412, 380][i] }));
+    const svg = renderToStaticMarkup(createElement(CourbeContrainteDeformation, { points: pts, titre: "Éprouvette E01" }));
+    expect(svg).toContain("Déformation (%)");
+    expect(svg).toContain("Contrainte (kPa)");
+    expect(svg).toContain("Maximum : 412 kPa à 0,20 %");
+    expect(svg).toContain('role="img"');
+    expect(renderToStaticMarkup(createElement(CourbeContrainteDeformation, { points: pts.slice(0, 1), titre: "x" }))).toContain("Courbe sans points exploitables");
   });
 });

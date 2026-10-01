@@ -124,7 +124,9 @@ incrémentale par curseur), `lire_docs_classe` (enseignant), `lire_annotations`
 (le fil complet). Commentaires : `repondre_annotation`,
 `marquer_annotations_lues`, `nb_reponses_non_lues`. Revues des gâchées :
 `poser_revue` et `retirer_revue` (enseignant ; la table `revues` n'a aucun
-droit d'écriture directe), `lire_mes_revues` (étudiant). Comptes (enseignant) :
+droit d'écriture directe), `lire_mes_revues` (étudiant). Courbes de presse :
+documents « courbe » écrits par `ecrire_doc`, nettoyés par
+`purger_mes_courbes` (security invoker). Comptes (enseignant) :
 `lister_comptes`, `definir_role`, `bloquer_compte`.
 
 Les fonctions `security definer` exécutables par `authenticated`

@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Annotation } from "./annotations";
 import type { LigneClasse, ProfilClasse } from "./classe";
+import { courbeDepuisContenu, type CourbeColonnes } from "./courbes";
 import {
   revueClasseDepuisLigne, revueDepuisLigne,
   type DecisionRevue, type LigneMesRevues, type LigneRevueClasse, type Revue, type RevueClasse,
@@ -115,7 +116,7 @@ export interface DocComplet {
  * document n'existe pas (ou plus) en ligne.
  */
 export async function lireDocComplet(
-  sb: SupabaseClient, proprietaire: string, kind: "resultat" | "gachee", id: string,
+  sb: SupabaseClient, proprietaire: string, kind: "resultat" | "gachee" | "courbe", id: string,
 ): Promise<DocComplet | null> {
   const { data, error } = await sb.from("user_docs").select("payload, rev, updated_at, deleted")
     .eq("user_id", proprietaire).eq("kind", kind).eq("id", id).maybeSingle();
@@ -123,6 +124,51 @@ export async function lireDocComplet(
   if (!data) return null;
   const d = data as { payload: unknown; rev: number | string; updated_at: string; deleted: boolean };
   return { contenu: d.payload, rev: Number(d.rev), maj: d.updated_at, supprime: d.deleted };
+}
+
+/**
+ * Courbe de presse d'une éprouvette, lue en ligne à la demande (document
+ * « courbe », id = id de l'éprouvette). L'étudiant lit les siennes, l'enseignant
+ * celles de la classe (RLS). null : pas (ou plus) de courbe en ligne.
+ */
+export async function lireCourbe(sb: SupabaseClient, proprietaire: string, eprouvetteId: string): Promise<CourbeColonnes | null> {
+  const d = await lireDocComplet(sb, proprietaire, "courbe", eprouvetteId);
+  return d && !d.supprime ? courbeDepuisContenu(d.contenu) : null;
+}
+
+/** Une courbe de la classe, avec son rattachement (export JSON). */
+export interface CourbeClasse {
+  proprietaire: string;
+  eprouvetteId: string;
+  gacheeId: string | null;
+  contenu: CourbeColonnes;
+}
+
+/**
+ * Enseignant : courbes en ligne de la classe. Sans contenu (`avecContenu`
+ * faux) : seulement qui a quoi, pour la colonne courbe_en_ligne du jeu
+ * d'essais. Les erreurs sont levées.
+ */
+export async function lireCourbesClasse(sb: SupabaseClient, avecContenu: boolean): Promise<CourbeClasse[]> {
+  const toutes: CourbeClasse[] = [];
+  for (let debut = 0, p = 0; p < MAX_PAGES; p++) {
+    const { data, error } = await sb.from("user_docs")
+      .select(avecContenu ? "user_id,id,payload" : "user_id,id")
+      .eq("kind", "courbe").eq("deleted", false)
+      .order("user_id", { ascending: true }).order("id", { ascending: true })
+      .range(debut, debut + PAGE - 1);
+    if (error) throw echec(error);
+    const page = (data ?? []) as unknown as { user_id: string; id: string; payload?: unknown }[];
+    if (page.length === 0) break;
+    for (const l of page) {
+      const contenu = avecContenu ? courbeDepuisContenu(l.payload) : { v: 1 as const, t: [], f: [], d: [], s: [], e: [] };
+      if (!contenu) continue;
+      const gacheeId = (l.payload as { gacheeId?: unknown } | undefined)?.gacheeId;
+      toutes.push({ proprietaire: l.user_id, eprouvetteId: l.id, gacheeId: typeof gacheeId === "string" ? gacheeId : null, contenu });
+    }
+    debut += page.length;
+  }
+  return toutes;
 }
 
 export async function lireProfils(sb: SupabaseClient): Promise<ProfilClasse[]> {

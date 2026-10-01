@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Gachee } from "./gachee";
 import {
-  courbesAOublier, creerMagasinMemoire, decoderCourbe, deplacerCourbes, encoderCourbe, idsCourbes,
-  nbPointsCourbe, resoudreCourbesImportees, type MagasinCourbes,
+  courbeDepuisContenu, courbesAOublier, courbesOrphelines, creerMagasinMemoire, decoderCourbe, deplacerCourbes, encoderCourbe,
+  idsCourbes, lignesCsvCourbe, nbPointsCourbe, resoudreCourbesImportees, type MagasinCourbes,
 } from "./courbes";
 import { jsonCanonique } from "./sync-empreinte";
 
@@ -55,6 +55,7 @@ describe("courbes — déplacement hors des gâchées", () => {
       lire: async () => null,
       ecrire: async () => { throw new Error("QuotaExceededError"); },
       supprimer: async () => {},
+      lister: async () => [],
     };
     const g = gachee("g1", [{ courbe: pts }]);
     const copie = jsonCanonique(g);
@@ -80,5 +81,31 @@ describe("courbes — nettoyage et import", () => {
     expect(r.eprouvettes[1].essai?.courbe).toEqual(pts);
     expect(r.eprouvettes[1].essai?.courbeInfo).toBeUndefined();
     expect(r.eprouvettes[2].essai).toEqual({});
+  });
+});
+
+describe("courbes : magasin, orphelines, CSV", () => {
+  it("le magasin liste ses courbes ; une orpheline est une courbe qu'aucune gâchée ne référence", async () => {
+    const m = creerMagasinMemoire();
+    await m.ecrire([["a", encoderCourbe(pts)], ["b", encoderCourbe(pts)], ["c", encoderCourbe(pts)]]);
+    expect((await m.lister()).sort()).toEqual(["a", "b", "c"]);
+    const g = gachee("g1", [{ courbeInfo: { nbPoints: 2 } }]);
+    const idRef = g.eprouvettes[0].id;
+    await m.ecrire([[idRef, encoderCourbe(pts)]]);
+    expect(courbesOrphelines(await m.lister(), [g]).sort()).toEqual(["a", "b", "c"]);
+    expect(courbesOrphelines([idRef], [])).toEqual([idRef]);
+  });
+
+  it("CSV d'une courbe : une colonne par grandeur, unités dans l'en-tête", () => {
+    const l = lignesCsvCourbe(decoderCourbe(encoderCourbe(pts)));
+    expect(l[0]).toEqual(["t_s", "f_n", "d_mm", "s_kpa", "e_pct"]);
+    expect(l).toHaveLength(1 + pts.length);
+  });
+
+  it("contenu lu en ligne : les colonnes sans le rattachement ; autre chose : null", () => {
+    const c = encoderCourbe(pts);
+    expect(courbeDepuisContenu({ ...c, eprouvetteId: "e1", gacheeId: "g1" })).toEqual(c);
+    expect(courbeDepuisContenu({ v: 2 })).toBeNull();
+    expect(courbeDepuisContenu(null)).toBeNull();
   });
 });

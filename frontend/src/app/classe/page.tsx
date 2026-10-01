@@ -19,8 +19,9 @@ import FiltreSession from "@/components/FiltreSession";
 import { cleLigne, exportClasse, regrouper, type EtudiantClasse, type LigneClasse, type ProfilClasse } from "@/lib/classe";
 import {
   ajouterAnnotation, estReponse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireProfils, lireRevuesClasse, marquerAnnotationsLues,
-  messageErreurClasse, poserRevue, retirerAnnotation, retirerRevue, type LigneAnnotation,
+  lireCourbe, lireCourbesClasse, messageErreurClasse, poserRevue, retirerAnnotation, retirerRevue, type LigneAnnotation,
 } from "@/lib/classe-reseau";
+import { decoderCourbe } from "@/lib/courbes";
 import { cleRevue, indexerRevues, infoRevue, type RevueClasse } from "@/lib/revues";
 import type { ActionsRevue } from "@/components/classe/CarteRevue";
 import { rafraichirReponsesNonLues } from "@/lib/sync-client";
@@ -200,8 +201,11 @@ export default function ClassePage() {
     if (!sb) return;
     setExportEnCours(true);
     try {
-      const complet = await lireClasse(sb, { complet: true, session: sessionServeur });
-      const donnees = exportClasse(regrouper(complet, profils, sessions, filtreEffectif), filtreEffectif, new Date());
+      const [complet, courbes] = await Promise.all([
+        lireClasse(sb, { complet: true, session: sessionServeur }),
+        lireCourbesClasse(sb, true),
+      ]);
+      const donnees = exportClasse(regrouper(complet, profils, sessions, filtreEffectif), filtreEffectif, new Date(), courbes);
       telechargerBlob(new Blob([JSON.stringify(donnees, null, 2)], { type: "application/json" }),
         nomFichier(`MineBackfill_classe_${filtreEffectif}`, "json"));
     } catch (e) {
@@ -223,8 +227,14 @@ export default function ClassePage() {
    */
   const exporterJeuEssais = async (format: "csv" | "json", seulementAcceptees = false) => {
     try {
+      // Qui a une courbe en ligne (colonne courbe_en_ligne) ; en échec, la
+      // colonne reste vide plutôt que de bloquer l'export.
+      const sb = getSupabase();
+      const courbesEnLigne = sb
+        ? await lireCourbesClasse(sb, false).then((l) => new Set(l.map((c) => `${c.proprietaire}|${c.eprouvetteId}`)), () => undefined)
+        : undefined;
       const jeu = construireJeuEssais({
-        etudiants, sessions, sessionLibelle: libelleSession,
+        etudiants, sessions, sessionLibelle: libelleSession, courbesEnLigne,
         pseudonymes: await pseudonymes(etudiants.map((e) => e.id)),
         catalogues: { residus: catalogueResidus, granulats: catalogueGranulats, liants: catalogueLiants },
         maintenant: new Date(), revueDe, seulementAcceptees,
@@ -324,6 +334,11 @@ export default function ClassePage() {
           onRetour={fermerDoc} maintenant={maintenant} units={units}
           catalogue={{ residus: catalogueResidus, granulats: catalogueGranulats, onAjouter: ajouterMateriauOfficiel }}
           revue={doc.ref.kind === "gachee" ? revues?.get(cleRevue(doc.ref.etudiantId, doc.ref.id)) : undefined}
+          chargerCourbe={async (eprouvetteId) => {
+            const sb = getSupabase();
+            const c = sb ? await lireCourbe(sb, doc.ref.etudiantId, eprouvetteId) : null;
+            return c ? decoderCourbe(c) : null;
+          }}
           actionsRevue={doc.ref.kind === "gachee" ? actionsRevue(doc.ref, doc.etat === "pret" ? doc.doc.rev : null) : undefined} />
       ) : (
         <>

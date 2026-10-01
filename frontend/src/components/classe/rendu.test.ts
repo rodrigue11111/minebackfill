@@ -79,6 +79,12 @@ describe("vues de l'enseignant — rendu", () => {
     expect(html).toContain("Malaxage");
     expect(html).toContain("410"); // seule la valeur retenue entre dans la moyenne à 7 j
     expect(html).toContain("7 j"); // âge réel de E01 (coulée le 10, écrasée le 17)
+    expect(html).not.toContain("Courbe en ligne : afficher"); // sans lecteur de courbe
+    const avecCourbes = rendu(createElement(GacheeLecture, {
+      gachee: etudiants[0].gachees[0], maintenant, formulations: [], chargerCourbe: async () => null,
+    }));
+    expect(avecCourbes).toContain("Courbe en ligne : afficher"); // E02, importée de la presse
+    expect(avecCourbes).toContain("envoyées en ligne par le site de l&#x27;étudiant");
   });
 
   it("gâchée intégrale : fiche d'essai (matériaux, cure, conditions de l'essai, complétude)", () => {

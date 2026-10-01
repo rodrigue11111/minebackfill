@@ -177,7 +177,16 @@ export function agesClasse(etudiants: EtudiantClasse[]): number[] {
  * (l'offre gratuite n'en fait aucune). À ranger HORS de GitHub : il contient
  * des données d'étudiants.
  */
-export function exportClasse(etudiants: EtudiantClasse[], filtre: FiltreSession, maintenant: Date): unknown {
+export function exportClasse(
+  etudiants: EtudiantClasse[],
+  filtre: FiltreSession,
+  maintenant: Date,
+  courbes?: { proprietaire: string; eprouvetteId: string; gacheeId: string | null; contenu: unknown }[],
+): unknown {
+  // Courbes de presse (en ligne depuis 2026-10) : celles des éprouvettes des
+  // gâchées exportées, sous une clé à part. La version reste 1 : un ancien
+  // lecteur ignore simplement la clé.
+  const eprouvettes = new Set(etudiants.flatMap((e) => e.gachees.flatMap((g) => g.eprouvettes.map((x) => `${e.id}|${x.id}`))));
   return {
     application: "MineBackfill",
     type: "export-classe",
@@ -187,5 +196,6 @@ export function exportClasse(etudiants: EtudiantClasse[], filtre: FiltreSession,
     etudiants: etudiants.map((e) => ({
       id: e.id, nom: e.nom, email: e.email, resultats: e.resultats, gachees: e.gachees,
     })),
+    ...(courbes ? { courbes: courbes.filter((c) => eprouvettes.has(`${c.proprietaire}|${c.eprouvetteId}`)) } : {}),
   };
 }

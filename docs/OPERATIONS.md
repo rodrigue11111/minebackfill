@@ -156,9 +156,12 @@ est la seule copie en ligne. Deux gestes, à faire vous-même :
    données (CSV) »).
 
 **Où ranger ces fichiers : PAS sur GitHub** (le dépôt est public, ce sont des
-données d'étudiants). Un espace de stockage de l'établissement convient. Les
-courbes de presse ne sont pas en ligne : chaque étudiant les garde dans son
-navigateur et dans SA sauvegarde locale (Réglages → Données locales → Exporter).
+données d'étudiants). Un espace de stockage de l'établissement convient.
+Depuis octobre 2026, les courbes de presse sont envoyées en ligne par le site
+de l'étudiant (une fois sa gâchée en ligne) : « Classe (JSON) » les contient
+(clé `courbes`). Une courbe importée avant n'y est qu'une fois le site de
+l'étudiant rouvert ; d'ici là, elle reste dans son navigateur et dans SA
+sauvegarde locale (Réglages → Données locales → Exporter).
 
 **Conservation des jeux d'essais.** Le but est un historique sur plusieurs
 années : garder chaque jeu daté, sans écraser le précédent (le nom du fichier

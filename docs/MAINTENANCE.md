@@ -178,7 +178,9 @@ optionnel+nullable pour les vieux localStorage).
 | `minebackfill_sync` | `{v,data}` | 1 | état de la synchronisation v2 (`sync-etat.ts`) — **hors sauvegarde** |
 | `minebackfill_compte_<uid>` | `{v,data}` | 1 | travail d'un compte mis de côté au changement de compte (`sync-bascule.ts`) — **hors sauvegarde** |
 | `minebackfill_annotations` | `{v,data}` | 2 | fil de commentaires lu en ligne ; v1 → v2 : curseur remis à zéro (tout est relu), `auteur`/`creeLe`/`luLe` complétés en gardant ceux déjà présents (`migrerAnnotationV1`) — **hors sauvegarde** |
-| IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par id d'éprouvette | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` |
+| IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par id d'éprouvette | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` ; orphelines balayées au démarrage (`balayerCourbesOrphelines`, prudent) |
+| `minebackfill_sync_courbes` | `{v,data}` | 1 | envoi des courbes en ligne (`sync-courbes.ts`) : révision et signature de chaque courbe envoyée, par compte — **hors sauvegarde** |
+| `minebackfill_revues` | `{v,data}` | 1 | revues de l'enseignant sur mes gâchées, relues en entier (`revues.ts`) — **hors sauvegarde** |
 | Sauvegarde (fichier) | `backup.ts` | schéma 6 | fusion par id, le local gagne ; courbes dans `data.courbes` |
 
 Toute évolution de schéma : incrémenter la version de LA clé concernée
@@ -597,6 +599,37 @@ obligatoire) et peut écarter des éprouvettes. Le mot « valide » reste réser
   « gâchées acceptées » (`seulementAcceptees`).
 - **Effacer un compte** : ses revues bloquent la suppression comme ses
   annotations (`docs/OPERATIONS.md`).
+
+### 18. Courbes de presse en ligne
+
+Les courbes vivent dans IndexedDB (`courbes.ts`, `courbes-idb.ts`) ;
+l'éprouvette n'en garde que `essai.courbeInfo`, qui reste LOCAL : la forme
+canonique des gâchées (`sync-local.ts`) continue de le retirer, sinon deux
+appareils se réécriraient la même gâchée à chaque cycle.
+
+- **Envoi** : `sync-courbes.ts` (pur), À PART du moteur (il ne connaît que
+  résultats et gâchées, et son dépôt est synchrone). Après chaque cycle
+  réussi (`sync-client.ts`), au plus 10 courbes : celles dont la gâchée est
+  déjà en ligne. Document « courbe », id = id de l'éprouvette, contenu =
+  colonnes + `eprouvetteId`, `gacheeId`, par `ecrire_doc`
+  (`ecrivainCourbes`, `sync-supabase.ts`). Un nouvel import change la
+  signature (`sourcePresse.importeLe`, nombre de points) et la courbe repart.
+  Courbe déjà en ligne (réponse perdue, autre appareil) : même contenu,
+  on retient sa révision ; sinon, l'import de cet appareil fait foi.
+- **Lecture** : à la demande seulement (`lireCourbe`, `classe-reseau.ts`) ;
+  `lire_docs` ne rend jamais les courbes. L'étudiant, sur un autre appareil :
+  « Courbe en ligne : afficher » (la courbe est alors rangée dans son
+  IndexedDB) ; l'enseignant : même bouton dans la vue de la gâchée.
+- **Affichage** : `CourbeEprouvette` (ouverte à la demande) et
+  `CourbeContrainteDeformation` (SVG, maximum marqué, PNG et CSV).
+- **Nettoyage** : en ligne, `purger_mes_courbes` (une fois par connexion,
+  une heure de grâce, security invoker) ; sur l'appareil,
+  `balayerCourbesOrphelines` au démarrage, qui ne fait RIEN au moindre doute
+  (gâchées ou travail mis de côté illisibles).
+- **Exports** : « Classe (JSON) » ajoute la clé `courbes` (version
+  inchangée) ; le jeu d'essais a la colonne `courbe_en_ligne`.
+- **Taille** : 151 points par courbe (`presse-fichier.ts`), environ 9 Ko en
+  ligne ; limites : 256 Kio par document, 25 Mo par compte.
 
 ## Pièges connus
 

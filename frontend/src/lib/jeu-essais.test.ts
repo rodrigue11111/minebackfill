@@ -169,6 +169,16 @@ describe("jeu d'essais pseudonymisé", () => {
     expect(sans.essais[0]).toMatchObject({ revue: null, revue_perimee: null, eprouvette_ecartee: null });
   });
 
+  it("courbe_en_ligne : vrai ou faux selon les courbes lues en ligne ; vide si inconnu", async () => {
+    const ps = await pseudonymes(etudiants.map((e) => e.id));
+    const j = construireJeuEssais({ etudiants, sessions, sessionLibelle: "x", pseudonymes: ps, catalogues, maintenant, courbesEnLigne: new Set([`${A}|a1`]) });
+    const parCode = new Map(j.essais.map((l) => [l.eprouvette_code, l]));
+    expect(parCode.get("G-20260910-01-E01")!.courbe_en_ligne).toBe(true);
+    expect(parCode.get("G-20260910-01-E02")!.courbe_en_ligne).toBe(false);
+    expect((await jeuDe()).essais[0].courbe_en_ligne).toBeNull();
+    expect(JSON.stringify(jeuEssaisJson(j))).not.toContain(A); // le compte ne sort jamais
+  });
+
   it("gâchée très ancienne ou allégée : aucun tableau manquant ne fait planter", async () => {
     const vieux = regrouper([ligne(A, "gachee", { id: "gx", code: "G-X", creeLe: jour(9, 1), categorie: "RPC" } as never)], profils, sessions, "toutes");
     const j = construireJeuEssais({ etudiants: vieux, sessions, sessionLibelle: "x", pseudonymes: await pseudonymes([A, B]), catalogues, maintenant });

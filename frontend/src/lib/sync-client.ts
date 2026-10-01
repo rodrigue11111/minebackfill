@@ -26,7 +26,9 @@ import {
 } from "./sync-etat";
 import { basculerCompte } from "./sync-bascule";
 import { creerDepotLocal } from "./sync-local";
-import { transportSupabase } from "./sync-supabase";
+import { ecrivainCourbes, purgerMesCourbes, transportSupabase } from "./sync-supabase";
+import { cycleCourbes } from "./sync-courbes";
+import { chargerEtatCourbes, magasinCourbes, sauverEtatCourbes } from "./courbes-client";
 import { creerPlanificateur, type Planificateur, type StatutSync } from "./sync-planificateur";
 
 /**
@@ -165,6 +167,33 @@ async function rafraichirRevues(c: Courant): Promise<void> {
   }
 }
 
+/** Le nettoyage serveur des courbes n'a lieu qu'une fois par connexion. */
+let courbesPurgees = false;
+
+/**
+ * Courbes de presse : envoyées en ligne après chaque cycle réussi, au plus 10
+ * à la fois (sync-courbes.ts). Puis, une fois par connexion, nettoyage des
+ * courbes dont l'éprouvette n'existe plus en ligne. Échec : on reprendra.
+ */
+async function envoyerCourbes(c: Courant): Promise<void> {
+  const m = magasinCourbes();
+  const etatSync = chargerEtatSync();
+  if (!m || etatSync.uid !== c.uid) return;
+  try {
+    const r = await cycleCourbes({
+      gachees: loadGacheesFromStorage(), etatSync, etat: chargerEtatCourbes(c.uid),
+      lire: (id) => m.lire(id), ecrire: ecrivainCourbes(c.sb, () => c.uid),
+    });
+    if (courant === c) sauverEtatCourbes(r.etat);
+    if (!courbesPurgees && courant === c) {
+      courbesPurgees = true;
+      await purgerMesCourbes(c.sb, c.uid);
+    }
+  } catch {
+    /* magasin indisponible : on reprendra au prochain cycle */
+  }
+}
+
 /** Le fil local change (lecture, réponse, accusé) : stockage puis écran. */
 function enregistrerAnnotations(annotations: Annotation[], curseur = loadAnnotationsFromStorage().curseur): void {
   persistAnnotations({ curseur, annotations });
@@ -266,6 +295,7 @@ async function executerCycle(c: Courant, budget: number): Promise<ResultatCycle>
     });
     const fin = reporterSuppressions(depart, chargerEtatSync(), r.etat);
     sauverEtatSync(fin); // un échec (stockage plein) est signalé par le bandeau de stockage
+    if (!r.erreur) await envoyerCourbes(c);
     publier({
       enAttente: nombreEnAttente(fin, c.depot.lister()),
       ...(r.avis.length > 0 ? { avis: [...instantane.avis, ...r.avis].slice(-20) } : {}),
@@ -390,6 +420,7 @@ export function deconnecterSynchro(): void {
   courant?.arreterCompteur();
   courant = null;
   derniereLectureAnnotations = -Infinity;
+  courbesPurgees = false;
   publier({ ...INITIAL });
 }
 

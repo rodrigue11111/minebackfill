@@ -186,6 +186,7 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `vitesse_unite` | Unité de la vitesse |  | code | mm/min, kN/s ou kPa/s. |
 | `presse` | Presse |  | texte libre | Presse employée, telle que saisie. |
 | `import_presse` | Importé de la presse |  | booléen | Les mesures viennent d'un fichier de presse importé (et non d'une saisie). |
+| `courbe_en_ligne` | Courbe de presse en ligne |  | booléen | La courbe contrainte-déformation de l'éprouvette est sauvegardée en ligne (lisible par l'enseignant, et incluse dans l'export « Classe (JSON) »). Vide si l'information n'a pas pu être lue. |
 | `eprouvette_ecartee` | Écartée par l'enseignant |  | booléen | L'enseignant a écarté cette éprouvette lors de sa revue (la gâchée de l'étudiant n'est pas modifiée). Vide sans revue. |
 
 ## Table gachees

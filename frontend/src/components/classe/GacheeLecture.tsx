@@ -14,6 +14,8 @@ import { badgeEcheance, fmtDate } from "@/lib/echeance-affichage";
 import { fmt, TIRET } from "@/lib/format";
 import type { Recipe } from "@/lib/types";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
+import type { PointCourbe } from "@/lib/presse-urstm";
+import CourbeEprouvette from "@/components/labo/CourbeEprouvette";
 import { nombre, Pastille, td, tdNum, th } from "./commun";
 
 function Info({ label, valeur }: { label: string; valeur: React.ReactNode }) {
@@ -79,13 +81,15 @@ function AjoutCatalogue({ kind, snap, catalogue }: {
   );
 }
 
-export default function GacheeLecture({ gachee: g, formulations, maintenant, catalogue }: {
+export default function GacheeLecture({ gachee: g, formulations, maintenant, catalogue, chargerCourbe }: {
   gachee: Gachee;
   /** Résultats de CET étudiant (les ids de formulation ne valent que chez lui). */
   formulations: { id: string; recipes: Recipe[] }[];
   maintenant: Date;
   /** Catalogue de l'enseignant (page Classe) : « Ajouter au catalogue officiel ». */
   catalogue?: CatalogueEnseignant;
+  /** Courbe de presse d'une éprouvette, lue en ligne à la demande. */
+  chargerCourbe?: (eprouvetteId: string) => Promise<PointCourbe[] | null>;
 }) {
   const p = parametresEffectifs(g, formulations);
   const parAge = agregerParAge(g.eprouvettes);
@@ -237,6 +241,11 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
                       {es.presse ? ` · presse ${es.presse}` : ""}
                       {es.tempsDeCureReelJours !== undefined && ` · cure réelle ${nombre(es.tempsDeCureReelJours, 0)} j`}
                       {src.commentaires ? ` · « ${src.commentaires} »` : ""}
+                      {chargerCourbe && (
+                        <div style={{ marginTop: 4 }}>
+                          <CourbeEprouvette code={e.code} nbPoints={0} enLigne charger={() => chargerCourbe(e.id)} />
+                        </div>
+                      )}
                     </li>
                   );
                 })}
@@ -246,7 +255,8 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
         )}
         {nbCourbes > 0 && (
           <p style={{ fontSize: 11.5, color: "var(--texte-3)", margin: "10px 0 0" }}>
-            Les courbes contrainte-déformation restent sur l&apos;appareil de l&apos;étudiant : elles ne sont pas sauvegardées en ligne.
+            Les courbes contrainte-déformation sont envoyées en ligne par le site de l&apos;étudiant (depuis octobre 2026) ;
+            une courbe plus ancienne n&apos;y est qu&apos;une fois son site ouvert à nouveau.
           </p>
         )}
       </Carte>

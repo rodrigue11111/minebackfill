@@ -792,6 +792,43 @@ grant execute on function public.definir_role(uuid, text) to authenticated;
 grant execute on function public.bloquer_compte(uuid, boolean) to authenticated;
 
 -- ======================================================================
+--  courbes en ligne : nettoyage (2026-10). Les courbes de presse sont
+--  envoyées par le site comme documents « courbe » (id = id de l'éprouvette),
+--  à part de la synchronisation. Quand une gâchée ou une éprouvette
+--  disparaît, sa courbe devient orpheline : purger_mes_courbes la met à la
+--  corbeille (contenu effacé, trace « supprimé » gardée). Une heure de grâce :
+--  une courbe envoyée juste avant sa gâchée n'est jamais prise pour une
+--  orpheline. Security INVOKER : la RLS du compte s'applique, il ne touche
+--  que ses propres lignes. Une copie de conflit garde les ids d'éprouvette de
+--  l'original : sa courbe reste tant que l'une des deux existe.
+-- ======================================================================
+create or replace function public.purger_mes_courbes(p_attendu uuid)
+returns integer language plpgsql security invoker set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_n integer;
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  update public.user_docs c set deleted = true, payload = null
+   where c.user_id = v_uid and c.kind = 'courbe' and not c.deleted
+     and c.updated_at < clock_timestamp() - interval '1 hour'
+     and not exists (
+       select 1
+         from public.user_docs g
+        cross join lateral jsonb_array_elements(
+                case when jsonb_typeof(g.payload -> 'eprouvettes') = 'array'
+                     then g.payload -> 'eprouvettes' else '[]'::jsonb end) e
+        where g.user_id = v_uid and g.kind = 'gachee' and not g.deleted
+          and e ->> 'id' = c.id);
+  get diagnostics v_n = row_count;
+  return v_n;
+end $$;
+revoke execute on function public.purger_mes_courbes(uuid) from public, anon;
+grant execute on function public.purger_mes_courbes(uuid) to authenticated;
+
+-- ======================================================================
 --  revues : la décision de l'enseignant sur une gâchée (2026-10).
 --  « Marquer terminée » vaut soumission ; l'enseignant accepte ou refuse
 --  (motif obligatoire pour un refus) et peut écarter des éprouvettes. Il

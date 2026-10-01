@@ -25,6 +25,10 @@ import Segmente from "@/components/ui/Segmente";
 import { FilEtudiant } from "@/components/AnnotationsDoc";
 import ImportPresse from "./ImportPresse";
 import FormEssaiUCS from "./FormEssaiUCS";
+import { decoderCourbe } from "@/lib/courbes";
+import { lireCourbeLocale, rangerCourbe } from "@/lib/courbes-client";
+import { lireCourbe } from "@/lib/classe-reseau";
+import { getSupabase } from "@/lib/supabase";
 import { dateCourteFr, imprimerHtml, isoJourMidi, isoVersDateInput, nouvelId } from "./outils";
 
 export default function CarteEprouvettes({ gachee, maintenant, onChange, idImport, inviterAjout = false, notes, connecte = false }: {
@@ -46,6 +50,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
   const [mouleChoix, setMouleChoix] = useState<string>("");
   const [moule, setMoule] = useState("");
   const [ouverte, setOuverte] = useState<string | null>(null);
+  const uid = useStore((s) => s.session?.userId ?? null);
 
   const eprouvettes = [...gachee.eprouvettes].sort(
     (a, b) => dateEcheance(a).getTime() - dateEcheance(b).getTime(),
@@ -74,6 +79,19 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
     onChange(gachee.eprouvettes.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   const majEssai = (id: string, patch: Partial<EssaiUCS>) =>
     onChange(gachee.eprouvettes.map((e) => (e.id === id ? { ...e, essai: { ...(e.essai ?? {}), ...patch } } : e)));
+
+  // Courbe de presse : rangée ici (magasin, ou encore dans la gâchée), sinon
+  // cherchée en ligne (envoyée depuis un autre appareil), puis rangée ici.
+  const chargerCourbe = (e: Eprouvette) => async () =>
+    e.essai?.courbe?.length ? e.essai.courbe : lireCourbeLocale(e.id);
+  const chercherEnLigne = (e: Eprouvette) => async () => {
+    const sb = getSupabase();
+    if (!sb || !uid) return null;
+    const c = await lireCourbe(sb, uid, e.id);
+    if (!c) return null;
+    if (await rangerCourbe(e.id, c)) majEssai(e.id, { courbeInfo: { nbPoints: c.t.length } });
+    return decoderCourbe(c);
+  };
   const retirer = (id: string) => {
     onChange(gachee.eprouvettes.filter((e) => e.id !== id));
     oublierCourbes(courbesAOublier([id], useStore.getState().gachees.filter((x) => x.id !== gachee.id)));
@@ -198,6 +216,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                   <div className="labo-eprouvette-ouverte">
                     {e.statut === "ecrase" && (
                       <FormEssaiUCS eprouvette={e} onChange={(patch) => majEssai(e.id, patch)}
+                        chargerCourbe={chargerCourbe(e)} chercherCourbeEnLigne={connecte && uid ? chercherEnLigne(e) : undefined}
                         onVitessePourToutes={gachee.eprouvettes.filter((x) => x.statut === "ecrase").length > 1 ? vitessePourToutes : undefined} />
                     )}
                     <div className="labo-actions">
