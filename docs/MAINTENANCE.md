@@ -479,6 +479,73 @@ de `glossaire.ts` et le Guide le disent. Une correction du professeur se
 reporte dans `NORMES_REF` (et dans les protocoles par défaut,
 `lib/protocole.ts`, qui les citent).
 
+### 15. Fiche d'essai (gâchée, éprouvette, essai)
+
+But : que chaque essai soit réutilisable plus tard (base de données des
+essais). **Rien n'y est obligatoire** (décision du 2026-10-01) : un étudiant
+qui n'a pas l'information continue ; un indicateur de complétude le lui
+rappelle sans le bloquer.
+
+- **Champs** (tous facultatifs) : `Gachee.materiaux` (instantané du résidu,
+  du granulat, des liants, de l'eau, de l'adjuvant), `Gachee.cure`,
+  `Gachee.malaxageDureeMin` (`lib/gachee.ts`) ; `Eprouvette.mouleDiametreMm`
+  et `mouleHauteurMm` (moule nominal ; `moule` reste le texte libre) ;
+  `EssaiUCS.masseG`, `deflexionMaxMm`, `vitesseChargement`, `presse`,
+  `modeRuptureCode` (`modeRupture` reste le texte libre). Listes fermées :
+  `TYPES_EAU`, `MODES_CURE`, `UNITES_DOSAGE_ADJUVANT` (`gachee.ts`),
+  `TYPES_RUPTURE`, `UNITES_VITESSE`, `MOULES_PROPOSES` (`eprouvette.ts`).
+- **Instantané des matériaux** : `materiauxDepuisFormulation`
+  (`lib/gachee-materiaux.ts`), appelé une seule fois, à la création de la
+  gâchée (`app/labo/page.tsx`). Il porte l'identité et les valeurs entrées
+  dans le calcul (Gs, w₀), pas la caractérisation du résidu : celle-ci vivra
+  dans le catalogue et se joindra par `materiaux.residu.id`.
+- **Complétude** : `completudeGachee` (`lib/completude.ts`), une liste de
+  points `ok` / `manque` / `sans_objet` ; les « sans objet » ne comptent pas.
+  Ajouter un point : une entrée dans `completudeGachee` et son libellé, puis
+  adapter `completude.test.ts` (le nombre de points y est épinglé). La
+  pastille « Fiche : x/y » de l'éditeur et de la vue enseignant, et la
+  colonne « Complétude de la fiche (%) » des CSV en dépendent.
+- **Groupes imbriqués** : `modifierGachee` fusionne au premier niveau ; un
+  groupe se modifie donc par une copie complète
+  (`onMaj({ cure: { ...g.cure, mode } })`, voir `majCure` dans
+  `EditeurGachee.tsx`), sinon les autres champs du groupe disparaissent.
+- **Jamais de valeur par défaut au chargement** (`migrerGachees`,
+  normalisation) : l'empreinte de chaque gâchée changerait et toute la classe
+  serait renvoyée en ligne (étape C de `sync-moteur.ts`). Un champ absent
+  s'affiche « Non précisé » ; il ne s'écrit jamais tout seul.
+- **CSV de la classe** : une colonne nouvelle s'ajoute **à la fin**
+  (`EN_TETE_FICHE` et la suite dans `classe-csv.ts`) ; les classeurs de
+  l'enseignant pointent sur les positions des anciennes colonnes
+  (`classe-csv.test.ts` épingle les 32 premières).
+
+### 16. Jeu d'essais pseudonymisé (export de recherche)
+
+Module PUR `lib/jeu-essais.ts` (tests : `jeu-essais.test.ts`), branché dans
+le menu « Exporter » de `app/classe/page.tsx`. Trois tables (`essais`,
+`gachees`, `materiaux`) et un manifeste ; le dictionnaire des données est la
+liste `COLONNES_*` du module, et `docs/DICTIONNAIRE_DONNEES.md` en est la
+version lisible.
+
+- **Ajouter une colonne** : une entrée dans `COLONNES_GACHEE` (conditions de
+  la gâchée, reprises dans `essais` et `gachees`), `COLONNES_EPROUVETTE` ou
+  `COLONNES_MATERIAUX`, avec libellé, unité, type et description ; puis sa
+  ligne dans `docs/DICTIONNAIRE_DONNEES.md`. Le test échoue tant que la
+  colonne n'y est pas décrite.
+- **Changer le sens d'une colonne** (unité, règle) : incrémenter
+  `DICTIONNAIRE_VERSION` et la ligne « Version du dictionnaire » du document.
+- **Pseudonymisation** : jamais de nom, de courriel ni de texte qui nomme
+  souvent quelqu'un (libellé de formulation, observations, opérateur,
+  fichier et commentaires de la presse). Un nouveau champ en texte libre
+  prend le type « texte libre » (il entre alors dans `textes_libres` du
+  manifeste). Les étudiants sont parcourus dans l'ordre de leur pseudonyme ;
+  ne pas réutiliser `parcourir` de `classe-csv.ts`, qui trie par nom.
+- **Le pseudonyme** (`lib/pseudonyme.ts`) : « op- » + 12 caractères
+  hexadécimaux du SHA-256 de l'identifiant du compte. Le changer casserait le
+  suivi d'un opérateur d'un export à l'autre : ne pas y toucher sans raison.
+- **Aucune formule nouvelle** : les valeurs viennent de `contrainteKpa`,
+  `parametresEffectifs`, `essaiValide`, `completudeGachee`. Les copies de
+  conflit sont exclues (`gacheesRetenues`).
+
 ## Pièges connus
 
 - **Lint React Compiler** : `setState` synchrone dans un `useEffect` est une
