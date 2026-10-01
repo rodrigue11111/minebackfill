@@ -30,7 +30,7 @@ import { completudeGachee } from "./completude";
 import { materiauxDepuisFormulation } from "./gachee-materiaux";
 import { securiserCsv, type CelluleCsv } from "./classe-csv";
 import { fmtDate } from "./echeance-affichage";
-import type { GranulatItem, ResiduItem } from "./materials";
+import { CARACTERISATION_GRANULAT, CARACTERISATION_RESIDU, type ChampCaracterisation, type GranulatItem, type ResiduItem } from "./materials";
 import type { LiantCatalogueItem } from "./store";
 
 /** Version du format du jeu d'essais (structure du JSON). */
@@ -58,6 +58,8 @@ interface CtxGachee {
   m: MateriauxGachee;
   materiauxSource: "fiche" | "formulation" | "";
   completude: number;
+  /** Le résidu dans le catalogue de l'enseignant (sa caractérisation), s'il y est. */
+  residuCatalogue?: ResiduItem;
 }
 interface CtxEssai extends CtxGachee {
   ep: Eprouvette;
@@ -72,6 +74,8 @@ export interface LigneMateriau {
   w0Pct?: number;
   humiditePct?: number;
   provenance?: string;
+  /** Entrée du catalogue (caractérisation), pour un matériau « catalogue ». */
+  caracterisation?: object;
   nbGachees: number;
 }
 
@@ -99,6 +103,11 @@ export function refMateriau(type: LigneMateriau["type"], m: { id?: string; nom?:
 }
 
 const liant = (c: CtxGachee, i: number) => c.m.liants?.[i];
+const typeDe = (ch: ChampCaracterisation): TypeColonne => (ch.type === "nombre" ? "nombre" : ch.type === "date" ? "date" : "texte libre");
+const valeurDe = (item: object | undefined, cle: string): Valeur => {
+  const v = (item as Record<string, unknown> | undefined)?.[cle];
+  return typeof v === "number" ? num(v) : typeof v === "string" ? txt(v) : null;
+};
 const PSEUDONYMISATION =
   "operateur = « op- » suivi des 12 premiers caractères hexadécimaux du SHA-256 de l'identifiant du compte. " +
   "Pseudonymisation et non anonymisation : la correspondance peut être refaite par qui détient la liste des comptes.";
@@ -145,6 +154,12 @@ const COLONNES_GACHEE: Colonne<CtxGachee>[] = [
     description: "Gs du résidu entré dans le calcul de la recette. Sans unité." },
   { cle: "residu_w0_pct", libelle: "Teneur en eau initiale w₀ du résidu (calcul)", unite: "%", type: "nombre", val: (c) => num(c.m.residu?.w0Pct),
     description: "w₀ du résidu entré dans le calcul de la recette (la valeur mesurée le jour de la gâchée est w0_mesure_pct)." },
+  // Caractérisation du résidu (catalogue de l'enseignant, jointure par l'id) :
+  // répétée ici pour que le CSV des essais se suffise à lui-même.
+  ...CARACTERISATION_RESIDU.filter((ch) => ch.type === "nombre").map((ch): Colonne<CtxGachee> => ({
+    cle: `residu_${ch.cle}`, libelle: `${ch.libelle} du résidu`, unite: ch.unite, type: "nombre", val: (c) => valeurDe(c.residuCatalogue, ch.cle),
+    description: `${ch.description} Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée.`,
+  })),
   { cle: "granulat_ref", libelle: "Granulat (référence)", type: "texte", val: (c) => refMateriau("granulat", c.m.granulat),
     description: "Identifiant du granulat dans le catalogue, sinon « instantane:granulat:<nom> ». RPG seulement." },
   { cle: "granulat_nom", libelle: "Granulat", type: "texte libre", val: (c) => txt(c.m.granulat?.nom),
@@ -268,6 +283,15 @@ export const COLONNES_MATERIAUX: Colonne<LigneMateriau>[] = [
   { cle: "w0_pct", libelle: "Teneur en eau initiale w₀", unite: "%", type: "nombre", val: (m) => num(m.w0Pct), description: "Résidus seulement." },
   { cle: "humidite_pct", libelle: "Humidité", unite: "%", type: "nombre", val: (m) => num(m.humiditePct), description: "Granulats seulement." },
   { cle: "provenance", libelle: "Provenance", type: "texte libre", val: (m) => txt(m.provenance), description: "Provenance (mine, site) du matériau." },
+  // Caractérisation : seulement pour un matériau décrit par le catalogue.
+  ...CARACTERISATION_RESIDU.map((ch): Colonne<LigneMateriau> => ({
+    cle: ch.cle, libelle: ch.libelle, unite: ch.unite, type: typeDe(ch), val: (m) => (m.type === "residu" ? valeurDe(m.caracterisation, ch.cle) : null),
+    description: `${ch.description} Résidus seulement, depuis le catalogue.`,
+  })),
+  ...CARACTERISATION_GRANULAT.map((ch): Colonne<LigneMateriau> => ({
+    cle: ch.cle, libelle: `${ch.libelle} (granulat)`, unite: ch.unite, type: typeDe(ch), val: (m) => (m.type === "granulat" ? valeurDe(m.caracterisation, ch.cle) : null),
+    description: `${ch.description} Granulats seulement, depuis le catalogue.`,
+  })),
   { cle: "nb_gachees", libelle: "Gâchées", type: "entier", val: (m) => m.nbGachees, description: "Nombre de gâchées du jeu qui emploient ce matériau." },
 ];
 
@@ -344,6 +368,7 @@ export function construireJeuEssais(x: EntreesJeuEssais): JeuEssais {
       }
       ctxs.push({
         operateur, g, m, materiauxSource,
+        residuCatalogue: m.residu?.id ? catalogues.residus.find((x) => x.id === m.residu?.id) : undefined,
         session: sessionEffective({ sessionId: g.sessionId, date: g.creeLe }, x.sessions)?.nom ?? "Sans session",
         p: parametresEffectifs(g, formulations),
         completude: completudeGachee(g).pct,
@@ -399,14 +424,14 @@ function materiauxDuJeu(ctxs: CtxGachee[], cat: EntreesJeuEssais["catalogues"]):
     ajouter(refMateriau("residu", r), () => {
       const item = r?.id ? cat.residus.find((x) => x.id === r.id) : undefined;
       return item
-        ? { type: "residu", source: "catalogue", nom: item.nom, gs: item.gs, w0Pct: item.w0_pct, provenance: item.provenance }
+        ? { type: "residu", source: "catalogue", nom: item.nom, gs: item.gs, w0Pct: item.w0_pct, provenance: item.provenance, caracterisation: item }
         : { type: "residu", source: "instantane", nom: r?.nom, gs: r?.gs, w0Pct: r?.w0Pct, provenance: r?.provenance };
     }, vues);
     const gr = c.m.granulat;
     ajouter(refMateriau("granulat", gr), () => {
       const item = gr?.id ? cat.granulats.find((x) => x.id === gr.id) : undefined;
       return item
-        ? { type: "granulat", source: "catalogue", nom: item.nom, gs: item.gs, humiditePct: item.humidite_pct, provenance: item.provenance }
+        ? { type: "granulat", source: "catalogue", nom: item.nom, gs: item.gs, humiditePct: item.humidite_pct, provenance: item.provenance, caracterisation: item }
         : { type: "granulat", source: "instantane", nom: gr?.nom, gs: gr?.gs, humiditePct: gr?.humiditePct, provenance: gr?.provenance };
     }, vues);
     for (const l of c.m.liants ?? []) {

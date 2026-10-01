@@ -28,17 +28,79 @@ import Pesees from "./Pesees";
 import CarteEprouvettes from "./CarteEprouvettes";
 import { dateLongue, nouvelId } from "./outils";
 import { TIRET } from "@/lib/format";
+import type { GranulatItem, ResiduItem } from "@/lib/materials";
 
 type VueTelephone = "pesees" | "eprouvettes" | "echanges";
+
+/** Identité d'un matériau de la fiche (le reste de l'instantané, Gs et w₀ du
+ *  calcul, n'est jamais touché par un choix dans la bibliothèque). */
+type IdentiteMateriau = { id?: string; nom?: string; provenance?: string; catalogue?: "officiel" | "perso" };
+
+/**
+ * Choix d'un matériau dans la bibliothèque (officiel et personnel), ou saisie
+ * libre (« Autre »). `null` efface l'identité (« Non précisé »).
+ */
+function LignesMateriau({ id, libelle, detail, items, snap, onChange }: {
+  id: string;
+  libelle: string;
+  detail: string;
+  items: (ResiduItem | GranulatItem)[];
+  snap: IdentiteMateriau | undefined;
+  onChange: (identite: IdentiteMateriau | null) => void;
+}) {
+  // « Autre » choisi avant d'avoir tapé un nom : sans cet état, la liste
+  // reviendrait aussitôt à « Non précisé ».
+  const [libre, setLibre] = useState(false);
+  const connu = !!snap?.id && items.some((m) => m.id === snap.id);
+  const choix = connu && !libre ? snap!.id! : libre || snap?.nom ? "autre" : "";
+  return (
+    <>
+      <LigneListe libelle={libelle} detail={detail} htmlFor={`${id}-choix`}>
+        <select id={`${id}-choix`} className="field-input labo-champ-texte" value={choix}
+          onChange={(e) => {
+            const v = e.target.value;
+            setLibre(v === "autre");
+            if (v === "") onChange(null);
+            // La provenance venait de l'entrée du catalogue : elle part avec elle.
+            else if (v === "autre") onChange({ id: undefined, catalogue: undefined, provenance: undefined });
+            else {
+              const m = items.find((x) => x.id === v);
+              if (m) onChange({ id: m.id, nom: m.nom, provenance: m.provenance, catalogue: m.origine });
+            }
+          }}>
+          <option value="">Non précisé</option>
+          {items.map((m) => <option key={m.id} value={m.id}>{m.nom}{m.origine === "perso" ? " (personnel)" : ""}</option>)}
+          <option value="autre">Autre (saisie libre)</option>
+        </select>
+      </LigneListe>
+      {choix === "autre" && (
+        <LigneListe libelle={`Nom (${libelle.toLowerCase()})`} htmlFor={`${id}-nom`}>
+          <input id={`${id}-nom`} className="field-input labo-champ-texte" value={snap?.nom ?? ""}
+            onChange={(e) => onChange({ nom: e.target.value })} />
+        </LigneListe>
+      )}
+    </>
+  );
+}
+
+/** L'instantané sans son identité (« Non précisé ») ; undefined s'il ne reste rien. */
+function sansIdentite<T extends IdentiteMateriau>(snap: T | undefined): T | undefined {
+  if (!snap) return undefined;
+  const reste = { ...snap, id: undefined, nom: undefined, provenance: undefined, catalogue: undefined };
+  return Object.values(reste).some((v) => v !== undefined && v !== "") ? reste : undefined;
+}
 
 const TYPES_AJOUT: { valeur: Ajustement["type"]; libelle: string }[] = [
   { valeur: "eau", libelle: "Eau" }, { valeur: "residu", libelle: "Résidu" },
   { valeur: "granulat", libelle: "Granulat" }, { valeur: "liant", libelle: "Liant" },
 ];
 
-export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer }: {
+export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque }: {
   gachee: Gachee;
   maintenant: Date;
+  /** Bibliothèque de matériaux (officiels et personnels) : choix du résidu et
+   *  du granulat. Sans elle, le résidu se saisit en texte libre. */
+  bibliotheque?: { residus: ResiduItem[]; granulats: GranulatItem[] };
   /** Fil de cette gâchée (commentaires de l'enseignant, réponses). */
   annotations: Annotation[];
   connecte: boolean;
@@ -72,6 +134,11 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
     .map((l) => `${l.nom ?? l.code ?? "Liant"}${l.fractionPct != null ? ` ${l.fractionPct.toLocaleString("fr-CA", { maximumFractionDigits: 1 })} %` : ""}`)
     .join(", ");
   const residuSnap = g.materiaux?.residu;
+  const granulatSnap = g.materiaux?.granulat;
+  const detailGranulat = [
+    granulatSnap?.gs != null ? `Gs ${granulatSnap.gs.toLocaleString("fr-CA", { maximumFractionDigits: 3 })}` : null,
+    granulatSnap?.provenance ?? null,
+  ].filter(Boolean).join(" · ");
   const detailResidu = [
     residuSnap?.gs != null ? `Gs ${residuSnap.gs.toLocaleString("fr-CA", { maximumFractionDigits: 3 })}` : null,
     residuSnap?.w0Pct != null ? `w₀ ${residuSnap.w0Pct.toLocaleString("fr-CA", { maximumFractionDigits: 1 })} %` : null,
@@ -223,10 +290,21 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                 <LigneListe libelle="Température (°C)" htmlFor="temperature"><ChampNombre id="temperature" placeholder={TIRET} value={g.temperatureC} onChange={(n) => onMaj({ temperatureC: n })} /></LigneListe>
                 <LigneListe libelle="w mesuré (%)" htmlFor="w-mesure"><ChampNombre id="w-mesure" placeholder={TIRET} value={g.wMesurePct} onChange={(n) => onMaj({ wMesurePct: n })} /></LigneListe>
                 <LigneListe libelle="Cw mesuré (%)" htmlFor="cw-mesure"><ChampNombre id="cw-mesure" placeholder={TIRET} value={g.cwMesurePct} onChange={(n) => onMaj({ cwMesurePct: n })} /></LigneListe>
-                <LigneListe libelle="Résidu" detail={detailResidu || "Nom ou provenance du résidu employé"} htmlFor="residu-nom">
-                  <input id="residu-nom" className="field-input labo-champ-texte" value={residuSnap?.nom ?? ""}
-                    onChange={(e) => majMateriaux({ residu: { ...residuSnap, nom: e.target.value } })} />
-                </LigneListe>
+                {bibliotheque ? (
+                  <LignesMateriau id="residu" libelle="Résidu" detail={detailResidu || "Choisi dans la bibliothèque, ou saisi librement"}
+                    items={bibliotheque.residus} snap={residuSnap}
+                    onChange={(identite) => majMateriaux({ residu: identite === null ? sansIdentite(residuSnap) : { ...residuSnap, ...identite } })} />
+                ) : (
+                  <LigneListe libelle="Résidu" detail={detailResidu || "Nom ou provenance du résidu employé"} htmlFor="residu-nom">
+                    <input id="residu-nom" className="field-input labo-champ-texte" value={residuSnap?.nom ?? ""}
+                      onChange={(e) => majMateriaux({ residu: { ...residuSnap, nom: e.target.value } })} />
+                  </LigneListe>
+                )}
+                {bibliotheque && (g.categorie === "RPG" || g.materiaux?.granulat) && (
+                  <LignesMateriau id="granulat" libelle="Granulat" detail={detailGranulat || "Choisi dans la bibliothèque, ou saisi librement"}
+                    items={bibliotheque.granulats} snap={g.materiaux?.granulat}
+                    onChange={(identite) => majMateriaux({ granulat: identite === null ? sansIdentite(g.materiaux?.granulat) : { ...g.materiaux?.granulat, ...identite } })} />
+                )}
                 {liants && <LigneListe libelle="Agent liant" valeur={liants} />}
                 <LigneListe libelle="Eau de gâchage" htmlFor="eau-type">
                   <select id="eau-type" className="field-input labo-champ-texte" value={g.materiaux?.eau?.type ?? ""}

@@ -83,6 +83,12 @@ publique. Le manifeste en donne la liste (`textes_libres`).
   matériau une fois ; elle se joint à `essais` par `residu_ref`,
   `granulat_ref` ou `liant1_code`, `liant2_code`, `liant3_code` (colonne
   `ref`, avec `type`).
+- **Caractérisation.** La granulométrie, la chimie et la minéralogie d'un
+  résidu ou d'un granulat sont saisies une seule fois, dans le catalogue de
+  l'enseignant (Réglages). Elles sont lues au moment de l'export : colonnes
+  `residu_d10_um` à `residu_muscovite_pct` de la table `essais`, et toutes les
+  colonnes de caractérisation de la table `materiaux`. Un matériau personnel
+  d'un étudiant, absent du catalogue, n'en a pas.
 
 ## Table essais
 
@@ -106,6 +112,14 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `residu_nom` | Résidu |  | texte libre | Nom du résidu, tel que saisi ou repris du catalogue. |
 | `residu_gs` | Densité relative des grains Gs du résidu |  | nombre | Gs du résidu entré dans le calcul de la recette. Sans unité. |
 | `residu_w0_pct` | Teneur en eau initiale w₀ du résidu (calcul) | % | nombre | w₀ du résidu entré dans le calcul de la recette (la valeur mesurée le jour de la gâchée est w0_mesure_pct). |
+| `residu_d10_um` | D10 du résidu | µm | nombre | Diamètre sous lequel passent 10 % des grains (masse). Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_d50_um` | D50 du résidu | µm | nombre | Diamètre médian des grains (50 % passant). Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_d80_um` | D80 du résidu | µm | nombre | Diamètre sous lequel passent 80 % des grains. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_d90_um` | D90 du résidu | µm | nombre | Diamètre sous lequel passent 90 % des grains. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_p20_pct` | P20 (passant à 20 µm) du résidu | % | nombre | Part massique des grains plus fins que 20 µm. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_soufre_pct` | Soufre du résidu | % | nombre | Teneur massique en soufre total. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_phyllosilicates_pct` | Phyllosilicates du résidu | % | nombre | Teneur massique en phyllosilicates (argiles, micas…). Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_muscovite_pct` | Muscovite du résidu | % | nombre | Teneur massique en muscovite. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
 | `granulat_ref` | Granulat (référence) |  | texte | Identifiant du granulat dans le catalogue, sinon « instantane:granulat:<nom> ». RPG seulement. |
 | `granulat_nom` | Granulat |  | texte libre | Nom du granulat, tel que saisi. RPG seulement. |
 | `granulat_gs` | Densité relative des grains Gs du granulat |  | nombre | Gs du granulat entré dans le calcul. Sans unité. RPG seulement. |
@@ -192,6 +206,19 @@ l'instantané de la gâchée.
 | `w0_pct` | Teneur en eau initiale w₀ | % | nombre | Résidus seulement. |
 | `humidite_pct` | Humidité | % | nombre | Granulats seulement. |
 | `provenance` | Provenance |  | texte libre | Provenance (mine, site) du matériau. |
+| `date_echantillonnage` | Date d'échantillonnage |  | date | Jour du prélèvement du résidu caractérisé. Résidus seulement, depuis le catalogue. |
+| `d10_um` | D10 | µm | nombre | Diamètre sous lequel passent 10 % des grains (masse). Résidus seulement, depuis le catalogue. |
+| `d50_um` | D50 | µm | nombre | Diamètre médian des grains (50 % passant). Résidus seulement, depuis le catalogue. |
+| `d80_um` | D80 | µm | nombre | Diamètre sous lequel passent 80 % des grains. Résidus seulement, depuis le catalogue. |
+| `d90_um` | D90 | µm | nombre | Diamètre sous lequel passent 90 % des grains. Résidus seulement, depuis le catalogue. |
+| `p20_pct` | P20 (passant à 20 µm) | % | nombre | Part massique des grains plus fins que 20 µm. Résidus seulement, depuis le catalogue. |
+| `soufre_pct` | Soufre | % | nombre | Teneur massique en soufre total. Résidus seulement, depuis le catalogue. |
+| `phyllosilicates_pct` | Phyllosilicates | % | nombre | Teneur massique en phyllosilicates (argiles, micas…). Résidus seulement, depuis le catalogue. |
+| `muscovite_pct` | Muscovite | % | nombre | Teneur massique en muscovite. Résidus seulement, depuis le catalogue. |
+| `mineralogie` | Minéralogie |  | texte libre | Description libre de la minéralogie (phases principales, méthode). Résidus seulement, depuis le catalogue. |
+| `dmax_mm` | Dmax (granulat) | mm | nombre | Dimension maximale des grains du granulat. Granulats seulement, depuis le catalogue. |
+| `d50_mm` | D50 (granulat) | mm | nombre | Diamètre médian des grains du granulat. Granulats seulement, depuis le catalogue. |
+| `absorption_pct` | Absorption (granulat) | % | nombre | Absorption d'eau du granulat (masse). Granulats seulement, depuis le catalogue. |
 | `nb_gachees` | Gâchées |  | entier | Nombre de gâchées du jeu qui emploient ce matériau. |
 
 ## Manifeste (JSON)

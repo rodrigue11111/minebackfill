@@ -554,6 +554,9 @@ interface AppState {
   deleteMaterial: (kind: MaterialKind, index: number, admin?: boolean) => void;
   restoreOfficialMaterials: (kind: MaterialKind) => void;
   importMaterials: (kind: MaterialKind, items: MaterialItem[]) => void;
+  /** Enseignant : ajoute un matériau OFFICIEL (nouvel id), par exemple depuis
+   *  l'instantané d'une gâchée d'étudiant. À publier ensuite depuis Réglages. */
+  ajouterMateriauOfficiel: (kind: "residus" | "granulats", champs: Partial<ResiduItem> | Partial<GranulatItem>) => void;
 
   // Cloud : remplace la couche OFFICIELLE d'un catalogue par celle publiée par
   // l'enseignant (la couche perso locale est intégralement conservée).
@@ -1039,6 +1042,18 @@ export const useStore = create<AppState>((set, get) => ({
         .filter((m) => m.origine !== "officiel")
         .map((m) => (idsOfficiels.has(m.id) ? { ...m, id: makeMaterialId(kind) } : m));
       const items = [...MATERIAL_CONFIG[kind].defauts.map((m) => ({ ...m })), ...perso];
+      persistMaterials(kind, items);
+      return { [slice]: items } as Partial<AppState>;
+    }),
+  ajouterMateriauOfficiel: (kind, champs) =>
+    set((state) => {
+      const slice = SLICE_OF_KIND[kind];
+      // Toujours un NOUVEL id : reprendre celui d'un matériau personnel
+      // d'étudiant créerait, chez lui, deux entrées de même id après
+      // publication (l'officielle et la sienne).
+      const neuf = MATERIAL_CONFIG[kind].neuf(makeMaterialId(kind));
+      const item = { ...neuf, ...champs, id: neuf.id, origine: "officiel" as MaterialOrigine } as MaterialItem;
+      const items = [...(state[slice] as MaterialItem[]), item];
       persistMaterials(kind, items);
       return { [slice]: items } as Partial<AppState>;
     }),

@@ -11,7 +11,7 @@ class MemStorage {
 }
 
 import { useStore, migrerCatalogueLiantsCloud, CATALOGUE_VERSION } from "./store";
-import type { ResiduItem } from "./materials";
+import { CARACTERISATION_RESIDU, completudeCaracterisation, type ResiduItem } from "./materials";
 
 const s = () => useStore.getState();
 
@@ -153,5 +153,25 @@ describe("store — migration du catalogue de liants v2 -> v3 (noms normalisés)
     expect(cat?.[0].nom).toBe("Ciment Portland HS (anc. type 50)");
     // Une version future (publieur plus récent) est refusée, comme avant.
     expect(migrerCatalogueLiantsCloud({ v: CATALOGUE_VERSION + 1, data: [{ id: "a" }] })).toBeNull();
+  });
+});
+
+describe("caractérisation des matériaux", () => {
+  it("complétude : nombres finis et textes non vides seulement", () => {
+    const r = { d50_um: 18, d90_um: Number.NaN, mineralogie: "  ", soufre_pct: 0, date_echantillonnage: "2026-09-15" };
+    expect(completudeCaracterisation(r, CARACTERISATION_RESIDU)).toEqual({ renseignes: 3, total: CARACTERISATION_RESIDU.length });
+    expect(completudeCaracterisation({}, CARACTERISATION_RESIDU).renseignes).toBe(0);
+  });
+
+  it("ajouterMateriauOfficiel : entrée officielle, NOUVEL id, persistée", () => {
+    const avant = s().catalogue_residus.length;
+    s().ajouterMateriauOfficiel("residus", { id: "residus_etudiant_42", nom: "Résidus Goldex", gs: 2.9, w0_pct: 18, provenance: "Goldex" } as Partial<ResiduItem>);
+    const ajoute = s().catalogue_residus[avant];
+    expect(s().catalogue_residus.length).toBe(avant + 1);
+    expect(ajoute).toMatchObject({ nom: "Résidus Goldex", gs: 2.9, w0_pct: 18, provenance: "Goldex", origine: "officiel" });
+    expect(ajoute.id).not.toBe("residus_etudiant_42");
+    useStore.setState({ catalogue_residus: [] });
+    s().loadMaterials();
+    expect(s().catalogue_residus.some((m) => m.nom === "Résidus Goldex" && m.origine === "officiel")).toBe(true);
   });
 });

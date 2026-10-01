@@ -60,6 +60,7 @@ export default function ClassePage() {
   const catalogueResidus = useStore((s) => s.catalogue_residus);
   const catalogueGranulats = useStore((s) => s.catalogue_granulats);
   const catalogueLiants = useStore((s) => s.catalogue_liants);
+  const ajouterMateriauOfficiel = useStore((s) => s.ajouterMateriauOfficiel);
   const maintenant = useAujourdhui();
   const [filtre, setFiltre] = useState<FiltreSessionValeur | null>(null);
   const [lignes, setLignes] = useState<LigneClasse[]>([]);
@@ -276,7 +277,8 @@ export default function ClassePage() {
       {doc ? (
         <VueDocument doc={doc} etudiant={etudiants.find((e) => e.id === doc.ref.etudiantId)}
           annotations={annotations} onAnnoter={annoter(doc.ref.etudiantId)} ctx={ctx}
-          onRetour={fermerDoc} maintenant={maintenant} units={units} />
+          onRetour={fermerDoc} maintenant={maintenant} units={units}
+          catalogue={{ residus: catalogueResidus, granulats: catalogueGranulats, onAjouter: ajouterMateriauOfficiel }} />
       ) : (
         <>
           <EnTetePage

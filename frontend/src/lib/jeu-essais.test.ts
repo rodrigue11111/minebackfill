@@ -21,7 +21,7 @@ const profils: ProfilClasse[] = [
 ];
 const sessions = [{ id: "A2026", nom: "Automne 2026", debut: "2026-09-01", fin: "2026-12-23" }];
 const catalogues = {
-  residus: [{ id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, provenance: "LaRonde", origine: "officiel" }] as ResiduItem[],
+  residus: [{ id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, provenance: "LaRonde", origine: "officiel", d50_um: 18.5, p20_pct: 52.3, soufre_pct: 12.1, mineralogie: "Pyrite" }] as ResiduItem[],
   granulats: [] as GranulatItem[],
   liants: [
     { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.15 },
@@ -136,6 +136,16 @@ describe("jeu d'essais pseudonymisé", () => {
       expect.objectContaining({ type: "liant", ref: "CP10", source: "catalogue", nom: "Ciment Portland GU (anc. type 10)", nb_gachees: 1 }),
       expect.objectContaining({ type: "liant", ref: "SLAG", source: "catalogue", nb_gachees: 2 }),
     ]);
+  });
+
+  it("caractérisation du résidu lue dans le catalogue de l'enseignant (essais et materiaux)", async () => {
+    const j = await jeuDe();
+    const e1 = j.essais.find((l) => l.eprouvette_code === "G-20260910-01-E01")!;
+    expect(e1).toMatchObject({ residu_d50_um: 18.5, residu_p20_pct: 52.3, residu_soufre_pct: 12.1, residu_d90_um: null, residu_muscovite_pct: null });
+    const residu = j.materiaux.find((l) => l.type === "residu")!;
+    expect(residu).toMatchObject({ d50_um: 18.5, p20_pct: 52.3, mineralogie: "Pyrite", d10_um: null, dmax_mm: null });
+    const liant = j.materiaux.find((l) => l.type === "liant")!;
+    expect(liant).toMatchObject({ d50_um: null, mineralogie: null });
   });
 
   it("gâchée très ancienne ou allégée : aucun tableau manquant ne fait planter", async () => {

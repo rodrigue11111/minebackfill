@@ -6,7 +6,7 @@ import { ancresGachee } from "@/lib/ancres";
 import type { UnitPreferences } from "@/lib/units";
 import { normaliserGachee, type EtudiantClasse } from "@/lib/classe";
 import type { DocComplet, LigneAnnotation } from "@/lib/classe-reseau";
-import GacheeLecture from "./GacheeLecture";
+import GacheeLecture, { type CatalogueEnseignant } from "./GacheeLecture";
 import ResultatLecture from "./ResultatLecture";
 import FilCommentaires from "./FilCommentaires";
 import { EnTetePage } from "@/components/ui/Page";
@@ -21,7 +21,7 @@ export type EtatDoc =
   | { ref: RefDoc; etat: "absent" }
   | { ref: RefDoc; etat: "erreur"; message: string };
 
-export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx, onRetour, maintenant, units }: {
+export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx, onRetour, maintenant, units, catalogue }: {
   doc: EtatDoc;
   etudiant: EtudiantClasse | undefined;
   annotations: LigneAnnotation[];
@@ -31,6 +31,8 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
   onRetour: () => void;
   maintenant: Date;
   units: UnitPreferences;
+  /** Catalogue de l'enseignant (ajout d'un matériau au catalogue officiel). */
+  catalogue?: CatalogueEnseignant;
 }) {
   const { ref } = doc;
   const contenu = doc.etat === "pret" && !doc.doc.supprime ? doc.doc.contenu : null;
@@ -67,7 +69,7 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
       )}
 
       {gachee && (
-        <GacheeLecture gachee={gachee} maintenant={maintenant}
+        <GacheeLecture gachee={gachee} maintenant={maintenant} catalogue={catalogue}
           formulations={(etudiant?.resultats ?? []).map((r) => ({ id: r.id, recipes: r.recipes ?? [] }))} />
       )}
       {resultat && <ResultatLecture resultat={resultat} units={units} />}

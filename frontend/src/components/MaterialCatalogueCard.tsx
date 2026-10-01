@@ -1,13 +1,14 @@
 "use client";
 
-import { useRef } from "react";
+import { Fragment, useRef } from "react";
 import { Carte } from "@/components/ui/Carte";
 import { Champ } from "@/components/ui/Champ";
+import ChampNombre from "@/components/ui/ChampNombre";
 import { Pastille } from "@/components/ui/Pastille";
 import { Icone } from "@/components/ui/Icones";
 import Menu from "@/components/ui/Menu";
 import { useStore } from "@/lib/store";
-import { estOfficiel, type MaterialKind, type MaterialItem } from "@/lib/materials";
+import { completudeCaracterisation, estOfficiel, type ChampCaracterisation, type MaterialKind, type MaterialItem } from "@/lib/materials";
 import { materialsVersJson, materialsVersCsv, materialsDepuisFichier } from "@/lib/materials-io";
 
 export interface MaterialColumn {
@@ -29,11 +30,13 @@ const SLICE = {
  * rendu. Les entrées « officiel » sont en lecture seule (badge, champs
  * désactivés) ; l'utilisateur ajoute des entrées « perso » modifiables.
  */
-export default function MaterialCatalogueCard({ kind, title, sub, columns, adminMode, onPublish }: {
+export default function MaterialCatalogueCard({ kind, title, sub, columns, caracterisation, adminMode, onPublish }: {
   kind: MaterialKind;
   title: string;
   sub?: string;
   columns: MaterialColumn[];
+  /** Champs facultatifs, repliés sous chaque entrée (« Caractérisation : 4/10 »). */
+  caracterisation?: ChampCaracterisation[];
   /** Mode enseignant : déverrouille les entrées officielles + bouton Publier. */
   adminMode?: boolean;
   onPublish?: () => void;
@@ -93,9 +96,11 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, admin
           // En mode enseignant, les entrées officielles sont éditables.
           const verrou = estOfficiel(item) && !adminMode;
           const rec = item as unknown as Record<string, unknown>;
+          const maj = (patch: Record<string, unknown>) => store.updateMaterial(kind, index, patch as Partial<MaterialItem>, adminMode);
+          const fiche = caracterisation ? completudeCaracterisation(item, caracterisation) : null;
           return (
+            <Fragment key={item.id}>
             <div
-              key={item.id}
               className="regl-ligne"
               style={{ gridTemplateColumns: gridCols, minWidth: 120 * columns.length + 90 }}
             >
@@ -124,6 +129,30 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, admin
                 )}
               </div>
             </div>
+            {caracterisation && fiche && (
+              // Facultatif : une case vide reste vide (jamais 0, qui serait une
+              // mesure fausse dans le jeu d'essais).
+              <details className="regl-caracterisation">
+                <summary>
+                  Caractérisation <Pastille ton="neutre" title="Champs de caractérisation renseignés (facultatifs)">{fiche.renseignes}/{fiche.total}</Pastille>
+                </summary>
+                <div className="regl-caracterisation-grille">
+                  {caracterisation.map((ch) => (
+                    <Champ key={ch.cle} libelle={ch.libelle} unite={ch.unite}>
+                      {ch.type === "nombre" ? (
+                        <ChampNombre value={rec[ch.cle] as number | undefined} disabled={verrou} ariaLabel={`${ch.libelle} : ${item.nom}`}
+                          onChange={(n) => maj({ [ch.cle]: n })} />
+                      ) : (
+                        <input className="field-input" type={ch.type === "date" ? "date" : "text"} disabled={verrou}
+                          value={(rec[ch.cle] as string | undefined) ?? ""}
+                          onChange={(e) => maj({ [ch.cle]: e.target.value.trim() === "" ? undefined : e.target.value })} />
+                      )}
+                    </Champ>
+                  ))}
+                </div>
+              </details>
+            )}
+            </Fragment>
           );
         })}
         {items.length === 0 && <p className="classe-rien">Aucune entrée.</p>}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { materialsDepuisFichier } from "./materials-io";
+import { materialsCsvTexte, materialsDepuisFichier } from "./materials-io";
+import type { GranulatItem, ResiduItem } from "./materials";
 
 // File-like minimal pour l'environnement node (materialsDepuisFichier n'utilise
 // que `.name` et `.text()`).
@@ -80,5 +81,41 @@ describe("materials-io — import", () => {
     const csv = "nom;gs;w0_pct;provenance;notes\n;3;10;;";
     await expect(materialsDepuisFichier("residus", fauxFichier("r.csv", csv)))
       .rejects.toThrow(/nom/);
+  });
+});
+
+describe("materials-io : caractérisation (facultative)", () => {
+  const residu: ResiduItem = {
+    id: "r1", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, provenance: "LaRonde", origine: "officiel",
+    date_echantillonnage: "2026-09-15", d10_um: 2.4, d50_um: 18.5, d90_um: 95, p20_pct: 52.3, soufre_pct: 12.1, mineralogie: "Pyrite; quartz",
+  };
+
+  it("aller-retour CSV : les champs renseignés reviennent, les autres restent absents", async () => {
+    const texte = materialsCsvTexte("residus", [residu]);
+    expect(texte.split("\r\n")[0]).toBe("nom;gs;w0_pct;provenance;notes;date_echantillonnage;d10_um;d50_um;d80_um;d90_um;p20_pct;soufre_pct;phyllosilicates_pct;muscovite_pct;mineralogie");
+    const [r] = await materialsDepuisFichier("residus", fauxFichier("r.csv", texte)) as ResiduItem[];
+    expect(r).toMatchObject({ nom: "Résidus LaRonde", date_echantillonnage: "2026-09-15", d10_um: 2.4, d50_um: 18.5, d90_um: 95, p20_pct: 52.3, soufre_pct: 12.1, mineralogie: "Pyrite; quartz" });
+    // Une case vide n'est JAMAIS un zéro (ce serait une mesure fausse).
+    expect("d80_um" in r).toBe(false);
+    expect("muscovite_pct" in r).toBe(false);
+  });
+
+  it("virgule décimale acceptée ; une valeur illisible est refusée avec son numéro de ligne", async () => {
+    const csv = "nom;gs;w0_pct;d50_um;soufre_pct\nR;3,1;20;18,5;\nS;3;20;abc;1";
+    await expect(materialsDepuisFichier("residus", fauxFichier("r.csv", csv))).rejects.toThrow(/Ligne 2 : « d50_um »/);
+    const [r] = await materialsDepuisFichier("residus", fauxFichier("r.csv", "nom;gs;w0_pct;d50_um\nR;3,1;20;18,5")) as ResiduItem[];
+    expect(r.d50_um).toBe(18.5);
+  });
+
+  it("un ancien fichier sans colonnes de caractérisation s'importe comme avant", async () => {
+    const [r] = await materialsDepuisFichier("residus", fauxFichier("r.csv", "nom;gs;w0_pct;provenance;notes\nR;3,1;20;A;x")) as ResiduItem[];
+    expect(r).toMatchObject({ nom: "R", gs: 3.1, w0_pct: 20 });
+    expect(Object.keys(r).sort()).toEqual(["gs", "id", "nom", "notes", "origine", "provenance", "w0_pct"]);
+  });
+
+  it("granulats : Dmax, D50 et absorption voyagent aussi", async () => {
+    const g: GranulatItem = { id: "g", nom: "Concassé", gs: 2.8, humidite_pct: 0, origine: "perso", dmax_mm: 20, d50_mm: 6.3, absorption_pct: 0.8 };
+    const [r] = await materialsDepuisFichier("granulats", fauxFichier("g.csv", materialsCsvTexte("granulats", [g]))) as GranulatItem[];
+    expect(r).toMatchObject({ dmax_mm: 20, d50_mm: 6.3, absorption_pct: 0.8 });
   });
 });

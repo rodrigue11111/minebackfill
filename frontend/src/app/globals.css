@@ -1187,6 +1187,13 @@ textarea.field-input { min-height: 88px; line-height: 1.5; resize: vertical; }
 .regl-lignes { display: flex; flex-direction: column; }
 .regl-ligne { display: grid; gap: 10px; align-items: end; padding: 12px 0; border-top: 1px solid var(--filet); }
 .regl-lignes > .regl-ligne:first-child { border-top: none; padding-top: 0; }
+/* Caractérisation d'un matériau (facultative), repliée sous sa ligne. */
+.regl-caracterisation { padding: 0 0 12px; }
+.regl-caracterisation > summary { cursor: pointer; font-size: 14px; font-weight: 500; color: var(--accent); list-style: none; display: inline-flex; align-items: center; gap: 8px; }
+.regl-caracterisation > summary::-webkit-details-marker { display: none; }
+.regl-caracterisation > summary::before { content: "+"; }
+.regl-caracterisation[open] > summary::before { content: "\2212"; }
+.regl-caracterisation-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
 .regl-liant { grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr) minmax(0, 1fr) auto; }
 .regl-duplique .field-input { box-shadow: 0 0 0 1px var(--danger-texte); }
 .regl-ligne-fin { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-height: 44px; }

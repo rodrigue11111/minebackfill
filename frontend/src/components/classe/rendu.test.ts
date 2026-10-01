@@ -101,6 +101,28 @@ describe("vues de l'enseignant — rendu", () => {
     expect(html).toContain("Non renseigné : ");
   });
 
+  it("matériau absent du catalogue officiel : proposé à l'ajout (sans Gs, bouton désactivé)", () => {
+    const catalogue = {
+      residus: [{ id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, origine: "officiel" as const }],
+      granulats: [], onAjouter: () => {},
+    };
+    const vue = (residu: Record<string, unknown>) => {
+      const doc = { ...gachee, id: "gm", materiaux: { residu } };
+      const [e] = regrouper([ligne("gachee", doc)], profils, [], "toutes");
+      return rendu(createElement(GacheeLecture, { gachee: e.gachees[0], maintenant, formulations: [], catalogue }));
+    };
+    const inconnu = vue({ nom: "Résidus Goldex", gs: 2.9 });
+    expect(inconnu).toContain("n&#x27;est pas dans le catalogue officiel");
+    expect(inconnu).toMatch(/<button type="button" class="btn-discret"[^>]*>Ajouter au catalogue officiel<\/button>/);
+    expect(vue({ nom: "résidus laronde", gs: 3.1 })).not.toContain("Ajouter au catalogue officiel"); // même nom
+    expect(vue({ id: "res_laronde", nom: "LaRonde (lot 3)", gs: 3.1 })).not.toContain("Ajouter au catalogue officiel"); // même id
+    expect(vue({ nom: "Sans Gs" })).toMatch(/<button[^>]*disabled=""[^>]*>Ajouter au catalogue officiel/);
+    // Sans catalogue (autres usages de la vue) : rien n'est proposé.
+    const sansCatalogue = { ...gachee, id: "gn", materiaux: { residu: { nom: "Résidus Goldex", gs: 2.9 } } };
+    const [e] = regrouper([ligne("gachee", sansCatalogue)], profils, [], "toutes");
+    expect(rendu(createElement(GacheeLecture, { gachee: e.gachees[0], maintenant, formulations: [] }))).not.toContain("catalogue officiel");
+  });
+
   it("gâchée allégée ou très ancienne : aucun tableau manquant ne fait planter", () => {
     const [e] = regrouper([ligne("gachee", { id: "gx", code: "G-X", creeLe: "2026-09-01T12:00:00Z", categorie: "RPC" } as never)], profils, [], "toutes");
     const html = rendu(createElement(GacheeLecture, { gachee: e.gachees[0], maintenant, formulations: [] }));

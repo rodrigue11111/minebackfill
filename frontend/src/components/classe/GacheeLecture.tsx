@@ -1,6 +1,7 @@
 // Gâchée d'un étudiant, INTÉGRALE et en lecture seule (vue enseignant).
 // Aucune saisie : l'enseignant ne modifie jamais le travail d'un étudiant.
 
+import { useState } from "react";
 import type React from "react";
 import { Carte, CarteProtocolesFiges } from "@/components/labo/Carte";
 import { MODES_CURE, TYPES_EAU, parametresEffectifs, type Gachee } from "@/lib/gachee";
@@ -12,6 +13,7 @@ import {
 import { badgeEcheance, fmtDate } from "@/lib/echeance-affichage";
 import { fmt, TIRET } from "@/lib/format";
 import type { Recipe } from "@/lib/types";
+import type { GranulatItem, ResiduItem } from "@/lib/materials";
 import { nombre, Pastille, td, tdNum, th } from "./commun";
 
 function Info({ label, valeur }: { label: string; valeur: React.ReactNode }) {
@@ -28,11 +30,62 @@ const court = (v: number, decimales: number) => v.toLocaleString("fr-CA", { maxi
 const grille: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 };
 const TYPES_AJUSTEMENT: Record<string, string> = { eau: "Eau", residu: "Résidu", granulat: "Granulat", liant: "Liant" };
 
-export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
+/** Catalogue de l'enseignant : savoir si un matériau y est, et l'y ajouter. */
+export interface CatalogueEnseignant {
+  residus: ResiduItem[];
+  granulats: GranulatItem[];
+  onAjouter: (kind: "residus" | "granulats", champs: Partial<ResiduItem> | Partial<GranulatItem>) => void;
+}
+
+const NOTE: React.CSSProperties = { fontSize: 12.5, color: "var(--texte-2)", margin: "8px 0 0", lineHeight: 1.5 };
+const memeNom = (a: string | undefined, b: string | undefined) =>
+  !!a && !!b && a.trim().toLocaleLowerCase("fr") === b.trim().toLocaleLowerCase("fr");
+
+/**
+ * Matériau de l'instantané absent du catalogue OFFICIEL de l'enseignant :
+ * proposer de l'y ajouter (nouvel id), pour le caractériser une seule fois et
+ * le publier aux étudiants. Rien ne change dans le travail de l'étudiant.
+ */
+function AjoutCatalogue({ kind, snap, catalogue }: {
+  kind: "residus" | "granulats";
+  snap: { id?: string; nom?: string; gs?: number; w0Pct?: number; humiditePct?: number; provenance?: string } | undefined;
+  catalogue: CatalogueEnseignant;
+}) {
+  const [ajoute, setAjoute] = useState(false);
+  const items: (ResiduItem | GranulatItem)[] = kind === "residus" ? catalogue.residus : catalogue.granulats;
+  const nom = snap?.nom?.trim();
+  if (!nom) return null;
+  const quoi = kind === "residus" ? "Ce résidu" : "Ce granulat";
+  if (ajoute) {
+    return <p style={NOTE}>« {nom} » ajouté au catalogue officiel. Complétez sa caractérisation puis publiez-le depuis Réglages.</p>;
+  }
+  const officiel = items.some((m) => m.origine === "officiel" && ((snap?.id && m.id === snap.id) || memeNom(m.nom, nom)));
+  if (officiel) return null;
+  const gsOk = typeof snap?.gs === "number" && snap.gs > 0;
+  return (
+    <p style={NOTE}>
+      {quoi} (« {nom} ») n&apos;est pas dans le catalogue officiel.{" "}
+      <button type="button" className="btn-discret" disabled={!gsOk}
+        title={gsOk ? "Ajoute une entrée officielle (nom, Gs, provenance), à caractériser et publier depuis Réglages" : "Gs inconnu : ajoutez-le à la main dans Réglages"}
+        onClick={() => {
+          catalogue.onAjouter(kind, kind === "residus"
+            ? { nom, gs: snap!.gs, w0_pct: snap?.w0Pct ?? 0, provenance: snap?.provenance }
+            : { nom, gs: snap!.gs, humidite_pct: snap?.humiditePct ?? 0, provenance: snap?.provenance });
+          setAjoute(true);
+        }}>
+        Ajouter au catalogue officiel
+      </button>
+    </p>
+  );
+}
+
+export default function GacheeLecture({ gachee: g, formulations, maintenant, catalogue }: {
   gachee: Gachee;
   /** Résultats de CET étudiant (les ids de formulation ne valent que chez lui). */
   formulations: { id: string; recipes: Recipe[] }[];
   maintenant: Date;
+  /** Catalogue de l'enseignant (page Classe) : « Ajouter au catalogue officiel ». */
+  catalogue?: CatalogueEnseignant;
 }) {
   const p = parametresEffectifs(g, formulations);
   const parAge = agregerParAge(g.eprouvettes);
@@ -98,6 +151,12 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
           <p style={{ fontSize: 12, color: "var(--texte-2)", margin: "10px 0 0" }}>
             Non renseigné : {manquants}.
           </p>
+        )}
+        {catalogue && (
+          <>
+            <AjoutCatalogue kind="residus" snap={m?.residu} catalogue={catalogue} />
+            <AjoutCatalogue kind="granulats" snap={m?.granulat} catalogue={catalogue} />
+          </>
         )}
       </Carte>
 

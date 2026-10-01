@@ -120,3 +120,34 @@ describe("formulaire d'essai : conditions de l'essai", () => {
     expect(html).not.toContain("Appliquer cette vitesse");
   });
 });
+
+describe("éditeur : matériaux choisis dans la bibliothèque", () => {
+  const bibliotheque = {
+    residus: [
+      { id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, origine: "officiel" as const },
+      { id: "res_perso", nom: "Mon résidu", gs: 3, w0_pct: 20, origine: "perso" as const },
+    ],
+    granulats: [{ id: "gra_laronde", nom: "Concassé LaRonde", gs: 2.8, humidite_pct: 0, origine: "officiel" as const }],
+  };
+  const avec = (g: Partial<Gachee>) => renderToStaticMarkup(createElement(EditeurGachee, {
+    gachee: { ...gachee, ...g }, maintenant: new Date(2026, 9, 7, 9), annotations: [], connecte: true, bibliotheque,
+    onMaj: () => {}, onRetour: () => {}, onSupprimer: () => {},
+  }));
+
+  it("résidu du catalogue sélectionné ; personnel signalé ; « Autre » proposé", () => {
+    const html = avec({ materiaux: { residu: { id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0Pct: 25 } } });
+    expect(html).toMatch(/<option value="res_laronde" selected="">Résidus LaRonde<\/option>/);
+    expect(html).toContain("Mon résidu (personnel)");
+    expect(html).toContain("Autre (saisie libre)");
+    expect(html).not.toContain('id="residu-nom"');
+    expect(html).not.toContain('id="granulat-choix"'); // RPC : pas de granulat
+  });
+
+  it("résidu saisi librement : « Autre » et son nom ; granulat en RPG", () => {
+    const html = avec({ categorie: "RPG", materiaux: { residu: { nom: "R-01", gs: 3.4 } } });
+    expect(html).toMatch(/<option value="autre" selected="">Autre \(saisie libre\)<\/option>/);
+    expect(html).toMatch(/id="residu-nom"[^>]*value="R-01"/);
+    expect(html).toContain('id="granulat-choix"');
+    expect(html).toContain("Concassé LaRonde");
+  });
+});

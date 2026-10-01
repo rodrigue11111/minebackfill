@@ -9,7 +9,7 @@ import type { MaterialKind } from "@/lib/materials";
 import { getSupabase } from "@/lib/supabase";
 import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
 import { publierCatalogue, type CatalogueCloudId } from "@/lib/cloud";
-import { estOfficiel } from "@/lib/materials";
+import { CARACTERISATION_GRANULAT, CARACTERISATION_RESIDU, estOfficiel } from "@/lib/materials";
 import MaterialCatalogueCard from "@/components/MaterialCatalogueCard";
 import BackupButtons from "@/components/BackupButtons";
 import SessionsCard from "@/components/SessionsCard";
@@ -184,6 +184,7 @@ export default function ReglagesPage() {
           { key: "w0_pct", label: "w₀ (%)", type: "number" },
           { key: "provenance", label: "Provenance", type: "text", flex: 1.5 },
         ]}
+        caracterisation={CARACTERISATION_RESIDU}
       />
       <MaterialCatalogueCard
         kind="granulats"
@@ -198,6 +199,7 @@ export default function ReglagesPage() {
           { key: "fraction_defaut_pct", label: "Am par défaut (%)", type: "number" },
           { key: "provenance", label: "Provenance", type: "text", flex: 1.5 },
         ]}
+        caracterisation={CARACTERISATION_GRANULAT}
       />
       <MaterialCatalogueCard
         kind="retardateurs"

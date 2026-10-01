@@ -104,6 +104,7 @@ export default function LaboPage() {
           annotations={annotationsDe(annotations, "gachee", g.id)}
           connecte={connecte}
           onMaj={(patch) => modifierGachee(g.id, patch)}
+          bibliotheque={{ residus: catalogueResidus, granulats: catalogueGranulats }}
           onRetour={() => setSelId(null)}
           onSupprimer={() => {
             if (window.confirm(`Supprimer la gâchée ${g.code} ?`)) {

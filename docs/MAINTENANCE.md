@@ -66,12 +66,22 @@ classe. Les entrées officielles publiées remplacent la couche officielle des
 étudiants ; leurs entrées perso sont préservées.
 
 ### 2. Ajouter un champ à un type de matériau
-- `frontend/src/lib/materials.ts` : le champ dans l'interface + les défauts.
-- La carte : tableau `columns` du `MaterialCatalogueCard` concerné (Réglages).
-- **Incrémenter `MATERIALS_VERSION`** (store.tsx) et écrire la migration
-  (valeur par défaut pour les anciennes données) — voir `migrationCatalogueLiants`
-  comme modèle.
-- `materials-io.ts` si le champ doit voyager en CSV/JSON.
+- **Champ facultatif** (cas courant, ex. la caractérisation) : l'ajouter à
+  l'interface dans `frontend/src/lib/materials.ts` et à la liste
+  `CARACTERISATION_RESIDU` ou `CARACTERISATION_GRANULAT`. Cela suffit pour la
+  carte de Réglages (partie repliée « Caractérisation »), l'import et l'export
+  CSV/JSON (`materials-io.ts` en déduit ses colonnes, ajoutées à la fin ; une
+  case vide reste absente, jamais 0) et la table `materiaux` du jeu d'essais
+  (à décrire dans `docs/DICTIONNAIRE_DONNEES.md`, le test l'exige). **Ne PAS
+  incrémenter `MATERIALS_VERSION`** : `migrerMateriauxCloud` refuse un
+  catalogue publié de version supérieure, si bien qu'un étudiant dont le site
+  est encore en cache perdrait le catalogue officiel. Les clés inconnues
+  survivent déjà au chargement et à la publication.
+- **Champ obligatoire** (rare) : le champ dans l'interface + les défauts ;
+  la carte (tableau `columns` du `MaterialCatalogueCard`) ; **incrémenter
+  `MATERIALS_VERSION`** (store.tsx) et écrire la migration (valeur par défaut
+  pour les anciennes données), voir `migrationCatalogueLiants` comme modèle ;
+  `materials-io.ts` si le champ doit voyager en CSV/JSON.
 
 ### 3. Ajouter une méthode de calcul
 1. Backend : modèle d'entrée (`models.py`), solveur (idéalement une
@@ -497,8 +507,18 @@ rappelle sans le bloquer.
 - **Instantané des matériaux** : `materiauxDepuisFormulation`
   (`lib/gachee-materiaux.ts`), appelé une seule fois, à la création de la
   gâchée (`app/labo/page.tsx`). Il porte l'identité et les valeurs entrées
-  dans le calcul (Gs, w₀), pas la caractérisation du résidu : celle-ci vivra
-  dans le catalogue et se joindra par `materiaux.residu.id`.
+  dans le calcul (Gs, w₀), pas la caractérisation du résidu : celle-ci vit
+  dans le catalogue et se joint par `materiaux.residu.id`.
+- **Choix dans la bibliothèque** : avec la propriété facultative
+  `bibliotheque` (page Labo), l'éditeur propose le résidu et, en RPG, le
+  granulat parmi le catalogue (officiel et personnel) ou « Autre (saisie
+  libre) ». Un choix ne change que l'IDENTITÉ (id, nom, provenance) : Gs et w₀
+  restent ceux du calcul. Sans la propriété, le résidu se saisit en texte.
+- **Côté enseignant** : un matériau d'une gâchée absent du catalogue officiel
+  peut y être ajouté depuis la vue de la gâchée (« Ajouter au catalogue
+  officiel », action `ajouterMateriauOfficiel` du magasin, toujours avec un
+  NOUVEL id pour ne jamais doubler l'id d'un matériau personnel d'étudiant),
+  puis caractérisé et publié depuis Réglages.
 - **Complétude** : `completudeGachee` (`lib/completude.ts`), une liste de
   points `ok` / `manque` / `sans_objet` ; les « sans objet » ne comptent pas.
   Ajouter un point : une entrée dans `completudeGachee` et son libellé, puis

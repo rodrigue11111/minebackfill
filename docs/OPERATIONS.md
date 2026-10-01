@@ -106,6 +106,14 @@ officielles → « Publier en ligne » sur chaque carte. Les étudiants reçoive
 la mise à jour à leur prochaine connexion (leurs entrées personnelles sont
 conservées).
 
+**Caractériser un résidu ou un granulat** (granulométrie, soufre,
+minéralogie…) : Réglages → carte du matériau → « Caractérisation » sous son
+entrée. Tout est facultatif ; le compteur (« 4/10 ») montre ce qui est
+renseigné. Ces valeurs entrent dans le jeu d'essais à chaque export. Un
+matériau qu'un étudiant a saisi lui-même se reprend depuis la page Classe :
+ouvrir sa gâchée → « Ajouter au catalogue officiel », puis le compléter et
+le publier depuis Réglages.
+
 ### Changer une variable d'environnement (URL Supabase, etc.)
 vercel.com → projet → Settings → Environment Variables → modifier → **puis
 Redeploy** (les variables sont figées au moment du build).
