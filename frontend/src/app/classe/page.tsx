@@ -24,6 +24,8 @@ import {
 import { rafraichirReponsesNonLues } from "@/lib/sync-client";
 import { nomFichier, telechargerBlob, telechargerTexte, versCsv } from "@/lib/export-fig";
 import { lignesCsvEprouvettes, lignesCsvSynthese } from "@/lib/classe-csv";
+import { construireJeuEssais, jeuEssaisJson, lignesCsvDictionnaire, lignesCsvTable } from "@/lib/jeu-essais";
+import { pseudonymes } from "@/lib/pseudonyme";
 import { documentRapportClasse, documentRapportEtudiant, type ContexteRapport, type DocumentRapport } from "@/lib/rapport-classe";
 import { COULEURS, type RefDoc } from "@/components/classe/commun";
 import TableauEtudiants from "@/components/classe/TableauEtudiants";
@@ -54,6 +56,10 @@ export default function ClassePage() {
   const sessions = useStore((s) => s.sessions);
   const units = useStore((s) => s.units);
   const loadUnits = useStore((s) => s.loadUnits);
+  // Catalogues de l'enseignant : décrivent les matériaux du jeu d'essais.
+  const catalogueResidus = useStore((s) => s.catalogue_residus);
+  const catalogueGranulats = useStore((s) => s.catalogue_granulats);
+  const catalogueLiants = useStore((s) => s.catalogue_liants);
   const maintenant = useAujourdhui();
   const [filtre, setFiltre] = useState<FiltreSessionValeur | null>(null);
   const [lignes, setLignes] = useState<LigneClasse[]>([]);
@@ -174,6 +180,9 @@ export default function ClassePage() {
 
   const ctx: ContexteFil = { moi: session?.userId ?? "", nouvelles, onLire: marquerLues, onRetirer: retirer };
 
+  const libelleSession = filtreEffectif === "toutes" ? "Toutes les sessions" : filtreEffectif === "sans" ? "Sans session"
+    : sessions.find((x) => x.id === filtreEffectif)?.nom ?? filtreEffectif;
+
   const exporter = async () => {
     const sb = getSupabase();
     if (!sb) return;
@@ -196,6 +205,31 @@ export default function ClassePage() {
     telechargerTexte(versCsv(lignesCsv), nomFichier(`MineBackfill_classe_${quoi}_${filtreEffectif}`, "csv"), "text/csv;charset=utf-8");
   };
 
+  /**
+   * Jeu d'essais PSEUDONYMISÉ (recherche, modèles) depuis la classe déjà lue :
+   * ni nom ni courriel (voir lib/jeu-essais.ts et docs/DICTIONNAIRE_DONNEES.md).
+   */
+  const exporterJeuEssais = async (format: "csv" | "json") => {
+    try {
+      const jeu = construireJeuEssais({
+        etudiants, sessions, sessionLibelle: libelleSession,
+        pseudonymes: await pseudonymes(etudiants.map((e) => e.id)),
+        catalogues: { residus: catalogueResidus, granulats: catalogueGranulats, liants: catalogueLiants },
+        maintenant: new Date(),
+      });
+      const nom = nomFichier(`MineBackfill_jeu-essais_${filtreEffectif}`, format);
+      if (format === "json") {
+        telechargerBlob(new Blob([JSON.stringify(jeuEssaisJson(jeu), null, 2)], { type: "application/json" }), nom);
+      } else {
+        telechargerTexte(versCsv(lignesCsvTable(jeu, "essais")), nom, "text/csv;charset=utf-8");
+      }
+    } catch (e) {
+      window.alert(`Export impossible : ${messageErreurClasse(e)}`);
+    }
+  };
+  const exporterDictionnaire = () =>
+    telechargerTexte(versCsv(lignesCsvDictionnaire()), nomFichier("MineBackfill_dictionnaire-donnees", "csv"), "text/csv;charset=utf-8");
+
   const exporterIcs = () => {
     // Horodatage réel de l'export (dans un gestionnaire : pas de gel par le compilateur).
     telechargerBlob(new Blob([icsClasse(echeances, new Date())], { type: "text/calendar;charset=utf-8" }),
@@ -207,8 +241,7 @@ export default function ClassePage() {
   /** Rapport PDF (jsPDF chargé à la demande) : la classe, ou un étudiant. */
   const exporterPdf = async (e?: EtudiantClasse) => {
     const ctxRapport: ContexteRapport = {
-      session: filtreEffectif === "toutes" ? "Toutes les sessions" : filtreEffectif === "sans" ? "Sans session"
-        : sessions.find((x) => x.id === filtreEffectif)?.nom ?? filtreEffectif,
+      session: libelleSession,
       genereLe: new Date(), alertes, comparaison, annotations, moi: session?.userId ?? "",
     };
     const d: DocumentRapport = e ? documentRapportEtudiant(e, ctxRapport) : documentRapportClasse(etudiants, ctxRapport);
@@ -260,6 +293,10 @@ export default function ClassePage() {
                     { libelle: "Éprouvettes (CSV)", detail: "Une ligne par éprouvette (valeurs mesurées), pour Excel", desactive: etat !== "pret", onSelect: () => exporterCsv("eprouvettes") },
                     { libelle: "Synthèse (CSV)", detail: "Par gâchée et par âge : n, moyenne, écart-type, CV", desactive: etat !== "pret", onSelect: () => exporterCsv("synthese") },
                     { libelle: "Classe (JSON)", detail: "Copie de sauvegarde (Supabase gratuit n'en fait aucune)", desactive: exportEnCours || etat !== "pret", onSelect: () => void exporter() },
+                    "separateur",
+                    { libelle: "Jeu d'essais (CSV)", detail: "Pseudonymisé : sans nom ni courriel. Une ligne par éprouvette, pour la recherche et les modèles", desactive: etat !== "pret", onSelect: () => void exporterJeuEssais("csv") },
+                    { libelle: "Jeu d'essais (JSON)", detail: "Pseudonymisé : essais, gâchées, matériaux, manifeste et dictionnaire", desactive: etat !== "pret", onSelect: () => void exporterJeuEssais("json") },
+                    { libelle: "Dictionnaire des données (CSV)", detail: "Le sens et l'unité de chaque colonne du jeu d'essais", onSelect: exporterDictionnaire },
                   ]}
                 />
                 <button type="button" className="btn-sombre" onClick={() => void exporterPdf()} disabled={etat !== "pret"}
