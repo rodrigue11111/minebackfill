@@ -3,6 +3,7 @@ import {
   dateEcheance, joursRestants, classeEcheance, genererCodeEprouvette,
   construireIcs, etiquettesHtml,
   contrainteKpa, moyenne, ecartTypeEch, agregerParAge, ageReelJours,
+  libelleMoule, libelleRupture, libelleVitesse,
   type Eprouvette, type EssaiUCS,
 } from "./eprouvette";
 
@@ -217,5 +218,27 @@ describe("contrainteKpa — saisie manuelle et import de presse cohabitent", () 
     const a = contrainteKpa({ chargeKn: 2.0, diametreMm: 50 })!;
     const b = contrainteKpa({ chargeKn: 3.0, diametreMm: 50 })!;
     expect(b).toBeGreaterThan(a);
+  });
+});
+
+describe("libellés de la fiche d'essai", () => {
+  it("moule : nominal d'abord (virgule décimale), sinon texte libre, sinon vide", () => {
+    expect(libelleMoule({ mouleDiametreMm: 50, mouleHauteurMm: 100 })).toBe("Cylindre 50 × 100 mm");
+    expect(libelleMoule({ mouleDiametreMm: 76.2, mouleHauteurMm: 152.4, moule: "ancien" })).toBe("Cylindre 76,2 × 152,4 mm");
+    expect(libelleMoule({ moule: " cylindre maison " })).toBe("cylindre maison");
+    expect(libelleMoule({})).toBe("");
+  });
+
+  it("rupture : libellé du code, précision libre, ancienne saisie en texte", () => {
+    expect(libelleRupture({ modeRuptureCode: "cone" })).toBe("Cônes aux deux extrémités");
+    expect(libelleRupture({ modeRuptureCode: "cone", modeRupture: "net" })).toBe("Cônes aux deux extrémités : net");
+    expect(libelleRupture({ modeRuptureCode: "autre", modeRupture: "écrasement du chapeau" })).toBe("écrasement du chapeau");
+    expect(libelleRupture({ modeRupture: "cône" })).toBe("cône");
+    expect(libelleRupture(undefined)).toBe("");
+  });
+
+  it("vitesse : valeur à la française et unité", () => {
+    expect(libelleVitesse({ valeur: 0.5, unite: "mm/min" })).toBe("0,5 mm/min");
+    expect(libelleVitesse(undefined)).toBe("");
   });
 });

@@ -51,7 +51,42 @@ export interface EssaiUCS {
    *  l'id de l'éprouvette ; ne reste ici que sa taille. Présent à la place de
    *  `courbe`, jamais avec. Information locale : jamais synchronisée. */
   courbeInfo?: { nbPoints: number };
+
+  // ── Fiche d'essai : conditions de l'essai. Tous FACULTATIFS. ──
+  /** Masse de l'éprouvette (g), donnée par la presse ou pesée. */
+  masseG?: number;
+  /** Déflexion maximale (mm) donnée par la presse. */
+  deflexionMaxMm?: number;
+  /** Vitesse de chargement appliquée (le fichier de presse ne la donne pas). */
+  vitesseChargement?: { valeur: number; unite: UniteVitesse };
+  /** Presse employée (identifiant libre). */
+  presse?: string;
+  /** Type de rupture codé (ASTM C39/C39M). `modeRupture` reste le texte libre :
+   *  anciennes saisies, ou précision du code « autre ». */
+  modeRuptureCode?: CodeRupture;
 }
+
+/** Unités de la vitesse de chargement. */
+export type UniteVitesse = "mm/min" | "kN/s" | "kPa/s";
+export const UNITES_VITESSE: UniteVitesse[] = ["mm/min", "kN/s", "kPa/s"];
+
+/** Types de rupture d'une éprouvette cylindrique (d'après ASTM C39/C39M). */
+export type CodeRupture = "cone" | "cone_fendage" | "colonnaire" | "diagonale" | "extremites" | "autre";
+export const TYPES_RUPTURE: { code: CodeRupture; libelle: string }[] = [
+  { code: "cone", libelle: "Cônes aux deux extrémités" },
+  { code: "cone_fendage", libelle: "Cône et fendage" },
+  { code: "colonnaire", libelle: "Fissures verticales (colonnaire)" },
+  { code: "diagonale", libelle: "Rupture diagonale (cisaillement)" },
+  { code: "extremites", libelle: "Rupture aux extrémités" },
+  { code: "autre", libelle: "Autre" },
+];
+
+/** Moules proposés (diamètre × hauteur, mm) ; « Autre » garde le texte libre. */
+export const MOULES_PROPOSES: { libelle: string; diametreMm: number; hauteurMm: number }[] = [
+  { libelle: "Cylindre 50 × 100 mm", diametreMm: 50, hauteurMm: 100 },
+  { libelle: "Cylindre 76 × 152 mm", diametreMm: 76.2, hauteurMm: 152.4 },
+  { libelle: "Cylindre 100 × 200 mm", diametreMm: 100, hauteurMm: 200 },
+];
 
 export interface Eprouvette {
   id: string;
@@ -59,8 +94,35 @@ export interface Eprouvette {
   couleLe: string; // ISO — date de moulage
   ageJours: number; // âge de cure cible (jours) -> échéance = couleLe + ageJours
   moule?: string; // type/dimensions, ex. « cylindre 50 × 100 mm »
+  /** Moule nominal (mm), choisi parmi les moules proposés. Facultatif. À ne
+   *  pas confondre avec `essai.diametreMm`, le diamètre MESURÉ qui sert à F/A. */
+  mouleDiametreMm?: number;
+  mouleHauteurMm?: number;
   statut: StatutEprouvette;
   essai?: EssaiUCS; // renseigné une fois l'éprouvette écrasée
+}
+
+/** Libellé du moule d'une éprouvette (nominal, sinon texte libre), ou "". */
+export function libelleMoule(e: Pick<Eprouvette, "moule" | "mouleDiametreMm" | "mouleHauteurMm">): string {
+  if (e.mouleDiametreMm) {
+    const d = e.mouleDiametreMm.toLocaleString("fr-CA", { maximumFractionDigits: 1 });
+    const h = e.mouleHauteurMm ? ` × ${e.mouleHauteurMm.toLocaleString("fr-CA", { maximumFractionDigits: 1 })}` : "";
+    return `Cylindre ${d}${h} mm`;
+  }
+  return e.moule?.trim() ?? "";
+}
+
+/** Mode de rupture lisible : libellé du code, précision libre ensuite, ou "". */
+export function libelleRupture(es: Pick<EssaiUCS, "modeRuptureCode" | "modeRupture"> | undefined): string {
+  const code = es?.modeRuptureCode ? TYPES_RUPTURE.find((t) => t.code === es.modeRuptureCode)?.libelle : undefined;
+  const texte = es?.modeRupture?.trim();
+  if (code && texte) return code === "Autre" ? texte : `${code} : ${texte}`;
+  return code ?? texte ?? "";
+}
+
+/** Vitesse de chargement lisible (« 1 mm/min »), ou "". */
+export function libelleVitesse(v: EssaiUCS["vitesseChargement"]): string {
+  return v ? `${v.valeur.toLocaleString("fr-CA", { maximumFractionDigits: 3 })} ${v.unite}` : "";
 }
 
 /** Âges de cure usuels pour les remblais en pâte (jours). */

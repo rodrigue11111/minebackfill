@@ -37,6 +37,51 @@ export interface Ajustement {
   note?: string;
 }
 
+/** Eau de gâchage. */
+export type TypeEau = "robinet" | "procede" | "distillee" | "autre";
+
+/** Mode de cure des éprouvettes. */
+export type ModeCure = "chambre_humide" | "immersion" | "ambiante" | "scellee" | "autre";
+
+/** Listes fermées de la fiche d'essai (libellés à valider par le professeur). */
+export const TYPES_EAU: { valeur: TypeEau; libelle: string }[] = [
+  { valeur: "robinet", libelle: "Eau du robinet" },
+  { valeur: "procede", libelle: "Eau de procédé" },
+  { valeur: "distillee", libelle: "Eau distillée" },
+  { valeur: "autre", libelle: "Autre" },
+];
+export const MODES_CURE: { valeur: ModeCure; libelle: string }[] = [
+  { valeur: "chambre_humide", libelle: "Chambre humide" },
+  { valeur: "immersion", libelle: "Immersion" },
+  { valeur: "ambiante", libelle: "Air ambiant" },
+  { valeur: "scellee", libelle: "Scellée (sac ou film)" },
+  { valeur: "autre", libelle: "Autre" },
+];
+export const UNITES_DOSAGE_ADJUVANT = ["ml/100 kg", "% liant", "autre"] as const;
+
+/**
+ * Instantané des MATÉRIAUX réellement employés (fiche d'essai). Rempli à la
+ * création depuis la formulation (lib/gachee-materiaux.ts), modifiable ensuite.
+ * Il porte l'identité et les valeurs entrées dans le calcul (Gs, w₀), pas la
+ * caractérisation du résidu (granulométrie, chimie) : celle-ci vit une seule
+ * fois dans le catalogue et se joint par `id` à l'export. Tout est facultatif.
+ */
+export interface MateriauxGachee {
+  residu?: { id?: string; nom?: string; provenance?: string; gs?: number; w0Pct?: number; catalogue?: "officiel" | "perso" };
+  granulat?: { id?: string; nom?: string; provenance?: string; gs?: number; humiditePct?: number };
+  liants?: { id?: string; code?: string; nom?: string; gs?: number; fractionPct?: number }[];
+  eau?: { type?: TypeEau; note?: string };
+  adjuvant?: { nom?: string; dosage?: number; dosageUnite?: "ml/100 kg" | "% liant" | "autre"; note?: string };
+}
+
+/** Conditions de cure des éprouvettes de la gâchée (facultatif). */
+export interface CureGachee {
+  mode?: ModeCure;
+  temperatureC?: number;
+  humiditePct?: number;
+  note?: string;
+}
+
 export interface Gachee {
   id: string;
   code: string; // auto « G-AAAAMMJJ-NN »
@@ -86,6 +131,16 @@ export interface Gachee {
 
   // Session de cours active à la création (sessions publiées par l'enseignant).
   sessionId?: string;
+
+  // Fiche d'essai (tout est FACULTATIF : rien ne bloque la saisie ni le calcul).
+  // Groupes imbriqués : les modifier par une copie complète du groupe
+  // (`onMaj({ cure: { ...g.cure, mode } })`), car la mise à jour du magasin
+  // fusionne au premier niveau seulement. Ne jamais leur donner de valeur par
+  // défaut au chargement : l'empreinte de chaque gâchée changerait et toute la
+  // classe serait renvoyée en ligne.
+  materiaux?: MateriauxGachee;
+  cure?: CureGachee;
+  malaxageDureeMin?: number;
 }
 
 function num(v: number | null | undefined): number {
