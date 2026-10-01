@@ -110,7 +110,7 @@ describe("export CSV de la classe", () => {
     expect(l[1][col("Exclues")]).toBe(1);
     expect(l[1][col("UCS moyenne (kPa)")]).toBe(1234.6);
     expect(l[1][col("Pesées hors tolérance")]).toBe(1); // liant +6 %, eau +0,5 %
-    expect(EN_TETES_SYNTHESE.at(-1)).toBe("Complétude de la fiche (%)");
+    expect(EN_TETES_SYNTHESE.slice(-4)).toEqual(["Complétude de la fiche (%)", "Revue", "Motif de la revue", "Modifiée depuis la revue"]);
     expect(l[1]).toHaveLength(EN_TETES_SYNTHESE.length);
   });
 
@@ -119,5 +119,29 @@ describe("export CSV de la classe", () => {
     const l = lignesCsvSynthese([e], sessions);
     expect(l).toHaveLength(2);
     expect(l[1][EN_TETES_SYNTHESE.indexOf("Pesées hors tolérance")]).toBeNull();
+  });
+});
+
+describe("export CSV : revue de l'enseignant (colonnes à la fin)", () => {
+  const etudiants = regrouper([ligne(gachee("g1"))], profils, sessions, "toutes");
+  const info = { decision: "refusee" as const, motif: "Pesées incomplètes.", ecartees: ["g1-2"], maj: "m", perimee: true };
+
+  it("éprouvettes : décision, motif, « modifiée depuis », éprouvette écartée ; vide sans revue", () => {
+    const l = lignesCsvEprouvettes(etudiants, sessions, () => info);
+    const col = (nom: string) => EN_TETES_EPROUVETTES.indexOf(nom);
+    expect(EN_TETES_EPROUVETTES.slice(-4)).toEqual(["Revue", "Motif de la revue", "Modifiée depuis la revue", "Écartée par l'enseignant"]);
+    const [, e1, e2] = l;
+    expect(e1[col("Revue")]).toBe("refusée");
+    expect(e1[col("Motif de la revue")]).toBe("Pesées incomplètes.");
+    expect(e1[col("Modifiée depuis la revue")]).toBe("oui");
+    expect(e1[col("Écartée par l'enseignant")]).toBe("non");
+    expect(e2[col("Écartée par l'enseignant")]).toBe("oui");
+    const sans = lignesCsvEprouvettes(etudiants, sessions);
+    expect(sans[1].slice(-4)).toEqual(["", "", "", ""]);
+  });
+
+  it("synthèse : décision de la gâchée sur chaque ligne", () => {
+    const l = lignesCsvSynthese(etudiants, sessions, () => info);
+    expect(l[1].slice(-3)).toEqual(["refusée", "Pesées incomplètes.", "oui"]);
   });
 });

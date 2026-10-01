@@ -242,3 +242,11 @@ describe("backup — courbes de presse hors des gâchées (schéma 6)", () => {
     expect(g.eprouvettes[0].essai.courbe).toBeUndefined();
   });
 });
+
+describe("backup — revues de l'enseignant", () => {
+  it("la copie locale des revues n'est pas sauvegardée (elle appartient au serveur)", async () => {
+    localStorage.setItem("minebackfill_revues", JSON.stringify({ v: 1, data: [{ kind: "gachee", id: "g1", decision: "acceptee" }] }));
+    const b = await exporte();
+    expect(JSON.stringify(b)).not.toContain("acceptee");
+  });
+});

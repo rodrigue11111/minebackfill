@@ -17,6 +17,8 @@ import { ancresGachee, repartirAnnotations } from "@/lib/ancres";
 import { EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
 import { Pastille } from "@/components/ui/Pastille";
+import { Bandeau } from "@/components/ui/Bandeau";
+import { LIBELLE_DECISION, libelleRevue, type Revue } from "@/lib/revues";
 import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
 import { Icone } from "@/components/ui/Icones";
 import ChampNombre from "@/components/ui/ChampNombre";
@@ -95,9 +97,11 @@ const TYPES_AJOUT: { valeur: Ajustement["type"]; libelle: string }[] = [
   { valeur: "granulat", libelle: "Granulat" }, { valeur: "liant", libelle: "Liant" },
 ];
 
-export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque }: {
+export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue }: {
   gachee: Gachee;
   maintenant: Date;
+  /** Décision de l'enseignant sur cette gâchée (lue en ligne), s'il y en a une. */
+  revue?: Revue;
   /** Bibliothèque de matériaux (officiels et personnels) : choix du résidu et
    *  du granulat. Sans elle, le résidu se saisit en texte libre. */
   bibliotheque?: { residus: ResiduItem[]; granulats: GranulatItem[] };
@@ -133,6 +137,8 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
   const liants = (g.materiaux?.liants ?? [])
     .map((l) => `${l.nom ?? l.code ?? "Liant"}${l.fractionPct != null ? ` ${l.fractionPct.toLocaleString("fr-CA", { maximumFractionDigits: 1 })} %` : ""}`)
     .join(", ");
+  // Éprouvettes écartées par l'enseignant, par leur code (l'id reste interne).
+  const ecarteesCodes = (revue?.ecartees ?? []).map((id) => g.eprouvettes.find((e) => e.id === id)?.code).filter((c): c is string => !!c);
   const residuSnap = g.materiaux?.residu;
   const granulatSnap = g.materiaux?.granulat;
   const detailGranulat = [
@@ -158,6 +164,9 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
         titre={g.code}
         pastille={<>
           {g.statut === "terminee" ? <Pastille ton="succes">Terminée</Pastille> : <Pastille ton="alerte">Brouillon</Pastille>}
+          {revue && (
+            <Pastille ton={revue.decision === "acceptee" ? "succes" : "danger"} title={revue.motif ?? undefined}>{libelleRevue(revue)}</Pastille>
+          )}
           <Pastille ton="neutre" title="Champs descriptifs renseignés. Rien n'est obligatoire : la fiche sert à la réutilisation des essais.">
             Fiche : {fiche.renseignes}/{fiche.total}
           </Pastille>
@@ -192,6 +201,15 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
           </>
         }
       />
+
+      {revue && (revue.motif || ecarteesCodes.length > 0) && (
+        <Bandeau ton="neutre" titre={`Revue de l'enseignant : gâchée ${LIBELLE_DECISION[revue.decision]}.`}>
+          {revue.motif && <>Motif : {revue.motif}</>}
+          {ecarteesCodes.length > 0 && (
+            <>{revue.motif ? " " : ""}Éprouvette{ecarteesCodes.length > 1 ? "s" : ""} écartée{ecarteesCodes.length > 1 ? "s" : ""} par l&apos;enseignant : {ecarteesCodes.join(", ")}.</>
+          )}
+        </Bandeau>
+      )}
 
       {/* Téléphone : trois parties, une seule affichée (CSS, data-vue). */}
       <div className="labo-vues-tel">

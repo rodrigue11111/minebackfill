@@ -6,6 +6,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Annotation } from "./annotations";
 import type { LigneClasse, ProfilClasse } from "./classe";
+import {
+  revueClasseDepuisLigne, revueDepuisLigne,
+  type DecisionRevue, type LigneMesRevues, type LigneRevueClasse, type Revue, type RevueClasse,
+} from "./revues";
 
 const PAGE = 500;
 const MAX_PAGES = 200;
@@ -21,9 +25,10 @@ function echec(e: { code?: string; message?: string } | null | undefined): Erreu
   return new ErreurClasse(e?.code || "reseau", e?.message || "Lecture impossible");
 }
 
-/** Fonction ou colonne inconnue du serveur : la base n'a pas le schéma de ce site. */
+/** Fonction, table ou colonne inconnue du serveur : la base n'a pas le schéma de ce site. */
 export function schemaPasAJour(code: string | undefined): boolean {
-  return code === "PGRST202" || code === "42883" || code === "42703" || code === "PGRST204";
+  return code === "PGRST202" || code === "42883" || code === "42703" || code === "PGRST204"
+    || code === "PGRST205" || code === "42P01";
 }
 
 /**
@@ -285,6 +290,68 @@ export async function lireMesAnnotations(
     curseur = { maj: d.maj_serveur, id: d.annotation_id };
   }
   return { annotations: r, curseur };
+}
+
+/* ── Revues des gâchées (enseignant ; lecture par l'étudiant) ───────────── */
+
+/**
+ * Enseignant : les revues en cours (la RLS lui donne tout). Base pas encore à
+ * jour (table absente) : `null`, et la classe se charge quand même, sans
+ * revues. Toute autre erreur est levée.
+ */
+export async function lireRevuesClasse(sb: SupabaseClient): Promise<RevueClasse[] | null> {
+  const toutes: RevueClasse[] = [];
+  for (let debut = 0, p = 0; p < MAX_PAGES; p++) {
+    const { data, error } = await sb.from("revues")
+      .select("owner_id,target_kind,target_id,target_rev,decision,motif,ecartees,updated_at")
+      .eq("deleted", false)
+      .order("updated_at", { ascending: true }).order("owner_id", { ascending: true }).order("target_id", { ascending: true })
+      .range(debut, debut + PAGE - 1);
+    if (error) {
+      if (schemaPasAJour(error.code)) return null;
+      throw echec(error);
+    }
+    const page = (data ?? []) as LigneRevueClasse[];
+    if (page.length === 0) break;
+    for (const l of page) {
+      const r = revueClasseDepuisLigne(l);
+      if (r) toutes.push(r);
+    }
+    debut += page.length;
+  }
+  return toutes;
+}
+
+/** Enseignant : pose (ou remplace) sa décision ; le serveur fait les contrôles. */
+export async function poserRevue(sb: SupabaseClient, r: {
+  ownerId: string; id: string; rev: number | null; decision: DecisionRevue; motif: string | null; ecartees: string[];
+}): Promise<RevueClasse> {
+  const motif = r.motif?.trim() || null;
+  const { data, error } = await sb.rpc("poser_revue", {
+    p_owner: r.ownerId, p_kind: "gachee", p_id: r.id, p_rev: r.rev,
+    p_decision: r.decision, p_motif: motif, p_ecartees: r.ecartees,
+  });
+  if (error) throw echec(error);
+  const x = (Array.isArray(data) ? data[0] : data) as { maj_serveur: string } | undefined;
+  if (!x) throw new ErreurClasse("reseau", "décision non enregistrée");
+  return { ownerId: r.ownerId, kind: "gachee", id: r.id, rev: r.rev, decision: r.decision, motif, ecartees: r.ecartees, maj: x.maj_serveur };
+}
+
+/** Enseignant : retire sa décision. Faux si elle était déjà retirée. */
+export async function retirerRevue(sb: SupabaseClient, ownerId: string, id: string): Promise<boolean> {
+  const { data, error } = await sb.rpc("retirer_revue", { p_owner: ownerId, p_kind: "gachee", p_id: id });
+  if (error) throw echec(error);
+  return data === true;
+}
+
+/** Étudiant : les décisions sur SON travail. Base pas encore à jour : `null`. */
+export async function lireMesRevues(sb: SupabaseClient, attendu: string): Promise<Revue[] | null> {
+  const { data, error } = await sb.rpc("lire_mes_revues", { p_attendu: attendu });
+  if (error) {
+    if (schemaPasAJour(error.code)) return null;
+    throw echec(error);
+  }
+  return ((Array.isArray(data) ? data : []) as LigneMesRevues[]).map(revueDepuisLigne).filter((r): r is Revue => r !== null);
 }
 
 /* ── Comptes (enseignant) ────────────────────────────────────────────────── */

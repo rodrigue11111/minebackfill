@@ -662,3 +662,96 @@ describe("schema.sql — comptes (enseignant)", () => {
     await expect(bloquer(PROF, "00000000-0000-4000-8000-00000000dead", true)).rejects.toMatchObject({ code: "P0002" });
   });
 });
+
+describe("schema.sql — revues de l'enseignant", () => {
+  // Comptes propres à ce bloc ; PROF n'y change jamais de rôle.
+  const R1 = "00000000-0000-4000-8000-0000000000a1";
+  const R2 = "00000000-0000-4000-8000-0000000000a2";
+  const poser = (uid: string | null, owner: string, id: string, decision: string, motif: string | null, ecartees: string[] = [], rev: number | null = 1) =>
+    comme<{ maj_serveur: string }>(uid, "select maj_serveur::text from public.poser_revue($1, 'gachee', $2, $3, $4, $5, $6::text[])",
+      [owner, id, rev, decision, motif, `{${ecartees.map((e) => `"${e}"`).join(",")}}`]);
+  const retirer = (uid: string, owner: string, id: string) =>
+    comme<{ r: boolean }>(uid, "select public.retirer_revue($1, 'gachee', $2) as r", [owner, id]);
+  const mes = (uid: string, attendu = uid) =>
+    comme<{ cible_id: string; cible_rev: string | null; decision_revue: string; motif_revue: string | null; ecartees_revue: string[] }>(
+      uid, "select cible_id, cible_rev::text, decision_revue, motif_revue, ecartees_revue from public.lire_mes_revues($1)", [attendu]);
+  const ligne = async (owner: string, id: string) => (await db.query<{ decision: string; motif: string | null; deleted: boolean; target_rev: string; ecartees: string[]; created_at: string; updated_at: string }>(
+    "select decision, motif, deleted, target_rev::text, ecartees, created_at::text, updated_at::text from public.revues where owner_id = $1 and target_id = $2", [owner, id])).rows;
+
+  beforeAll(async () => {
+    await creerCompte(R1, "r1@exemple.ca");
+    await creerCompte(R2, "r2@exemple.ca");
+    await ecrire(R1, "gachee", "rg1", { id: "rg1" }, null);
+    await ecrire(R1, "gachee", "rg2", { id: "rg2" }, null);
+    await ecrire(R2, "gachee", "rg9", { id: "rg9" }, null);
+  });
+
+  it("l'enseignant accepte puis refuse : une seule ligne, motif nettoyé, éprouvettes écartées", async () => {
+    await poser(PROF, R1, "rg1", "acceptee", null, [], 3);
+    const [a] = await ligne(R1, "rg1");
+    expect(a).toMatchObject({ decision: "acceptee", motif: null, deleted: false, target_rev: "3", ecartees: [] });
+    await poser(PROF, R1, "rg1", "refusee", "  Pesées incomplètes.  ", ["e1", "e2"], 4);
+    const lignes = await ligne(R1, "rg1");
+    expect(lignes).toHaveLength(1);
+    expect(lignes[0]).toMatchObject({ decision: "refusee", motif: "Pesées incomplètes.", target_rev: "4", ecartees: ["e1", "e2"] });
+    expect(lignes[0].updated_at > a.updated_at).toBe(true);
+    expect(lignes[0].created_at).toBe(a.created_at);
+  });
+
+  it("contrôles : refus sans motif, décision inconnue, document absent ou supprimé, bornes", async () => {
+    await expect(poser(PROF, R1, "rg2", "refusee", "   ")).rejects.toMatchObject({ code: "22023" });
+    await expect(poser(PROF, R1, "rg2", "peut-etre", null)).rejects.toMatchObject({ code: "22023" });
+    await expect(poser(PROF, R1, "inconnue", "acceptee", null)).rejects.toMatchObject({ code: "P0002" });
+    await expect(poser(PROF, R2, "rg1", "acceptee", null)).rejects.toMatchObject({ code: "P0002" }); // le document de R1, pas de R2
+    await expect(poser(PROF, R1, "rg2", "refusee", "x".repeat(2001))).rejects.toMatchObject({ code: "22023" });
+    await expect(poser(PROF, R1, "rg2", "acceptee", null, Array.from({ length: 201 }, (_, i) => `e${i}`))).rejects.toMatchObject({ code: "22023" });
+    await expect(poser(PROF, R1, "rg2", "acceptee", null, [""])).rejects.toMatchObject({ code: "22023" });
+    await ecrire(R1, "gachee", "rg3", { id: "rg3" }, null);
+    await db.query("update public.user_docs set deleted = true where user_id = $1 and id = 'rg3'", [R1]);
+    await expect(poser(PROF, R1, "rg3", "acceptee", null)).rejects.toMatchObject({ code: "P0002" });
+    expect(await ligne(R1, "rg2")).toEqual([]);
+  });
+
+  it("seul l'enseignant décide ; personne n'écrit dans la table directement", async () => {
+    await expect(poser(R1, R1, "rg2", "acceptee", null)).rejects.toMatchObject({ code: "42501" });
+    await expect(poser(R2, R1, "rg2", "acceptee", null)).rejects.toMatchObject({ code: "42501" });
+    await expect(poser(null, R1, "rg2", "acceptee", null)).rejects.toMatchObject({ code: "42501" });
+    const ins = "insert into public.revues (owner_id, target_kind, target_id, decision, reviewer_id) values ($1, 'gachee', 'rg2', 'acceptee', $2)";
+    await expect(comme(PROF, ins, [R1, PROF])).rejects.toMatchObject({ code: "42501" });
+    await expect(comme(R1, ins, [R1, R1])).rejects.toMatchObject({ code: "42501" });
+    await expect(comme(PROF, "update public.revues set decision = 'acceptee' where owner_id = $1", [R1])).rejects.toMatchObject({ code: "42501" });
+    await expect(comme(R1, "update public.revues set motif = null where owner_id = $1", [R1])).rejects.toMatchObject({ code: "42501" });
+    await expect(comme(PROF, "delete from public.revues where owner_id = $1", [R1])).rejects.toMatchObject({ code: "42501" });
+    await expect(comme(null, "select * from public.revues")).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("lecture : l'étudiant les siennes seulement, l'enseignant toutes ; session vérifiée", async () => {
+    await poser(PROF, R2, "rg9", "acceptee", "Très bien documentée.");
+    const r1 = (await mes(R1)).rows;
+    expect(r1).toEqual([{ cible_id: "rg1", cible_rev: "4", decision_revue: "refusee", motif_revue: "Pesées incomplètes.", ecartees_revue: ["e1", "e2"] }]);
+    expect((await mes(R2)).rows.map((x) => x.cible_id)).toEqual(["rg9"]);
+    await expect(mes(R1, R2)).rejects.toMatchObject({ code: "28000" });
+    await expect(comme(null, "select * from public.lire_mes_revues($1)", [R1])).rejects.toMatchObject({ code: "42501" });
+    // Lecture directe : la RLS ne montre à l'étudiant que les siennes.
+    expect((await comme<{ target_id: string }>(R1, "select target_id from public.revues")).rows.map((x) => x.target_id)).toEqual(["rg1"]);
+    const prof = (await comme<{ target_id: string }>(PROF, "select target_id from public.revues order by target_id")).rows.map((x) => x.target_id);
+    expect(prof).toEqual(expect.arrayContaining(["rg1", "rg9"]));
+  });
+
+  it("retrait : l'enseignant seulement ; l'étudiant ne la voit plus ; une nouvelle décision la rétablit", async () => {
+    await expect(retirer(R1, R1, "rg1")).rejects.toMatchObject({ code: "42501" });
+    expect((await retirer(PROF, R1, "rg1")).rows[0].r).toBe(true);
+    expect((await retirer(PROF, R1, "rg1")).rows[0].r).toBe(false); // déjà retirée
+    expect((await ligne(R1, "rg1"))[0].deleted).toBe(true);
+    expect((await mes(R1)).rows).toEqual([]);
+    await poser(PROF, R1, "rg1", "acceptee", null, [], 5);
+    expect((await mes(R1)).rows).toMatchObject([{ cible_id: "rg1", decision_revue: "acceptee", motif_revue: null }]);
+  });
+
+  it("ré-exécution du schéma : décisions et droits intacts", async () => {
+    await db.exec(SCHEMA);
+    expect((await mes(R1)).rows.map((x) => x.decision_revue)).toEqual(["acceptee"]);
+    await expect(comme(PROF, "update public.revues set decision = 'refusee' where owner_id = $1", [R1])).rejects.toMatchObject({ code: "42501" });
+    await expect(poser(R1, R1, "rg2", "acceptee", null)).rejects.toMatchObject({ code: "42501" });
+  });
+});

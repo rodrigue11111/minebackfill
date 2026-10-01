@@ -11,11 +11,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   loadAnnotationsFromStorage, loadGacheesFromStorage, loadSavedFromStorage,
-  persistAnnotations, persistGachees, persistSaved, useStore,
+  persistAnnotations, persistGachees, persistRevues, persistSaved, useStore,
 } from "./store";
 import { fusionnerAnnotations, type Annotation } from "./annotations";
 import {
-  lireMesAnnotations, marquerAnnotationsLues, messageErreurClasse, nbReponsesNonLues, repondreAnnotation, retirerAnnotation,
+  lireMesAnnotations, lireMesRevues, marquerAnnotationsLues, messageErreurClasse, nbReponsesNonLues, repondreAnnotation, retirerAnnotation,
 } from "./classe-reseau";
 import {
   cleDoc, cycle, deciderLiaison, nombreEnAttente,
@@ -149,6 +149,22 @@ async function rafraichirAnnotations(c: Courant): Promise<void> {
   }
 }
 
+/**
+ * Revues de l'enseignant sur MES gâchées : relues en entier (au plus une par
+ * gâchée), au même rythme que les commentaires. Base pas encore à jour : rien
+ * ne change. Échec : la copie locale reste (jamais « aucune revue »).
+ */
+async function rafraichirRevues(c: Courant): Promise<void> {
+  try {
+    const revues = await lireMesRevues(c.sb, c.uid);
+    if (revues === null || courant !== c) return;
+    persistRevues(revues);
+    useStore.setState({ revues });
+  } catch {
+    /* on réessaiera au prochain cycle */
+  }
+}
+
 /** Le fil local change (lecture, réponse, accusé) : stockage puis écran. */
 function enregistrerAnnotations(annotations: Annotation[], curseur = loadAnnotationsFromStorage().curseur): void {
   persistAnnotations({ curseur, annotations });
@@ -256,6 +272,7 @@ async function executerCycle(c: Courant, budget: number): Promise<ResultatCycle>
     });
     if (!r.erreur && Date.now() - derniereLectureAnnotations >= PERIODE_ANNOTATIONS_MS) {
       await rafraichirAnnotations(c);
+      await rafraichirRevues(c);
     }
     return { ...r, etat: fin };
   };
@@ -343,13 +360,15 @@ export function connecterSynchro(sb: SupabaseClient, uid: string, o: { prof?: bo
       lireResultats: loadSavedFromStorage, ecrireResultats: persistSaved,
       lireGachees: loadGacheesFromStorage, ecrireGachees: persistGachees,
       lireMiseDeCote, ecrireMiseDeCote, supprimerMiseDeCote,
-      viderAnnotations: () => { persistAnnotations({ curseur: null, annotations: [] }); },
+      // Commentaires et revues appartiennent au compte : vidés, puis relus.
+      viderAnnotations: () => { persistAnnotations({ curseur: null, annotations: [] }); persistRevues([]); },
     }, uid);
     if (r.ok && r.change) {
       const s = useStore.getState();
       s.loadSavedResults();
       s.loadGachees();
       s.loadAnnotations();
+      s.loadRevues();
     }
   }
   const etat = chargerEtatSync();

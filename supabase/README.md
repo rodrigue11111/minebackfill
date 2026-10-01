@@ -122,12 +122,15 @@ courriel arrive → le lien ouvre « Nouveau mot de passe » → enregistrer →
 incrémentale par curseur), `lire_docs_classe` (enseignant), `lire_annotations`
 (sites antérieurs aux réponses : sans les réponses) et `lire_fil_annotations`
 (le fil complet). Commentaires : `repondre_annotation`,
-`marquer_annotations_lues`, `nb_reponses_non_lues`. Comptes (enseignant) :
+`marquer_annotations_lues`, `nb_reponses_non_lues`. Revues des gâchées :
+`poser_revue` et `retirer_revue` (enseignant ; la table `revues` n'a aucun
+droit d'écriture directe), `lire_mes_revues` (étudiant). Comptes (enseignant) :
 `lister_comptes`, `definir_role`, `bloquer_compte`.
 
 Les fonctions `security definer` exécutables par `authenticated`
 (`repondre_annotation`, `marquer_annotations_lues`, `lister_comptes`,
-`definir_role`, `bloquer_compte`) peuvent être signalées par **Advisors →
+`definir_role`, `bloquer_compte`, `poser_revue`, `retirer_revue`) peuvent être
+signalées par **Advisors →
 Security** : c'est voulu, chacune revérifie l'appelant (session, rôle, propriété
 du document) avant d'agir.
 Le pourquoi de chaque choix : `docs/HISTORIQUE_EXTENSIBILITE.md`, section

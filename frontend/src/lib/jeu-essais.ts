@@ -28,7 +28,8 @@ import { essaiValide, gacheesRetenues, type EtudiantClasse } from "./classe";
 import { sessionEffective, type Session } from "./sessions";
 import { completudeGachee } from "./completude";
 import { materiauxDepuisFormulation } from "./gachee-materiaux";
-import { securiserCsv, type CelluleCsv } from "./classe-csv";
+import { securiserCsv, type CelluleCsv, type RevueDe } from "./classe-csv";
+import type { InfoRevue } from "./revues";
 import { fmtDate } from "./echeance-affichage";
 import { CARACTERISATION_GRANULAT, CARACTERISATION_RESIDU, type ChampCaracterisation, type GranulatItem, type ResiduItem } from "./materials";
 import type { LiantCatalogueItem } from "./store";
@@ -60,6 +61,8 @@ interface CtxGachee {
   completude: number;
   /** Le résidu dans le catalogue de l'enseignant (sa caractérisation), s'il y est. */
   residuCatalogue?: ResiduItem;
+  /** Décision de l'enseignant sur la gâchée, s'il y en a une. */
+  revue?: InfoRevue;
 }
 interface CtxEssai extends CtxGachee {
   ep: Eprouvette;
@@ -211,6 +214,10 @@ const COLONNES_GACHEE: Colonne<CtxGachee>[] = [
     description: "Nombre de composants pesés hors de la tolérance de la gâchée. Vide si aucune pesée n'est enregistrée." },
   { cle: "completude_pct", libelle: "Complétude de la fiche d'essai", unite: "%", type: "entier", val: (c) => c.completude,
     description: "Part des informations descriptives renseignées (lib/completude.ts). Rien n'est obligatoire pour l'étudiant : une valeur basse signale une gâchée moins documentée." },
+  { cle: "revue", libelle: "Revue de l'enseignant", type: "code", val: (c) => c.revue?.decision ?? null,
+    description: "acceptee ou refusee : décision de l'enseignant sur la gâchée ; vide si elle n'a pas été revue." },
+  { cle: "revue_perimee", libelle: "Modifiée depuis la revue", type: "booléen", val: (c) => (c.revue ? c.revue.perimee : null),
+    description: "L'étudiant a modifié la gâchée après la décision de l'enseignant (la décision porte sur une version antérieure). Vide sans revue." },
 ];
 
 // ── Colonnes propres à l'éprouvette et à son essai ──
@@ -259,6 +266,8 @@ const COLONNES_EPROUVETTE: Colonne<CtxEssai>[] = [
   { cle: "presse", libelle: "Presse", type: "texte libre", val: (c) => txt(c.ep.essai?.presse), description: "Presse employée, telle que saisie." },
   { cle: "import_presse", libelle: "Importé de la presse", type: "booléen", val: (c) => !!c.ep.essai?.sourcePresse,
     description: "Les mesures viennent d'un fichier de presse importé (et non d'une saisie)." },
+  { cle: "eprouvette_ecartee", libelle: "Écartée par l'enseignant", type: "booléen", val: (c) => (c.revue ? c.revue.ecartees.includes(c.ep.id) : null),
+    description: "L'enseignant a écarté cette éprouvette lors de sa revue (la gâchée de l'étudiant n'est pas modifiée). Vide sans revue." },
 ];
 
 export const COLONNES_ESSAIS: Colonne<CtxEssai>[] = [...COLONNES_GACHEE, ...COLONNES_EPROUVETTE];
@@ -308,6 +317,10 @@ export interface EntreesJeuEssais {
   /** Catalogues de l'enseignant : jointure des matériaux, et repli pour les anciennes gâchées. */
   catalogues: { residus: ResiduItem[]; granulats: GranulatItem[]; liants: LiantCatalogueItem[] };
   maintenant: Date;
+  /** Revue de l'enseignant par gâchée (absent : revues indisponibles). */
+  revueDe?: RevueDe;
+  /** Seulement les gâchées ACCEPTÉES par l'enseignant et non modifiées depuis. */
+  seulementAcceptees?: boolean;
 }
 
 export type Ligne = Record<string, Valeur>;
@@ -320,6 +333,7 @@ export interface JeuEssais {
     dictionnaire_version: number;
     exporte_le: string;
     session: string;
+    selection: string;
     nb_operateurs: number;
     nb_gachees: number;
     nb_eprouvettes: number;
@@ -366,8 +380,10 @@ export function construireJeuEssais(x: EntreesJeuEssais): JeuEssais {
           if (Object.keys(m).length > 0) materiauxSource = "formulation";
         }
       }
+      const revue = x.revueDe?.(e.id, g.id);
+      if (x.seulementAcceptees && !(revue?.decision === "acceptee" && !revue.perimee)) continue;
       ctxs.push({
-        operateur, g, m, materiauxSource,
+        operateur, g, m, materiauxSource, revue,
         residuCatalogue: m.residu?.id ? catalogues.residus.find((x) => x.id === m.residu?.id) : undefined,
         session: sessionEffective({ sessionId: g.sessionId, date: g.creeLe }, x.sessions)?.nom ?? "Sans session",
         p: parametresEffectifs(g, formulations),
@@ -390,7 +406,10 @@ export function construireJeuEssais(x: EntreesJeuEssais): JeuEssais {
       dictionnaire_version: DICTIONNAIRE_VERSION,
       exporte_le: x.maintenant.toISOString(),
       session: x.sessionLibelle,
-      nb_operateurs: operateurs.length,
+      selection: x.seulementAcceptees
+        ? "gâchées acceptées par l'enseignant et non modifiées depuis"
+        : "toutes les gâchées (copies de conflit exclues)",
+      nb_operateurs: new Set(ctxs.map((c) => c.operateur)).size,
       nb_gachees: ctxs.length,
       nb_eprouvettes: essais.length,
       nb_essais_retenus: essais.filter((l) => l.retenu === true).length,

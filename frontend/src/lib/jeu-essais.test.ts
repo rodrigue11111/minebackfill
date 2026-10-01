@@ -148,6 +148,27 @@ describe("jeu d'essais pseudonymisé", () => {
     expect(liant).toMatchObject({ d50_um: null, mineralogie: null });
   });
 
+  it("revue de l'enseignant : colonnes, et export limité aux gâchées acceptées non modifiées", async () => {
+    const ps = await pseudonymes(etudiants.map((e) => e.id));
+    const revues: Record<string, { decision: "acceptee" | "refusee"; perimee: boolean; ecartees: string[] }> = {
+      gA: { decision: "acceptee", perimee: false, ecartees: ["a2"] },
+      gB: { decision: "acceptee", perimee: true, ecartees: [] },
+    };
+    const revueDe = (_o: string, id: string) => (revues[id] ? { ...revues[id], motif: null, maj: "m" } : undefined);
+    const tout = construireJeuEssais({ etudiants, sessions, sessionLibelle: "x", pseudonymes: ps, catalogues, maintenant, revueDe });
+    const a = tout.essais.find((l) => l.eprouvette_code === "G-20260910-01-E02")!;
+    expect(a).toMatchObject({ revue: "acceptee", revue_perimee: false, eprouvette_ecartee: true });
+    expect(tout.essais.find((l) => l.eprouvette_code === "G-20260912-01-E01")).toMatchObject({ revue: "acceptee", revue_perimee: true, eprouvette_ecartee: false });
+    expect(tout.manifeste.selection).toMatch(/^toutes les gâchées/);
+    const acceptees = construireJeuEssais({ etudiants, sessions, sessionLibelle: "x", pseudonymes: ps, catalogues, maintenant, revueDe, seulementAcceptees: true });
+    expect(acceptees.gachees.map((l) => l.gachee_code)).toEqual(["G-20260910-01"]); // gB modifiée depuis : écartée
+    expect(acceptees.manifeste).toMatchObject({ nb_gachees: 1, nb_operateurs: 1, nb_eprouvettes: 3 });
+    expect(acceptees.manifeste.selection).toMatch(/acceptées/);
+    // Sans revues (base pas à jour) : colonnes vides.
+    const sans = await jeuDe();
+    expect(sans.essais[0]).toMatchObject({ revue: null, revue_perimee: null, eprouvette_ecartee: null });
+  });
+
   it("gâchée très ancienne ou allégée : aucun tableau manquant ne fait planter", async () => {
     const vieux = regrouper([ligne(A, "gachee", { id: "gx", code: "G-X", creeLe: jour(9, 1), categorie: "RPC" } as never)], profils, sessions, "toutes");
     const j = construireJeuEssais({ etudiants: vieux, sessions, sessionLibelle: "x", pseudonymes: await pseudonymes([A, B]), catalogues, maintenant });

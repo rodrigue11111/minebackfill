@@ -151,3 +151,25 @@ describe("éditeur : matériaux choisis dans la bibliothèque", () => {
     expect(html).toContain("Concassé LaRonde");
   });
 });
+
+describe("éditeur : revue de l'enseignant", () => {
+  const avec = (revue: Parameters<typeof EditeurGachee>[0]["revue"]) => renderToStaticMarkup(createElement(EditeurGachee, {
+    gachee, maintenant: new Date(2026, 9, 7, 9), annotations: [], connecte: true, revue,
+    onMaj: () => {}, onRetour: () => {}, onSupprimer: () => {},
+  }));
+
+  it("refusée : pastille avec le motif en infobulle, bandeau avec le motif et les éprouvettes écartées (par code)", () => {
+    const html = avec({ kind: "gachee", id: "g1", rev: 3, decision: "refusee", motif: "Pesées incomplètes.", ecartees: ["e2", "inconnue"], maj: "m" });
+    expect(html).toMatch(/title="Pesées incomplètes\."[^>]*>Revue : refusée</);
+    expect(html).toContain("Revue de l&#x27;enseignant : gâchée refusée.");
+    expect(html).toContain("Motif : Pesées incomplètes.");
+    expect(html).toContain("Éprouvette écartée par l&#x27;enseignant : G-20260929-01-E02.");
+  });
+
+  it("acceptée sans motif : la pastille seulement ; sans revue : rien", () => {
+    const html = avec({ kind: "gachee", id: "g1", rev: 3, decision: "acceptee", motif: null, ecartees: [], maj: "m" });
+    expect(html).toContain("Revue : acceptée");
+    expect(html).not.toContain("Revue de l&#x27;enseignant");
+    expect(avec(undefined)).not.toContain("Revue :");
+  });
+});

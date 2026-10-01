@@ -566,6 +566,38 @@ version lisible.
   `parametresEffectifs`, `essaiValide`, `completudeGachee`. Les copies de
   conflit sont exclues (`gacheesRetenues`).
 
+### 17. Revue des gâchées par l'enseignant
+
+« Marquer terminée » vaut soumission ; l'enseignant accepte ou refuse (motif
+obligatoire) et peut écarter des éprouvettes. Le mot « valide » reste réservé
+à `essaiValide` : une revue « accepte » ou « refuse ».
+
+- **SQL** (`supabase/schema.sql`, bloc « revues ») : table `revues`, une ligne
+  par document, clé (owner_id, target_kind, target_id). Lecture : RLS
+  (propriétaire ou `is_prof()`). Écriture : AUCUN droit direct ; seulement
+  `poser_revue` et `retirer_revue` (security definer, réservées à
+  l'enseignant, document existant exigé). L'étudiant lit par
+  `lire_mes_revues(p_attendu)` (garde de session 28000). Banc :
+  `schema-sql.test.ts`, bloc « revues de l'enseignant » (comptes propres).
+- **Client** : `lib/revues.ts` (pur : types, « modifiée depuis la revue » par
+  comparaison des révisions, « à revoir ») ; `classe-reseau.ts`
+  (`lireRevuesClasse`, `poserRevue`, `retirerRevue`, `lireMesRevues`). Base
+  pas à jour : les lectures rendent `null` et la classe se charge sans revues
+  (`schemaPasAJour` reconnaît aussi une table absente, PGRST205).
+- **Étudiant** : copie locale `minebackfill_revues` `{v:1, data}`, HORS
+  sauvegarde (elle appartient au serveur), relue avec les commentaires
+  (`sync-client.ts`), vidée au changement de compte.
+- **Écrans** : `CarteRevue` (vue d'une gâchée, page Classe ; jamais un bouton
+  dont le texte serait exactement « Retirer », voir `rendu.test.ts`),
+  pastilles dans `DetailEtudiant`, tuile « Gâchées à revoir » (`classe-resume.ts`),
+  pastille et bandeau dans le Labo de l'étudiant.
+- **Exports** : colonnes « Revue », « Motif de la revue », « Modifiée depuis
+  la revue », « Écartée par l'enseignant » à la fin des CSV de classe ; dans
+  le jeu d'essais `revue`, `revue_perimee`, `eprouvette_ecartee` et l'export
+  « gâchées acceptées » (`seulementAcceptees`).
+- **Effacer un compte** : ses revues bloquent la suppression comme ses
+  annotations (`docs/OPERATIONS.md`).
+
 ## Pièges connus
 
 - **Lint React Compiler** : `setState` synchrone dans un `useEffect` est une

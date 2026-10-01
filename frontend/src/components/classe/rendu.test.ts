@@ -20,6 +20,7 @@ import { alertesClasse } from "@/lib/classe-alertes";
 import CarteAlertes from "./CarteAlertes";
 import OngletEcheancier from "./OngletEcheancier";
 import { echeancierClasse } from "@/lib/classe-echeancier";
+import CarteRevue from "./CarteRevue";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";
 const profils: ProfilClasse[] = [{ id: A, email: "alice@x.ca", display_name: "Alice Tremblay", role: "etudiant" }];
@@ -200,5 +201,49 @@ describe("vues de l'enseignant — rendu", () => {
     expect(html).toContain("Plus tard (1)"); // E03 attendue le 8 octobre, dans 9 j
     expect(html).toContain("G-20260910-01-E03");
     expect(html).toContain("Alice Tremblay");
+  });
+});
+
+describe("revue de l'enseignant : rendu", () => {
+  const [e] = regrouper([ligne("gachee", gachee)], profils, [], "toutes");
+  const g = e.gachees[0];
+  const actions = { disponible: true, onPoser: async () => true, onRetirer: async () => true };
+
+  it("sans décision : invitation, éprouvettes à écarter, refus impossible sans motif", () => {
+    const html = rendu(createElement(CarteRevue, { gachee: g, revue: undefined, actions }));
+    expect(html).toContain("en attente de votre revue"); // la gâchée d'exemple est terminée
+    expect(html).toContain("Écarter G-20260910-01-E01 (410 kPa)");
+    expect(html).toContain("Écarter G-20260910-01-E02");
+    expect(html).not.toContain("Écarter G-20260910-01-E03"); // encore en cure
+    expect(html).toContain("Motif (obligatoire pour un refus)");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Refuser la gâchée<\/button>/);
+    expect(html).not.toContain("Retirer la revue");
+  });
+
+  it("décision existante : état, « modifiée depuis », motif et éprouvette écartée repris, retrait possible", () => {
+    const html = rendu(createElement(CarteRevue, { gachee: g, actions,
+      revue: { decision: "refusee", motif: "Pesées incomplètes.", ecartees: ["e2"], maj: "2026-10-02T10:00:00Z", perimee: true } }));
+    expect(html).toContain("Revue : refusée");
+    expect(html).toContain("Modifiée depuis la revue");
+    expect(html).toContain("Pesées incomplètes.</textarea>");
+    expect(html).toMatch(/<input type="checkbox" checked=""[^>]*\/>Écarter G-20260910-01-E02/);
+    expect(html).toContain(">Retirer la revue<");
+    expect(html.match(/>Retirer</g)).toBeNull(); // jamais un bouton « Retirer » tout court
+  });
+
+  it("base pas à jour : la carte le dit, sans boutons", () => {
+    const html = rendu(createElement(CarteRevue, { gachee: g, revue: undefined, actions: { ...actions, disponible: false } }));
+    expect(html).toContain("supabase/schema.sql");
+    expect(html).not.toContain("Accepter la gâchée");
+  });
+
+  it("détail de l'étudiant : « À revoir » ou décision par gâchée ; rien quand les revues sont indisponibles", () => {
+    const base = { etudiant: e, annotations: [], lignes: [], onAnnoter: async () => true, ctx, onOuvrir: () => {} };
+    expect(rendu(createElement(DetailEtudiant, { ...base, revueDe: () => undefined }))).toContain("À revoir");
+    const decide = rendu(createElement(DetailEtudiant, { ...base,
+      revueDe: () => ({ decision: "acceptee" as const, motif: null, ecartees: [], maj: "m", perimee: true }) }));
+    expect(decide).toContain("Revue : acceptée");
+    expect(decide).toContain("modifiée depuis");
+    expect(rendu(createElement(DetailEtudiant, base))).not.toContain("À revoir");
   });
 });

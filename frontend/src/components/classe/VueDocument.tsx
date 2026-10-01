@@ -7,6 +7,8 @@ import type { UnitPreferences } from "@/lib/units";
 import { normaliserGachee, type EtudiantClasse } from "@/lib/classe";
 import type { DocComplet, LigneAnnotation } from "@/lib/classe-reseau";
 import GacheeLecture, { type CatalogueEnseignant } from "./GacheeLecture";
+import CarteRevue, { type ActionsRevue } from "./CarteRevue";
+import { revuePerimee, type RevueClasse } from "@/lib/revues";
 import ResultatLecture from "./ResultatLecture";
 import FilCommentaires from "./FilCommentaires";
 import { EnTetePage } from "@/components/ui/Page";
@@ -21,7 +23,7 @@ export type EtatDoc =
   | { ref: RefDoc; etat: "absent" }
   | { ref: RefDoc; etat: "erreur"; message: string };
 
-export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx, onRetour, maintenant, units, catalogue }: {
+export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx, onRetour, maintenant, units, catalogue, revue, actionsRevue }: {
   doc: EtatDoc;
   etudiant: EtudiantClasse | undefined;
   annotations: LigneAnnotation[];
@@ -33,6 +35,9 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
   units: UnitPreferences;
   /** Catalogue de l'enseignant (ajout d'un matériau au catalogue officiel). */
   catalogue?: CatalogueEnseignant;
+  /** Revue de cette gâchée (décision de l'enseignant), et ses actions. */
+  revue?: RevueClasse;
+  actionsRevue?: ActionsRevue;
 }) {
   const { ref } = doc;
   const contenu = doc.etat === "pret" && !doc.doc.supprime ? doc.doc.contenu : null;
@@ -71,6 +76,11 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
       {gachee && (
         <GacheeLecture gachee={gachee} maintenant={maintenant} catalogue={catalogue}
           formulations={(etudiant?.resultats ?? []).map((r) => ({ id: r.id, recipes: r.recipes ?? [] }))} />
+      )}
+      {gachee && actionsRevue && (
+        // « Modifiée depuis la revue » : comparée à la révision du document ouvert.
+        <CarteRevue key={gachee.id} gachee={gachee} actions={actionsRevue}
+          revue={revue ? { ...revue, perimee: revuePerimee(revue, doc.etat === "pret" ? doc.doc.rev : null) } : undefined} />
       )}
       {resultat && <ResultatLecture resultat={resultat} units={units} />}
 

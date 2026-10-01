@@ -3,6 +3,7 @@ import { resumeClasse } from "./classe-resume";
 import type { EtudiantClasse } from "./classe";
 import type { EcheanceClasse } from "./classe-echeancier";
 import type { LigneAnnotation } from "./classe-reseau";
+import type { InfoRevue } from "./revues";
 
 const etudiant = (id: string, nbEssais: number, gachees: { conflit?: boolean }[]) =>
   ({ id, nom: id, email: null, resultats: [], gachees, nbEssais, derniereActivite: null }) as unknown as EtudiantClasse;
@@ -26,5 +27,21 @@ describe("résumé de la classe", () => {
       ({ id: `${owner}${auteur}${lu}`, owner_id: owner, auteur_id: auteur, lu_le: lu }) as unknown as LigneAnnotation;
     const r = resumeClasse([], [], [a("e1", "e1", null), a("e1", "e1", "2026-10-01"), a("e1", "prof", null)]);
     expect(r.reponsesNonLues).toBe(1);
+  });
+});
+
+describe("résumé : gâchées à revoir", () => {
+  const e = (gachees: { id: string; statut: string; conflit?: unknown }[]) =>
+    ({ id: "e1", nom: "e1", email: null, resultats: [], gachees, nbEssais: 0, derniereActivite: null }) as unknown as EtudiantClasse;
+  const info = (perimee: boolean): InfoRevue => ({ decision: "acceptee", motif: null, ecartees: [], maj: "m", perimee });
+
+  it("terminées sans décision ou modifiées depuis ; null quand les revues sont indisponibles", () => {
+    const etu = e([
+      { id: "a", statut: "terminee" }, { id: "b", statut: "terminee" }, { id: "c", statut: "terminee" },
+      { id: "d", statut: "brouillon" }, { id: "x", statut: "terminee", conflit: { de: "a" } },
+    ]);
+    const revues: Record<string, InfoRevue> = { b: info(false), c: info(true) };
+    expect(resumeClasse([etu], [], [], (_o, id) => revues[id]).aRevoir).toBe(2); // a (sans décision) et c (modifiée)
+    expect(resumeClasse([etu], [], []).aRevoir).toBeNull();
   });
 });

@@ -18,6 +18,7 @@ document : ajouter une colonne sans la décrire ici fait échouer les tests.
 |---|---|
 | Jeu d'essais (JSON) | `manifeste`, `dictionnaire`, puis les trois tables `essais`, `gachees`, `materiaux` |
 | Jeu d'essais (CSV) | la table `essais` seule, une ligne par éprouvette |
+| Jeu d'essais, gâchées acceptées (JSON ou CSV) | les mêmes fichiers, limités aux gâchées acceptées par l'enseignant et non modifiées depuis sa décision |
 | Dictionnaire des données (CSV) | ce dictionnaire : table, clé, libellé, unité, type, description |
 
 L'export porte sur la session choisie dans le filtre de la page Classe
@@ -83,6 +84,13 @@ publique. Le manifeste en donne la liste (`textes_libres`).
   matériau une fois ; elle se joint à `essais` par `residu_ref`,
   `granulat_ref` ou `liant1_code`, `liant2_code`, `liant3_code` (colonne
   `ref`, avec `type`).
+- **Revue de l'enseignant.** Quand l'étudiant marque une gâchée terminée,
+  l'enseignant l'accepte ou la refuse (avec un motif) et peut écarter des
+  éprouvettes, sans modifier la gâchée. `revue`, `revue_perimee` et
+  `eprouvette_ecartee` en rendent compte ; `retenu` reste la règle de
+  l'application (l'étudiant a pu exclure une valeur lui-même, colonne
+  `exclu`). Pour un jeu « propre », prendre l'export « gâchées acceptées » et
+  garder les lignes où `retenu` vaut oui et `eprouvette_ecartee` vaut non.
 - **Caractérisation.** La granulométrie, la chimie et la minéralogie d'un
   résidu ou d'un granulat sont saisies une seule fois, dans le catalogue de
   l'enseignant (Réglages). Elles sont lues au moment de l'export : colonnes
@@ -149,6 +157,8 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `cure_humidite_pct` | Humidité relative de cure | % | nombre | Humidité relative pendant la cure. |
 | `pesees_hors_tolerance` | Pesées hors tolérance |  | entier | Nombre de composants pesés hors de la tolérance de la gâchée. Vide si aucune pesée n'est enregistrée. |
 | `completude_pct` | Complétude de la fiche d'essai | % | entier | Part des informations descriptives renseignées (lib/completude.ts). Rien n'est obligatoire pour l'étudiant : une valeur basse signale une gâchée moins documentée. |
+| `revue` | Revue de l'enseignant |  | code | acceptee ou refusee : décision de l'enseignant sur la gâchée ; vide si elle n'a pas été revue. |
+| `revue_perimee` | Modifiée depuis la revue |  | booléen | L'étudiant a modifié la gâchée après la décision de l'enseignant (la décision porte sur une version antérieure). Vide sans revue. |
 | `eprouvette_code` | Éprouvette |  | texte | Code de l'éprouvette (code de la gâchée suivi de -ENN). |
 | `coulee_le` | Coulée le |  | date | Jour du moulage de l'éprouvette. |
 | `age_cible_j` | Âge de cure visé | j | entier | Âge de cure prévu à l'écrasement. Les moyennes de l'application sont faites par âge visé. |
@@ -176,11 +186,12 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `vitesse_unite` | Unité de la vitesse |  | code | mm/min, kN/s ou kPa/s. |
 | `presse` | Presse |  | texte libre | Presse employée, telle que saisie. |
 | `import_presse` | Importé de la presse |  | booléen | Les mesures viennent d'un fichier de presse importé (et non d'une saisie). |
+| `eprouvette_ecartee` | Écartée par l'enseignant |  | booléen | L'enseignant a écarté cette éprouvette lors de sa revue (la gâchée de l'étudiant n'est pas modifiée). Vide sans revue. |
 
 ## Table gachees
 
 Une ligne par gâchée. Elle reprend les colonnes de la gâchée de la table
-`essais` (de `operateur` à `completude_pct`), puis :
+`essais` (de `operateur` à `revue_perimee`), puis :
 
 | Clé | Libellé | Unité | Type | Description |
 |---|---|---|---|---|
@@ -230,6 +241,7 @@ l'instantané de la gâchée.
 | `dictionnaire_version` | version de ce dictionnaire (`DICTIONNAIRE_VERSION`) |
 | `exporte_le` | date et heure de l'export (ISO 8601, UTC) |
 | `session` | session exportée (« Toutes les sessions », « Sans session » ou son nom) |
+| `selection` | toutes les gâchées, ou seulement celles acceptées par l'enseignant et non modifiées depuis |
 | `nb_operateurs`, `nb_gachees`, `nb_eprouvettes`, `nb_essais_retenus`, `nb_materiaux` | comptes du jeu |
 | `versions_solveur` | versions des formules présentes dans le jeu |
 | `pseudonymisation` | la règle du pseudonyme |

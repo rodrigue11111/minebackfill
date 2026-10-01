@@ -792,6 +792,126 @@ grant execute on function public.definir_role(uuid, text) to authenticated;
 grant execute on function public.bloquer_compte(uuid, boolean) to authenticated;
 
 -- ======================================================================
+--  revues : la décision de l'enseignant sur une gâchée (2026-10).
+--  « Marquer terminée » vaut soumission ; l'enseignant accepte ou refuse
+--  (motif obligatoire pour un refus) et peut écarter des éprouvettes. Il
+--  n'écrit jamais dans le document de l'étudiant : sa décision vit ici, une
+--  ligne par document. AUCUN droit d'écriture directe (ni insert, ni update,
+--  ni delete) : tout passe par poser_revue et retirer_revue (security
+--  definer), si bien qu'aucune politique d'écriture ne peut interroger sa
+--  propre table (récursion 42P17). Additif : un site plus ancien l'ignore.
+-- ======================================================================
+create table if not exists public.revues (
+  owner_id    uuid        not null references auth.users(id) on delete restrict,
+  target_kind text        not null check (target_kind in ('gachee')),
+  target_id   text        not null,
+  -- Révision du document au moment de la décision : « modifiée depuis la revue ».
+  target_rev  bigint,
+  decision    text        not null check (decision in ('acceptee', 'refusee')),
+  motif       text        check (motif is null or char_length(motif) between 1 and 2000),
+  -- Éprouvettes écartées par l'enseignant (ids), sans toucher au document.
+  ecartees    text[]      not null default '{}' check (cardinality(ecartees) <= 200),
+  reviewer_id uuid        not null references auth.users(id) on delete restrict,
+  deleted     boolean     not null default false,
+  created_at  timestamptz not null default clock_timestamp(),
+  updated_at  timestamptz not null default clock_timestamp(),
+  primary key (owner_id, target_kind, target_id),
+  constraint revues_motif_refus check (decision <> 'refusee' or motif is not null)
+);
+create index if not exists revues_maj_idx on public.revues (updated_at, owner_id);
+
+-- Lecture : l'étudiant les siennes, l'enseignant toutes. Écriture : aucune
+-- politique, et aucun droit (défense en profondeur : Supabase accorde tout à
+-- anon et authenticated sur une table nouvelle).
+alter table public.revues enable row level security;
+drop policy if exists revues_select on public.revues;
+create policy revues_select on public.revues for select to authenticated
+  using (owner_id = (select auth.uid()) or (select public.is_prof()));
+revoke all on public.revues from anon;
+revoke insert, update, delete, truncate on public.revues from authenticated;
+grant select on public.revues to authenticated;
+
+-- L'enseignant pose (ou remplace) sa décision sur un document qui existe.
+create or replace function public.poser_revue(
+  p_owner uuid, p_kind text, p_id text, p_rev bigint,
+  p_decision text, p_motif text, p_ecartees text[] default '{}'
+) returns table (maj_serveur timestamptz)
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_motif text := nullif(btrim(coalesce(p_motif, '')), '');
+  v_ecartees text[] := coalesce(p_ecartees, '{}'::text[]);
+begin
+  if v_uid is null or not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  if p_kind is distinct from 'gachee' or p_decision is null or p_decision not in ('acceptee', 'refusee') then
+    raise exception 'décision invalide' using errcode = '22023';
+  end if;
+  if p_decision = 'refusee' and v_motif is null then
+    raise exception 'un refus doit être motivé' using errcode = '22023';
+  end if;
+  if char_length(coalesce(v_motif, '')) > 2000 then
+    raise exception 'motif trop long (2000 caractères au plus)' using errcode = '22023';
+  end if;
+  if cardinality(v_ecartees) > 200
+     or exists (select 1 from unnest(v_ecartees) e where e is null or char_length(e) not between 1 and 100) then
+    raise exception 'éprouvettes écartées invalides' using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.user_docs d
+                  where d.user_id = p_owner and d.kind = p_kind and d.id = p_id and not d.deleted) then
+    raise exception 'document introuvable en ligne' using errcode = 'P0002';
+  end if;
+  return query
+    insert into public.revues as r (owner_id, target_kind, target_id, target_rev, decision, motif, ecartees, reviewer_id)
+    values (p_owner, p_kind, p_id, p_rev, p_decision, v_motif, v_ecartees, v_uid)
+    on conflict on constraint revues_pkey do update
+      set target_rev = excluded.target_rev, decision = excluded.decision, motif = excluded.motif,
+          ecartees = excluded.ecartees, reviewer_id = excluded.reviewer_id,
+          deleted = false, updated_at = clock_timestamp()
+    returning r.updated_at;
+end $$;
+
+-- L'enseignant retire sa décision (la ligne reste, marquée retirée).
+create or replace function public.retirer_revue(p_owner uuid, p_kind text, p_id text)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null or not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  update public.revues r set deleted = true, updated_at = clock_timestamp()
+   where r.owner_id = p_owner and r.target_kind = p_kind and r.target_id = p_id and not r.deleted;
+  return found;
+end $$;
+
+-- L'étudiant lit les décisions sur SON travail (au plus une par document).
+-- Colonnes de sortie nommées autrement que la table (ambiguïté plpgsql).
+create or replace function public.lire_mes_revues(p_attendu uuid)
+returns table (cible_kind text, cible_id text, cible_rev bigint, decision_revue text,
+               motif_revue text, ecartees_revue text[], maj_serveur timestamptz)
+language plpgsql stable security invoker set search_path = '' as $$
+declare v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  return query
+    select r.target_kind, r.target_id, r.target_rev, r.decision, r.motif, r.ecartees, r.updated_at
+      from public.revues r
+     where r.owner_id = v_uid and not r.deleted
+     order by r.updated_at
+     limit 5000;
+end $$;
+
+revoke execute on function public.poser_revue(uuid, text, text, bigint, text, text, text[]) from public, anon;
+revoke execute on function public.retirer_revue(uuid, text, text) from public, anon;
+revoke execute on function public.lire_mes_revues(uuid) from public, anon;
+grant execute on function public.poser_revue(uuid, text, text, bigint, text, text, text[]) to authenticated;
+grant execute on function public.retirer_revue(uuid, text, text) to authenticated;
+grant execute on function public.lire_mes_revues(uuid) to authenticated;
+
+-- ======================================================================
 --  Reprise unique de saved_results (v1) dans user_docs. Ré-exécutable : un
 --  document déjà repris (ou supprimé depuis par l'étudiant) n'est pas touché.
 -- ======================================================================
