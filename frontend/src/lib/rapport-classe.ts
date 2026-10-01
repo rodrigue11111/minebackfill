@@ -191,7 +191,7 @@ export function documentRapportClasse(etudiants: EtudiantClasse[], ctx: Contexte
     const v = a.lignes.map((l) => l.moyenneKpa);
     return [
       libelleGroupe(g), `${a.ageJours} j`, String(a.lignes.length), String(new Set(a.lignes.map((l) => l.etudiantId)).size),
-      `${nombrePdf(Math.min(...v))} – ${nombrePdf(Math.max(...v))}`,
+      `${nombrePdf(Math.min(...v))} à ${nombrePdf(Math.max(...v))}`,
     ];
   }));
   if (lignesGroupes.length > 0) {
@@ -199,7 +199,7 @@ export function documentRapportClasse(etudiants: EtudiantClasse[], ctx: Contexte
     blocs.push({ type: "texte", texte: "Même catégorie, Cw et Bw arrondis au demi-point. Étendue des UCS moyennes par gâchée ; aucune moyenne entre gâchées (lots, opérateurs et protocoles différents).", discret: true });
     blocs.push({
       type: "tableau",
-      colonnes: [{ titre: "Formulation", largeur: 70 }, { titre: "Âge", largeur: 16 }, { titre: "Gâchées", largeur: 18, alignement: "d" }, { titre: "Étudiants", largeur: 18, alignement: "d" }, { titre: "UCS min – max (kPa)", largeur: 40, alignement: "d" }],
+      colonnes: [{ titre: "Formulation", largeur: 70 }, { titre: "Âge", largeur: 16 }, { titre: "Gâchées", largeur: 18, alignement: "d" }, { titre: "Étudiants", largeur: 18, alignement: "d" }, { titre: "Étendue de l'UCS (kPa)", largeur: 40, alignement: "d" }],
       lignes: lignesGroupes,
     });
   }
@@ -214,5 +214,5 @@ export function documentRapportClasse(etudiants: EtudiantClasse[], ctx: Contexte
 
 /** Le chapitre d'un seul étudiant. */
 export function documentRapportEtudiant(e: EtudiantClasse, ctx: ContexteRapport): DocumentRapport {
-  return { ...enTete(ctx, `Rapport — ${e.nom}`), blocs: chapitreEtudiant(e, ctx) };
+  return { ...enTete(ctx, `Rapport individuel : ${e.nom}`), blocs: chapitreEtudiant(e, ctx) };
 }

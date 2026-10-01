@@ -45,7 +45,7 @@ function f(n: number, dec = 3): string {
 export function lignesResume(inst: InstantaneAnalyse): string[] {
   const r = inst.recette;
   const lignes = [
-    "MineBackfill — Analyse (reproductibilité)",
+    "MineBackfill : analyse (reproductibilité)",
     `Date : ${inst.date}`,
     `Catégorie : ${inst.categorie} · Méthode : ${inst.methode}`,
   ];

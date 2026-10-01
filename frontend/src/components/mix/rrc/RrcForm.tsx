@@ -93,7 +93,7 @@ export default function RrcForm() {
                 <input type="number" step="any" className="field-input" placeholder="ex : 2200000"
                   value={rrc.total_mass_kg || ""} onChange={(e) => setRrc({ total_mass_kg: num(e.target.value) })} />
               </Field>
-              <Field label="Masse volumique humide" unit="kg/m³" hint="Facultative — sert au calcul du volume équivalent">
+              <Field label="Masse volumique humide" unit="kg/m³" hint="Facultative : sert au calcul du volume équivalent">
                 <input type="number" step="any" className="field-input" placeholder="ex : 2200"
                   value={rrc.wet_density_kg_m3 || ""} onChange={(e) => setRrc({ wet_density_kg_m3: num(e.target.value) })} />
               </Field>

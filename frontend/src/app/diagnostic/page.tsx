@@ -181,7 +181,7 @@ export default function DiagnosticPage() {
       {/* ── Application ── */}
       <Carte titre="Application">
         <ListeGroupee>
-          <LigneListe libelle="Application" valeur={`${APP_NAME_VERSION} — ${MODULE_ID}`} />
+          <LigneListe libelle="Application" valeur={`${APP_NAME_VERSION} · ${MODULE_ID}`} />
           <LigneListe libelle="Solveur (référence)" valeur={SOLVER_VERSION} />
           <LigneListe libelle="Estampille du solveur actif" valeur={hydrated ? estampille : "…"} />
         </ListeGroupee>

@@ -48,7 +48,7 @@ export default function IndustriePage() {
               </h1>
               <p style={{ color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 13 }}>
                 {general.project_name ? `Projet : ${general.project_name}` : "Optimisation des coûts et suivi de production"}
-                {general.operator_name ? ` — ${general.operator_name}` : ""}
+                {general.operator_name ? `, opérateur : ${general.operator_name}` : ""}
               </p>
             </div>
             <button

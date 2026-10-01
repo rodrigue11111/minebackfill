@@ -461,7 +461,7 @@ export default function AnalysePage() {
     <Page>
       <EnTetePage
         titre="Analyse"
-        sousTitre={<>Visualise ta recette : <strong>courbes de réponse</strong> (fais varier un paramètre) ou <strong>composition</strong> (phases du mélange). Tout repart du solveur — mêmes formules que Calculs.</>}
+        sousTitre={<>Visualise ta recette : <strong>courbes de réponse</strong> (fais varier un paramètre) ou <strong>composition</strong> (phases du mélange). Tout repart du solveur, avec les mêmes formules que Calculs.</>}
       />
 
       <div className="mix-choix">
@@ -495,8 +495,8 @@ export default function AnalysePage() {
               calculé ; les mesures réelles sont dans Labo. */}
           <p className="ui-liste-pied" style={{ margin: 0 }}>
             Cette page trace uniquement des valeurs <strong>calculées</strong> par les solveurs.
-            Pour vos <strong>mesures</strong> de laboratoire — gâchées réelles, éprouvettes et
-            essais UCS —, voir{" "}
+            Pour vos <strong>mesures</strong> de laboratoire (gâchées réelles, éprouvettes et
+            essais UCS), voir{" "}
             <Link href="/labo" style={{ fontWeight: 500 }}>
               Labo → Résultats UCS
             </Link>.
@@ -581,7 +581,7 @@ export default function AnalysePage() {
                 )}
                 {perime && !recharge && (
                   <Bandeau ton="alerte">
-                    Paramètres modifiés — relance « Tracer la courbe » pour mettre à jour cette courbe.
+                    Paramètres modifiés : relance « Tracer la courbe » pour mettre à jour cette courbe.
                   </Bandeau>
                 )}
                 {toutNul ? (
@@ -687,8 +687,8 @@ export default function AnalysePage() {
                         <p className="ui-liste-pied" style={{ marginTop: 6 }}>
                           {refDansPlage
                             ? "Écart relatif (%) de chaque grandeur par rapport à sa valeur à la recette de référence (trait orange)."
-                            : `Écart relatif (%) par rapport au 1er point balayé (${paramCourt} = ${fmt(res.x[0], 2)}) — la recette de référence est hors de la plage.`}
-                          {" "}Une grandeur quasi constante reste plate — contrairement à une normalisation min-max.
+                            : `Écart relatif (%) par rapport au 1er point balayé (${paramCourt} = ${fmt(res.x[0], 2)}). La recette de référence est hors de la plage.`}
+                          {" "}Une grandeur quasi constante reste plate, contrairement à une normalisation min-max.
                         </p>
                       </>
                     )}

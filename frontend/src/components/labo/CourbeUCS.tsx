@@ -160,7 +160,7 @@ export default function CourbeUCS({
                     </g>
                   )}
                   <circle cx={x} cy={y} r={3.6} fill={s.couleur} stroke="#fff" strokeWidth={1.2}>
-                    <title>{`${s.label} — ${formatX(p.x)} : ${fmtKpa(p.moyenne)} kPa (n = ${p.n}${sd !== null ? `, ± ${fmtKpa(sd)}` : ""})`}</title>
+                    <title>{`${s.label}, ${formatX(p.x)} : ${fmtKpa(p.moyenne)} kPa (n = ${p.n}${sd !== null ? `, ± ${fmtKpa(sd)}` : ""})`}</title>
                   </circle>
                 </g>
               );

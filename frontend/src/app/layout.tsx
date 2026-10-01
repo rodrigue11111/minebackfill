@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} — Calcul des remblais miniers cimentés`,
+  title: `${APP_NAME} : calcul des remblais miniers cimentés`,
   description: "Calcul des mélanges de remblais miniers cimentés (RPC, RPG, RRC) et suivi du laboratoire",
 };
 

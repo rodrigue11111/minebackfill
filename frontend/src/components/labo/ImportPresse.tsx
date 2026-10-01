@@ -160,10 +160,10 @@ export default function ImportPresse({ eprouvettes, onAppliquer, idEntree, sansB
                       <select value={cible[e.echantillon] ?? ""}
                         onChange={(ev) => setCible((c) => ({ ...c, [e.echantillon]: ev.target.value }))}
                         className="field-input" style={{ minHeight: 34, padding: "4px 30px 4px 10px", fontSize: 13, maxWidth: 220 }}>
-                        <option value="">— ne pas importer —</option>
+                        <option value="">Ne pas importer</option>
                         {eprouvettes.map((ep) => (
                           <option key={ep.id} value={ep.id}>
-                            {ep.code} ({ep.ageJours} j){ep.essai?.contrainteKpaSaisie !== undefined || ep.essai?.chargeKn !== undefined ? " — déjà mesurée" : ""}
+                            {ep.code} ({ep.ageJours} j{ep.essai?.contrainteKpaSaisie !== undefined || ep.essai?.chargeKn !== undefined ? ", déjà mesurée" : ""})
                           </option>
                         ))}
                       </select>

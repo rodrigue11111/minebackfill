@@ -56,10 +56,10 @@ export interface DerivationLinks {
 
 export interface Formula {
   id: string;               // stable, e.g. "F070" — never reuse or renumber existing IDs
-  title: string;            // short descriptive title in French
+  title: string;            // short descriptive title in French, NO em dash or en dash ("Méthode 1 : masse totale de remblai"; minus sign "−")
   subtitle: string;         // subsection label
   section: string;          // one of the existing section strings (see §Section names below)
-  chapter: string;          // always "Chapitre 4 — Calculs des mélanges"
+  chapter: string;          // always the constant CHAPITRE, "Chapitre 4 (Calculs des mélanges)"
   pageNumber: number;       // PDF page where the formula appears
   equationLatex: string;    // valid KaTeX string — will be rendered with displayMode: true
   equationPlainText: string;// ASCII-safe version for search indexing
@@ -78,7 +78,7 @@ Use **exactly** one of these values (copy-paste):
 
 ```
 "Description des remblais miniers"
-"Description des remblais miniers — Quantité de liant"
+"Quantité de liant"
 "Calculs des mélanges au laboratoire"
 "Impact du Gs des résidus sur le dosage de liant"
 "Calculs des mélanges de remblais mixtes"

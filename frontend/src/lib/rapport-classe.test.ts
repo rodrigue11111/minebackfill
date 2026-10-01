@@ -57,8 +57,8 @@ describe("rapport de session — modèle", () => {
 
   it("aucune médiane, aucune moyenne entre gâchées : l'étendue seulement", () => {
     const t = texteDe(documentRapportClasse(etudiants, ctx));
-    expect(t).toContain("UCS min – max (kPa)");
-    expect(t).toContain("400 – 1 050");
+    expect(t).toContain("Étendue de l'UCS (kPa)");
+    expect(t).toContain("400 à 1 050");
     // Le mot peut décrire un seuil ; une VALEUR de médiane, jamais.
     expect(t).not.toMatch(/médiane[^"]*kPa/);
     expect(t).not.toMatch(/[Mm]édiane du groupe/);
@@ -66,7 +66,7 @@ describe("rapport de session — modèle", () => {
 
   it("chapitre d'un étudiant : gâchées, UCS par âge, résultats, alertes, fil avec lectures", () => {
     const d = documentRapportEtudiant(etudiants[0], ctx);
-    expect(d.titre).toBe("Rapport — Alice Tremblay");
+    expect(d.titre).toBe("Rapport individuel : Alice Tremblay");
     const t = texteDe(d);
     expect(t).toContain("28 j : 1 050 ± 71 (n=2)");
     expect(t).toContain("Pesée hors tolérance");

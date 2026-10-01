@@ -100,7 +100,7 @@ export default function ProductionLog() {
                       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Bw% retenu</label>
                       <select className="field-input" value={saveBw ?? ""} onChange={(e) => setSaveBw(parseFloat(e.target.value))}>
                         {results.map((r) => (
-                          <option key={r.bw_pct} value={r.bw_pct}>{r.bw_pct}% — {fmt(r.cost_per_m3, 2)} $/m3</option>
+                          <option key={r.bw_pct} value={r.bw_pct}>{r.bw_pct}% ({fmt(r.cost_per_m3, 2)} $/m3)</option>
                         ))}
                       </select>
                     </div>

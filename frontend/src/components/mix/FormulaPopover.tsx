@@ -268,7 +268,7 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
 
             {/* Reference */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "var(--texte-3)" }}>
-              <span>Ref : {formula.chapter}, p.{formula.pageNumber}</span>
+              <span>Source : {formula.chapter}, p. {formula.pageNumber}</span>
               {related.length > 0 && (
                 <span>
                   Voir aussi : {related.map((id) => (

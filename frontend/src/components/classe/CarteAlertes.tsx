@@ -28,7 +28,7 @@ export default function CarteAlertes({ alertes, onOuvrir }: { alertes: Alerte[];
                     <span className="ui-point ui-point-danger" aria-hidden="true" />
                     <span>
                       <strong>{LIBELLES_ALERTES[a.type]}</strong>
-                      {a.cible && <> · {a.cible.code}</>} — {a.message}{" "}
+                      {a.cible && <> · {a.cible.code}</>} : {a.message}{" "}
                       {a.cible && (
                         <button type="button" style={lienBouton} onClick={() => onOuvrir({ etudiantId: a.etudiantId, kind: a.cible!.kind, id: a.cible!.id })}>Ouvrir</button>
                       )}

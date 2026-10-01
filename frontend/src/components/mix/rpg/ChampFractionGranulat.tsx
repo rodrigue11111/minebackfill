@@ -59,7 +59,7 @@ export default function ChampFractionGranulat({
         ? av !== null
           ? `= Av ${arrondi(av).toLocaleString("fr-CA")} %v/v (éq. [3], Belem et al. 2018)`
           : ""
-        : `= Am ${arrondi(amPct || 0).toLocaleString("fr-CA")} %m — valeur envoyée au calcul (on pèse des masses)`;
+        : `= Am ${arrondi(amPct || 0).toLocaleString("fr-CA")} %m, valeur envoyée au calcul (on pèse des masses)`;
 
   const changerMode = (m: "am" | "av") => {
     setSaisieAv(null);
@@ -117,8 +117,8 @@ export default function ChampFractionGranulat({
       />
       <p className="ui-champ-aide" style={{ margin: "6px 0 0" }}>
         {modeEffectif === "am"
-          ? `Ma/(Ma+Mr)×100 — part du granulat dans les solides hors liant. ${equivalence}`
-          : `Va/(Va+Vr)×100 — % du volume des grains (la grandeur pilotée par l'article). ${equivalence}`}
+          ? `Ma/(Ma+Mr)×100 : part du granulat dans les solides hors liant. ${equivalence}`
+          : `Va/(Va+Vr)×100 : % du volume des grains (la grandeur pilotée par l'article). ${equivalence}`}
       </p>
     </div>
   );

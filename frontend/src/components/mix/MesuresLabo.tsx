@@ -99,14 +99,14 @@ export default function MesuresLabo({
                 <div style={{ marginTop: 10, fontSize: 13.5, color: "var(--texte)" }}>
                   <strong>Affaissement : {m.slump} mm</strong> pour une cible de {slumpCibleMm} mm{" "}
                   {m.slump === slumpCibleMm ? (
-                    <span style={{ color: "var(--succes-texte)", fontWeight: 600 }}>— cible atteinte</span>
+                    <span style={{ color: "var(--succes-texte)", fontWeight: 600 }}>(cible atteinte)</span>
                   ) : m.slump < slumpCibleMm ? (
                     <span style={{ color: "var(--alerte-texte)", fontWeight: 600 }}>
-                      (écart −{(slumpCibleMm - m.slump).toFixed(0)} mm) — sous la cible : ajouter de l&apos;eau
+                      (écart −{(slumpCibleMm - m.slump).toFixed(0)} mm), sous la cible : ajouter de l&apos;eau
                     </span>
                   ) : (
                     <span style={{ color: "var(--alerte-texte)", fontWeight: 600 }}>
-                      (écart +{(m.slump - slumpCibleMm).toFixed(0)} mm) — au-dessus : ajouter résidu et granulat (le liant suit la règle active)
+                      (écart +{(m.slump - slumpCibleMm).toFixed(0)} mm), au-dessus : ajouter résidu et granulat (le liant suit la règle active)
                     </span>
                   )}
                 </div>
@@ -115,11 +115,11 @@ export default function MesuresLabo({
                 <div style={{ marginTop: 10, fontSize: 13.5, color: "var(--texte)", display: "flex", gap: 24, flexWrap: "wrap" }}>
                   <span>
                     <strong>w mesuré : {fmt(w, 2)} %</strong>
-                    {calc ? <> — calculé : {fmt(calc.w_mass_pct, 2)} %<Ecart mesure={w} calcule={calc.w_mass_pct} /></> : null}
+                    {calc ? <>, calculé : {fmt(calc.w_mass_pct, 2)} %<Ecart mesure={w} calcule={calc.w_mass_pct} /></> : null}
                   </span>
                   <span>
                     <strong>Cw mesuré : {fmt(cw, 2)} %</strong>
-                    {calc ? <> — calculé : {fmt(calc.solids_mass_pct, 2)} %<Ecart mesure={cw} calcule={calc.solids_mass_pct} /></> : null}
+                    {calc ? <>, calculé : {fmt(calc.solids_mass_pct, 2)} %<Ecart mesure={cw} calcule={calc.solids_mass_pct} /></> : null}
                   </span>
                 </div>
               )}

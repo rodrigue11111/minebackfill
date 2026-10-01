@@ -254,7 +254,7 @@ export default function ReglagesPage() {
       <Carte titre="À propos">
         <ListeGroupee>
           <LigneListe libelle="Application" valeur={APP_NAME_VERSION} />
-          <LigneListe libelle="Module" valeur={`${MODULE_ID} — ${MODULE_LABEL}`} />
+          <LigneListe libelle="Module" valeur={`${MODULE_ID} : ${MODULE_LABEL}`} />
           <LigneListe libelle="Glossaire et essais normalisés" href="/guide#glossaire" />
           <LigneListe libelle="Diagnostic technique" href="/diagnostic" />
           {vueAdmin && <LigneListe libelle="Assistant IA (modifications)" href="/assistant" />}

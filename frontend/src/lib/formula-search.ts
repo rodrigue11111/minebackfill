@@ -65,6 +65,9 @@ export function normalise(raw: string): string {
     s = s.split(char).join(repl);
   }
 
+  // Signe moins typographique « − » (catalogue) : ramené au « - » qu'on tape
+  s = s.replace(/−/g, "-");
+
   // Remove LaTeX braces, backslashes
   s = s.replace(/[\\{}^_]/g, " ");
 
@@ -195,7 +198,7 @@ export function getSuggestions(query: string, limit = 8): Suggestion[] {
       if ((normSym.includes(norm) || normalise(v.description).includes(norm)) && !seen.has(v.symbol)) {
         suggestions.push({
           type: "variable",
-          label: `${v.symbol} — ${v.description}`,
+          label: `${v.symbol} : ${v.description}`,
           symbol: v.symbol,
           description: v.description,
           formulaId: f.id,

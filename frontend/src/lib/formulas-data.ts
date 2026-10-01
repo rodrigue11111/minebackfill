@@ -31,6 +31,9 @@ export interface Formula {
   derivationLinks: DerivationLinks;
 }
 
+/** Chapitre du cours cité par chaque formule (fenêtre fx : « Source : … »). */
+const CHAPITRE = "Chapitre 4 (Calculs des mélanges)";
+
 export const FORMULAS: Formula[] = [
 
   // ============================================================
@@ -42,7 +45,7 @@ export const FORMULAS: Formula[] = [
     title: "Teneur en eau massique",
     subtitle: "Paramètres géotechniques de base",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 8,
     equationLatex:
       "w = \\frac{M_w}{M_s} = \\frac{M_h - M_d}{M_d}",
@@ -56,7 +59,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["water content", "teneur en eau", "humidité", "masse sèche", "masse humide"],
     contextSnippet:
-      "Rapport de la masse d'eau à la masse des solides secs. Valeur typique pour remblai en pâte : w = 18–43 %.",
+      "Rapport de la masse d'eau à la masse des solides secs. Valeur typique pour remblai en pâte : w = 18 à 43 %.",
     derivationLinks: {
       derivedFrom: [],
       derivesInto: ["F009", "F011", "F030"],
@@ -69,7 +72,7 @@ export const FORMULAS: Formula[] = [
     title: "Teneur en eau volumique",
     subtitle: "Paramètres géotechniques de base",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 8,
     equationLatex: "\\theta = \\frac{V_w}{V_T}",
     equationPlainText: "theta = Vw/VT",
@@ -93,7 +96,7 @@ export const FORMULAS: Formula[] = [
     title: "Degré de saturation",
     subtitle: "Paramètres géotechniques de base",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 8,
     equationLatex: "S_r = \\frac{V_w}{V_v}",
     equationPlainText: "Sr = Vw/Vv",
@@ -117,7 +120,7 @@ export const FORMULAS: Formula[] = [
     title: "Indice des vides",
     subtitle: "Paramètres géotechniques de base",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 8,
     equationLatex:
       "e = \\frac{V_v}{V_s} = \\frac{V_T}{V_s} - 1",
@@ -130,7 +133,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["void ratio", "indice des vides", "e", "porosité"],
     contextSnippet:
-      "Rapport du volume des vides au volume des solides. Lié à la porosité par e = n/(1–n).",
+      "Rapport du volume des vides au volume des solides. Lié à la porosité par e = n/(1−n).",
     derivationLinks: {
       derivedFrom: ["F005", "F007", "F033", "F034"],
       derivesInto: ["F005", "F007", "F031", "F032", "F033", "F034"],
@@ -143,7 +146,7 @@ export const FORMULAS: Formula[] = [
     title: "Porosité totale",
     subtitle: "Paramètres géotechniques de base",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 8,
     equationLatex:
       "n = \\frac{V_v}{V_T} \\times 100 \\quad \\Leftrightarrow \\quad n = \\frac{e}{1+e}",
@@ -169,7 +172,7 @@ export const FORMULAS: Formula[] = [
     title: "Masse volumique totale (humide)",
     subtitle: "Paramètres géotechniques de base",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 8,
     equationLatex: "\\rho = \\frac{M_h}{V_T}",
     equationPlainText: "rho = Mh/VT",
@@ -192,7 +195,7 @@ export const FORMULAS: Formula[] = [
     title: "Masse volumique sèche",
     subtitle: "Paramètres géotechniques de base",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 8,
     equationLatex:
       "\\rho_d = \\frac{M_d}{V_s} = \\frac{\\rho_s}{1+e}",
@@ -218,7 +221,7 @@ export const FORMULAS: Formula[] = [
     title: "Densité relative des grains (Gs)",
     subtitle: "Paramètres géotechniques de base",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 8,
     equationLatex:
       "G_s = \\frac{\\rho_s}{\\rho_w}",
@@ -230,7 +233,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["specific gravity", "Gs", "densité relative", "Dr", "relative density"],
     contextSnippet:
-      "Gs typique : résidus miniers 2,6–3,2 ; ciment GU 3,15 ; laitier (Slag) 2,90 ; fly ash 2,3.",
+      "Gs typique : résidus miniers 2,6 à 3,2 ; ciment GU 3,15 ; laitier (Slag) 2,90 ; fly ash 2,3.",
     derivationLinks: {
       derivedFrom: ["F021", "F023"],
       derivesInto: ["F021", "F022", "F023", "F026"],
@@ -247,7 +250,7 @@ export const FORMULAS: Formula[] = [
     title: "Pourcentage de solides massique (%Cw)",
     subtitle: "Teneur en solides",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 9,
     equationLatex:
       "C_w = \\frac{M_s}{M} \\times 100",
@@ -259,7 +262,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["solid content", "Cw", "solides massique", "pourcentage solide"],
     contextSnippet:
-      "RPC (remblai en pâte cimenté) : %Cw = 70–85 %. Hydraulique : 50–70 %.",
+      "RPC (remblai en pâte cimenté) : %Cw = 70 à 85 %. Hydraulique : 50 à 70 %.",
     derivationLinks: {
       derivedFrom: ["F001"],
       derivesInto: ["F010", "F011", "F012", "F014", "F018", "F020", "F023", "F031", "F035", "F038", "F048"],
@@ -272,7 +275,7 @@ export const FORMULAS: Formula[] = [
     title: "Pourcentage de solides volumique (%Cv)",
     subtitle: "Teneur en solides",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 9,
     equationLatex:
       "C_v = \\frac{V_s}{V_T} \\times 100",
@@ -284,7 +287,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["volumetric solid content", "Cv", "solides volumique"],
     contextSnippet:
-      "Fraction volumique occupée par les solides. Complémentaire de la porosité : n = 1 – Cv.",
+      "Fraction volumique occupée par les solides. Complémentaire de la porosité : n = 1 − Cv.",
     derivationLinks: {
       derivedFrom: ["F009"],
       derivesInto: ["F005", "F095"],
@@ -297,7 +300,7 @@ export const FORMULAS: Formula[] = [
     title: "Relation w ↔ Cw",
     subtitle: "Teneur en solides",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 10,
     equationLatex:
       "w(\\%) = 100\\,\\frac{1 - C_w}{C_w} = \\frac{100}{C_w} - 100 \\qquad C_w = \\frac{1}{1+w}",
@@ -308,7 +311,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["water content", "Cw", "w", "relation", "conversion", "solide"],
     contextSnippet:
-      "Conversion directe entre teneur en eau et pourcentage solide. RPC : Cw = 70–85 % ↔ w = 18–43 %.",
+      "Conversion directe entre teneur en eau et pourcentage solide. RPC : Cw = 70 à 85 % ↔ w = 18 à 43 %.",
     derivationLinks: {
       derivedFrom: ["F001", "F009", "F015"],
       derivesInto: ["F013", "F015", "F030", "F059", "F076"],
@@ -318,10 +321,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F012",
-    title: "Cw — formes équivalentes",
+    title: "Cw : formes équivalentes",
     subtitle: "Teneur en solides",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 11,
     equationLatex:
       "C_w = \\frac{1}{1+w} = \\frac{\\rho_d}{\\rho_s}",
@@ -351,7 +354,7 @@ export const FORMULAS: Formula[] = [
     title: "Masse de solides à partir de la masse totale",
     subtitle: "Calcul des masses",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 7,
     equationLatex:
       "M_s = \\frac{M}{1+w} = M \\cdot C_w",
@@ -376,7 +379,7 @@ export const FORMULAS: Formula[] = [
     title: "Masse d'eau dans le remblai",
     subtitle: "Calcul des masses",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 19,
     equationLatex:
       "M_w = M \\cdot (1 - C_w) = w \\cdot M_s",
@@ -393,7 +396,7 @@ export const FORMULAS: Formula[] = [
     derivationLinks: {
       derivedFrom: ["F009", "F013"],
       derivesInto: ["F041", "F044"],
-      derivationNote: "Mw = M – Ms = M·(1 – Cw)",
+      derivationNote: "Mw = M − Ms = M·(1 − Cw)",
     },
   },
 
@@ -402,7 +405,7 @@ export const FORMULAS: Formula[] = [
     title: "Masse totale du remblai",
     subtitle: "Calcul des masses",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 19,
     equationLatex:
       "M = \\frac{M_s}{C_w} = M_s (1 + w)",
@@ -430,8 +433,8 @@ export const FORMULAS: Formula[] = [
     id: "F016",
     title: "Taux massique de liant Bw (vs résidus + granulats)",
     subtitle: "Quantité de liant",
-    section: "Description des remblais miniers — Quantité de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    section: "Quantité de liant",
+    chapter: CHAPITRE,
     pageNumber: 13,
     equationLatex:
       "B_w = \\frac{M_b}{M_t + M_{ag}}",
@@ -444,7 +447,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["binder ratio", "Bw", "taux liant", "liant", "dosage", "binder content"],
     contextSnippet:
-      "Valeur typique : Bw = 2–10 % (0.02–0.10). Dans le cas RPC sans granulat : Bw = Mb/Mt.",
+      "Valeur typique : Bw = 2 à 10 % (0.02 à 0.10). Dans le cas RPC sans granulat : Bw = Mb/Mt.",
     derivationLinks: {
       derivedFrom: [],
       derivesInto: ["F017", "F018", "F019", "F020", "F022", "F040", "F048", "F051", "F056", "F069"],
@@ -456,8 +459,8 @@ export const FORMULAS: Formula[] = [
     id: "F017",
     title: "Teneur massique de liant Bws (c_c, vs solides)",
     subtitle: "Quantité de liant",
-    section: "Description des remblais miniers — Quantité de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    section: "Quantité de liant",
+    chapter: CHAPITRE,
     pageNumber: 13,
     equationLatex:
       "B_{ws} = c_c = \\frac{M_b}{M_s} = \\frac{M_b}{M_b + M_t + M_{ag}}",
@@ -473,7 +476,7 @@ export const FORMULAS: Formula[] = [
     derivationLinks: {
       derivedFrom: ["F016"],
       derivesInto: ["F019"],
-      derivationNote: "Bws = Bw/(1+Bw) et Bw = Bws/(1–Bws)",
+      derivationNote: "Bws = Bw/(1+Bw) et Bw = Bws/(1−Bws)",
     },
   },
 
@@ -481,8 +484,8 @@ export const FORMULAS: Formula[] = [
     id: "F018",
     title: "Pourcentage massique de liant Cb (vs masse totale)",
     subtitle: "Quantité de liant",
-    section: "Description des remblais miniers — Quantité de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    section: "Quantité de liant",
+    chapter: CHAPITRE,
     pageNumber: 13,
     equationLatex:
       "C_b = \\frac{M_b}{M_T} = c_c\\,C_w = \\left(\\frac{B_w}{1+B_w}\\right)C_w",
@@ -508,8 +511,8 @@ export const FORMULAS: Formula[] = [
     id: "F019",
     title: "Relations Bw ↔ Bws (c_c)",
     subtitle: "Quantité de liant",
-    section: "Description des remblais miniers — Quantité de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    section: "Quantité de liant",
+    chapter: CHAPITRE,
     pageNumber: 14,
     equationLatex:
       "B_w = \\frac{B_{ws}}{1-B_{ws}} = \\frac{c_c}{1-c_c} \\qquad B_{ws}=c_c=\\frac{B_w}{1+B_w}",
@@ -532,8 +535,8 @@ export const FORMULAS: Formula[] = [
     id: "F020",
     title: "Fractions de résidus et de liant dans le remblai",
     subtitle: "Quantité de liant",
-    section: "Description des remblais miniers — Quantité de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    section: "Quantité de liant",
+    chapter: CHAPITRE,
     pageNumber: 20,
     equationLatex:
       "C_{\\text{résidus}} = \\frac{C_w}{1 + B_w} \\qquad C_{\\text{liant}} = C_w \\cdot \\frac{B_w}{1 + B_w}",
@@ -557,9 +560,9 @@ export const FORMULAS: Formula[] = [
   {
     id: "F021",
     title: "Dosage de liant en kg/m³ (Cb-mv)",
-    subtitle: "Quantité de liant — dosage volumique",
-    section: "Description des remblais miniers — Quantité de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    subtitle: "Quantité de liant : dosage volumique",
+    section: "Quantité de liant",
+    chapter: CHAPITRE,
     pageNumber: 15,
     equationLatex:
       "C_{b\\text{-mv}} = \\rho_h \\cdot C_b = \\frac{\\rho_h \\cdot C_w \\cdot B_w}{1 + B_w}",
@@ -583,9 +586,9 @@ export const FORMULAS: Formula[] = [
   {
     id: "F022",
     title: "Taux volumique de liant Bv",
-    subtitle: "Quantité de liant — volumique",
-    section: "Description des remblais miniers — Quantité de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    subtitle: "Quantité de liant (volumique)",
+    section: "Quantité de liant",
+    chapter: CHAPITRE,
     pageNumber: 16,
     equationLatex:
       "B_v = \\frac{V_b}{V_t} = B_w \\cdot \\frac{\\rho_{s\\text{-résidus}}}{\\rho_{s\\text{-liant}}}",
@@ -614,10 +617,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F023",
-    title: "Masse volumique humide — forme générale (tout Sr)",
+    title: "Masse volumique humide : forme générale (tout Sr)",
     subtitle: "Masse volumique humide",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 23,
     equationLatex:
       "\\rho_h = \\frac{\\rho_w \\, G_s \\, C_w \\, S_r}{S_r \\, C_w + G_s(1 - C_w)}",
@@ -640,10 +643,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F024",
-    title: "Masse volumique humide — remblai saturé (Sr = 1)",
-    subtitle: "Masse volumique humide — Sr = 1",
+    title: "Masse volumique humide : remblai saturé (Sr = 1)",
+    subtitle: "Masse volumique humide pour Sr = 1",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 24,
     equationLatex:
       "\\rho_h = \\frac{\\rho_w \\, G_s \\, C_w}{C_w + G_s(1 - C_w)} = \\frac{\\rho_w \\, G_s}{C_w(1 - G_s) + G_s}",
@@ -666,10 +669,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F025",
-    title: "Masse volumique humide — formes équivalentes (Sr = 1)",
-    subtitle: "Masse volumique humide — formes équivalentes",
+    title: "Masse volumique humide : formes équivalentes (Sr = 1)",
+    subtitle: "Masse volumique humide : formes équivalentes",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 26,
     equationLatex:
       "\\rho_h = \\left(\\frac{C_w}{\\rho_{s\\text{-remblai}}} + \\frac{1-C_w}{\\rho_w}\\right)^{-1}",
@@ -695,7 +698,7 @@ export const FORMULAS: Formula[] = [
     title: "Densité relative des grains du liant (mélange multi-liant)",
     subtitle: "Masse volumique du liant",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 25,
     equationLatex:
       "\\rho_{s\\text{-liant}} = \\left(\\sum_{i=1}^{N} \\frac{x_i}{\\rho_{s\\text{-cem}_i}}\\right)^{-1}",
@@ -720,7 +723,7 @@ export const FORMULAS: Formula[] = [
     title: "Poids volumique humide γh (tout Sr)",
     subtitle: "Poids volumique",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 28,
     equationLatex:
       "\\gamma_h = g \\cdot \\rho_h = 9.81 \\cdot \\frac{\\rho_w G_s S_r C_w}{S_r C_w + G_s(1-C_w)} \\quad [\\text{kN/m}^3]",
@@ -748,7 +751,7 @@ export const FORMULAS: Formula[] = [
     title: "Rapport eau/liant massique (W/C ou E/L)",
     subtitle: "Rapport eau/liant",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 29,
     equationLatex:
       "\\left(\\frac{W}{C}\\right)_m = \\frac{M_w}{M_b}",
@@ -772,7 +775,7 @@ export const FORMULAS: Formula[] = [
     title: "Rapport eau/liant volumique",
     subtitle: "Rapport eau/liant",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 29,
     equationLatex:
       "\\left(\\frac{W}{C}\\right)_V = \\frac{V_w}{V_b} = \\frac{\\rho_b}{\\rho_w} \\left(\\frac{W}{C}\\right)_m",
@@ -798,7 +801,7 @@ export const FORMULAS: Formula[] = [
     title: "Rapport E/L en fonction de Cw et Bw",
     subtitle: "Rapport eau/liant",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 30,
     equationLatex:
       "\\frac{E}{L} = \\frac{W}{C} = \\left(\\frac{1-C_w}{C_w}\\right)\\left(\\frac{1}{B_w}+1\\right) = \\frac{(1-C_w)(1+B_w)}{B_w C_w}",
@@ -829,7 +832,7 @@ export const FORMULAS: Formula[] = [
     title: "Indice des vides en fonction de Gs et Cw",
     subtitle: "Indice des vides",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 34,
     equationLatex:
       "e = \\frac{\\rho_w G_s}{S_r} \\cdot \\frac{1-C_w}{C_w}",
@@ -843,7 +846,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["void ratio", "indice des vides", "e", "Gs", "Sr", "Cw"],
     contextSnippet:
-      "Calcul de l'indice des vides directement depuis Gs, Sr et Cw. Pour Sr=1 : e = Gs·(1–Cw)/Cw.",
+      "Calcul de l'indice des vides directement depuis Gs, Sr et Cw. Pour Sr=1 : e = Gs·(1−Cw)/Cw.",
     derivationLinks: {
       derivedFrom: ["F004", "F009"],
       derivesInto: ["F005", "F079"],
@@ -856,7 +859,7 @@ export const FORMULAS: Formula[] = [
     title: "Degré de saturation Sr en fonction de w, e, Gs",
     subtitle: "Saturation",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 34,
     equationLatex:
       "S_r = \\frac{w \\cdot G_s}{e} = \\frac{w \\cdot \\rho_d}{(\\rho_s - \\rho_d) \\cdot \\rho_w} \\cdot \\rho_w^2",
@@ -881,7 +884,7 @@ export const FORMULAS: Formula[] = [
     title: "Porosité en fonction de n et e",
     subtitle: "Porosité",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 35,
     equationLatex:
       "n = \\frac{e}{1+e} \\qquad e = \\frac{n}{1-n}",
@@ -908,7 +911,7 @@ export const FORMULAS: Formula[] = [
     title: "Masse totale de remblai à préparer (laboratoire)",
     subtitle: "Masse totale de remblai",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 39,
     equationLatex:
       "M_T = \\alpha \\cdot \\rho_h \\cdot V_T",
@@ -935,10 +938,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F035",
-    title: "Affaissement (Slump) — borne supérieure",
+    title: "Affaissement (Slump) : borne supérieure",
     subtitle: "Affaissement (consistance)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 40,
     equationLatex:
       "S_{\\sup}(\\text{mm}) = \\frac{G_{s\\text{-tail}}}{1 + B_{w\\%}/100} \\left(\\frac{1915 \\times 100}{\\%C_w} - 178.76\\right)",
@@ -951,7 +954,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["slump", "affaissement", "S_sup", "consistance", "Belem 2007", "cone Abrams"],
     contextSnippet:
-      "Corrélation d'affaissement (Belem, 2007; 2010; 2023) qui estime le slump À PARTIR du Cw% — distincte du modèle prédictif Cw%↔slump (F103) utilisé par la méthode « Slump » du calculateur. Affaissement standard cône Abrams 178 mm (7\").",
+      "Corrélation d'affaissement (Belem, 2007; 2010; 2023) qui estime le slump À PARTIR du Cw%, distincte du modèle prédictif Cw%↔slump (F103) utilisé par la méthode « Slump » du calculateur. Affaissement standard cône Abrams 178 mm (7\").",
     derivationLinks: {
       derivedFrom: ["F009"],
       derivesInto: ["F036"],
@@ -961,10 +964,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F036",
-    title: "Affaissement (Slump) — borne inférieure",
+    title: "Affaissement (Slump) : borne inférieure",
     subtitle: "Affaissement (consistance)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 40,
     equationLatex:
       "S_{\\inf}(\\text{mm}) = \\frac{\\%P_{80\\,\\mu\\text{m}}}{100} \\cdot \\frac{G_{s\\text{-tail}}}{1 + B_{w\\%}/100} \\left(\\frac{1915 \\times 100}{\\%C_w} - 178.76\\right)",
@@ -992,10 +995,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F037",
-    title: "Méthode 1 — Masse totale de remblai",
+    title: "Méthode 1 : masse totale de remblai",
     subtitle: "Masses des ingrédients (Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 44,
     equationLatex:
       "M_h = \\rho_h \\cdot V_T \\qquad \\rho_h = \\frac{\\rho_w \\, G_s \\, C_w \\, S_r}{S_r C_w + G_s(1-C_w)}",
@@ -1017,10 +1020,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F038",
-    title: "Méthode 1 — Masse des solides (résidus + liant)",
+    title: "Méthode 1 : masse des solides (résidus + liant)",
     subtitle: "Masses des ingrédients (Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 44,
     equationLatex:
       "M_s = M_h \\cdot C_w = \\rho_h \\cdot V_T \\cdot C_w",
@@ -1041,10 +1044,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F039",
-    title: "Méthode 1 — Masse de résidus secs",
+    title: "Méthode 1 : masse de résidus secs",
     subtitle: "Masses des ingrédients (Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 44,
     equationLatex:
       "M_{t\\text{-secs}} = \\frac{M_h}{(1+w_{\\text{rés}})(1+B_w)}",
@@ -1066,10 +1069,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F040",
-    title: "Méthode 1 — Masse du liant",
+    title: "Méthode 1 : masse du liant",
     subtitle: "Masses des ingrédients (Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 44,
     equationLatex:
       "M_b = M_{t\\text{-secs}} \\cdot B_w = \\frac{M_h \\cdot C_w \\cdot B_w}{1 + B_w}",
@@ -1092,10 +1095,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F041",
-    title: "Méthode 1 — Masse d'eau totale",
+    title: "Méthode 1 : masse d'eau totale",
     subtitle: "Masses des ingrédients (Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 44,
     equationLatex:
       "M_w = M_h (1 - C_w) = \\frac{\\rho_s \\, V_T \\, C_w}{1} (1-C_w)",
@@ -1116,10 +1119,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F042",
-    title: "Méthode 1 — Masse de résidus humides",
+    title: "Méthode 1 : masse de résidus humides",
     subtitle: "Masses des ingrédients (Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 44,
     equationLatex:
       "M_{t\\text{-hum}} = M_{t\\text{-secs}} \\cdot (1 + w_{\\text{rés}})",
@@ -1140,10 +1143,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F043",
-    title: "Méthode 1 — Masse d'eau à ajouter",
+    title: "Méthode 1 : masse d'eau à ajouter",
     subtitle: "Masses des ingrédients (Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 44,
     equationLatex:
       "M_{w\\text{-aj}} = M_w - M_{w\\text{-rés}} = M_h(1-C_w) - M_{t\\text{-hum}}(1-C_{w\\text{-rés}})",
@@ -1159,7 +1162,7 @@ export const FORMULAS: Formula[] = [
     derivationLinks: {
       derivedFrom: ["F037", "F041", "F042"],
       derivesInto: ["F068", "F074"],
-      derivationNote: "Mw-aj = Meau_totale – Meau_résidus = Mw – (Mt-hum – Mt-secs)",
+      derivationNote: "Mw-aj = Meau_totale − Meau_résidus = Mw − (Mt-hum − Mt-secs)",
     },
   },
 
@@ -1172,7 +1175,7 @@ export const FORMULAS: Formula[] = [
     title: "Taux volumique initial de liant",
     subtitle: "Impact du Gs sur le dosage de liant",
     section: "Impact du Gs des résidus sur le dosage de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 49,
     equationLatex:
       "B_{v\\text{-init}} = B_{w\\text{-init}} \\cdot \\frac{\\rho_{s\\text{-résidus}}}{\\rho_{s\\text{-liant}}}",
@@ -1198,7 +1201,7 @@ export const FORMULAS: Formula[] = [
     title: "Taux massique de liant ajusté",
     subtitle: "Impact du Gs sur le dosage de liant",
     section: "Impact du Gs des résidus sur le dosage de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 50,
     equationLatex:
       "B_{w\\text{-ajust}} = B_{w\\text{-init}} \\cdot \\frac{\\rho_{s\\text{-rés-init}}}{\\rho_{s\\text{-rés-actuel}}}",
@@ -1224,7 +1227,7 @@ export const FORMULAS: Formula[] = [
     title: "Variation de taux de liant ΔBw (sous/sur-dosage)",
     subtitle: "Impact du Gs sur le dosage de liant",
     section: "Impact du Gs des résidus sur le dosage de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 51,
     equationLatex:
       "\\Delta B_w = B_{w\\text{-init}} - B_{w\\text{-ajust}} = B_{w\\text{-init}} \\left(1 - \\frac{\\rho_{s\\text{-rés-init}}}{\\rho_{s\\text{-rés-actuel}}}\\right)",
@@ -1241,7 +1244,7 @@ export const FORMULAS: Formula[] = [
     derivationLinks: {
       derivedFrom: ["F045"],
       derivesInto: ["F047"],
-      derivationNote: "ΔBw = Bw-init – Bw-ajust",
+      derivationNote: "ΔBw = Bw-init − Bw-ajust",
     },
   },
 
@@ -1250,7 +1253,7 @@ export const FORMULAS: Formula[] = [
     title: "Gain ou perte financière annuelle liée à ΔBw",
     subtitle: "Impact du Gs sur le dosage de liant",
     section: "Impact du Gs des résidus sur le dosage de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 52,
     equationLatex:
       "\\text{Gain/Perte}\\,(\\$/\\text{an}) = M_{\\text{rés}}\\,(\\text{t/an}) \\cdot \\Delta B_w \\cdot \\$_{\\text{liant}}\\,(\\$/\\text{t})",
@@ -1275,10 +1278,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F048",
-    title: "PAF — Masse de résidus secs",
+    title: "PAF : masse de résidus secs",
     subtitle: "Remblais en pâte aux granulats (PAF/RPG)",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 56,
     equationLatex:
       "M_t = M_T (1 - A_m) \\cdot \\frac{C_{w\\text{-PAF}}}{1 + B_w}",
@@ -1302,10 +1305,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F049",
-    title: "PAF — Masse de résidus humides",
+    title: "PAF : masse de résidus humides",
     subtitle: "Remblais en pâte aux granulats (PAF/RPG)",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 56,
     equationLatex:
       "M_{t\\text{-wet}} = \\frac{M_t}{C_{w\\text{-tail}}}",
@@ -1326,10 +1329,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F050",
-    title: "PAF — Masse de granulats secs",
+    title: "PAF : masse de granulats secs",
     subtitle: "Remblais en pâte aux granulats (PAF/RPG)",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 57,
     equationLatex:
       "M_{ag} = M_T \\cdot A_m \\cdot \\frac{C_{w\\text{-PAF}}}{1 + B_w}",
@@ -1352,10 +1355,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F051",
-    title: "PAF — Masse du liant",
+    title: "PAF : masse du liant",
     subtitle: "Remblais en pâte aux granulats (PAF/RPG)",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 57,
     equationLatex:
       "M_b = M_T \\cdot \\frac{B_w}{1 + B_w} \\cdot C_{w\\text{-PAF}}",
@@ -1377,10 +1380,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F052",
-    title: "PAF — Masse d'eau totale et eau à ajouter",
+    title: "PAF : masse d'eau totale et eau à ajouter",
     subtitle: "Remblais en pâte aux granulats (PAF/RPG)",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 57,
     equationLatex:
       "M_w = M_T(1 - C_{w\\text{-PAF}}) \\qquad M_{w\\text{-add}} = M_w - M_{w\\text{-tail}}",
@@ -1403,10 +1406,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F053",
-    title: "PAF — Densité des grains (ρs-PAF)",
+    title: "PAF : densité des grains (ρs-PAF)",
     subtitle: "Remblais en pâte aux granulats (PAF/RPG)",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 59,
     equationLatex:
       "\\rho_{s\\text{-PAF}} = (1 + B_w) \\left(\\frac{A_m}{\\rho_{s\\text{-ag}}} + \\frac{1-A_m}{\\rho_{s\\text{-t}}} + \\frac{B_w}{\\rho_{s\\text{-b}}}\\right)^{-1}",
@@ -1429,10 +1432,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F054",
-    title: "PAF — Relations Am ↔ am",
+    title: "PAF : relations Am ↔ am",
     subtitle: "Remblais en pâte aux granulats (PAF/RPG)",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 59,
     equationLatex:
       "a_m = \\frac{A_m}{1 - A_m} \\qquad A_m = \\frac{a_m}{1 + a_m}",
@@ -1456,10 +1459,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F055",
-    title: "CRF — Conversions de dosage de retardateur (SR)",
+    title: "CRF : conversions de dosage de retardateur (SR)",
     subtitle: "Remblais rocheux cimentés (CRF)",
     section: "Calculs des mélanges des remblais rocheux",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 67,
     equationLatex:
       "D_1 = 10^{-5} D_0 \\quad D_2 = 10^{-2} D_0 \\quad D_3 = 10 \\, D_0",
@@ -1472,7 +1475,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["retardateur de prise", "setting retarder", "SR", "dosage", "D0", "D1", "CRF"],
     contextSnippet:
-      "Conversions d'unités pour le dosage du retardateur de prise (50–260 ml/100 kg de ciment).",
+      "Conversions d'unités pour le dosage du retardateur de prise (50 à 260 ml/100 kg de ciment).",
     derivationLinks: {
       derivedFrom: ["F056", "F090", "F091", "F092"],
       derivesInto: ["F056", "F057", "F090", "F091", "F092"],
@@ -1482,10 +1485,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F056",
-    title: "CRF — Taux massique de liant",
+    title: "CRF : taux massique de liant",
     subtitle: "Remblais rocheux cimentés (CRF)",
     section: "Calculs des mélanges des remblais rocheux",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 67,
     equationLatex:
       "B_w = \\frac{M_c}{M_{WR}} \\qquad M_c = B_w \\cdot M_{WR}",
@@ -1506,10 +1509,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F057",
-    title: "CRF — Rapport eau/ciment (W/C)",
+    title: "CRF : rapport eau/ciment (W/C)",
     subtitle: "Remblais rocheux cimentés (CRF)",
     section: "Calculs des mélanges des remblais rocheux",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 67,
     equationLatex:
       "\\frac{W}{C} = \\frac{M^*}{M_c} = \\frac{M_w}{M_c} + \\frac{M_{SR}}{M_c}",
@@ -1532,10 +1535,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F058",
-    title: "CRF — Teneur en eau massique w",
+    title: "CRF : teneur en eau massique w",
     subtitle: "Remblais rocheux cimentés (CRF)",
     section: "Calculs des mélanges des remblais rocheux",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 67,
     equationLatex:
       "w = \\frac{M^*}{M_s} = \\frac{(W/C) \\cdot B_w}{1 + B_w}",
@@ -1558,10 +1561,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F059",
-    title: "CRF — Pourcentage solide massique",
+    title: "CRF : pourcentage solide massique",
     subtitle: "Remblais rocheux cimentés (CRF)",
     section: "Calculs des mélanges des remblais rocheux",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 68,
     equationLatex:
       "C_w = \\frac{M_s}{M_{CRF}} = \\frac{1}{1+w} = \\frac{1+B_w}{1+B_w(1+W/C)}",
@@ -1585,10 +1588,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F060",
-    title: "CRF — Masse totale et masse de roches stériles",
+    title: "CRF : masse totale et masse de roches stériles",
     subtitle: "Remblais rocheux cimentés (CRF)",
     section: "Calculs des mélanges des remblais rocheux",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 68,
     equationLatex:
       "M_{CRF} = \\gamma_{\\text{wet}} \\cdot V_{CRF} \\qquad M_{WR} = \\frac{M_{CRF}}{1 + B_w\\left(1 + \\dfrac{W}{C}\\right)}",
@@ -1614,16 +1617,16 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F061",
-    title: "Facteur de remplacement — remblai rocheux NR",
+    title: "Facteur de remplacement du remblai rocheux NR",
     subtitle: "Facteurs de remplacement (usine)",
     section: "Calculs des mélanges à l'usine de remblai",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 73,
     equationLatex:
       "N_R = 0.71 \\cdot \\frac{\\rho_R}{\\rho_0}",
     equationPlainText: "NR = 0.71 * rho_R / rho_0",
     variables: [
-      { symbol: "N_R", description: "Facteur de remplacement — remblai rocheux", unit: null },
+      { symbol: "N_R", description: "Facteur de remplacement du remblai rocheux", unit: null },
       { symbol: "\\rho_R", description: "Masse volumique des roches stériles", unit: "t/m³" },
       { symbol: "\\rho_0", description: "Masse volumique du minerai", unit: "t/m³" },
     ],
@@ -1639,16 +1642,16 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F062",
-    title: "Facteur de remplacement — remblai hydraulique NT",
+    title: "Facteur de remplacement du remblai hydraulique NT",
     subtitle: "Facteurs de remplacement (usine)",
     section: "Calculs des mélanges à l'usine de remblai",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 73,
     equationLatex:
       "N_T = 0.64 \\cdot \\frac{\\rho_T}{\\rho_0}",
     equationPlainText: "NT = 0.64 * rho_T / rho_0",
     variables: [
-      { symbol: "N_T", description: "Facteur de remplacement — remblai hydraulique", unit: null },
+      { symbol: "N_T", description: "Facteur de remplacement du remblai hydraulique", unit: null },
       { symbol: "\\rho_T", description: "Masse volumique des résidus", unit: "t/m³" },
       { symbol: "\\rho_0", description: "Masse volumique du minerai", unit: "t/m³" },
     ],
@@ -1665,9 +1668,9 @@ export const FORMULAS: Formula[] = [
   {
     id: "F063",
     title: "Masse de remblai rocheux nécessaire",
-    subtitle: "Calculs à l'usine — remblai rocheux",
+    subtitle: "Calculs à l'usine : remblai rocheux",
     section: "Calculs des mélanges à l'usine de remblai",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 74,
     equationLatex:
       "M_{r\\text{-rocheux}} = M_{\\text{minerai}} \\cdot N_R",
@@ -1689,9 +1692,9 @@ export const FORMULAS: Formula[] = [
   {
     id: "F064",
     title: "Masse de remblai hydraulique ou en pâte nécessaire",
-    subtitle: "Calculs à l'usine — remblai hydraulique / pâte",
+    subtitle: "Calculs à l'usine : remblai hydraulique / pâte",
     section: "Calculs des mélanges à l'usine de remblai",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 75,
     equationLatex:
       "M_{r\\text{-hyd}} = M_{\\text{minerai}} \\cdot N_T \\qquad M_{r\\text{-pâte}} = M_{\\text{minerai}} \\cdot N_P",
@@ -1715,9 +1718,9 @@ export const FORMULAS: Formula[] = [
   {
     id: "F065",
     title: "Masse de RPC à l'usine (ρRPC × VRPC)",
-    subtitle: "Calculs à l'usine — remblai en pâte",
+    subtitle: "Calculs à l'usine : remblai en pâte",
     section: "Calculs des mélanges à l'usine de remblai",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 77,
     equationLatex:
       "M_{RPC} = \\rho_{RPC} \\cdot V_{RPC} \\qquad \\rho_{RPC} = \\frac{\\rho_s}{C_w + (1-C_w) G_s / S_r}",
@@ -1739,16 +1742,16 @@ export const FORMULAS: Formula[] = [
   {
     id: "F066",
     title: "Production de résidus secs à l'usine",
-    subtitle: "Calculs à l'usine — résidus",
+    subtitle: "Calculs à l'usine : résidus",
     section: "Calculs des mélanges à l'usine de remblai",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 78,
     equationLatex:
       "M_{\\text{rés-sec}} = \\left(1 - \\sum_{i=1}^n R_i X_i\\right) P_R",
     equationPlainText: "M_res-sec = (1 - sum(Ri*Xi)) * PR  [t/j]",
     variables: [
       { symbol: "M_{\\text{rés-sec}}", description: "Production de résidus secs", unit: "t/j" },
-      { symbol: "R_i", description: "Taux de récupération du métal i (90–95 %)", unit: null },
+      { symbol: "R_i", description: "Taux de récupération du métal i (90 à 95 %)", unit: null },
       { symbol: "X_i", description: "Teneur massique du métal i dans le minerai", unit: null },
       { symbol: "P_R", description: "Taux de production de minerai", unit: "t/j" },
     ],
@@ -1765,9 +1768,9 @@ export const FORMULAS: Formula[] = [
   {
     id: "F067",
     title: "Masse de résidus humides nécessaires à l'usine",
-    subtitle: "Calculs à l'usine — résidus",
+    subtitle: "Calculs à l'usine : résidus",
     section: "Calculs des mélanges à l'usine de remblai",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 78,
     equationLatex:
       "M_{\\text{rés-hum}} = \\frac{x \\cdot M_{\\text{rés-sec}}}{C_{w\\text{-rés}}} = x \\cdot M_{\\text{rés-sec}}(1+w)",
@@ -1790,9 +1793,9 @@ export const FORMULAS: Formula[] = [
   {
     id: "F068",
     title: "Masse d'eau à ajouter au mélangeur (usine)",
-    subtitle: "Calculs à l'usine — eau",
+    subtitle: "Calculs à l'usine : eau",
     section: "Calculs des mélanges à l'usine de remblai",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 83,
     equationLatex:
       "M_{w\\text{-aj}} = M_{\\text{rs}}(1+B_w) \\left(\\frac{1-C_w}{C_w} - \\frac{1-C_{w\\text{-rés}}}{C_{w\\text{-rés}}}\\right)",
@@ -1806,20 +1809,20 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["eau mélangeur", "Mw-aj", "usine", "filtres", "Bw", "Cw"],
     contextSnippet:
-      "Formule dérivée utilisée à l'usine (exemple 3 — Dia. 83). Résidus filtrés à 80 %, remblai cible 78 %, Bw = 5 %.",
+      "Formule dérivée utilisée à l'usine (exemple 3, Dia. 83). Résidus filtrés à 80 %, remblai cible 78 %, Bw = 5 %.",
     derivationLinks: {
       derivedFrom: ["F043", "F065"],
       derivesInto: [],
-      derivationNote: "Bilan de masse : Mw-aj = Meau_mélange – Meau_résidus",
+      derivationNote: "Bilan de masse : Mw-aj = Meau_mélange − Meau_résidus",
     },
   },
 
   {
     id: "F069",
     title: "Masses de résidus secs, liant et eau (depuis M_remblai connu)",
-    subtitle: "Calculs à l'usine — ingrédients",
+    subtitle: "Calculs à l'usine : ingrédients",
     section: "Calculs des mélanges à l'usine de remblai",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 80,
     equationLatex:
       "M_t = \\frac{M_{\\text{rem}}}{(1+w)(1+B_w)} \\qquad M_b = C_w M_{\\text{rem}} - M_t \\qquad M_{\\text{eau}} = M_{\\text{rem}} - M_t - M_b",
@@ -1849,10 +1852,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F070",
-    title: "Méthode 2 — Masse de résidus secs",
+    title: "Méthode 2 : masse de résidus secs",
     subtitle: "Masses des ingrédients (méthode 2)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 46,
     equationLatex:
       "M_t = \\frac{C_{wf} M_T}{1 + B_w}",
@@ -1875,10 +1878,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F071",
-    title: "Méthode 2 — Masse de résidus humides",
+    title: "Méthode 2 : masse de résidus humides",
     subtitle: "Masses des ingrédients (méthode 2)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 46,
     equationLatex:
       "M_{th} = \\frac{M_t}{C_{wt}}",
@@ -1900,10 +1903,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F072",
-    title: "Méthode 2 — Masse d'agent liant",
+    title: "Méthode 2 : masse d'agent liant",
     subtitle: "Masses des ingrédients (méthode 2)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 46,
     equationLatex:
       "M_b = B_w \\cdot M_t = \\kappa \\rho_{hf} V_T \\left(\\frac{B_w C_{wf}}{1+B_w}\\right)",
@@ -1928,10 +1931,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F073",
-    title: "Méthode 2 — Masse d'eau totale du mélange",
+    title: "Méthode 2 : masse d'eau totale du mélange",
     subtitle: "Masses des ingrédients (méthode 2)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 46,
     equationLatex:
       "M_w = M_T(1-C_{wf}) = \\kappa \\rho_{hf} V_T (1-C_{wf})",
@@ -1956,10 +1959,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F074",
-    title: "Méthode 2 — Masse d'eau à ajouter",
+    title: "Méthode 2 : masse d'eau à ajouter",
     subtitle: "Masses des ingrédients (méthode 2)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 46,
     equationLatex:
       "M_{w\\text{-aj}} = \\kappa \\rho_{hf} V_T(1-C_{wf}) - M_t \\left(\\frac{1-C_{wt}}{C_{wt}}\\right)",
@@ -1989,10 +1992,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F075",
-    title: "BF [1] — Masse totale de mélange par échantillon",
+    title: "BF [1] : masse totale de mélange par échantillon",
     subtitle: "Formules BF (cas Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 48,
     equationLatex:
       "M_{BF/Y} = \\kappa \\rho_{BF} V_{BF/Y}",
@@ -2015,10 +2018,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F076",
-    title: "BF [2] — Teneur en eau massique w%",
+    title: "BF [2] : teneur en eau massique w%",
     subtitle: "Formules BF (cas Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 48,
     equationLatex:
       "(w\\%)_{BF} = \\left(\\frac{100}{C_{w\\%}} - 1\\right)_{BF}",
@@ -2039,10 +2042,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F077",
-    title: "BF [3] — Masse volumique des grains du liant",
+    title: "BF [3] : masse volumique des grains du liant",
     subtitle: "Formules BF (cas Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 48,
     equationLatex:
       "\\rho_{s\\text{-liant}} = \\frac{1}{\\sum_{i=1}^{N} \\dfrac{x_i}{\\rho_{s\\text{-cem}_i}}}",
@@ -2065,10 +2068,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F078",
-    title: "BF [4] — Masse volumique des grains du BF",
+    title: "BF [4] : masse volumique des grains du BF",
     subtitle: "Formules BF (cas Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 48,
     equationLatex:
       "\\rho_{s\\text{-BF}} = \\frac{100 + B_{w\\%}}{\\dfrac{1}{\\rho_{s\\text{-Tailings}}} + \\dfrac{B_{w\\%}}{100\\,\\rho_{s\\text{-liant}}}}",
@@ -2091,10 +2094,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F079",
-    title: "BF [5] — Indice des vides initial e0-BF",
+    title: "BF [5] : indice des vides initial e0-BF",
     subtitle: "Formules BF (cas Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 48,
     equationLatex:
       "e_{0\\text{-BF}} = (w\\%)_{BF}\\left(\\frac{100\\,G_s}{S_{r\\%}}\\right)_{BF} = \\left(\\frac{100}{C_{w\\%}}-1\\right)_{BF}\\left(\\frac{100\\,G_s}{S_{r\\%}}\\right)_{BF}",
@@ -2118,10 +2121,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F080",
-    title: "BF [6] — Masse volumique sèche du BF",
+    title: "BF [6] : masse volumique sèche du BF",
     subtitle: "Formules BF (cas Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 48,
     equationLatex:
       "\\rho_{d\\text{-BF}} = \\frac{\\rho_{s\\text{-BF}}}{1+e_{0\\text{-BF}}}",
@@ -2143,10 +2146,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F081",
-    title: "BF [7] — Pourcentage solide volumique Cv",
+    title: "BF [7] : pourcentage solide volumique Cv",
     subtitle: "Formules BF (cas Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 48,
     equationLatex:
       "(C_v)_{BF} = \\frac{\\rho_{d\\text{-BF}}}{\\rho_{s\\text{-BF}}} = \\left(\\frac{1}{1+e_0}\\right)_{BF}",
@@ -2169,10 +2172,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F082",
-    title: "BF [8] — Masse volumique humide du BF",
+    title: "BF [8] : masse volumique humide du BF",
     subtitle: "Formules BF (cas Sr = 1)",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 48,
     equationLatex:
       "\\rho_{BF} = \\rho_{s\\text{-BF}}\\left(\\frac{100\\times C_v}{C_{w\\%}}\\right)_{BF} = \\rho_{d\\text{-BF}}\\left(1+\\frac{w\\%}{100}\\right)_{BF}",
@@ -2201,10 +2204,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F083",
-    title: "PAF — Fraction volumique de granulats Av",
+    title: "PAF : fraction volumique de granulats Av",
     subtitle: "Paramètres PAF",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 60,
     equationLatex:
       "A_v = \\frac{V_{aggregates}}{V_{tailings} + V_{aggregates}} = \\frac{A_m}{A_m + (1-A_m)\\dfrac{\\rho_{s\\text{-ag}}}{\\rho_{s\\text{-t}}}}",
@@ -2229,10 +2232,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F084",
-    title: "PAF — Masse volumique des grains résidus + granulats",
+    title: "PAF : masse volumique des grains résidus + granulats",
     subtitle: "Paramètres PAF",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 60,
     equationLatex:
       "\\rho_{s\\text{-tails+aggr}} = \\left(\\frac{A_m}{\\rho_{s\\text{-ag}}} + \\frac{1-A_m}{\\rho_{s\\text{-t}}}\\right)^{-1}",
@@ -2255,10 +2258,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F085",
-    title: "PAF — Taux volumique de liant Bv (forme complète)",
+    title: "PAF : taux volumique de liant Bv (forme complète)",
     subtitle: "Paramètres PAF",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 60,
     equationLatex:
       "B_v = B_w\\left(\\frac{\\rho_{s\\text{-tails+aggr}}}{\\rho_{s\\text{-binder}}}\\right) = B_w\\,\\frac{\\left(\\dfrac{A_m}{\\rho_{s\\text{-ag}}} + \\dfrac{1-A_m}{\\rho_{s\\text{-t}}}\\right)^{-1}}{\\left(\\dfrac{x_i}{\\rho_{s\\text{-binder-}i}} + \\dfrac{x_j}{\\rho_{s\\text{-binder-}j}}\\right)^{-1}}",
@@ -2284,10 +2287,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F086",
-    title: "PAF — Relations Av ↔ av",
+    title: "PAF : relations Av ↔ av",
     subtitle: "Paramètres PAF",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 60,
     equationLatex:
       "a_v = \\frac{A_v}{1-A_v} \\qquad A_v = \\frac{a_v}{1+a_v}",
@@ -2312,10 +2315,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F087",
-    title: "PAF — Pourcentage solide volumique Cv-PAF",
+    title: "PAF : pourcentage solide volumique Cv-PAF",
     subtitle: "Paramètres PAF (Dia. 62)",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 62,
     equationLatex:
       "C_{v\\text{-PAF}} = \\frac{1}{1+e_{PAF}} = \\frac{\\rho_{d\\text{-PAF}}}{\\rho_{s\\text{-PAF}}} = C_{w\\text{-PAF}}\\left(\\frac{\\rho_{bulk\\text{-PAF}}}{\\rho_{s\\text{-PAF}}}\\right)",
@@ -2340,10 +2343,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F088",
-    title: "PAF — Masse volumique sèche ρd-PAF",
+    title: "PAF : masse volumique sèche ρd-PAF",
     subtitle: "Paramètres PAF (Dia. 62)",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 62,
     equationLatex:
       "\\rho_{d\\text{-PAF}} = C_{w\\text{-PAF}} \\cdot \\rho_{bulk\\text{-PAF}}",
@@ -2365,10 +2368,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F089",
-    title: "PAF — Degré de saturation Sr-PAF",
+    title: "PAF : degré de saturation Sr-PAF",
     subtitle: "Paramètres PAF (Dia. 62)",
     section: "Calculs des mélanges de remblais mixtes",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 62,
     equationLatex:
       "S_{r\\text{-PAF}} = \\frac{1-C_{w\\text{-PAF}}}{\\rho_w\\left[\\dfrac{1}{\\rho_{bulk\\text{-PAF}}} - \\left(\\dfrac{C_{w\\text{-PAF}}}{1+B_w}\\right)\\left(\\dfrac{1-A_m}{\\rho_{s\\text{-t}}} + \\dfrac{A_m}{\\rho_{s\\text{-ag}}} + \\dfrac{B_w}{\\rho_{s\\text{-b}}}\\right)\\right]}",
@@ -2400,10 +2403,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F090",
-    title: "CRF — Masse de retardateur de prise M_SR",
+    title: "CRF : masse de retardateur de prise M_SR",
     subtitle: "Remblais rocheux cimentés (CRF)",
     section: "Calculs des mélanges des remblais rocheux",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 68,
     equationLatex:
       "M_{SR} = D_1 \\cdot M_c",
@@ -2415,7 +2418,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["CRF", "retardateur", "M_SR", "setting retarder", "Dia 68"],
     contextSnippet:
-      "Dias. 68–70: calcul direct de la masse de retardateur de prise à partir du dosage D1 et de la masse de ciment.",
+      "Dias. 68 à 70 : calcul direct de la masse de retardateur de prise à partir du dosage D1 et de la masse de ciment.",
     derivationLinks: {
       derivedFrom: ["F055", "F056"],
       derivesInto: ["F055"],
@@ -2425,10 +2428,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F091",
-    title: "CRF — Volume de retardateur de prise V_SR",
+    title: "CRF : volume de retardateur de prise V_SR",
     subtitle: "Remblais rocheux cimentés (CRF)",
     section: "Calculs des mélanges des remblais rocheux",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 69,
     equationLatex:
       "V_{SR} = D_2 \\cdot M_c",
@@ -2440,7 +2443,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["CRF", "retardateur", "V_SR", "volume", "Dia 69"],
     contextSnippet:
-      "Dias. 68–70: calcul du volume de retardateur de prise en fonction de D2 et de la masse de ciment.",
+      "Dias. 68 à 70 : calcul du volume de retardateur de prise en fonction de D2 et de la masse de ciment.",
     derivationLinks: {
       derivedFrom: ["F055", "F056"],
       derivesInto: ["F055"],
@@ -2450,10 +2453,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F092",
-    title: "CRF — Volume de coulis cimentaire V_c-slurry",
+    title: "CRF : volume de coulis cimentaire V_c-slurry",
     subtitle: "Remblais rocheux cimentés (CRF)",
     section: "Calculs des mélanges des remblais rocheux",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 70,
     equationLatex:
       "V_{c\\text{-slurry}} = M_{CRF}\\left(\\frac{B_w}{1 + B_w\\left(1 + \\dfrac{W}{C}\\right)}\\right)\\left(\\frac{1}{\\rho_c} + \\frac{\\dfrac{W}{C}}{\\rho_w} + D_2\\right)",
@@ -2484,10 +2487,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F093",
-    title: "Utilitaire — Masse volumique sèche à partir de ρh et Cw",
+    title: "Utilitaire : masse volumique sèche à partir de ρh et Cw",
     subtitle: "Relations directes de calcul",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 33,
     equationLatex:
       "\\rho_d = \\rho_h \\cdot C_w",
@@ -2509,10 +2512,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F094",
-    title: "Utilitaire — Poids volumique sec γd",
+    title: "Utilitaire : poids volumique sec γd",
     subtitle: "Relations directes de calcul",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 33,
     equationLatex:
       "\\gamma_d = \\rho_d \\cdot g = 9.81\\,\\rho_d",
@@ -2534,10 +2537,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F095",
-    title: "Utilitaire — Cv à partir de ρd et ρs",
+    title: "Utilitaire : Cv à partir de ρd et ρs",
     subtitle: "Relations directes de calcul",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 32,
     equationLatex:
       "C_v = 1 - \\frac{\\rho_d}{\\rho_s}",
@@ -2559,10 +2562,10 @@ export const FORMULAS: Formula[] = [
 
   {
     id: "F096",
-    title: "Utilitaire — Sr à partir de w, ρd et ρs",
+    title: "Utilitaire : Sr à partir de w, ρd et ρs",
     subtitle: "Relations directes de calcul",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 34,
     equationLatex:
       "S_r = \\frac{w\\,\\rho_d}{\\rho_s - \\rho_d}",
@@ -2592,7 +2595,7 @@ export const FORMULAS: Formula[] = [
     title: "Modèle d'usure de conduite (Archibald, 2003)",
     subtitle: "Transport en conduite",
     section: "Calculs des mélanges à l'usine de remblai",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 81,
     equationLatex:
       "\\text{Wear} = c\\,V^p",
@@ -2622,7 +2625,7 @@ export const FORMULAS: Formula[] = [
     title: "Cw% en fonction du rapport W/C et de Bw%",
     subtitle: "Forme pour dosage selon w/c",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 31,
     equationLatex:
       "C_{w\\%} = \\frac{100}{1 + \\left(\\dfrac{W}{C}\\right)\\left(\\dfrac{100}{B_{w\\%}} + 1\\right)}",
@@ -2648,7 +2651,7 @@ export const FORMULAS: Formula[] = [
     title: "W/C en fonction de Cw% et Bw%",
     subtitle: "Forme pour dosage selon w/c",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 31,
     equationLatex:
       "\\frac{W}{C} = \\left(\\frac{100-C_{w\\%}}{C_{w\\%}}\\right)\\left(\\frac{100}{B_{w\\%}}+1\\right)",
@@ -2674,7 +2677,7 @@ export const FORMULAS: Formula[] = [
     title: "Masse volumique humide via porosité et teneur en eau",
     subtitle: "Forme équivalente de ρh",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 32,
     equationLatex:
       "\\rho_h = \\rho_s\\,(1-n)\\,(1+w)",
@@ -2701,7 +2704,7 @@ export const FORMULAS: Formula[] = [
     title: "Volume des solides du mélange",
     subtitle: "Volumes de phases",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 32,
     equationLatex:
       "V_s = C_v\\,V_T",
@@ -2727,7 +2730,7 @@ export const FORMULAS: Formula[] = [
     title: "Volume des vides du mélange",
     subtitle: "Volumes de phases",
     section: "Description des remblais miniers",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 32,
     equationLatex:
       "V_v = V_T - V_s = V_T\\,(1-C_v)",
@@ -2754,7 +2757,7 @@ export const FORMULAS: Formula[] = [
     title: "Prédiction Cw% selon le slump (modèle prédictif)",
     subtitle: "Composante eau de mélange",
     section: "Calculs des mélanges au laboratoire",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    chapter: CHAPITRE,
     pageNumber: 40,
     equationLatex:
       "C_{w\\%} \\approx \\frac{4.95\\times 10^6\\,(1+B_{w\\%})}{\\left(\\dfrac{S_{(mm)}\\,(1+B_{w\\%})}{G_{s\\text{-résidus}}}+235.5122\\right)^2}",
@@ -2780,8 +2783,8 @@ export const FORMULAS: Formula[] = [
     id: "F104",
     title: "Expression de Bw en fonction de Cb, Cw et c_c",
     subtitle: "Quantité de liant (Dia. 14)",
-    section: "Description des remblais miniers — Quantité de liant",
-    chapter: "Chapitre 4 — Calculs des mélanges",
+    section: "Quantité de liant",
+    chapter: CHAPITRE,
     pageNumber: 14,
     equationLatex:
       "B_w = \\frac{C_b}{C_w-C_b} = \\frac{c_c C_w}{C_w-c_c C_w} = \\left(\\frac{1}{c_c}-1\\right)^{-1}",

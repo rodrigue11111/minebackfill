@@ -139,11 +139,11 @@ export default function RpgEssaiForm() {
   return (
     <div className="mix-formulaire">
       <Bandeau ton="succes">
-        <strong>RPG — Méthode essai-erreur :</strong> reprend les données de la méthode RPG de base (dosage selon Cw ou selon E/L).
+        <strong>RPG, méthode essai-erreur :</strong> reprend les données de la méthode RPG de base (dosage selon Cw ou selon E/L).
         L&apos;ajout de granulat modifie Am. Le liant ajouté ne suit que le résidu ajouté :
         un ajout de granulat n&apos;ajoute pas de liant, et dilue donc le Bw atteint.
         L&apos;option « doser le liant selon le rapport E/L » (par recette, ci-dessous) fait plutôt suivre
-        le liant à l&apos;eau ajoutée — recommandation de Belem et al. 2018 (§3.2.3) quand on
+        le liant à l&apos;eau ajoutée, comme le recommandent Belem et al. 2018 (§3.2.3) quand on
         augmente l&apos;affaissement avec de l&apos;eau.
       </Bandeau>
 
@@ -199,7 +199,7 @@ export default function RpgEssaiForm() {
                   onChange={(e) => setRpgEssaiAjustement(i, { ...aj, dose_liant_wc: e.target.checked })}
                 />
                 <span>
-                  <strong>Doser le liant selon le rapport E/L de conception</strong> — le liant suit
+                  <strong>Doser le liant selon le rapport E/L de conception</strong> : le liant suit
                   l&apos;eau ajoutée (Mb = eau totale / E/L de base) au lieu du pourcentage de masse sèche.
                   Le Bw atteint dérive alors et est affiché tel quel. Exige un Bw &gt; 0 sur la
                   recette de base. Référence : Belem et al. 2018, §3.2.3.

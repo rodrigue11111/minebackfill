@@ -33,7 +33,7 @@ export function messageErreurApi(data: unknown, status: number): string {
       return champ ? `${champ} : ${msg}` : msg;
     });
     const suite = detail.length > 3 ? ` (et ${detail.length - 3} autre(s))` : "";
-    return `Entrée invalide — ${items.join(" ; ")}${suite}`;
+    return `Entrée invalide : ${items.join(" ; ")}${suite}`;
   }
   return `Erreur API (${status})`;
 }

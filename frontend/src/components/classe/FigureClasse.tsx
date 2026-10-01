@@ -54,7 +54,7 @@ export default function FigureClasse({ etudiants, couleurDe }: { etudiants: Etud
         <details className="classe-seuils">
           <summary>{nuage.ecartees.length} gâchée(s) absente(s) de cette figure</summary>
           <ul>
-            {nuage.ecartees.map((x, i) => <li key={i}>{x.etudiant} — {x.code} : {x.raison}</li>)}
+            {nuage.ecartees.map((x, i) => <li key={i}>{x.etudiant}, {x.code} : {x.raison}</li>)}
           </ul>
         </details>
       )}

@@ -154,7 +154,7 @@ export function lignesProvenanceLabo(
 ): string[] {
   const meta = axeMeta(axe);
   const l = [
-    "MineBackfill — Laboratoire (mesures)",
+    "MineBackfill : laboratoire (mesures)",
     `Date d'export : ${new Date().toISOString()}`,
     `Abscisse : ${meta?.label ?? axe} · âge de cure : ${ageJours} j`,
     "Valeurs MESURÉES ; aucun modèle, aucune interpolation, aucun ajustement.",

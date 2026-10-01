@@ -23,11 +23,11 @@ export default function FigurePng({ nom, children }: { nom: string; children: Re
         onClick={() => {
           const svg = ref.current?.querySelector("svg");
           if (!svg) {
-            window.alert("Figure introuvable — réessaie après l'affichage.");
+            window.alert("Figure introuvable. Réessaie après l'affichage.");
             return;
           }
           svgVersPng(svg as SVGSVGElement, nomFichier(nom, "png"), 2, () =>
-            window.alert("Export PNG impossible dans ce navigateur — utilise plutôt l'export CSV ou JSON."),
+            window.alert("Export PNG impossible dans ce navigateur. Utilise plutôt l'export CSV ou JSON."),
           );
         }}
         className="ui-figure-png"

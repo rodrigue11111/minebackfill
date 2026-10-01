@@ -138,7 +138,7 @@ export default function GeneralInfoPage() {
   return (
     <Page>
       <EnTetePage
-        surtitre="Étape 1 — Configuration du projet"
+        surtitre="Étape 1 : configuration du projet"
         titre="Informations"
         sousTitre="Identification du projet, contenant de moulage et agent liant. Ces informations apparaissent dans les exports."
         actions={
@@ -180,7 +180,7 @@ export default function GeneralInfoPage() {
           <div className="info-unite">
             <Champ libelle="Unité de mesure"
               aide={<>Un seul choix pour tout le contenant : les dimensions en {lengthLabel}, la section en{" "}
-                {areaLabel}, et le volume — saisie directe comme résultats — automatiquement en{" "}
+                {areaLabel}, et le volume (saisie directe comme résultats) automatiquement en{" "}
                 {VOLUME_LABELS[volumeUnit]}.</>}>
               <select className="field-input" value={units.length}
                 onChange={(e) => setUnits(unitsForLength(e.target.value as LengthUnit))}>
@@ -261,7 +261,7 @@ export default function GeneralInfoPage() {
                         <option value="">Sélectionner…</option>
                         {liantsValides.map((liant: LiantCatalogueItem) => (
                           <option key={liant.id} value={liant.id}>
-                            {liant.nom} ({liant.code}) — Gs {Number(liant.gs).toFixed(4)}
+                            {liant.nom} ({liant.code}), Gs {Number(liant.gs).toFixed(4)}
                           </option>
                         ))}
                       </select>
@@ -289,7 +289,7 @@ export default function GeneralInfoPage() {
           {binders.length >= 2 && (
             <Bandeau ton={fractionOk ? "succes" : "alerte"}>
               Total des fractions : <strong>{fractionTotal.toFixed(1)} %</strong>
-              {!fractionOk && " — la somme doit être égale à 100 %"}
+              {!fractionOk && ". La somme doit être égale à 100 %."}
             </Bandeau>
           )}
 

@@ -174,7 +174,7 @@ export default function LaboPage() {
                   <div className="grille-2">
                     <Champ libelle="Formulation">
                       <select className="field-input" value={formChoisie.id} onChange={(e) => { setFormId(e.target.value); setRecIndex(0); }}>
-                        {formulations.map((s) => <option key={s.id} value={s.id}>{s.label} — {s.category}</option>)}
+                        {formulations.map((s) => <option key={s.id} value={s.id}>{s.label} ({s.category})</option>)}
                       </select>
                     </Champ>
                     {formChoisie.recipes.length > 1 && (

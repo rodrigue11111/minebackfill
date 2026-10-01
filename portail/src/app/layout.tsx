@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Progiciel Belem — Portail des projets",
+  title: "Progiciel Belem : portail des projets",
   description:
     "Portail des outils de recherche et d'enseignement du programme de M. Belem : remblais miniers en pâte, optimisation de recettes CPB, et plus.",
 };

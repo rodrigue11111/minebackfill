@@ -105,7 +105,7 @@ export default function GuidePage() {
         actions={
           <>
             <Link href="/mix" className="btn-discret">Aller aux calculs</Link>
-            <Link href="/" className="btn-primary">Commencer — Informations</Link>
+            <Link href="/" className="btn-primary">Commencer par les informations</Link>
           </>
         }
       />
@@ -147,7 +147,7 @@ export default function GuidePage() {
             ))}
           </ul>
           <InfoBox type="info">
-            <strong>Module 1 — Contexte :</strong> les calculs couvrent le dosage selon Cw, le dosage selon
+            <strong>Contexte du module 1 :</strong> les calculs couvrent le dosage selon Cw, le dosage selon
             E/L, le modèle prédictif de l&apos;affaissement, la méthode essai-erreur, le remblai en pâte
             granulaire et le remblai rocheux cimenté. Les modules suivants (transport, mise en place)
             viendront dans des versions futures.
@@ -171,7 +171,7 @@ export default function GuidePage() {
             informations apparaissent dans l&apos;en-tête des exports.
           </Step>
 
-          <Step n={2} title="Vérifier les réglages (page Réglages — facultatif)">
+          <Step n={2} title="Vérifier les réglages (page Réglages, facultatif)">
             La page Réglages permet de modifier les constantes physiques (masse volumique de l&apos;eau,
             gravité, constantes du modèle prédictif) et les catalogues de matériaux (densité relative Gs
             de chaque liant, résidu ou granulat). Les valeurs par défaut sont celles des feuilles de
@@ -197,8 +197,8 @@ export default function GuidePage() {
           <Step n={6} title="Explorer les courbes de réponse (page Analyse)">
             La page <strong>Calculs</strong> répond à « quelle recette pour ces valeurs ? ». La page{" "}
             <strong>Analyse</strong> répond à une autre question : « et si je faisais varier un
-            paramètre, que devient le reste ? ». Choisissez un paramètre à balayer — Bw, Cw, Sr ou
-            la fraction massique de granulat — une plage, et l&apos;application calcule une recette
+            paramètre, que devient le reste ? ». Choisissez un paramètre à balayer (Bw, Cw, Sr ou
+            la fraction massique de granulat) et une plage : l&apos;application calcule une recette
             complète à chaque point. Aucune formule n&apos;est approchée : chaque point est une vraie
             résolution par les mêmes solveurs que la page Calculs, donc une courbe ne peut pas diverger
             du calculateur. Le tableau <strong>« Tenu fixe / ce qui varie »</strong> sous le graphique
@@ -212,7 +212,7 @@ export default function GuidePage() {
             <strong>gâchée réelle</strong> (masses cibles contre masses réellement pesées, lots de
             matériaux, ajouts versés après le premier malaxage), moulez des{" "}
             <strong>éprouvettes</strong> avec leur âge de cure, suivez l&apos;échéancier des
-            écrasements — exportable en calendrier .ics — puis saisissez la charge à la rupture ou
+            écrasements (exportable en calendrier .ics), puis saisissez la charge à la rupture ou
             importez le fichier de la presse. L&apos;application calcule la contrainte, agrège par âge
             (moyenne, écart-type, CV) et trace la courbe <strong>UCS mesurée en fonction de
             l&apos;âge</strong>. Aucune valeur n&apos;est prédite : seules vos mesures sont tracées. Les
@@ -276,9 +276,9 @@ export default function GuidePage() {
             title="Dosage selon le pourcentage solide massique Cw"
             when="Vous fixez le pourcentage solide massique Cw du mélange. C'est la méthode la plus courante en pratique."
             inputs={[
-              "Cw — pourcentage solide massique (%)",
-              "Sr — degré de saturation visé (%)",
-              "Bw — taux massique de liant de chaque recette (%)",
+              "Cw : pourcentage solide massique (%)",
+              "Sr : degré de saturation visé (%)",
+              "Bw : taux massique de liant de chaque recette (%)",
               "Gs et w₀ du résidu",
               "Agent liant (composants, fractions massiques et Gs)",
               "Géométrie du moule, nombre de moules, facteur de perte κ",
@@ -291,9 +291,9 @@ export default function GuidePage() {
             title="Dosage selon le rapport eau/liant E/L"
             when="Vous imposez un rapport eau/liant E/L (noté aussi E/C ou W/C), par exemple tiré d'essais de résistance antérieurs."
             inputs={[
-              "Bw — taux massique de liant de chaque recette (%)",
-              "E/L — rapport eau/liant de chaque recette (ex. : 4,0 ; 6,5)",
-              "Sr — degré de saturation visé (%)",
+              "Bw : taux massique de liant de chaque recette (%)",
+              "E/L : rapport eau/liant de chaque recette (ex. : 4,0 ; 6,5)",
+              "Sr : degré de saturation visé (%)",
               "Gs et w₀ du résidu",
               "Agent liant",
             ]}
@@ -361,18 +361,18 @@ export default function GuidePage() {
               </thead>
               <tbody>
                 {[
-                  ["Gs du résidu", TIRET, "2,6 – 4,0", "Densité relative des grains (Gs = ρs/ρw), sans unité. Mesurée au pycnomètre (ASTM D854). Valeur typique : 2,85 – 3,20 pour des résidus de mines métalliques."],
-                  ["w₀", "%", "0 – 35 %", "Teneur en eau massique du résidu tel que reçu (ASTM D2216). Elle réduit l'eau à ajouter."],
-                  ["Cw", "%", "65 – 85 %", "Pourcentage solide massique : masse des solides / masse totale du remblai frais. Plus il est élevé, plus la pâte est épaisse. Usuel : 72 – 80 % pour un RPC."],
-                  ["Bw", "%", "3 – 12 %", "Taux massique de liant : masse de liant / masse sèche de résidu (et de granulat en RPG). Bw = 5 % : 5 kg de liant pour 100 kg de résidu sec."],
-                  ["Sr", "%", "80 – 100 %", "Degré de saturation : volume d'eau / volume des vides. Sr = 100 % : pâte saturée, sans air. Généralement 100 % pour un RPC."],
-                  ["E/L (W/C)", TIRET, "3 – 10", "Rapport eau/liant : masse d'eau / masse de liant. Plus il est élevé, plus la pâte est fluide et moins elle est résistante."],
-                  ["Gs du liant", TIRET, "2,6 – 3,2", "Densité relative de l'agent liant (ASTM C188), calculée comme moyenne harmonique pondérée de ses composants."],
-                  ["Am (RPG)", "%", "10 – 60 %", "Fraction massique de granulat dans les solides hors liant. Am = 30 % : 30 g de granulat pour 100 g de (résidu + granulat)."],
-                  ["Gs du granulat (RPG)", TIRET, "2,50 – 2,80", "Densité relative du granulat (sable ou roche concassée). Valeur typique d'un sable siliceux : 2,65."],
-                  ["S", "mm", "150 – 250", "Affaissement au cône d'Abrams (ASTM C143/C143M). 178 mm (7 po) sert de référence de consistance."],
-                  ["Nombre de moules", TIRET, "1 – 200+", "Nombre de moules par recette. Détermine le volume total à préparer."],
-                  ["κ (facteur de perte)", TIRET, "1,0 – 1,25", "Multiplie les masses pour compenser les pertes au malaxage et au moulage. κ = 1 : aucun surplus ; le cours retient souvent 1,25. Appelé « facteur de sécurité » dans les feuilles de calcul."],
+                  ["Gs du résidu", TIRET, "2,6 à 4,0", "Densité relative des grains (Gs = ρs/ρw), sans unité. Mesurée au pycnomètre (ASTM D854). Valeur typique : 2,85 à 3,20 pour des résidus de mines métalliques."],
+                  ["w₀", "%", "0 à 35 %", "Teneur en eau massique du résidu tel que reçu (ASTM D2216). Elle réduit l'eau à ajouter."],
+                  ["Cw", "%", "65 à 85 %", "Pourcentage solide massique : masse des solides / masse totale du remblai frais. Plus il est élevé, plus la pâte est épaisse. Usuel : 72 à 80 % pour un RPC."],
+                  ["Bw", "%", "3 à 12 %", "Taux massique de liant : masse de liant / masse sèche de résidu (et de granulat en RPG). Bw = 5 % : 5 kg de liant pour 100 kg de résidu sec."],
+                  ["Sr", "%", "80 à 100 %", "Degré de saturation : volume d'eau / volume des vides. Sr = 100 % : pâte saturée, sans air. Généralement 100 % pour un RPC."],
+                  ["E/L (W/C)", TIRET, "3 à 10", "Rapport eau/liant : masse d'eau / masse de liant. Plus il est élevé, plus la pâte est fluide et moins elle est résistante."],
+                  ["Gs du liant", TIRET, "2,6 à 3,2", "Densité relative de l'agent liant (ASTM C188), calculée comme moyenne harmonique pondérée de ses composants."],
+                  ["Am (RPG)", "%", "10 à 60 %", "Fraction massique de granulat dans les solides hors liant. Am = 30 % : 30 g de granulat pour 100 g de (résidu + granulat)."],
+                  ["Gs du granulat (RPG)", TIRET, "2,50 à 2,80", "Densité relative du granulat (sable ou roche concassée). Valeur typique d'un sable siliceux : 2,65."],
+                  ["S", "mm", "150 à 250", "Affaissement au cône d'Abrams (ASTM C143/C143M). 178 mm (7 po) sert de référence de consistance."],
+                  ["Nombre de moules", TIRET, "1 à plus de 200", "Nombre de moules par recette. Détermine le volume total à préparer."],
+                  ["κ (facteur de perte)", TIRET, "1,0 à 1,25", "Multiplie les masses pour compenser les pertes au malaxage et au moulage. κ = 1 : aucun surplus ; le cours retient souvent 1,25. Appelé « facteur de sécurité » dans les feuilles de calcul."],
                 ].map(([param, unit, range, desc]) => (
                   <tr key={param as string}>
                     <td><strong>{param}</strong></td>
@@ -520,7 +520,7 @@ export default function GuidePage() {
                 </li>
                 <li>
                   Ensuite, rien à faire : chaque modification part quelques secondes plus tard. La pastille
-                  du bouton Compte indique l&apos;état — <strong>verte</strong> : à jour ; <strong>jaune</strong> : en
+                  du bouton Compte indique l&apos;état. <strong>Verte</strong> : à jour ; <strong>jaune</strong> : en
                   attente ; <strong>grise</strong> : hors ligne (tout partira au retour du réseau).
                 </li>
               </ol>
