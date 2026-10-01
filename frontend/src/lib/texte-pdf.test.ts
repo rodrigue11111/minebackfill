@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { assainirTextePdf, nombrePdf, pourPdf } from "./texte-pdf";
+import { WINANSI_EXTRA, assainirTextePdf, nombrePdf, pourPdf } from "./texte-pdf";
 import { pourPdf as pourPdfHistorique } from "./rapport-classe";
 import { TIRET } from "./format";
 
 // WinAnsi = Latin-1 plus quelques signes : tout caractère au-delà rendrait la
 // chaîne illisible dans le PDF.
-const WINANSI_EXTRA = new Set([..."€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ"]);
-const toutWinAnsi = (s: string) => [...s].every((c) => c.codePointAt(0)! <= 0xff || WINANSI_EXTRA.has(c));
+const WINANSI = new Set([...WINANSI_EXTRA]);
+const toutWinAnsi = (s: string) => [...s].every((c) => c.codePointAt(0)! <= 0xff || WINANSI.has(c));
 
 describe("pourPdf — symboles du cours", () => {
   it("écrit les lettres grecques en toutes lettres, indice séparé par « _ »", () => {
