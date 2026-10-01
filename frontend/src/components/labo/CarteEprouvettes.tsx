@@ -8,8 +8,8 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import {
-  AGES_CURE_DEFAUT, contrainteKpa, dateCoulee, dateEcheance, etiquettesHtml, genererCodeEprouvette,
-  type Eprouvette, type EssaiUCS, type EtiquetteEprouvette,
+  AGES_CURE_DEFAUT, MOULES_PROPOSES, contrainteKpa, dateCoulee, dateEcheance, etiquettesHtml, genererCodeEprouvette,
+  libelleMoule, type Eprouvette, type EssaiUCS, type EtiquetteEprouvette,
 } from "@/lib/eprouvette";
 import type { Gachee } from "@/lib/gachee";
 import type { Annotation } from "@/lib/annotations";
@@ -42,6 +42,8 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
   const [couleLe, setCouleLe] = useState(() => isoVersDateInput(gachee.creeLe));
   const [age, setAge] = useState<number | undefined>(28);
   const [nb, setNb] = useState<number | undefined>(1);
+  // Moule : un moule proposé (index), « autre » (texte libre) ou rien.
+  const [mouleChoix, setMouleChoix] = useState<string>("");
   const [moule, setMoule] = useState("");
   const [ouverte, setOuverte] = useState<string | null>(null);
 
@@ -57,7 +59,13 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
     const nouvelles: Eprouvette[] = [];
     for (let i = 0; i < n; i++) {
       const code = genererCodeEprouvette(gachee.code, [...gachee.eprouvettes, ...nouvelles]);
-      nouvelles.push({ id: nouvelId(), code, couleLe: iso, ageJours: a, moule: moule.trim() || undefined, statut: "en_cure" });
+      const propose = mouleChoix !== "" && mouleChoix !== "autre" ? MOULES_PROPOSES[Number(mouleChoix)] : undefined;
+      nouvelles.push({
+        id: nouvelId(), code, couleLe: iso, ageJours: a, statut: "en_cure",
+        ...(propose
+          ? { mouleDiametreMm: propose.diametreMm, mouleHauteurMm: propose.hauteurMm }
+          : { moule: mouleChoix === "autre" ? moule.trim() || undefined : undefined }),
+      });
     }
     onChange([...gachee.eprouvettes, ...nouvelles]);
   };
@@ -71,13 +79,23 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
     oublierCourbes(courbesAOublier([id], useStore.getState().gachees.filter((x) => x.id !== gachee.id)));
   };
 
-  // Bascule cure <-> écrasée : à l'écrasement, on initialise la date d'essai au jour même.
+  // Diamètre du moule nominal, proposé comme diamètre de l'essai s'il manque
+  // (F / A) : un écart avec la contrainte donnée par la presse devient visible.
+  const diametreDuMoule = (e: Eprouvette, essai: EssaiUCS | undefined): Partial<EssaiUCS> =>
+    e.mouleDiametreMm && !essai?.diametreMm ? { diametreMm: e.mouleDiametreMm } : {};
+
+  // Bascule cure <-> écrasée : à l'écrasement, on initialise la date d'essai au
+  // jour même (et le diamètre depuis le moule).
   const basculerStatut = (e: Eprouvette) => {
     majEprouvette(e.id, e.statut === "ecrase"
       ? { statut: "en_cure" }
-      : { statut: "ecrase", essai: { date: isoJourMidi(new Date()), ...(e.essai ?? {}) } });
+      : { statut: "ecrase", essai: { date: isoJourMidi(new Date()), ...(e.essai ?? {}), ...diametreDuMoule(e, e.essai) } });
     if (e.statut !== "ecrase") setOuverte(e.id);
   };
+
+  // La vitesse de chargement est la même pour une campagne : l'appliquer d'un coup.
+  const vitessePourToutes = (v: EssaiUCS["vitesseChargement"]) =>
+    onChange(gachee.eprouvettes.map((e) => (e.statut === "ecrase" ? { ...e, essai: { ...(e.essai ?? {}), vitesseChargement: v } } : e)));
 
   const imprimer = () => {
     if (gachee.eprouvettes.length === 0) return;
@@ -85,7 +103,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
       codeEprouvette: e.code, codeGachee: gachee.code,
       formulation: gachee.formulationLabel, categorie: gachee.categorie,
       couleLe: fmtDate(dateCoulee(e)), echeance: fmtDate(dateEcheance(e)),
-      ageJours: e.ageJours, moule: e.moule,
+      ageJours: e.ageJours, moule: libelleMoule(e) || undefined,
     }));
     imprimerHtml(etiquettesHtml(etiquettes, `Étiquettes de la gâchée ${gachee.code}`));
   };
@@ -129,7 +147,9 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
           }));
           onChange(gachee.eprouvettes.map((e) => {
             const patch = parId.get(e.id);
-            return patch ? { ...e, statut: "ecrase" as const, essai: { ...(e.essai ?? {}), ...patch } } : e;
+            return patch
+              ? { ...e, statut: "ecrase" as const, essai: { ...(e.essai ?? {}), ...patch, ...diametreDuMoule(e, { ...e.essai, ...patch }) } }
+              : e;
           }));
         }}
       />
@@ -158,7 +178,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                       <span className="labo-eprouvette-code">{e.code}</span>
                       <span className="labo-eprouvette-detail">
                         {e.ageJours} j · échéance {dateCourteFr(dateEcheance(e))}
-                        {e.moule ? ` · ${e.moule}` : ""}
+                        {libelleMoule(e) ? ` · ${libelleMoule(e)}` : ""}
                         {e.essai?.exclu ? " · exclue de la moyenne" : ""}
                       </span>
                     </span>
@@ -176,7 +196,10 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                 )}
                 {ouvert && (
                   <div className="labo-eprouvette-ouverte">
-                    {e.statut === "ecrase" && <FormEssaiUCS eprouvette={e} onChange={(patch) => majEssai(e.id, patch)} />}
+                    {e.statut === "ecrase" && (
+                      <FormEssaiUCS eprouvette={e} onChange={(patch) => majEssai(e.id, patch)}
+                        onVitessePourToutes={gachee.eprouvettes.filter((x) => x.statut === "ecrase").length > 1 ? vitessePourToutes : undefined} />
+                    )}
                     <div className="labo-actions">
                       <button type="button" onClick={() => basculerStatut(e)} className="btn-secondary">
                         {e.statut === "ecrase" ? "Remettre en cure" : "Marquer écrasée"}
@@ -198,7 +221,16 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
             <Champ libelle="Date de coulée"><input type="date" className="field-input" value={couleLe} onChange={(e) => setCouleLe(e.target.value)} /></Champ>
             <Champ libelle="Âge de cure" unite="j"><ChampNombre value={age} onChange={setAge} /></Champ>
             <Champ libelle="Nombre (réplicats)"><ChampNombre value={nb} onChange={setNb} /></Champ>
-            <Champ libelle="Moule (facultatif)"><input className="field-input" placeholder="cylindre 50 × 100 mm" value={moule} onChange={(e) => setMoule(e.target.value)} /></Champ>
+            <Champ libelle="Moule (facultatif)">
+              <select className="field-input" value={mouleChoix} onChange={(e) => setMouleChoix(e.target.value)}>
+                <option value="">Non précisé</option>
+                {MOULES_PROPOSES.map((m, i) => <option key={m.libelle} value={String(i)}>{m.libelle}</option>)}
+                <option value="autre">Autre</option>
+              </select>
+            </Champ>
+            {mouleChoix === "autre" && (
+              <Champ libelle="Moule (précision)"><input className="field-input" placeholder="ex. cylindre 38 × 76 mm" value={moule} onChange={(e) => setMoule(e.target.value)} /></Champ>
+            )}
           </div>
           <div className="labo-ages">
             <span className="ui-champ-libelle">Âges usuels</span>

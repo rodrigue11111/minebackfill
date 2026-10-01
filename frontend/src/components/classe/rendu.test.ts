@@ -80,6 +80,27 @@ describe("vues de l'enseignant — rendu", () => {
     expect(html).toContain("7 j"); // âge réel de E01 (coulée le 10, écrasée le 17)
   });
 
+  it("gâchée intégrale : fiche d'essai (matériaux, cure, conditions de l'essai, complétude)", () => {
+    const fiche = {
+      ...gachee, id: "gf",
+      materiaux: { residu: { nom: "Résidus LaRonde", gs: 3.1 }, liants: [{ code: "CP10", nom: "Ciment GU", fractionPct: 80 }], eau: { type: "procede" } },
+      cure: { mode: "chambre_humide", temperatureC: 23 }, malaxageDureeMin: 5,
+      eprouvettes: [{ ...gachee.eprouvettes[0], mouleDiametreMm: 50, mouleHauteurMm: 100,
+        essai: { ...gachee.eprouvettes[0].essai, masseG: 412.5, vitesseChargement: { valeur: 1, unite: "mm/min" }, modeRuptureCode: "cone" } }],
+    };
+    const [e] = regrouper([ligne("gachee", fiche)], profils, [], "toutes");
+    const html = rendu(createElement(GacheeLecture, { gachee: e.gachees[0], maintenant, formulations: [] }));
+    expect(html).toContain("Fiche : ");
+    expect(html).toContain("Résidus LaRonde · Gs 3,1");
+    expect(html).toContain("Ciment GU 80 %");
+    expect(html).toContain("Eau de procédé");
+    expect(html).toContain("Chambre humide");
+    expect(html).toContain("Cylindre 50 × 100 mm");
+    expect(html).toContain("1 mm/min");
+    expect(html).toContain("Cônes aux deux extrémités : cône");
+    expect(html).toContain("Non renseigné : ");
+  });
+
   it("gâchée allégée ou très ancienne : aucun tableau manquant ne fait planter", () => {
     const [e] = regrouper([ligne("gachee", { id: "gx", code: "G-X", creeLe: "2026-09-01T12:00:00Z", categorie: "RPC" } as never)], profils, [], "toutes");
     const html = rendu(createElement(GacheeLecture, { gachee: e.gachees[0], maintenant, formulations: [] }));

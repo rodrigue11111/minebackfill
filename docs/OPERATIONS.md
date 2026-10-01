@@ -121,10 +121,25 @@ est la seule copie en ligne. Deux gestes, à faire vous-même :
    `user_docs`, `annotations`, `profiles`, `official_catalogs` → « Export
    CSV » pour chacune.
 
+3. **Chaque mois, aussi** : même menu « Exporter » → **« Jeu d'essais
+   (JSON) »**, session « Toutes ». C'est la base des essais, pseudonymisée
+   (ni nom ni courriel), documentée colonne par colonne dans
+   `docs/DICTIONNAIRE_DONNEES.md` (aussi téléchargeable : « Dictionnaire des
+   données (CSV) »).
+
 **Où ranger ces fichiers : PAS sur GitHub** (le dépôt est public, ce sont des
 données d'étudiants). Un espace de stockage de l'établissement convient. Les
 courbes de presse ne sont pas en ligne : chaque étudiant les garde dans son
 navigateur et dans SA sauvegarde locale (Réglages → Données locales → Exporter).
+
+**Conservation des jeux d'essais.** Le but est un historique sur plusieurs
+années : garder chaque jeu daté, sans écraser le précédent (le nom du fichier
+porte la date). Un jeu pseudonymisé peut être transmis pour la recherche,
+selon les règles de l'établissement ; ce n'est pas un jeu anonyme (qui a la
+liste des comptes peut refaire la correspondance), et ses colonnes en texte
+libre (liste dans le manifeste, `textes_libres`) sont à relire avant toute
+diffusion publique. Les copies nominatives (« Classe (JSON) », CSV de la
+classe, rapports PDF) restent dans l'espace de l'établissement.
 
 ### Début et fin de session
 - **Début** : Réglages → **Sessions de cours** → ajouter la session (ex.

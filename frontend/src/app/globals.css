@@ -1036,6 +1036,10 @@ textarea.field-input { min-height: 88px; line-height: 1.5; resize: vertical; }
 .labo-liste-champs { padding: 0 28px 10px; }
 .labo-liste-champs .ui-ligne-droite { width: 46%; }
 .labo-liste-champs .field-input { width: 100%; }
+/* Champs de texte et listes de la fiche d'essai : plus larges que les nombres. */
+.labo-liste-champs .ui-ligne-droite:has(> .labo-champ-texte) { width: 62%; }
+.labo-champ-unite-libre { display: flex; gap: 8px; }
+.labo-champ-unite-libre > * { flex: 1 1 0; min-width: 0; }
 
 /* Résultats UCS */
 .labo-series { display: flex; flex-wrap: wrap; gap: 8px 18px; }
