@@ -631,6 +631,24 @@ appareils se réécriraient la même gâchée à chaque cycle.
 - **Taille** : 151 points par courbe (`presse-fichier.ts`), environ 9 Ko en
   ligne ; limites : 256 Kio par document, 25 Mo par compte.
 
+### 19. Accès direct SQL aux essais (vues)
+
+`supabase/schema.sql`, bloc « Accès direct » : vues `vue_gachees` et
+`vue_essais` (`security_invoker = true` : la RLS de `user_docs` et de
+`revues` s'applique à qui lit), fonctions de lecture sûre `jsonb_num` et
+`jsonb_ts`, `pseudonyme(uuid)` (même règle que `lib/pseudonyme.ts`),
+`parametre_gachee` (règle de `parametresEffectifs`), `exporter_essais`
+(enseignant). Banc : `schema-sql.test.ts`, bloc « accès direct ».
+
+- **Même résultat que le site** : le banc compare `ucs_kpa` à `contrainteKpa`
+  et `retenu` à `essaiValide`, et le pseudonyme SQL à celui du site. Une
+  règle qui change dans le site change aussi dans la vue, dans la même PR.
+- **Ajouter une colonne** : À LA FIN de la vue (`create or replace view`
+  refuse de renommer ou de déplacer une colonne), avec la clé du
+  dictionnaire si elle existe.
+- **Jamais** d'identifiant de compte dans une vue (le banc le vérifie), et
+  jamais de vue sans `security_invoker` (elle contournerait la RLS).
+
 ## Pièges connus
 
 - **Lint React Compiler** : `setState` synchrone dans un `useEffect` est une

@@ -9,6 +9,9 @@ import {
   type Curseur, type EtatSync, type Envoi, type LigneServeur, type ReponseEcriture, type Transport,
 } from "./sync-moteur";
 import { FauxDepot } from "./sync-faux-serveur";
+import { contrainteKpa, type Eprouvette } from "./eprouvette";
+import { essaiValide } from "./classe";
+import { pseudonyme } from "./pseudonyme";
 
 // Banc d'essai du SQL : supabase/schema.sql exécuté pour de vrai, dans
 // PostgreSQL compilé en WebAssembly (PGlite). Ce que ce fichier prouve, la CI
@@ -814,5 +817,110 @@ describe("schema.sql — courbes en ligne et leur nettoyage", () => {
     await expect(purger(null, C1)).rejects.toMatchObject({ code: "42501" });
     expect((await purger(PROF, PROF)).rows[0].n).toBe(0);
     expect(await etat(C2, "ep-autre")).toEqual({ deleted: false, vide: false });
+  });
+});
+
+describe("schema.sql — accès direct : vues pseudonymisées des essais", () => {
+  // Comptes propres à ce bloc.
+  const V1 = "00000000-0000-4000-8000-0000000000c4";
+  const V2 = "00000000-0000-4000-8000-0000000000c5";
+  const presse = { fichier: "p.xlsx", echantillon: "1", importeLe: "2026-09-17T12:00:00Z" };
+  const eprouvettes: Eprouvette[] = [
+    { id: "v-e1", code: "G-1-E01", couleLe: "2026-09-10T12:00:00Z", ageJours: 7, statut: "ecrase", essai: { contrainteKpaSaisie: 410, sourcePresse: presse } },
+    { id: "v-e2", code: "G-1-E02", couleLe: "2026-09-10T12:00:00Z", ageJours: 7, statut: "ecrase", essai: { chargeKn: 1.2345, diametreMm: 50 } },
+    { id: "v-e3", code: "G-1-E03", couleLe: "2026-09-10T12:00:00Z", ageJours: 7, statut: "ecrase", essai: { contrainteKpaSaisie: 0, chargeKn: 1, diametreMm: 76.2 } },
+    { id: "v-e4", code: "G-1-E04", couleLe: "2026-09-10T12:00:00Z", ageJours: 28, statut: "ecrase", essai: { contrainteKpaSaisie: 900, exclu: true, justificationExclusion: "fissure" } },
+    { id: "v-e5", code: "G-1-E05", couleLe: "2026-09-10T12:00:00Z", ageJours: 28, statut: "en_cure", essai: { contrainteKpaSaisie: 500 } },
+    { id: "v-e6", code: "G-1-E06", couleLe: "pas une date", ageJours: 28, statut: "ecrase", essai: { chargeKn: "12" as unknown as number, diametreMm: 50 } },
+  ];
+  const recette = (cw: number) => ({ solids_mass_pct: cw, wc_ratio: 7.1, bw_mass_pct: 5, w_mass_pct: 33.3 });
+  const g1 = { id: "vg1", code: "G-1", creeLe: "2026-09-10T12:00:00Z", statut: "terminee", categorie: "RPC", sessionId: "S1",
+    formulationId: "vr1", recetteIndex: 1, materiaux: { residu: { id: "res_laronde", nom: "Résidus LaRonde" } },
+    cure: { mode: "chambre_humide", temperatureC: 23 }, eprouvettes };
+  const essais = (uid: string | null) => comme<Record<string, unknown>>(uid,
+    "select operateur, gachee_code, eprouvette_ref, ucs_kpa, ucs_source, retenu, exclu, statut, cw_pct, revue, revue_perimee, eprouvette_ecartee, courbe_en_ligne, coulee_le, charge_kn from public.vue_essais order by eprouvette_ref");
+  const gachees = (uid: string | null) => comme<{ operateur: string; gachee_ref: string; cw_pct: number | null; revue: string | null; revue_perimee: boolean | null }>(uid,
+    "select operateur, gachee_ref, cw_pct, revue, revue_perimee from public.vue_gachees order by gachee_ref");
+
+  beforeAll(async () => {
+    await creerCompte(V1, "v1@exemple.ca");
+    await creerCompte(V2, "v2@exemple.ca");
+    await ecrire(V1, "resultat", "vr1", { id: "vr1", recipes: [recette(75), recette(76)] }, null);
+    await ecrire(V1, "gachee", "vg1", g1, null);
+    await ecrire(V1, "gachee", "vg2", { id: "vg2", code: "G-2", statut: "brouillon", categorie: "RPC", parametres: { cwPct: 70 }, eprouvettes: [] }, null);
+    await ecrire(V1, "gachee", "vg2c", { id: "vg2c", code: "G-2", conflit: { de: "vg2" }, eprouvettes: [] }, null);
+    await ecrire(V2, "gachee", "vg9", { id: "vg9", code: "G-9", statut: "terminee", categorie: "RPG", eprouvettes: [] }, null);
+    await ecrire(V1, "courbe", "v-e1", { v: 1, eprouvetteId: "v-e1", gacheeId: "vg1", t: [], f: [], d: [], s: [], e: [] }, null);
+  });
+
+  it("pseudonymes : même règle qu'au site ; aucun identifiant de compte exposé", async () => {
+    const r = (await comme<{ p: string }>(V1, "select public.pseudonyme($1) as p", [V1])).rows[0].p;
+    expect(r).toBe(await pseudonyme(V1));
+    const colonnes = (await db.query<{ column_name: string }>(
+      "select column_name from information_schema.columns where table_schema = 'public' and table_name in ('vue_gachees', 'vue_essais')")).rows.map((x) => x.column_name);
+    expect(colonnes).not.toContain("user_id");
+    expect(colonnes).not.toContain("owner_id");
+  });
+
+  it("chacun ses lignes (RLS de qui lit) ; l'enseignant toute la classe ; l'anonyme rien ; copies de conflit exclues", async () => {
+    expect((await gachees(V1)).rows.map((x) => x.gachee_ref)).toEqual(["vg1", "vg2"]);
+    expect((await gachees(V2)).rows.map((x) => x.gachee_ref)).toEqual(["vg9"]);
+    const prof = (await gachees(PROF)).rows.map((x) => x.gachee_ref);
+    expect(prof).toEqual(expect.arrayContaining(["vg1", "vg2", "vg9"]));
+    expect(prof).not.toContain("vg2c");
+    await expect(gachees(null)).rejects.toMatchObject({ code: "42501" });
+    await expect(essais(null)).rejects.toMatchObject({ code: "42501" });
+    expect((await essais(V2)).rows).toEqual([]);
+  });
+
+  it("UCS et essai retenu : exactement contrainteKpa et essaiValide du site", async () => {
+    const lignes = new Map((await essais(V1)).rows.map((x) => [x.eprouvette_ref as string, x]));
+    // v-e6 (charge saisie en texte) est à part : la vue, plus stricte que le
+    // site, ne convertit pas un texte en nombre.
+    for (const e of eprouvettes.filter((x) => x.id !== "v-e6")) {
+      const l = lignes.get(e.id)!;
+      const attendu = e.statut === "ecrase" ? contrainteKpa(e.essai) : null;
+      if (attendu === null) expect(l.ucs_kpa, e.code).toBeNull();
+      else expect(l.ucs_kpa as number, e.code).toBeCloseTo(attendu, 9);
+      expect(l.retenu, e.code).toBe(essaiValide(e));
+    }
+    expect(lignes.get("v-e1")).toMatchObject({ ucs_source: "presse", courbe_en_ligne: true });
+    expect(lignes.get("v-e2")).toMatchObject({ ucs_source: "calcul_fa", courbe_en_ligne: false });
+    expect(lignes.get("v-e3")!.ucs_source).toBe("calcul_fa"); // contrainte directe nulle : F / A
+    expect(lignes.get("v-e4")).toMatchObject({ exclu: true, retenu: false });
+    expect(lignes.get("v-e5")).toMatchObject({ ucs_kpa: null, statut: "en_cure" });
+    // Valeur mal typée (texte) ou date illisible : null, jamais une erreur.
+    expect(lignes.get("v-e6")).toMatchObject({ ucs_kpa: null, charge_kn: null, coulee_le: null });
+  });
+
+  it("paramètres : instantané de la gâchée, sinon recette de la formulation d'origine", async () => {
+    const g = new Map((await gachees(V1)).rows.map((x) => [x.gachee_ref, x.cw_pct]));
+    expect(g.get("vg1")).toBe(76); // recetteIndex 1 de vr1
+    expect(g.get("vg2")).toBe(70); // instantané
+  });
+
+  it("revue de l'enseignant : décision, éprouvette écartée, « modifiée depuis »", async () => {
+    const rev = (await lire(V1, null)).find((x) => x.doc_id === "vg1")!.doc_rev;
+    await comme(PROF, "select * from public.poser_revue($1, 'gachee', 'vg1', $2, 'acceptee', null, $3::text[])", [V1, rev, "{v-e2}"]);
+    let l = new Map((await essais(V1)).rows.map((x) => [x.eprouvette_ref as string, x]));
+    expect(l.get("v-e2")).toMatchObject({ revue: "acceptee", revue_perimee: false, eprouvette_ecartee: true });
+    expect(l.get("v-e1")!.eprouvette_ecartee).toBe(false);
+    await ecrire(V1, "gachee", "vg1", { ...g1, statut: "brouillon" }, rev);
+    l = new Map((await essais(V1)).rows.map((x) => [x.eprouvette_ref as string, x]));
+    expect(l.get("v-e1")!.revue_perimee).toBe(true);
+    expect((await gachees(V1)).rows.find((x) => x.gachee_ref === "vg2")).toMatchObject({ revue: null, revue_perimee: null });
+  });
+
+  it("exporter_essais : réservé à l'enseignant, filtre de session ; vues en lecture seule", async () => {
+    await expect(comme(V1, "select * from public.exporter_essais(null)")).rejects.toMatchObject({ code: "42501" });
+    const s1 = (await comme<{ gachee_code: string }>(PROF, "select gachee_code from public.exporter_essais('S1')")).rows;
+    expect(s1.length).toBe(eprouvettes.length);
+    expect(s1.every((x) => x.gachee_code === "G-1")).toBe(true);
+    expect((await comme<{ n: string }>(PROF, "select count(*)::text as n from public.exporter_essais(null)")).rows[0].n)
+      .toBe(String((await comme<{ n: string }>(PROF, "select count(*)::text as n from public.vue_essais")).rows[0].n));
+    // Refusé deux fois : vue non modifiable, et aucun droit d'insertion.
+    await expect(comme(PROF, "insert into public.vue_gachees (gachee_code) values ('x')")).rejects.toThrow(/cannot insert into view|permission denied/);
+    expect((await comme<{ v: number | null }>(V1, "select public.jsonb_num('\"12\"'::jsonb) as v")).rows[0].v).toBeNull();
+    expect((await comme<{ v: string | null }>(V1, "select public.jsonb_ts('\"demain\"'::jsonb) as v")).rows[0].v).toBeNull();
   });
 });

@@ -949,6 +949,199 @@ grant execute on function public.retirer_revue(uuid, text, text) to authenticate
 grant execute on function public.lire_mes_revues(uuid) to authenticated;
 
 -- ======================================================================
+--  Accès direct (SQL) aux essais, pour la recherche (2026-10). Deux vues
+--  PSEUDONYMISÉES, avec les clés du jeu d'essais (docs/DICTIONNAIRE_DONNEES.md) :
+--  vue_gachees (une ligne par gâchée) et vue_essais (une ligne par éprouvette).
+--  security_invoker : la RLS s'applique à QUI LIT (l'étudiant voit les siennes,
+--  l'enseignant toute la classe, l'anonyme rien) ; sans cette option, une vue
+--  lirait avec les droits de son propriétaire et contournerait la RLS.
+--  Copies de conflit exclues. Aucune formule nouvelle : ucs_kpa suit
+--  contrainteKpa (eprouvette.ts), les paramètres suivent parametresEffectifs
+--  (gachee.ts). Ajouter une colonne : la placer À LA FIN (create or replace
+--  view refuse de renommer ou de déplacer une colonne existante).
+-- ======================================================================
+
+-- Lecture sûre d'une valeur JSON : null si ce n'est pas le type attendu (un
+-- document d'étudiant n'est pas validé par le serveur).
+create or replace function public.jsonb_num(p jsonb) returns double precision
+language sql immutable set search_path = '' as $$
+  select case when jsonb_typeof(p) = 'number' then (p #>> '{}')::double precision end
+$$;
+create or replace function public.jsonb_ts(p jsonb) returns timestamptz
+language plpgsql stable set search_path = '' as $$
+begin
+  if jsonb_typeof(p) is distinct from 'string' then return null; end if;
+  return (p #>> '{}')::timestamptz;
+exception when others then
+  return null;
+end $$;
+
+-- Pseudonyme d'un compte : MÊME règle que le site (frontend/src/lib/pseudonyme.ts).
+-- Security definer : pgcrypto vit dans le schéma `extensions`, dont l'usage
+-- n'est pas garanti à `authenticated` ; la fonction ne fait qu'un calcul
+-- d'empreinte, sans lire aucune table.
+create or replace function public.pseudonyme(p_id uuid) returns text
+language sql immutable security definer set search_path = '' as $$
+  select 'op-' || left(encode(extensions.digest(p_id::text, 'sha256'), 'hex'), 12)
+$$;
+
+-- Paramètre de formulation d'une gâchée : son instantané s'il existe, sinon la
+-- recette de sa formulation d'origine (parametresEffectifs).
+create or replace function public.parametre_gachee(p_gachee jsonb, p_recette jsonb, p_cle text, p_cle_recette text)
+returns double precision language sql immutable set search_path = '' as $$
+  select case when p_gachee ? 'parametres' then public.jsonb_num(p_gachee -> 'parametres' -> p_cle)
+              else public.jsonb_num(p_recette -> p_cle_recette) end
+$$;
+
+create or replace view public.vue_gachees with (security_invoker = true) as
+select
+  public.pseudonyme(d.user_id)                                   as operateur,
+  d.payload ->> 'sessionId'                                      as session_id,
+  d.id                                                           as gachee_ref,
+  d.payload ->> 'code'                                           as gachee_code,
+  public.jsonb_ts(d.payload -> 'creeLe')                         as gachee_le,
+  d.payload ->> 'statut'                                         as gachee_statut,
+  d.payload ->> 'categorie'                                      as categorie,
+  d.payload ->> 'formulationId'                                  as formulation_ref,
+  d.payload ->> 'solverVersion'                                  as solveur_version,
+  public.parametre_gachee(d.payload, f.recette, 'cwPct', 'solids_mass_pct') as cw_pct,
+  public.parametre_gachee(d.payload, f.recette, 'wcRatio', 'wc_ratio')      as el_ratio,
+  public.parametre_gachee(d.payload, f.recette, 'bwPct', 'bw_mass_pct')     as bw_pct,
+  public.parametre_gachee(d.payload, f.recette, 'wPct', 'w_mass_pct')       as w_pct,
+  d.payload #>> '{materiaux,residu,id}'                          as residu_ref,
+  d.payload #>> '{materiaux,residu,nom}'                         as residu_nom,
+  public.jsonb_num(d.payload #> '{materiaux,residu,gs}')         as residu_gs,
+  public.jsonb_num(d.payload #> '{materiaux,residu,w0Pct}')      as residu_w0_pct,
+  d.payload #>> '{materiaux,eau,type}'                           as eau_type,
+  public.jsonb_num(d.payload -> 'malaxageDureeMin')              as malaxage_min,
+  public.jsonb_num(d.payload -> 'w0MesurePct')                   as w0_mesure_pct,
+  public.jsonb_num(d.payload -> 'slumpMesureMm')                 as affaissement_mm,
+  public.jsonb_num(d.payload -> 'cwMesurePct')                   as cw_mesure_pct,
+  d.payload #>> '{cure,mode}'                                    as cure_mode,
+  public.jsonb_num(d.payload #> '{cure,temperatureC}')           as cure_temperature_c,
+  r.decision                                                     as revue,
+  case when r.decision is null then null
+       else r.target_rev is not null and d.rev > r.target_rev end as revue_perimee,
+  d.updated_at                                                   as maj
+from public.user_docs d
+left join lateral (
+  select x.payload -> 'recipes' -> greatest(0, least(
+           coalesce(public.jsonb_num(d.payload -> 'recetteIndex')::integer, 0),
+           jsonb_array_length(x.payload -> 'recipes') - 1)) as recette
+    from public.user_docs x
+   where x.user_id = d.user_id and x.kind = 'resultat' and x.id = d.payload ->> 'formulationId'
+     and not x.deleted and jsonb_typeof(x.payload -> 'recipes') = 'array'
+     and jsonb_array_length(x.payload -> 'recipes') > 0
+) f on true
+left join public.revues r
+  on r.owner_id = d.user_id and r.target_kind = 'gachee' and r.target_id = d.id and not r.deleted
+where d.kind = 'gachee' and not d.deleted and not (d.payload ? 'conflit');
+
+create or replace view public.vue_essais with (security_invoker = true) as
+select
+  public.pseudonyme(d.user_id)                                   as operateur,
+  d.payload ->> 'sessionId'                                      as session_id,
+  d.id                                                           as gachee_ref,
+  d.payload ->> 'code'                                           as gachee_code,
+  d.payload ->> 'categorie'                                      as categorie,
+  public.parametre_gachee(d.payload, f.recette, 'cwPct', 'solids_mass_pct') as cw_pct,
+  public.parametre_gachee(d.payload, f.recette, 'wcRatio', 'wc_ratio')      as el_ratio,
+  public.parametre_gachee(d.payload, f.recette, 'bwPct', 'bw_mass_pct')     as bw_pct,
+  public.parametre_gachee(d.payload, f.recette, 'wPct', 'w_mass_pct')       as w_pct,
+  d.payload #>> '{materiaux,residu,id}'                          as residu_ref,
+  d.payload #>> '{cure,mode}'                                    as cure_mode,
+  public.jsonb_num(d.payload #> '{cure,temperatureC}')           as cure_temperature_c,
+  e.value ->> 'id'                                               as eprouvette_ref,
+  e.value ->> 'code'                                             as eprouvette_code,
+  public.jsonb_ts(e.value -> 'couleLe')                          as coulee_le,
+  public.jsonb_num(e.value -> 'ageJours')                        as age_cible_j,
+  e.value ->> 'statut'                                           as statut,
+  case when e.value ->> 'statut' = 'ecrase' then public.jsonb_ts(e.value #> '{essai,date}') end as essai_le,
+  public.jsonb_num(e.value -> 'mouleDiametreMm')                 as moule_diametre_mm,
+  u.charge                                                       as charge_kn,
+  u.diametre                                                     as diametre_mm,
+  public.jsonb_num(e.value #> '{essai,hauteurMm}')               as hauteur_mm,
+  public.jsonb_num(e.value #> '{essai,masseG}')                  as masse_g,
+  u.ucs                                                          as ucs_kpa,
+  case when u.ucs is null then null
+       when u.saisie > 0 then case when (e.value -> 'essai') ? 'sourcePresse' then 'presse' else 'saisie' end
+       else 'calcul_fa' end                                      as ucs_source,
+  (u.ucs is not null and coalesce(e.value #> '{essai,exclu}', 'false') <> 'true'::jsonb) as retenu,
+  coalesce(e.value #> '{essai,exclu}', 'false') = 'true'::jsonb as exclu,
+  e.value #>> '{essai,modeRuptureCode}'                          as rupture_code,
+  public.jsonb_num(e.value #> '{essai,moduleYoungKpa}')          as module_young_kpa,
+  public.jsonb_num(e.value #> '{essai,deformationMaxPct}')       as deformation_max_pct,
+  public.jsonb_num(e.value #> '{essai,deflexionMaxMm}')          as deflexion_max_mm,
+  public.jsonb_num(e.value #> '{essai,vitesseChargement,valeur}') as vitesse_chargement,
+  e.value #>> '{essai,vitesseChargement,unite}'                  as vitesse_unite,
+  coalesce((e.value -> 'essai') ? 'sourcePresse', false)         as import_presse,
+  r.decision                                                     as revue,
+  case when r.decision is null then null
+       else r.target_rev is not null and d.rev > r.target_rev end as revue_perimee,
+  case when r.decision is null then null
+       else (e.value ->> 'id') = any (r.ecartees) end            as eprouvette_ecartee,
+  exists (select 1 from public.user_docs c
+           where c.user_id = d.user_id and c.kind = 'courbe' and c.id = e.value ->> 'id' and not c.deleted) as courbe_en_ligne
+from public.user_docs d
+left join lateral (
+  select x.payload -> 'recipes' -> greatest(0, least(
+           coalesce(public.jsonb_num(d.payload -> 'recetteIndex')::integer, 0),
+           jsonb_array_length(x.payload -> 'recipes') - 1)) as recette
+    from public.user_docs x
+   where x.user_id = d.user_id and x.kind = 'resultat' and x.id = d.payload ->> 'formulationId'
+     and not x.deleted and jsonb_typeof(x.payload -> 'recipes') = 'array'
+     and jsonb_array_length(x.payload -> 'recipes') > 0
+) f on true
+left join public.revues r
+  on r.owner_id = d.user_id and r.target_kind = 'gachee' and r.target_id = d.id and not r.deleted
+cross join lateral jsonb_array_elements(
+  case when jsonb_typeof(d.payload -> 'eprouvettes') = 'array' then d.payload -> 'eprouvettes' else '[]'::jsonb end) e
+cross join lateral (
+  -- contrainteKpa : contrainte directe positive, sinon F / A (kN, mm -> kPa),
+  -- et seulement pour une éprouvette écrasée (comme le jeu d'essais).
+  select v.saisie, v.charge, v.diametre,
+         case when e.value ->> 'statut' is distinct from 'ecrase' then null
+              when v.saisie > 0 then v.saisie
+              when v.charge > 0 and v.diametre > 0
+                then ((v.charge * 1000) / ((pi() * v.diametre * v.diametre) / 4)) * 1000
+         end as ucs
+    from (select public.jsonb_num(e.value #> '{essai,contrainteKpaSaisie}') as saisie,
+                 public.jsonb_num(e.value #> '{essai,chargeKn}')            as charge,
+                 public.jsonb_num(e.value #> '{essai,diametreMm}')          as diametre) v
+) u
+where d.kind = 'gachee' and not d.deleted and not (d.payload ? 'conflit');
+
+-- Enseignant : tous les essais d'une session (null : toutes). Les vues
+-- suffisent à la lecture ; cette fonction est le point d'entrée d'un export
+-- automatisé, et refuse explicitement tout autre compte.
+create or replace function public.exporter_essais(p_session text default null)
+returns setof public.vue_essais
+language plpgsql stable security invoker set search_path = '' as $$
+begin
+  if not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  return query
+    select * from public.vue_essais v
+     where p_session is null or v.session_id = p_session
+     order by v.operateur, v.gachee_code, v.eprouvette_code;
+end $$;
+
+revoke all on public.vue_gachees, public.vue_essais from anon;
+revoke insert, update, delete, truncate on public.vue_gachees, public.vue_essais from authenticated;
+grant select on public.vue_gachees, public.vue_essais to authenticated;
+revoke execute on function public.jsonb_num(jsonb) from public, anon;
+revoke execute on function public.jsonb_ts(jsonb) from public, anon;
+revoke execute on function public.pseudonyme(uuid) from public, anon;
+revoke execute on function public.parametre_gachee(jsonb, jsonb, text, text) from public, anon;
+revoke execute on function public.exporter_essais(text) from public, anon;
+grant execute on function public.jsonb_num(jsonb) to authenticated;
+grant execute on function public.jsonb_ts(jsonb) to authenticated;
+grant execute on function public.pseudonyme(uuid) to authenticated;
+grant execute on function public.parametre_gachee(jsonb, jsonb, text, text) to authenticated;
+grant execute on function public.exporter_essais(text) to authenticated;
+
+-- ======================================================================
 --  Reprise unique de saved_results (v1) dans user_docs. Ré-exécutable : un
 --  document déjà repris (ou supprimé depuis par l'étudiant) n'est pas touché.
 -- ======================================================================

@@ -131,12 +131,42 @@ documents « courbe » écrits par `ecrire_doc`, nettoyés par
 
 Les fonctions `security definer` exécutables par `authenticated`
 (`repondre_annotation`, `marquer_annotations_lues`, `lister_comptes`,
-`definir_role`, `bloquer_compte`, `poser_revue`, `retirer_revue`) peuvent être
-signalées par **Advisors →
+`definir_role`, `bloquer_compte`, `poser_revue`, `retirer_revue`,
+`pseudonyme`) peuvent être signalées par **Advisors →
 Security** : c'est voulu, chacune revérifie l'appelant (session, rôle, propriété
 du document) avant d'agir.
 Le pourquoi de chaque choix : `docs/HISTORIQUE_EXTENSIBILITE.md`, section
 « Synchronisation v2 ».
+
+## Accès direct aux essais (SQL, recherche)
+
+Deux vues **pseudonymisées** reprennent les clés du jeu d'essais
+(`docs/DICTIONNAIRE_DONNEES.md`) : `vue_gachees` (une ligne par gâchée) et
+`vue_essais` (une ligne par éprouvette). Elles sont `security_invoker` : la
+RLS s'applique à qui lit (l'étudiant voit les siennes, l'enseignant toute la
+classe, l'anonyme rien). Copies de conflit exclues ; `ucs_kpa` et `retenu`
+suivent exactement les règles du site (vérifié par le banc d'essai). Le
+pseudonyme `operateur` est le même que dans les exports (`pseudonyme(uuid)`).
+
+Exemples, dans SQL Editor (en tant qu'enseignant, ou depuis un outil connecté
+avec son compte) :
+```sql
+-- UCS moyenne par gâchée et par âge visé, essais retenus seulement
+select operateur, gachee_code, age_cible_j, count(*) as n, round(avg(ucs_kpa)::numeric, 1) as ucs_moyenne_kpa
+  from public.vue_essais
+ where retenu and coalesce(eprouvette_ecartee, false) = false
+ group by operateur, gachee_code, age_cible_j
+ order by operateur, gachee_code, age_cible_j;
+
+-- Tous les essais d'une session (fonction réservée à l'enseignant)
+select * from public.exporter_essais('IDENTIFIANT_DE_SESSION');
+```
+Différences avec le jeu d'essais exporté par le site : les dates sont des
+horodatages, `session_id` est l'identifiant de la session (pas son nom),
+`gachee_ref` et `eprouvette_ref` sont les identifiants internes (pour les
+jointures), et une valeur mal typée dans un document (un nombre saisi comme
+texte) donne `null` au lieu d'être convertie. Pas de `age_reel_j` ni de
+colonnes de matériaux détaillées : prendre le jeu d'essais pour cela.
 
 ## Passage à la v2 (une fois par projet)
 

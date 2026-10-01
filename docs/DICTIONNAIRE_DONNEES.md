@@ -249,6 +249,15 @@ l'instantané de la gâchée.
 | `champs_retires` | les champs exclus de l'export |
 | `textes_libres` | les colonnes en texte libre, à relire avant diffusion publique |
 
+## Accès direct (SQL)
+
+Pour un accès sans passer par l'export : vues `vue_gachees` et `vue_essais`
+dans Supabase, mêmes clés que ci-dessus quand elles existent, même pseudonyme,
+mêmes règles d'UCS et d'essai retenu. Exemples et différences (dates en
+horodatage, identifiants internes `gachee_ref` et `eprouvette_ref`, valeurs mal
+typées rendues vides) : `supabase/README.md`, section « Accès direct aux
+essais ».
+
 ## Faire évoluer le jeu
 
 - **Ajouter une colonne** : une entrée dans `COLONNES_ESSAIS` (ou la table
