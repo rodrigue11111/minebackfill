@@ -5,6 +5,7 @@ import type { EcheanceClasse } from "@/lib/classe-echeancier";
 import { COULEUR_ECHEANCE, fmtDate } from "@/lib/echeance-affichage";
 import { lienBouton, td, th, type RefDoc } from "./commun";
 import { Carte } from "@/components/ui/Carte";
+import { TIRET } from "@/lib/format";
 
 const SECTIONS: { cle: EcheanceClasse["classe"]; titre: string; vide: string }[] = [
   { cle: "retard", titre: "En retard", vide: "Aucune éprouvette en retard." },
@@ -61,7 +62,7 @@ export default function OngletEcheancier({ echeances, onOuvrir, onIcs, onCsv }: 
                         <td style={td}>
                           <button type="button" style={lienBouton} onClick={() => onOuvrir({ etudiantId: x.etudiantId, kind: "gachee", id: x.gacheeId })}>{x.gacheeCode}</button>
                         </td>
-                        <td style={td}>{x.formulation || "—"}</td>
+                        <td style={td}>{x.formulation || TIRET}</td>
                       </tr>
                     ))}
                   </tbody>

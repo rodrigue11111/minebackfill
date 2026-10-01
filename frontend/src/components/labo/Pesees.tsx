@@ -9,7 +9,7 @@ import type { Gachee } from "@/lib/gachee";
 import type { Annotation } from "@/lib/annotations";
 import { geometrieBande, libelleEcart } from "@/lib/bande-tolerance";
 import { ancrePesee } from "@/lib/ancres";
-import { fmt } from "@/lib/format";
+import { fmt, TIRET } from "@/lib/format";
 import { Carte } from "@/components/ui/Carte";
 import ChampNombre from "@/components/ui/ChampNombre";
 import { FilEtudiant } from "@/components/AnnotationsDoc";
@@ -70,7 +70,7 @@ export default function Pesees({ gachee: g, onPesee, onTolerance, notes, connect
                   </span>
                   <BandeTolerance position={geo.position} bande={geo.bande} hors={geo.horsTolerance} />
                   {lectureSeule ? (
-                    <span className="labo-pesee-valeur">{c.peseeKg === undefined ? "—" : `${fmt(c.peseeKg, 1)} kg`}</span>
+                    <span className="labo-pesee-valeur">{c.peseeKg === undefined ? TIRET : `${fmt(c.peseeKg, 1)} kg`}</span>
                   ) : (
                     <span className="labo-pesee-saisie">
                       <ChampNombre ariaLabel={`Masse pesée : ${c.label} (kg)`} placeholder="kg" value={c.peseeKg} onChange={(n) => onPesee?.(c.cle, n)} />

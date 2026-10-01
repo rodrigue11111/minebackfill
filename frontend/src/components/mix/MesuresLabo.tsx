@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { calculeMesures, type MesureLabo } from "@/lib/mesures";
-import { fmt } from "@/lib/format";
+import { fmt, TIRET } from "@/lib/format";
 import { CardSection, Field, GrilleChamps, PointRecette } from "@/components/mix/champs";
 
 /**
@@ -79,19 +79,19 @@ export default function MesuresLabo({
               <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
               <GrilleChamps>
                 <Field label="Affaissement mesuré" unit="mm">
-                  <input type="number" step="any" className="field-input" placeholder="—"
+                  <input type="number" step="any" className="field-input" placeholder={TIRET}
                     value={m.slump ?? ""} onChange={(e) => setMesure(i, { slump: num(e.target.value) })} />
                 </Field>
                 <Field label="Tare" unit="g">
-                  <input type="number" step="any" className="field-input" placeholder="—"
+                  <input type="number" step="any" className="field-input" placeholder={TIRET}
                     value={m.tare ?? ""} onChange={(e) => setMesure(i, { tare: num(e.target.value) })} />
                 </Field>
                 <Field label="Tare + pâte humide m_h" unit="g">
-                  <input type="number" step="any" className="field-input" placeholder="—"
+                  <input type="number" step="any" className="field-input" placeholder={TIRET}
                     value={m.mh ?? ""} onChange={(e) => setMesure(i, { mh: num(e.target.value) })} />
                 </Field>
                 <Field label="Tare + pâte sèche m_s" unit="g">
-                  <input type="number" step="any" className="field-input" placeholder="—"
+                  <input type="number" step="any" className="field-input" placeholder={TIRET}
                     value={m.ms ?? ""} onChange={(e) => setMesure(i, { ms: num(e.target.value) })} />
                 </Field>
               </GrilleChamps>

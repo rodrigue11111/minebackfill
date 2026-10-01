@@ -12,6 +12,7 @@
 // signale le bandeau « Paramètres modifiés ».
 
 import type { InstantaneAnalyse } from "./analyse-instantane";
+import { libelle } from "./glossaire";
 
 /** Paramètres balayables. Miroir exact de BalayageParam côté backend. */
 export type ParamCle =
@@ -73,12 +74,12 @@ export function tenuFixe(inst: InstantaneAnalyse, param: ParamCle): LigneFixe[] 
   const sauf = (p: ParamCle) => param !== p;
 
   l.push({ label: "Gs du résidu", valeur: f(r.gsResidu) });
-  l.push({ label: "w₀ — teneur en eau massique du résidu", valeur: `${f(r.w0Pct, 1)} %` });
-  if (sauf("solids_mass_pct")) l.push({ label: "Cw — pourcentage solide massique", valeur: `${f(r.cwPct, 2)} %` });
-  if (sauf("saturation_pct")) l.push({ label: "Sr — degré de saturation", valeur: `${f(r.srPct, 1)} %` });
-  if (sauf("binder_mass_pct")) l.push({ label: "Bw — taux massique de liant", valeur: `${f(r.bwPct, 2)} %` });
+  l.push({ label: libelle("w0"), valeur: `${f(r.w0Pct, 1)} %` });
+  if (sauf("solids_mass_pct")) l.push({ label: libelle("cw"), valeur: `${f(r.cwPct, 2)} %` });
+  if (sauf("saturation_pct")) l.push({ label: libelle("sr"), valeur: `${f(r.srPct, 1)} %` });
+  if (sauf("binder_mass_pct")) l.push({ label: libelle("bw"), valeur: `${f(r.bwPct, 2)} %` });
   if (r.amPct !== undefined && sauf("aggregate_fraction_pct")) {
-    l.push({ label: "Am — fraction massique de granulat", valeur: `${f(r.amPct, 1)} %` });
+    l.push({ label: libelle("am"), valeur: `${f(r.amPct, 1)} %` });
   }
   if (r.gsAgregat !== undefined) l.push({ label: "Gs du granulat", valeur: f(r.gsAgregat) });
 

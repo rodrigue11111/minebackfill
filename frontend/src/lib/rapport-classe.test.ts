@@ -5,6 +5,7 @@ import { alertesClasse } from "./classe-alertes";
 import type { LigneAnnotation } from "./classe-reseau";
 import { documentRapportClasse, documentRapportEtudiant, nombrePdf, pourPdf, type ContexteRapport } from "./rapport-classe";
 import { construirePdf } from "./rapport-classe-pdf";
+import { TIRET } from "./format";
 
 const A = "a", B = "b", C = "c", PROF = "p";
 const profils: ProfilClasse[] = [
@@ -98,7 +99,7 @@ describe("rapport de session — texte pour la police du PDF", () => {
     expect(nombrePdf(1234.567, 1)).toBe("1 234,6");
     expect(nombrePdf(-0.04, 1)).toBe("0,0");
     expect(nombrePdf(-12, 0)).toBe("-12");
-    expect(nombrePdf(null)).toBe("—");
+    expect(nombrePdf(null)).toBe(TIRET);
   });
 });
 

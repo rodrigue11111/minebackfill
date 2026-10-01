@@ -23,6 +23,8 @@ import type { Gachee, ParametresFormulation } from "./gachee";
 import { parametresEffectifs } from "./gachee";
 import { agregerParAge } from "./eprouvette";
 import type { Recipe } from "./types";
+import { libelle } from "./glossaire";
+import { SANS_UNITE, libelleAvecUnite } from "./format";
 
 /** Paramètre porté en abscisse. Clés de ParametresFormulation. */
 export type AxeFormulation = "cwPct" | "wcRatio" | "bwPct" | "wPct";
@@ -30,15 +32,15 @@ export type AxeFormulation = "cwPct" | "wcRatio" | "bwPct" | "wPct";
 export interface AxeMeta {
   cle: AxeFormulation;
   label: string;
-  /** Unité affichée ; "—" pour un ratio sans unité. */
+  /** Unité affichée ; SANS_UNITE pour un ratio sans unité. */
   unite: string;
 }
 
 export const AXES_FORMULATION: AxeMeta[] = [
-  { cle: "wcRatio", label: "E/L — rapport eau/liant", unite: "—" },
-  { cle: "bwPct", label: "Bw — taux massique de liant", unite: "%" },
-  { cle: "cwPct", label: "Cw — pourcentage solide massique", unite: "%" },
-  { cle: "wPct", label: "w — teneur en eau massique", unite: "%" },
+  { cle: "wcRatio", label: libelle("el"), unite: SANS_UNITE },
+  { cle: "bwPct", label: libelle("bw"), unite: "%" },
+  { cle: "cwPct", label: libelle("cw"), unite: "%" },
+  { cle: "wPct", label: libelle("w"), unite: "%" },
 ];
 
 export const axeMeta = (cle: string) => AXES_FORMULATION.find((a) => a.cle === cle);
@@ -178,7 +180,7 @@ export function lignesCsvNuage(nuage: Nuage, axe: AxeFormulation): (string | num
   const meta = axeMeta(axe);
   const enTete = [
     "Gâchée",
-    `${meta?.label ?? axe}${meta && meta.unite !== "—" ? ` (${meta.unite})` : ""}`,
+    meta ? libelleAvecUnite(meta.label, meta.unite) : axe,
     "UCS moyenne (kPa)", "Écart-type (kPa)", "n", "Exclues",
   ];
   return [enTete, ...nuage.points.map((p) => [

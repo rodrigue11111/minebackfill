@@ -9,7 +9,7 @@ import {
   agregerParAge, ageReelJours, contrainteKpa, dateCoulee, dateEcheance,
 } from "@/lib/eprouvette";
 import { badgeEcheance, fmtDate } from "@/lib/echeance-affichage";
-import { fmt } from "@/lib/format";
+import { fmt, TIRET } from "@/lib/format";
 import type { Recipe } from "@/lib/types";
 import { nombre, Pastille, td, tdNum, th } from "./commun";
 
@@ -17,7 +17,7 @@ function Info({ label, valeur }: { label: string; valeur: React.ReactNode }) {
   return (
     <div>
       <div style={{ fontSize: 13, color: "var(--texte-2)" }}>{label}</div>
-      <div style={{ fontSize: 15, color: "var(--texte)", marginTop: 2 }}>{valeur ?? "—"}</div>
+      <div style={{ fontSize: 15, color: "var(--texte)", marginTop: 2 }}>{valeur ?? TIRET}</div>
     </div>
   );
 }
@@ -40,14 +40,14 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Carte titre="Formulation">
         <div style={grille}>
-          <Info label="Formulation" valeur={g.formulationLabel || "—"} />
+          <Info label="Formulation" valeur={g.formulationLabel || TIRET} />
           <Info label="Catégorie" valeur={g.categorie} />
           <Info label="Recette" valeur={`R${(g.recetteIndex ?? 0) + 1}`} />
           <Info label="Cw (%)" valeur={nombre(p?.cwPct, 2)} />
           <Info label="E/L" valeur={nombre(p?.wcRatio, 3)} />
           <Info label="Bw (%)" valeur={nombre(p?.bwPct, 2)} />
           <Info label="w (%)" valeur={nombre(p?.wPct, 2)} />
-          <Info label="Version des formules" valeur={g.solverVersion ?? "—"} />
+          <Info label="Version des formules" valeur={g.solverVersion ?? TIRET} />
         </div>
         {!p && (
           <p style={{ fontSize: 12, color: "var(--alerte-texte)", margin: "10px 0 0" }}>
@@ -60,9 +60,9 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
 
       <Carte titre="Matériaux et pâte fraîche">
         <div style={grille}>
-          <Info label="Lot de résidu" valeur={g.lotResidu || "—"} />
-          <Info label="Lot de granulat" valeur={g.lotGranulat || "—"} />
-          <Info label="Lot de liant" valeur={g.lotLiant || "—"} />
+          <Info label="Lot de résidu" valeur={g.lotResidu || TIRET} />
+          <Info label="Lot de granulat" valeur={g.lotGranulat || TIRET} />
+          <Info label="Lot de liant" valeur={g.lotLiant || TIRET} />
           <Info label="w₀ mesuré (%)" valeur={nombre(g.w0MesurePct, 2)} />
           <Info label="Affaissement (mm)" valeur={nombre(g.slumpMesureMm, 0)} />
           <Info label="Température (°C)" valeur={nombre(g.temperatureC, 1)} />
@@ -79,7 +79,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
             <thead><tr><th style={th}>Ajout</th><th style={{ ...th, textAlign: "right" }}>Masse (kg)</th><th style={th}>Note</th></tr></thead>
             <tbody>
               {g.ajustements.map((a) => (
-                <tr key={a.id}><td style={td}>{TYPES_AJUSTEMENT[a.type] ?? a.type}</td><td style={tdNum}>{fmt(a.masseKg, 2)}</td><td style={td}>{a.note || "—"}</td></tr>
+                <tr key={a.id}><td style={td}>{TYPES_AJUSTEMENT[a.type] ?? a.type}</td><td style={tdNum}>{fmt(a.masseKg, 2)}</td><td style={td}>{a.note || TIRET}</td></tr>
               ))}
             </tbody>
           </table>
@@ -114,15 +114,15 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
                       <td style={td}>{e.ageJours} j</td>
                       <td style={td}>{fmtDate(dateCoulee(e))}</td>
                       <td style={td}>{fmtDate(dateEcheance(e))}<div style={{ fontSize: 11.5, fontWeight: 700, color: b.couleur }}>{b.texte}</div></td>
-                      <td style={td}>{es?.date ? fmtDate(new Date(es.date)) : "—"}</td>
-                      <td style={tdNum}>{reel === null ? "—" : `${nombre(reel, 0)} j`}</td>
+                      <td style={td}>{es?.date ? fmtDate(new Date(es.date)) : TIRET}</td>
+                      <td style={tdNum}>{reel === null ? TIRET : `${nombre(reel, 0)} j`}</td>
                       <td style={tdNum}>{nombre(es?.chargeKn, 2)}</td>
                       <td style={tdNum}>{nombre(es?.diametreMm, 1)}</td>
                       <td style={{ ...tdNum, fontWeight: 700 }}>
-                        {ucs === null ? "—" : nombre(ucs, 0)}
+                        {ucs === null ? TIRET : nombre(ucs, 0)}
                         {es?.exclu && <div><Pastille ton="ambre" title={es.justificationExclusion}>exclue</Pastille></div>}
                       </td>
-                      <td style={td}>{es?.modeRupture || "—"}</td>
+                      <td style={td}>{es?.modeRupture || TIRET}</td>
                     </tr>
                   );
                 })}
@@ -171,8 +171,8 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant }: {
                   <td style={tdNum}>{a.n}</td>
                   <td style={{ ...tdNum, fontWeight: 700 }}>{nombre(a.moyenneKpa, 0)}</td>
                   <td style={tdNum}>{nombre(a.ecartTypeKpa, 0)}</td>
-                  <td style={tdNum}>{a.cvPct === null ? "—" : `${nombre(a.cvPct, 1)} %`}</td>
-                  <td style={tdNum}>{a.nExclus || "—"}</td>
+                  <td style={tdNum}>{a.cvPct === null ? TIRET : `${nombre(a.cvPct, 1)} %`}</td>
+                  <td style={tdNum}>{a.nExclus || TIRET}</td>
                 </tr>
               ))}
             </tbody>

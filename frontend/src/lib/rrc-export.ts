@@ -10,6 +10,7 @@ import { RRC_ROWS } from "@/lib/report-schema";
 import { fmt as fmtNum } from "@/lib/format";
 import { APP_NAME } from "@/lib/branding";
 import { assainirTextePdf } from "@/lib/texte-pdf";
+import { TIRET } from "./format";
 
 export async function exportRrcExcel(
   recipes: RrcRecipe[],
@@ -24,7 +25,7 @@ export async function exportRrcExcel(
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("RRC");
   ws.addRow(["MINEBACKFILL — Remblai rocheux cimenté (RRC)"]).font = { bold: true, size: 14 };
-  ws.addRow([`Projet : ${general.project_name ?? "—"}`, `Opérateur : ${general.operator_name ?? "—"}`]);
+  ws.addRow([`Projet : ${general.project_name ?? TIRET}`, `Opérateur : ${general.operator_name ?? TIRET}`]);
   ws.addRow([`Date : ${new Date().toLocaleDateString("fr-CA")}`]);
   ws.addRow([]);
 
@@ -34,7 +35,7 @@ export async function exportRrcExcel(
   for (const l of RRC_ROWS) {
     ws.addRow([l.label(massLabel), ...recipes.map((r) => {
       const v = l.getter(r, toMass);
-      return v === null ? "—" : parseFloat(v.toFixed(l.digits));
+      return v === null ? TIRET : parseFloat(v.toFixed(l.digits));
     })]);
   }
   ws.getColumn(1).width = 38;

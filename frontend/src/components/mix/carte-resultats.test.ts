@@ -8,6 +8,7 @@ import CarteResultats, { chiffreMasse, chiffresRecette } from "./CarteResultats"
 import { lignesResume, nbLignesRapport, type ReportCtx } from "@/lib/report-schema";
 import { DEFAULT_UNITS } from "@/lib/units";
 import type { Recipe, RrcRecipe } from "@/lib/types";
+import { TIRET } from "@/lib/format";
 
 const ctx: ReportCtx = {
   units: DEFAULT_UNITS, massLabel: "kg", volLabel: "L", densLabel: "g/cm3",
@@ -75,9 +76,9 @@ describe("CarteResultats", () => {
     }
   });
 
-  it("état vide : tuiles à « — » et invitation à calculer", () => {
+  it("état vide : tuiles à TIRET (valeur absente) et invitation à calculer", () => {
     const html = rendu({ sousTitre: "RPC", actions: null, donnees: null });
-    expect(html.match(/—/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(html.split(TIRET).length - 1).toBeGreaterThanOrEqual(4);
     expect(html).toContain("Calculer");
   });
 });
@@ -90,7 +91,7 @@ describe("chiffres clés", () => {
     expect(chiffreMasse(12.345)).toBe("12.3");
     expect(chiffreMasse(1.2345)).toBe("1.23");
     expect(chiffreMasse(0.12345)).toBe("0.123");
-    expect(chiffreMasse(undefined)).toBe("—");
+    expect(chiffreMasse(undefined)).toBe(TIRET);
   });
 
   it("les masses suivent l'unité choisie", () => {

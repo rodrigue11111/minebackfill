@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { SORTIES, PARAMS, sortiesPour, paramsPour } from "./analyse-series";
+import { SANS_UNITE, TIRET } from "./format";
 
 // Copie locale de la liste CANONIQUE (source de vérité = backend
 // app/core/analyse.py _SERIES, sentinelle backend test_balayage.py). Ce test
@@ -37,6 +38,18 @@ describe("analyse-series — anti-dérive backend/frontend", () => {
       expect(s.unite.length).toBeGreaterThan(0);
       expect(s.categories.length).toBeGreaterThan(0);
     }
+  });
+
+  it("chaque paramètre balayable a un symbole, repris dans son libellé", () => {
+    for (const p of PARAMS) {
+      expect(p.symbole.length).toBeGreaterThan(0);
+      expect(p.label).toContain(p.symbole);
+    }
+  });
+
+  it("une grandeur sans unité porte SANS_UNITE, jamais la valeur absente", () => {
+    for (const s of SORTIES) expect(s.unite).not.toBe(TIRET);
+    expect(SORTIES.find((s) => s.cle === "wc_ratio")?.unite).toBe(SANS_UNITE);
   });
 
   it("les paramètres balayables ont des bornes par défaut cohérentes (min < max)", () => {

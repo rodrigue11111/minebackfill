@@ -15,12 +15,13 @@ import {
 } from "@/lib/ucs-formulation";
 import { telechargerTexte, celluleCsv, nomFichier } from "@/lib/export-fig";
 import type { Recipe } from "@/lib/types";
+import { TIRET, libelleAvecUnite } from "@/lib/format";
 import { Carte } from "@/components/ui/Carte";
 import { Bandeau } from "@/components/ui/Bandeau";
 import Segmente from "@/components/ui/Segmente";
 import CourbeUCS, { type SerieUCS } from "./CourbeUCS";
 
-const fmtParam = (v: number | undefined, suffixe = "") => (v != null ? `${v.toLocaleString("fr-CA", { maximumFractionDigits: 2 })}${suffixe}` : "—");
+const fmtParam = (v: number | undefined, suffixe = "") => (v != null ? `${v.toLocaleString("fr-CA", { maximumFractionDigits: 2 })}${suffixe}` : TIRET);
 
 // Palette étendue (au-delà des 4 couleurs de recette) pour distinguer plus de
 // gâchées sur la même courbe.
@@ -189,7 +190,7 @@ export default function ResultatsUCS({ gachees, formulations }: {
                   series={seriesNuage}
                   relier={false}
                   ticksX="rondes"
-                  xLabel={`${metaAxe?.label ?? axe}${metaAxe && metaAxe.unite !== "—" ? ` (${metaAxe.unite})` : ""}`}
+                  xLabel={metaAxe ? libelleAvecUnite(metaAxe.label, metaAxe.unite) : axe}
                   formatX={(x) => x.toLocaleString("fr-CA", { maximumFractionDigits: 3 })}
                   messageVide={`Aucune gâchée ne porte à la fois une mesure à ${age} j et un paramètre de formulation connu.`}
                 />
@@ -254,7 +255,7 @@ export default function ResultatsUCS({ gachees, formulations }: {
                         <td>{j === 0 ? fmtParam(parametresEffectifs(d.g, formulations)?.bwPct, " %") : ""}</td>
                         <td>{a.ageJours} j</td>
                         <td style={{ fontWeight: 600 }}>{Math.round(a.moyenneKpa as number).toLocaleString("fr-CA")}</td>
-                        <td>{a.ecartTypeKpa !== null ? Math.round(a.ecartTypeKpa).toLocaleString("fr-CA") : "—"}</td>
+                        <td>{a.ecartTypeKpa !== null ? Math.round(a.ecartTypeKpa).toLocaleString("fr-CA") : TIRET}</td>
                         <td>{a.n}</td>
                       </tr>
                     )),

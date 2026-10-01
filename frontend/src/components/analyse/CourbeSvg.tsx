@@ -9,6 +9,7 @@
 
 import React, { useId, useState } from "react";
 import { bornes, echelle, graduations, decimalesTick, chemin } from "@/lib/courbe-utils";
+import { TIRET, valeurAvecUnite } from "@/lib/format";
 
 export interface SerieTrace {
   cle: string;
@@ -27,7 +28,7 @@ const M = { gauche: 60, droite: 16, haut: 16, bas: 54 };
 const PX: [number, number] = [M.gauche, W - M.droite];
 
 function fmtVal(v: number | null, unite: string): string {
-  if (v === null || !Number.isFinite(v)) return "—";
+  if (v === null || !Number.isFinite(v)) return TIRET;
   // « kg » : voir fmtStat dans la page Analyse, même piège.
   const d = unite === "kg/m³" ? 0 : unite === "kg" ? 1 : unite === "%" ? 2 : 3;
   return v.toLocaleString("fr-CA", { maximumFractionDigits: d });
@@ -36,12 +37,15 @@ function fmtVal(v: number | null, unite: string): string {
 export default function CourbeSvg({
   x,
   xLabel,
+  xSymbole,
   series,
   reference,
   hauteur = 430,
 }: {
   x: number[];
   xLabel: string;
+  /** Symbole du paramètre balayé (« Bw »), en tête de l'infobulle. */
+  xSymbole: string;
   series: SerieTrace[];
   /** Valeur X de la recette de référence (marqueur vertical). */
   reference?: number;
@@ -101,8 +105,8 @@ export default function CourbeSvg({
   const hx = h !== null ? sx(x[h]) : 0;
   const tipLignes = h !== null
     ? [
-        { t: `${xLabel.split(" — ")[0]} = ${fmtVal(x[h], "%")}`, c: "#0f172a", gras: true },
-        ...series.map((s) => ({ t: `${s.label} : ${fmtVal(s.valeurs[h], s.unite)} ${s.unite === "—" ? "" : s.unite}`.trim(), c: s.couleur, gras: false })),
+        { t: `${xSymbole} = ${fmtVal(x[h], "%")}`, c: "#0f172a", gras: true },
+        ...series.map((s) => ({ t: `${s.label} : ${valeurAvecUnite(fmtVal(s.valeurs[h], s.unite), s.unite)}`, c: s.couleur, gras: false })),
       ]
     : [];
   const tipW = 210;

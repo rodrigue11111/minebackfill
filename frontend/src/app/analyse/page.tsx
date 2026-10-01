@@ -40,7 +40,7 @@ import {
 import { telechargerTexte, versCsv, nomFichier } from "@/lib/export-fig";
 import { phases, fractions } from "@/lib/composition";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
-import { num, fmt } from "@/lib/format";
+import { num, fmt, libelleAvecUnite, valeurAvecUnite } from "@/lib/format";
 
 interface Balayage {
   category: string;
@@ -58,7 +58,7 @@ function fmtStat(v: number, unite: string): string {
   // par défaut et s'affiche avec 4 décimales (« 1 234,5678 kg »).
   const d = unite === "kg/m³" ? 1 : unite === "kg" ? 1 : unite === "%" ? 2 : 4;
   const s = v.toLocaleString("fr-CA", { maximumFractionDigits: d });
-  return unite === "—" ? s : `${s} ${unite}`;
+  return valeurAvecUnite(s, unite);
 }
 
 function PanneauProvenance({ meta, boutons, ouvert, onToggle }: {
@@ -353,12 +353,12 @@ export default function AnalysePage() {
           const m = sortieMeta(cle);
           if (!m) return [];
           return variantes.map((v, i) => ({
-            titre: `${v.label} — ${m.label}${m.unite !== "—" ? ` (${m.unite})` : ""}`,
+            titre: `${libelleAvecUnite(m.label, m.unite)}, ${v.label}`,
             valeurs: resultats[i]?.series[cle] ?? [],
           }));
         })
       : traces.map((t) => ({
-          titre: `${t.label}${t.unite !== "—" ? ` (${t.unite})` : ""}`,
+          titre: libelleAvecUnite(t.label, t.unite),
           valeurs: t.valeurs,
         }));
 
@@ -442,7 +442,7 @@ export default function AnalysePage() {
   // compléter à chaque nouveau paramètre.
   const referenceX: number | null =
     resMeta && estParamCle(param) ? valeurReference(param, resMeta.recette) : null;
-  const paramCourt = xLabel.split(" — ")[0];
+  const paramCourt = paramMeta(param)?.symbole ?? param;
   // La référence n'ancre l'écart % que si elle est DANS la plage balayée ;
   // sinon on ancre sur le 1er point et on le dit clairement (pas de fausse
   // référence silencieuse).
@@ -622,7 +622,7 @@ export default function AnalysePage() {
                           return (
                             <div key={cle} className="analyse-figure">
                               <div style={{ fontSize: 14, fontWeight: 600, color: "var(--texte)", marginBottom: 4 }}>
-                                {meta.label}{meta.unite !== "—" ? ` (${meta.unite})` : ""}
+                                {libelleAvecUnite(meta.label, meta.unite)}
                               </div>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 4 }}>
                                 {variantes.map((v) => (
@@ -636,7 +636,7 @@ export default function AnalysePage() {
                                 ))}
                               </div>
                               <FigurePng nom={`analyse-${categorie}-${cle}-variantes`}>
-                                <CourbeSvg x={res.x} xLabel={xLabel} series={tv}
+                                <CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={tv}
                                   reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
                               </FigurePng>
                             </div>
@@ -650,10 +650,10 @@ export default function AnalysePage() {
                           return (
                             <div key={t.cle} className="analyse-figure">
                               <div style={{ fontSize: 14, fontWeight: 600, color: t.couleur, marginBottom: 2 }}>
-                                {t.label}{t.unite !== "—" ? ` (${t.unite})` : ""}
+                                {libelleAvecUnite(t.label, t.unite)}
                               </div>
                               <FigurePng nom={`analyse-${categorie}-${t.cle}`}>
-                                <CourbeSvg x={res.x} xLabel={xLabel} series={[t]} reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
+                                <CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={[t]} reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
                               </FigurePng>
                               {s && (
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 12.5, color: "var(--texte-2)", marginTop: 2 }}>
@@ -682,7 +682,7 @@ export default function AnalysePage() {
                           ))}
                         </div>
                         <FigurePng nom={`analyse-${categorie}-ecart`}>
-                          <CourbeSvg x={res.x} xLabel={xLabel} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} />
+                          <CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} />
                         </FigurePng>
                         <p className="ui-liste-pied" style={{ marginTop: 6 }}>
                           {refDansPlage

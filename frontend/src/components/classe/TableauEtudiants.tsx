@@ -6,6 +6,7 @@ import { estReponse, type LigneAnnotation } from "@/lib/classe-reseau";
 import { Carte } from "@/components/ui/Carte";
 import { Icone } from "@/components/ui/Icones";
 import { dateCourte } from "./commun";
+import { TIRET } from "@/lib/format";
 
 export default function TableauEtudiants({ etudiants, annotations, selId, onChoisir, couleurDe, alertesParEtudiant }: {
   etudiants: EtudiantClasse[];
@@ -52,11 +53,11 @@ export default function TableauEtudiants({ etudiants, annotations, selId, onChoi
                   </td>
                   <td>{e.nbEssais}</td>
                   <td className={alertesParEtudiant.get(e.id) ? "classe-alerte" : undefined}>
-                    {alertesParEtudiant.get(e.id) || "—"}
+                    {alertesParEtudiant.get(e.id) || TIRET}
                   </td>
                   <td>{dateCourte(e.derniereActivite)}</td>
                   <td>
-                    {siens.length || "—"}
+                    {siens.length || TIRET}
                     {nbNonLues > 0 && <span className="classe-note-alerte"> · {nbNonLues} réponse{nbNonLues > 1 ? "s" : ""} non lue{nbNonLues > 1 ? "s" : ""}</span>}
                   </td>
                   <td className="classe-chevron" aria-hidden="true">

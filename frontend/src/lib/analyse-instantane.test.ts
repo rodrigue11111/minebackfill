@@ -5,7 +5,7 @@ const INST: InstantaneAnalyse = {
   date: "2026-07-24T12:00:00.000Z",
   categorie: "RPG",
   methode: "Cw%",
-  parametre: { label: "Bw — taux massique de liant (%)", min: 1, max: 10, points: 40 },
+  parametre: { label: "Taux massique de liant Bw (%)", min: 1, max: 10, points: 40 },
   recette: { gsResidu: 3.05, w0Pct: 20, cwPct: 75, srPct: 100, bwPct: 5, amPct: 30, gsAgregat: 2.8 },
   liants: [{ code: "CP10", gs: 3.15, fractionPct: 100 }],
   constantes: {
@@ -22,7 +22,7 @@ describe("lignesResume", () => {
     expect(texte).toContain("Catégorie : RPG");
     expect(texte).toContain("Version du solveur : intra2017-1.0");
     expect(texte).toContain("Pack de conventions : Intra 2017");
-    expect(texte).toContain("Bw — taux massique de liant");
+    expect(texte).toContain("Taux massique de liant Bw");
     expect(texte).toContain("Gs granulat 2,8"); // décimale française
     expect(texte).toContain("CP10");
   });
@@ -73,7 +73,7 @@ describe("analyse-instantane — champs ajoutés (contenant, sorties)", () => {
   });
 
   it("les grandeurs tracées sont imprimées", () => {
-    const t = lignesResume({ ...base(), sorties: ["E/L — rapport eau/liant", "Masse de liant"] }).join("\n");
+    const t = lignesResume({ ...base(), sorties: ["Rapport eau/liant E/L", "Masse de liant"] }).join("\n");
     expect(t).toContain("Masse de liant");
   });
 

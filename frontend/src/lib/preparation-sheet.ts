@@ -24,6 +24,7 @@ const masseAjoutComposantN = (c: RecipeComponents | null | undefined, i: number)
 import { fmt as fmtNum } from "@/lib/format";
 import { APP_NAME } from "@/lib/branding";
 import { assainirTextePdf } from "@/lib/texte-pdf";
+import { TIRET } from "./format";
 
 const NAVY: [number, number, number] = [12, 30, 66];
 const WHITE: [number, number, number] = [255, 255, 255];
@@ -74,7 +75,7 @@ export async function exportPreparationPdf(
 
   const contenant = () => {
     const t = general.container_type as string | null;
-    if (!t) return "—";
+    if (!t) return TIRET;
     const label = CONTENANT_LABELS[t] ?? t;
     if (t === "section_hauteur")
       return `${label} — ${fmtNum(general.container_section, 1)} cm² x ${fmtNum(general.container_height, 1)} cm`;

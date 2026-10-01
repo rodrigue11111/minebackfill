@@ -7,6 +7,7 @@ import { libelleGroupe, MIN_GACHEES_REPERE, type Comparaison, type GroupeCompara
 import { SEUILS_ALERTES } from "@/lib/classe-alertes";
 import { dateCourte, lienBouton, nombre, td, tdNum, th, type RefDoc } from "./commun";
 import { Carte } from "@/components/ui/Carte";
+import { TIRET } from "@/lib/format";
 
 function CarteGroupe({ groupe, onOuvrir }: { groupe: GroupeComparaison; onOuvrir: (ref: RefDoc) => void }) {
   const ages = groupe.parAge.map((a) => a.ageJours);
@@ -51,9 +52,9 @@ function CarteGroupe({ groupe, onOuvrir }: { groupe: GroupeComparaison; onOuvrir
                   <td style={{ ...tdNum, fontWeight: 700 }}>{nombre(l.moyenneKpa, 0)}</td>
                   <td style={tdNum}>{nombre(l.ecartTypeKpa, 0)}</td>
                   <td style={tdNum}>{l.n}{l.nExclus > 0 && <span style={{ color: "var(--texte-3)" }}> (+{l.nExclus} exclue{l.nExclus > 1 ? "s" : ""})</span>}</td>
-                  <td style={tdNum}>{l.cvPct === null ? "—" : `${nombre(l.cvPct, 1)} %`}</td>
+                  <td style={tdNum}>{l.cvPct === null ? TIRET : `${nombre(l.cvPct, 1)} %`}</td>
                   <td style={{ ...tdNum, color: l.ecartMedianePct === null ? "var(--texte-3)" : Math.abs(l.ecartMedianePct) > SEUILS_ALERTES.ecartMedianePct ? "var(--hors-tolerance-texte)" : "var(--texte)" }}>
-                    {l.ecartMedianePct === null ? "—" : `${l.ecartMedianePct > 0 ? "+" : ""}${nombre(l.ecartMedianePct, 0)} %`}
+                    {l.ecartMedianePct === null ? TIRET : `${l.ecartMedianePct > 0 ? "+" : ""}${nombre(l.ecartMedianePct, 0)} %`}
                   </td>
                 </tr>
               ))}

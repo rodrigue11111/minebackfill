@@ -2,7 +2,11 @@
 // Métadonnées des courbes paramétriques (onglet Analyse) : libellés et unités
 // FR des grandeurs de sortie, et des paramètres balayables. Les clés « cle »
 // doivent correspondre EXACTEMENT à celles renvoyées par /analyse/balayage
-// (backend app/core/analyse.py — _SERIES et BalayageParam).
+// (backend app/core/analyse.py : _SERIES et BalayageParam). Les libellés
+// suivent la forme du glossaire (« Taux massique de liant Bw ») : libelle().
+
+import { libelle, T } from "./glossaire";
+import { SANS_UNITE } from "./format";
 
 export type CategorieAnalyse = "RPC" | "RPG";
 
@@ -11,7 +15,7 @@ export interface SortieMeta {
   cle: string;
   /** Libellé court affiché (français). */
   label: string;
-  /** Unité affichée (« % », « kg/m³ », « — » pour un ratio sans unité). */
+  /** Unité affichée (« % », « kg/m³ », SANS_UNITE pour un ratio sans unité). */
   unite: string;
   /** Catégories où la grandeur est pertinente. */
   categories: CategorieAnalyse[];
@@ -20,29 +24,29 @@ export interface SortieMeta {
 
 // Palette distincte et lisible (une couleur par grandeur).
 export const SORTIES: SortieMeta[] = [
-  { cle: "wc_ratio", label: "E/L — rapport eau/liant", unite: "—", categories: ["RPC", "RPG"], couleur: "#2563eb" },
-  { cle: "solids_mass_pct", label: "Cw — pourcentage solide massique", unite: "%", categories: ["RPC", "RPG"], couleur: "#ea580c" },
-  { cle: "void_ratio", label: "e — indice des vides", unite: "—", categories: ["RPC", "RPG"], couleur: "#16a34a" },
-  { cle: "porosity", label: "n — porosité", unite: "—", categories: ["RPC", "RPG"], couleur: "#7c3aed" },
-  { cle: "saturation_pct", label: "Sr — degré de saturation", unite: "%", categories: ["RPC", "RPG"], couleur: "#0891b2" },
-  { cle: "w_mass_pct", label: "w — teneur en eau massique", unite: "%", categories: ["RPC", "RPG"], couleur: "#db2777" },
-  { cle: "bw_mass_pct", label: "Bw — taux massique de liant", unite: "%", categories: ["RPC", "RPG"], couleur: "#d97706" },
-  { cle: "bv_vol_pct", label: "Bv — taux volumique de liant", unite: "%", categories: ["RPC", "RPG"], couleur: "#65a30d" },
-  { cle: "dry_density_kg_m3", label: "ρd — masse volumique sèche", unite: "kg/m³", categories: ["RPC", "RPG"], couleur: "#dc2626" },
-  { cle: "bulk_density_kg_m3", label: "ρh — masse volumique humide", unite: "kg/m³", categories: ["RPC", "RPG"], couleur: "#0d9488" },
-  { cle: "aggregate_mass_pct", label: "Am — fraction massique de granulat", unite: "%", categories: ["RPG"], couleur: "#9333ea" },
-  { cle: "aggregate_vol_pct_of_residue", label: "Av — fraction volumique de granulat", unite: "%", categories: ["RPG"], couleur: "#0284c7" },
-  { cle: "cv_vol_pct", label: "Cv — pourcentage solide volumique", unite: "%", categories: ["RPC", "RPG"], couleur: "#c026d3" },
+  { cle: "wc_ratio", label: libelle("el"), unite: SANS_UNITE, categories: ["RPC", "RPG"], couleur: "#2563eb" },
+  { cle: "solids_mass_pct", label: libelle("cw"), unite: "%", categories: ["RPC", "RPG"], couleur: "#ea580c" },
+  { cle: "void_ratio", label: libelle("e"), unite: SANS_UNITE, categories: ["RPC", "RPG"], couleur: "#16a34a" },
+  { cle: "porosity", label: libelle("n"), unite: SANS_UNITE, categories: ["RPC", "RPG"], couleur: "#7c3aed" },
+  { cle: "saturation_pct", label: libelle("sr"), unite: "%", categories: ["RPC", "RPG"], couleur: "#0891b2" },
+  { cle: "w_mass_pct", label: libelle("w"), unite: "%", categories: ["RPC", "RPG"], couleur: "#db2777" },
+  { cle: "bw_mass_pct", label: libelle("bw"), unite: "%", categories: ["RPC", "RPG"], couleur: "#d97706" },
+  { cle: "bv_vol_pct", label: libelle("bv"), unite: "%", categories: ["RPC", "RPG"], couleur: "#65a30d" },
+  { cle: "dry_density_kg_m3", label: "Masse volumique sèche ρd", unite: "kg/m³", categories: ["RPC", "RPG"], couleur: "#dc2626" },
+  { cle: "bulk_density_kg_m3", label: "Masse volumique humide ρh", unite: "kg/m³", categories: ["RPC", "RPG"], couleur: "#0d9488" },
+  { cle: "aggregate_mass_pct", label: libelle("am"), unite: "%", categories: ["RPG"], couleur: "#9333ea" },
+  { cle: "aggregate_vol_pct_of_residue", label: "Fraction volumique de granulat Av", unite: "%", categories: ["RPG"], couleur: "#0284c7" },
+  { cle: "cv_vol_pct", label: libelle("cv"), unite: "%", categories: ["RPC", "RPG"], couleur: "#c026d3" },
   // Les deux masses montrent la redistribution que masque un balayage de Bw :
   // à Cw imposé, le résidu cède la place au liant. Unité « kg » — pensez à la
   // brancher dans fmtStat (page Analyse) et fmtVal (CourbeSvg), sans quoi
   // elles tombent dans la branche par défaut et affichent 4 décimales.
   { cle: "residue_dry_mass_kg", label: "Masse de résidu sec", unite: "kg", categories: ["RPC", "RPG"], couleur: "#a16207" },
   { cle: "binder_total_mass_kg", label: "Masse de liant", unite: "kg", categories: ["RPC", "RPG"], couleur: "#475569" },
-  { cle: "theta_pct", label: "θ — teneur en eau volumique", unite: "%", categories: ["RPC", "RPG"], couleur: "#0369a1" },
+  { cle: "theta_pct", label: libelle("theta"), unite: "%", categories: ["RPC", "RPG"], couleur: "#0369a1" },
   // Gs du remblai : il bouge avec Bw parce que le Gs du liant diffère de celui
   // du résidu. C'est l'explication des petites variations de ρd et de e.
-  { cle: "gs_backfill", label: "Gs — densité relative du remblai", unite: "—", categories: ["RPC", "RPG"], couleur: "#be123c" },
+  { cle: "gs_backfill", label: "Densité relative du remblai Gs", unite: SANS_UNITE, categories: ["RPC", "RPG"], couleur: "#be123c" },
   { cle: "water_total_mass_kg", label: "Masse d'eau totale", unite: "kg", categories: ["RPC", "RPG"], couleur: "#0ea5e9" },
   // Gaté RPG : vaut 0 en RPC, une courbe plate à zéro n'apprend rien.
   { cle: "aggregate_dry_mass_kg", label: "Masse de granulat sec", unite: "kg", categories: ["RPG"], couleur: "#57534e" },
@@ -53,16 +57,18 @@ export interface ParamMeta {
   cle: string;
   /** Libellé de l'axe X (français, avec unité). */
   label: string;
+  /** Symbole seul (« Bw ») : info-bulle « Bw = 5 % », pente « par Bw ». */
+  symbole: string;
   categories: CategorieAnalyse[];
   defautMin: number;
   defautMax: number;
 }
 
 export const PARAMS: ParamMeta[] = [
-  { cle: "binder_mass_pct", label: "Bw — taux massique de liant (%)", categories: ["RPC", "RPG"], defautMin: 1, defautMax: 10 },
-  { cle: "solids_mass_pct", label: "Cw — pourcentage solide massique (%)", categories: ["RPC", "RPG"], defautMin: 65, defautMax: 85 },
-  { cle: "saturation_pct", label: "Sr — degré de saturation (%)", categories: ["RPC", "RPG"], defautMin: 70, defautMax: 100 },
-  { cle: "aggregate_fraction_pct", label: "Am — fraction massique de granulat (%)", categories: ["RPG"], defautMin: 0, defautMax: 50 },
+  { cle: "binder_mass_pct", label: `${libelle("bw")} (%)`, symbole: T.bw.court, categories: ["RPC", "RPG"], defautMin: 1, defautMax: 10 },
+  { cle: "solids_mass_pct", label: `${libelle("cw")} (%)`, symbole: T.cw.court, categories: ["RPC", "RPG"], defautMin: 65, defautMax: 85 },
+  { cle: "saturation_pct", label: `${libelle("sr")} (%)`, symbole: T.sr.court, categories: ["RPC", "RPG"], defautMin: 70, defautMax: 100 },
+  { cle: "aggregate_fraction_pct", label: `${libelle("am")} (%)`, symbole: T.am.court, categories: ["RPG"], defautMin: 0, defautMax: 50 },
 ];
 
 export const sortiesPour = (cat: CategorieAnalyse) => SORTIES.filter((s) => s.categories.includes(cat));

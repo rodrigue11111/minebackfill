@@ -7,6 +7,7 @@ import { Carte } from "@/components/ui/Carte";
 import { Bandeau } from "@/components/ui/Bandeau";
 import { Pastille, type TonPastille } from "@/components/ui/Pastille";
 import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
+import { TIRET } from "@/lib/format";
 
 // Section « Sauvegarde en ligne » : seulement quand les comptes sont OUVERTS.
 // Page rendue au build, comme ces variables : la section apparaît au
@@ -360,18 +361,18 @@ export default function GuidePage() {
               </thead>
               <tbody>
                 {[
-                  ["Gs du résidu", "—", "2,6 – 4,0", "Densité relative des grains (Gs = ρs/ρw), sans unité. Mesurée au pycnomètre (ASTM D854). Valeur typique : 2,85 – 3,20 pour des résidus de mines métalliques."],
+                  ["Gs du résidu", TIRET, "2,6 – 4,0", "Densité relative des grains (Gs = ρs/ρw), sans unité. Mesurée au pycnomètre (ASTM D854). Valeur typique : 2,85 – 3,20 pour des résidus de mines métalliques."],
                   ["w₀", "%", "0 – 35 %", "Teneur en eau massique du résidu tel que reçu (ASTM D2216). Elle réduit l'eau à ajouter."],
                   ["Cw", "%", "65 – 85 %", "Pourcentage solide massique : masse des solides / masse totale du remblai frais. Plus il est élevé, plus la pâte est épaisse. Usuel : 72 – 80 % pour un RPC."],
                   ["Bw", "%", "3 – 12 %", "Taux massique de liant : masse de liant / masse sèche de résidu (et de granulat en RPG). Bw = 5 % : 5 kg de liant pour 100 kg de résidu sec."],
                   ["Sr", "%", "80 – 100 %", "Degré de saturation : volume d'eau / volume des vides. Sr = 100 % : pâte saturée, sans air. Généralement 100 % pour un RPC."],
-                  ["E/L (W/C)", "—", "3 – 10", "Rapport eau/liant : masse d'eau / masse de liant. Plus il est élevé, plus la pâte est fluide et moins elle est résistante."],
-                  ["Gs du liant", "—", "2,6 – 3,2", "Densité relative de l'agent liant (ASTM C188), calculée comme moyenne harmonique pondérée de ses composants."],
+                  ["E/L (W/C)", TIRET, "3 – 10", "Rapport eau/liant : masse d'eau / masse de liant. Plus il est élevé, plus la pâte est fluide et moins elle est résistante."],
+                  ["Gs du liant", TIRET, "2,6 – 3,2", "Densité relative de l'agent liant (ASTM C188), calculée comme moyenne harmonique pondérée de ses composants."],
                   ["Am (RPG)", "%", "10 – 60 %", "Fraction massique de granulat dans les solides hors liant. Am = 30 % : 30 g de granulat pour 100 g de (résidu + granulat)."],
-                  ["Gs du granulat (RPG)", "—", "2,50 – 2,80", "Densité relative du granulat (sable ou roche concassée). Valeur typique d'un sable siliceux : 2,65."],
+                  ["Gs du granulat (RPG)", TIRET, "2,50 – 2,80", "Densité relative du granulat (sable ou roche concassée). Valeur typique d'un sable siliceux : 2,65."],
                   ["S", "mm", "150 – 250", "Affaissement au cône d'Abrams (ASTM C143/C143M). 178 mm (7 po) sert de référence de consistance."],
-                  ["Nombre de moules", "—", "1 – 200+", "Nombre de moules par recette. Détermine le volume total à préparer."],
-                  ["κ (facteur de perte)", "—", "1,0 – 1,25", "Multiplie les masses pour compenser les pertes au malaxage et au moulage. κ = 1 : aucun surplus ; le cours retient souvent 1,25. Appelé « facteur de sécurité » dans les feuilles de calcul."],
+                  ["Nombre de moules", TIRET, "1 – 200+", "Nombre de moules par recette. Détermine le volume total à préparer."],
+                  ["κ (facteur de perte)", TIRET, "1,0 – 1,25", "Multiplie les masses pour compenser les pertes au malaxage et au moulage. κ = 1 : aucun surplus ; le cours retient souvent 1,25. Appelé « facteur de sécurité » dans les feuilles de calcul."],
                 ].map(([param, unit, range, desc]) => (
                   <tr key={param as string}>
                     <td><strong>{param}</strong></td>

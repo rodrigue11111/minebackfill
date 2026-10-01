@@ -4,6 +4,7 @@ import React from "react";
 import { lireClasseurPresse } from "@/lib/presse-fichier";
 import type { EssaiPresse, PointCourbe } from "@/lib/presse-urstm";
 import type { Eprouvette, EssaiUCS } from "@/lib/eprouvette";
+import { TIRET } from "@/lib/format";
 
 /**
  * Import d'un classeur de presse (URSTM) dans les éprouvettes d'une gâchée.
@@ -148,13 +149,13 @@ export default function ImportPresse({ eprouvettes, onAppliquer, idEntree, sansB
                   <tr key={e.echantillon}>
                     <td style={td}>{e.echantillon}</td>
                     <td style={{ ...td, fontWeight: 700 }}>
-                      {e.contrainteKpa !== null ? `${Math.round(e.contrainteKpa).toLocaleString("fr-CA")} kPa` : "—"}
+                      {e.contrainteKpa !== null ? `${Math.round(e.contrainteKpa).toLocaleString("fr-CA")} kPa` : TIRET}
                     </td>
                     <td style={td}>
-                      {e.moduleYoungKpa !== null ? `${Math.round(e.moduleYoungKpa).toLocaleString("fr-CA")} kPa` : "—"}
+                      {e.moduleYoungKpa !== null ? `${Math.round(e.moduleYoungKpa).toLocaleString("fr-CA")} kPa` : TIRET}
                     </td>
-                    <td style={td}>{e.tempsDeCureJours !== null ? `${e.tempsDeCureJours} j` : "—"}</td>
-                    <td style={td}>{e.commentaires || "—"}</td>
+                    <td style={td}>{e.tempsDeCureJours !== null ? `${e.tempsDeCureJours} j` : TIRET}</td>
+                    <td style={td}>{e.commentaires || TIRET}</td>
                     <td style={td}>
                       <select value={cible[e.echantillon] ?? ""}
                         onChange={(ev) => setCible((c) => ({ ...c, [e.echantillon]: ev.target.value }))}
