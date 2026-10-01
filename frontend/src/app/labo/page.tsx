@@ -10,6 +10,7 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { nomLiant } from "@/lib/liants";
+import { materiauxDepuisFormulation } from "@/lib/gachee-materiaux";
 import FiltreSession from "@/components/FiltreSession";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -48,6 +49,8 @@ export default function LaboPage() {
   // Filtre de session : la liste et les figures. L'échéancier, lui, montre
   // TOUTES les éprouvettes à écraser — on ne doit en manquer aucune.
   const sessions = useStore((s) => s.sessions);
+  const catalogueResidus = useStore((s) => s.catalogue_residus);
+  const catalogueGranulats = useStore((s) => s.catalogue_granulats);
   const [filtreSession, setFiltreSession] = useState<FiltreSessionValeur>("toutes");
   const gacheesSession = gachees.filter((g) =>
     correspond({ sessionId: g.sessionId, date: g.creeLe }, sessions, filtreSession));
@@ -80,6 +83,8 @@ export default function LaboPage() {
       eprouvettes: [],
       parametres: parametresDepuisRecette(recette),
       protocolesSnapshot: snapshotProtocoles(protocoles),
+      // Fiche d'essai : matériaux de la formulation (modifiables ensuite).
+      materiaux: materiauxDepuisFormulation(form, { residus: catalogueResidus, granulats: catalogueGranulats }),
     };
     ajouterGachee(g);
     setNouvelle(false);

@@ -9,7 +9,8 @@
 // qu'une partie (CSS seulement, attribut data-vue).
 
 import { useState } from "react";
-import type { Ajustement, Gachee } from "@/lib/gachee";
+import { MODES_CURE, TYPES_EAU, UNITES_DOSAGE_ADJUVANT, type Ajustement, type CureGachee, type Gachee, type MateriauxGachee } from "@/lib/gachee";
+import { completudeGachee, listeManquants } from "@/lib/completude";
 import type { Annotation } from "@/lib/annotations";
 import { agregerParAge } from "@/lib/eprouvette";
 import { ancresGachee, repartirAnnotations } from "@/lib/ancres";
@@ -60,6 +61,22 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
     onMaj({ ajustements: g.ajustements.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
   const retirerAjustement = (id: string) =>
     onMaj({ ajustements: g.ajustements.filter((a) => a.id !== id) });
+  // Groupes imbriqués de la fiche d'essai : toujours une copie complète du
+  // groupe (le magasin fusionne au premier niveau seulement).
+  const majMateriaux = (patch: Partial<MateriauxGachee>) => onMaj({ materiaux: { ...g.materiaux, ...patch } });
+  const majCure = (patch: Partial<CureGachee>) => onMaj({ cure: { ...g.cure, ...patch } });
+
+  const fiche = completudeGachee(g);
+  const manquants = listeManquants(fiche);
+  const liants = (g.materiaux?.liants ?? [])
+    .map((l) => `${l.nom ?? l.code ?? "Liant"}${l.fractionPct != null ? ` ${l.fractionPct.toLocaleString("fr-CA", { maximumFractionDigits: 1 })} %` : ""}`)
+    .join(", ");
+  const residuSnap = g.materiaux?.residu;
+  const detailResidu = [
+    residuSnap?.gs != null ? `Gs ${residuSnap.gs.toLocaleString("fr-CA", { maximumFractionDigits: 3 })}` : null,
+    residuSnap?.w0Pct != null ? `w₀ ${residuSnap.w0Pct.toLocaleString("fr-CA", { maximumFractionDigits: 1 })} %` : null,
+    residuSnap?.provenance ?? null,
+  ].filter(Boolean).join(" · ");
 
   const parAge = agregerParAge(g.eprouvettes).filter((a) => a.moyenneKpa !== null);
   const coulee = g.eprouvettes.length > 0
@@ -72,7 +89,12 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
         retour={{ onClick: onRetour, libelle: "Gâchées" }}
         taille="moyen"
         titre={g.code}
-        pastille={g.statut === "terminee" ? <Pastille ton="succes">Terminée</Pastille> : <Pastille ton="alerte">Brouillon</Pastille>}
+        pastille={<>
+          {g.statut === "terminee" ? <Pastille ton="succes">Terminée</Pastille> : <Pastille ton="alerte">Brouillon</Pastille>}
+          <Pastille ton="neutre" title="Champs descriptifs renseignés. Rien n'est obligatoire : la fiche sert à la réutilisation des essais.">
+            Fiche : {fiche.renseignes}/{fiche.total}
+          </Pastille>
+        </>}
         sousTitre={[
           g.formulationLabel, g.categorie, `recette ${(g.recetteIndex ?? 0) + 1}`,
           coulee ? `coulée le ${dateLongue(coulee)}` : `créée le ${dateLongue(new Date(g.creeLe))}`,
@@ -201,6 +223,50 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                 <LigneListe libelle="Température (°C)" htmlFor="temperature"><ChampNombre id="temperature" placeholder={TIRET} value={g.temperatureC} onChange={(n) => onMaj({ temperatureC: n })} /></LigneListe>
                 <LigneListe libelle="w mesuré (%)" htmlFor="w-mesure"><ChampNombre id="w-mesure" placeholder={TIRET} value={g.wMesurePct} onChange={(n) => onMaj({ wMesurePct: n })} /></LigneListe>
                 <LigneListe libelle="Cw mesuré (%)" htmlFor="cw-mesure"><ChampNombre id="cw-mesure" placeholder={TIRET} value={g.cwMesurePct} onChange={(n) => onMaj({ cwMesurePct: n })} /></LigneListe>
+                <LigneListe libelle="Résidu" detail={detailResidu || "Nom ou provenance du résidu employé"} htmlFor="residu-nom">
+                  <input id="residu-nom" className="field-input labo-champ-texte" value={residuSnap?.nom ?? ""}
+                    onChange={(e) => majMateriaux({ residu: { ...residuSnap, nom: e.target.value } })} />
+                </LigneListe>
+                {liants && <LigneListe libelle="Agent liant" valeur={liants} />}
+                <LigneListe libelle="Eau de gâchage" htmlFor="eau-type">
+                  <select id="eau-type" className="field-input labo-champ-texte" value={g.materiaux?.eau?.type ?? ""}
+                    onChange={(e) => majMateriaux({ eau: { ...g.materiaux?.eau, type: (e.target.value || undefined) as NonNullable<MateriauxGachee["eau"]>["type"] } })}>
+                    <option value="">Non précisée</option>
+                    {TYPES_EAU.map((t) => <option key={t.valeur} value={t.valeur}>{t.libelle}</option>)}
+                  </select>
+                </LigneListe>
+                <LigneListe libelle="Adjuvant" detail="Nom du produit, s'il y en a un" htmlFor="adjuvant-nom">
+                  <input id="adjuvant-nom" className="field-input labo-champ-texte" value={g.materiaux?.adjuvant?.nom ?? ""}
+                    onChange={(e) => majMateriaux({ adjuvant: { ...g.materiaux?.adjuvant, nom: e.target.value } })} />
+                </LigneListe>
+                {g.materiaux?.adjuvant?.nom?.trim() && (
+                  <>
+                    <LigneListe libelle="Dosage de l'adjuvant" htmlFor="adjuvant-dosage">
+                      <ChampNombre id="adjuvant-dosage" placeholder={TIRET} value={g.materiaux?.adjuvant?.dosage}
+                        onChange={(n) => majMateriaux({ adjuvant: { ...g.materiaux?.adjuvant, dosage: n, dosageUnite: g.materiaux?.adjuvant?.dosageUnite ?? "ml/100 kg" } })} />
+                    </LigneListe>
+                    <LigneListe libelle="Unité du dosage" htmlFor="adjuvant-unite">
+                      <select id="adjuvant-unite" className="field-input" value={g.materiaux?.adjuvant?.dosageUnite ?? "ml/100 kg"}
+                        onChange={(e) => majMateriaux({ adjuvant: { ...g.materiaux?.adjuvant, dosageUnite: e.target.value as (typeof UNITES_DOSAGE_ADJUVANT)[number] } })}>
+                        {UNITES_DOSAGE_ADJUVANT.map((u) => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </LigneListe>
+                  </>
+                )}
+                <LigneListe libelle="Durée de malaxage (min)" htmlFor="malaxage"><ChampNombre id="malaxage" placeholder={TIRET} value={g.malaxageDureeMin} onChange={(n) => onMaj({ malaxageDureeMin: n })} /></LigneListe>
+              </ListeGroupee>
+              <ListeGroupee titre="Cure des éprouvettes"
+                pied={manquants ? `À compléter si vous les connaissez : ${manquants}. Rien n'est obligatoire.` : "Fiche d'essai complète."}>
+                <LigneListe libelle="Mode de cure" htmlFor="cure-mode">
+                  <select id="cure-mode" className="field-input labo-champ-texte" value={g.cure?.mode ?? ""}
+                    onChange={(e) => majCure({ mode: (e.target.value || undefined) as CureGachee["mode"] })}>
+                    <option value="">Non précisé</option>
+                    {MODES_CURE.map((m) => <option key={m.valeur} value={m.valeur}>{m.libelle}</option>)}
+                  </select>
+                </LigneListe>
+                <LigneListe libelle="Température de cure (°C)" htmlFor="cure-temperature"><ChampNombre id="cure-temperature" placeholder={TIRET} value={g.cure?.temperatureC} onChange={(n) => majCure({ temperatureC: n })} /></LigneListe>
+                <LigneListe libelle="Humidité relative (%)" htmlFor="cure-humidite"><ChampNombre id="cure-humidite" placeholder={TIRET} value={g.cure?.humiditePct} onChange={(n) => majCure({ humiditePct: n })} /></LigneListe>
+                <LigneListe libelle="Précision" htmlFor="cure-note"><input id="cure-note" className="field-input labo-champ-texte" value={g.cure?.note ?? ""} onChange={(e) => majCure({ note: e.target.value })} /></LigneListe>
               </ListeGroupee>
             </div>
           </Carte>

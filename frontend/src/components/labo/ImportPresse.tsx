@@ -77,6 +77,8 @@ export default function ImportPresse({ eprouvettes, onAppliquer, idEntree, sansB
           date: e.dateEssai ?? undefined,
           moduleYoungKpa: e.moduleYoungKpa ?? undefined,
           deformationMaxPct: e.deformationMaxPct ?? undefined,
+          deflexionMaxMm: e.deflexionMaxMm ?? undefined,
+          masseG: e.masseG ?? undefined,
           tempsDeCureReelJours: e.tempsDeCureJours ?? undefined,
           sourcePresse: {
             fichier: nomFichier, echantillon: e.echantillon,
