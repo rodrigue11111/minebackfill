@@ -9,6 +9,7 @@ import type { Gachee } from "./gachee";
 import { protocolesDefaut, type Protocole } from "./protocole";
 import { sessionActive, validerSessions, type Session } from "./sessions";
 import { migrerAnnotationV1, type Annotation } from "./annotations";
+import type { Revue } from "./revues";
 import { descriptorFor } from "./method-registry";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
@@ -474,6 +475,20 @@ export function persistAnnotations(e: EtatAnnotations): boolean {
   return persistVersioned(ANNOTATIONS_KEY, ANNOTATIONS_VERSION, e);
 }
 
+// ── Revues de l'enseignant sur MES gâchées (lues en ligne) ──
+// Copie locale, relue en entier avec les commentaires. HORS sauvegarde : elle
+// appartient au serveur, comme le fil de commentaires.
+export const REVUES_KEY = "minebackfill_revues";
+const REVUES_VERSION = 1;
+
+export function loadRevuesFromStorage(): Revue[] {
+  const r = loadVersioned<Revue[] | null>(REVUES_KEY, REVUES_VERSION, (d) => (Array.isArray(d) ? (d as Revue[]) : null), null);
+  return Array.isArray(r) ? r.filter((x) => x && typeof x.id === "string" && (x.decision === "acceptee" || x.decision === "refusee")) : [];
+}
+export function persistRevues(revues: Revue[]): boolean {
+  return persistVersioned(REVUES_KEY, REVUES_VERSION, revues);
+}
+
 const UNITS_KEY = "minebackfill_unit_prefs";
 
 function loadUnitsFromStorage(): UnitPreferences {
@@ -554,6 +569,9 @@ interface AppState {
   deleteMaterial: (kind: MaterialKind, index: number, admin?: boolean) => void;
   restoreOfficialMaterials: (kind: MaterialKind) => void;
   importMaterials: (kind: MaterialKind, items: MaterialItem[]) => void;
+  /** Enseignant : ajoute un matériau OFFICIEL (nouvel id), par exemple depuis
+   *  l'instantané d'une gâchée d'étudiant. À publier ensuite depuis Réglages. */
+  ajouterMateriauOfficiel: (kind: "residus" | "granulats", champs: Partial<ResiduItem> | Partial<GranulatItem>) => void;
 
   // Cloud : remplace la couche OFFICIELLE d'un catalogue par celle publiée par
   // l'enseignant (la couche perso locale est intégralement conservée).
@@ -649,6 +667,10 @@ interface AppState {
   // Annotations de l'enseignant sur mon travail (copie locale, lecture seule).
   annotations: Annotation[];
   loadAnnotations: () => void;
+
+  // Revues de l'enseignant sur mes gâchées (copie locale, lecture seule).
+  revues: Revue[];
+  loadRevues: () => void;
 
   // Sessions de cours : rangent le travail d'une année à l'autre.
   sessions: Session[];
@@ -1039,6 +1061,18 @@ export const useStore = create<AppState>((set, get) => ({
         .filter((m) => m.origine !== "officiel")
         .map((m) => (idsOfficiels.has(m.id) ? { ...m, id: makeMaterialId(kind) } : m));
       const items = [...MATERIAL_CONFIG[kind].defauts.map((m) => ({ ...m })), ...perso];
+      persistMaterials(kind, items);
+      return { [slice]: items } as Partial<AppState>;
+    }),
+  ajouterMateriauOfficiel: (kind, champs) =>
+    set((state) => {
+      const slice = SLICE_OF_KIND[kind];
+      // Toujours un NOUVEL id : reprendre celui d'un matériau personnel
+      // d'étudiant créerait, chez lui, deux entrées de même id après
+      // publication (l'officielle et la sienne).
+      const neuf = MATERIAL_CONFIG[kind].neuf(makeMaterialId(kind));
+      const item = { ...neuf, ...champs, id: neuf.id, origine: "officiel" as MaterialOrigine } as MaterialItem;
+      const items = [...(state[slice] as MaterialItem[]), item];
       persistMaterials(kind, items);
       return { [slice]: items } as Partial<AppState>;
     }),
@@ -1437,6 +1471,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   annotations: [],
   loadAnnotations: () => set({ annotations: loadAnnotationsFromStorage().annotations }),
+  revues: [],
+  loadRevues: () => set({ revues: loadRevuesFromStorage() }),
 
   sessions: [],
   loadSessions: () => set({ sessions: loadSessionsFromStorage() }),

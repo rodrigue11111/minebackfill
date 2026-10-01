@@ -21,7 +21,7 @@ const profils: ProfilClasse[] = [
 ];
 const sessions = [{ id: "A2026", nom: "Automne 2026", debut: "2026-09-01", fin: "2026-12-23" }];
 const catalogues = {
-  residus: [{ id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, provenance: "LaRonde", origine: "officiel" }] as ResiduItem[],
+  residus: [{ id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, provenance: "LaRonde", origine: "officiel", d50_um: 18.5, p20_pct: 52.3, soufre_pct: 12.1, mineralogie: "Pyrite" }] as ResiduItem[],
   granulats: [] as GranulatItem[],
   liants: [
     { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.15 },
@@ -136,6 +136,47 @@ describe("jeu d'essais pseudonymisé", () => {
       expect.objectContaining({ type: "liant", ref: "CP10", source: "catalogue", nom: "Ciment Portland GU (anc. type 10)", nb_gachees: 1 }),
       expect.objectContaining({ type: "liant", ref: "SLAG", source: "catalogue", nb_gachees: 2 }),
     ]);
+  });
+
+  it("caractérisation du résidu lue dans le catalogue de l'enseignant (essais et materiaux)", async () => {
+    const j = await jeuDe();
+    const e1 = j.essais.find((l) => l.eprouvette_code === "G-20260910-01-E01")!;
+    expect(e1).toMatchObject({ residu_d50_um: 18.5, residu_p20_pct: 52.3, residu_soufre_pct: 12.1, residu_d90_um: null, residu_muscovite_pct: null });
+    const residu = j.materiaux.find((l) => l.type === "residu")!;
+    expect(residu).toMatchObject({ d50_um: 18.5, p20_pct: 52.3, mineralogie: "Pyrite", d10_um: null, dmax_mm: null });
+    const liant = j.materiaux.find((l) => l.type === "liant")!;
+    expect(liant).toMatchObject({ d50_um: null, mineralogie: null });
+  });
+
+  it("revue de l'enseignant : colonnes, et export limité aux gâchées acceptées non modifiées", async () => {
+    const ps = await pseudonymes(etudiants.map((e) => e.id));
+    const revues: Record<string, { decision: "acceptee" | "refusee"; perimee: boolean; ecartees: string[] }> = {
+      gA: { decision: "acceptee", perimee: false, ecartees: ["a2"] },
+      gB: { decision: "acceptee", perimee: true, ecartees: [] },
+    };
+    const revueDe = (_o: string, id: string) => (revues[id] ? { ...revues[id], motif: null, maj: "m" } : undefined);
+    const tout = construireJeuEssais({ etudiants, sessions, sessionLibelle: "x", pseudonymes: ps, catalogues, maintenant, revueDe });
+    const a = tout.essais.find((l) => l.eprouvette_code === "G-20260910-01-E02")!;
+    expect(a).toMatchObject({ revue: "acceptee", revue_perimee: false, eprouvette_ecartee: true });
+    expect(tout.essais.find((l) => l.eprouvette_code === "G-20260912-01-E01")).toMatchObject({ revue: "acceptee", revue_perimee: true, eprouvette_ecartee: false });
+    expect(tout.manifeste.selection).toMatch(/^toutes les gâchées/);
+    const acceptees = construireJeuEssais({ etudiants, sessions, sessionLibelle: "x", pseudonymes: ps, catalogues, maintenant, revueDe, seulementAcceptees: true });
+    expect(acceptees.gachees.map((l) => l.gachee_code)).toEqual(["G-20260910-01"]); // gB modifiée depuis : écartée
+    expect(acceptees.manifeste).toMatchObject({ nb_gachees: 1, nb_operateurs: 1, nb_eprouvettes: 3 });
+    expect(acceptees.manifeste.selection).toMatch(/acceptées/);
+    // Sans revues (base pas à jour) : colonnes vides.
+    const sans = await jeuDe();
+    expect(sans.essais[0]).toMatchObject({ revue: null, revue_perimee: null, eprouvette_ecartee: null });
+  });
+
+  it("courbe_en_ligne : vrai ou faux selon les courbes lues en ligne ; vide si inconnu", async () => {
+    const ps = await pseudonymes(etudiants.map((e) => e.id));
+    const j = construireJeuEssais({ etudiants, sessions, sessionLibelle: "x", pseudonymes: ps, catalogues, maintenant, courbesEnLigne: new Set([`${A}|a1`]) });
+    const parCode = new Map(j.essais.map((l) => [l.eprouvette_code, l]));
+    expect(parCode.get("G-20260910-01-E01")!.courbe_en_ligne).toBe(true);
+    expect(parCode.get("G-20260910-01-E02")!.courbe_en_ligne).toBe(false);
+    expect((await jeuDe()).essais[0].courbe_en_ligne).toBeNull();
+    expect(JSON.stringify(jeuEssaisJson(j))).not.toContain(A); // le compte ne sort jamais
   });
 
   it("gâchée très ancienne ou allégée : aucun tableau manquant ne fait planter", async () => {

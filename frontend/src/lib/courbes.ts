@@ -57,6 +57,34 @@ export interface MagasinCourbes {
   /** Écrit toutes les entrées d'un coup (une transaction) ; rejette en cas d'échec. */
   ecrire(entrees: [string, CourbeColonnes][]): Promise<void>;
   supprimer(ids: string[]): Promise<void>;
+  /** Ids de toutes les courbes rangées (balayage des orphelines). */
+  lister(): Promise<string[]>;
+}
+
+/**
+ * Courbe lue en ligne (document « courbe ») : les colonnes, sans les champs de
+ * rattachement (eprouvetteId, gacheeId). null si le contenu n'en est pas une.
+ */
+export function courbeDepuisContenu(x: unknown): CourbeColonnes | null {
+  if (!estCourbeColonnes(x)) return null;
+  return { v: 1, t: x.t, f: x.f, d: x.d, s: x.s, e: x.e };
+}
+
+/**
+ * Courbes du magasin qu'aucune gâchée ne référence plus (gâchées du compte,
+ * copies de conflit et travail d'autres comptes mis de côté compris).
+ */
+export function courbesOrphelines(idsMagasin: string[], gacheesReferencees: Gachee[]): string[] {
+  const encore = new Set(gacheesReferencees.flatMap(idsCourbes));
+  return idsMagasin.filter((id) => !encore.has(id));
+}
+
+/** Lignes CSV d'une courbe (en-tête compris) : t_s ; f_n ; d_mm ; s_kpa ; e_pct. */
+export function lignesCsvCourbe(points: PointCourbe[]): (string | number)[][] {
+  return [
+    ["t_s", "f_n", "d_mm", "s_kpa", "e_pct"],
+    ...points.map((p) => [p.tempsS, p.chargeN, p.deplacementMm, p.contrainteKpa, p.deformationPct]),
+  ];
 }
 
 /** Ids des éprouvettes dont la courbe est rangée dans le magasin. */
@@ -129,6 +157,7 @@ export function creerMagasinMemoire(): MagasinCourbes & { contenu: Map<string, C
     async lire(id) { return contenu.get(id) ?? null; },
     async ecrire(entrees) { for (const [id, c] of entrees) contenu.set(id, JSON.parse(JSON.stringify(c))); },
     async supprimer(ids) { for (const id of ids) contenu.delete(id); },
+    async lister() { return [...contenu.keys()]; },
   };
 }
 

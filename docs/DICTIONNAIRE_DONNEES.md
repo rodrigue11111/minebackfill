@@ -18,6 +18,7 @@ document : ajouter une colonne sans la décrire ici fait échouer les tests.
 |---|---|
 | Jeu d'essais (JSON) | `manifeste`, `dictionnaire`, puis les trois tables `essais`, `gachees`, `materiaux` |
 | Jeu d'essais (CSV) | la table `essais` seule, une ligne par éprouvette |
+| Jeu d'essais, gâchées acceptées (JSON ou CSV) | les mêmes fichiers, limités aux gâchées acceptées par l'enseignant et non modifiées depuis sa décision |
 | Dictionnaire des données (CSV) | ce dictionnaire : table, clé, libellé, unité, type, description |
 
 L'export porte sur la session choisie dans le filtre de la page Classe
@@ -83,6 +84,19 @@ publique. Le manifeste en donne la liste (`textes_libres`).
   matériau une fois ; elle se joint à `essais` par `residu_ref`,
   `granulat_ref` ou `liant1_code`, `liant2_code`, `liant3_code` (colonne
   `ref`, avec `type`).
+- **Revue de l'enseignant.** Quand l'étudiant marque une gâchée terminée,
+  l'enseignant l'accepte ou la refuse (avec un motif) et peut écarter des
+  éprouvettes, sans modifier la gâchée. `revue`, `revue_perimee` et
+  `eprouvette_ecartee` en rendent compte ; `retenu` reste la règle de
+  l'application (l'étudiant a pu exclure une valeur lui-même, colonne
+  `exclu`). Pour un jeu « propre », prendre l'export « gâchées acceptées » et
+  garder les lignes où `retenu` vaut oui et `eprouvette_ecartee` vaut non.
+- **Caractérisation.** La granulométrie, la chimie et la minéralogie d'un
+  résidu ou d'un granulat sont saisies une seule fois, dans le catalogue de
+  l'enseignant (Réglages). Elles sont lues au moment de l'export : colonnes
+  `residu_d10_um` à `residu_muscovite_pct` de la table `essais`, et toutes les
+  colonnes de caractérisation de la table `materiaux`. Un matériau personnel
+  d'un étudiant, absent du catalogue, n'en a pas.
 
 ## Table essais
 
@@ -106,6 +120,14 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `residu_nom` | Résidu |  | texte libre | Nom du résidu, tel que saisi ou repris du catalogue. |
 | `residu_gs` | Densité relative des grains Gs du résidu |  | nombre | Gs du résidu entré dans le calcul de la recette. Sans unité. |
 | `residu_w0_pct` | Teneur en eau initiale w₀ du résidu (calcul) | % | nombre | w₀ du résidu entré dans le calcul de la recette (la valeur mesurée le jour de la gâchée est w0_mesure_pct). |
+| `residu_d10_um` | D10 du résidu | µm | nombre | Diamètre sous lequel passent 10 % des grains (masse). Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_d50_um` | D50 du résidu | µm | nombre | Diamètre médian des grains (50 % passant). Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_d80_um` | D80 du résidu | µm | nombre | Diamètre sous lequel passent 80 % des grains. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_d90_um` | D90 du résidu | µm | nombre | Diamètre sous lequel passent 90 % des grains. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_p20_pct` | P20 (passant à 20 µm) du résidu | % | nombre | Part massique des grains plus fins que 20 µm. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_soufre_pct` | Soufre du résidu | % | nombre | Teneur massique en soufre total. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_phyllosilicates_pct` | Phyllosilicates du résidu | % | nombre | Teneur massique en phyllosilicates (argiles, micas…). Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
+| `residu_muscovite_pct` | Muscovite du résidu | % | nombre | Teneur massique en muscovite. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
 | `granulat_ref` | Granulat (référence) |  | texte | Identifiant du granulat dans le catalogue, sinon « instantane:granulat:<nom> ». RPG seulement. |
 | `granulat_nom` | Granulat |  | texte libre | Nom du granulat, tel que saisi. RPG seulement. |
 | `granulat_gs` | Densité relative des grains Gs du granulat |  | nombre | Gs du granulat entré dans le calcul. Sans unité. RPG seulement. |
@@ -135,6 +157,8 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `cure_humidite_pct` | Humidité relative de cure | % | nombre | Humidité relative pendant la cure. |
 | `pesees_hors_tolerance` | Pesées hors tolérance |  | entier | Nombre de composants pesés hors de la tolérance de la gâchée. Vide si aucune pesée n'est enregistrée. |
 | `completude_pct` | Complétude de la fiche d'essai | % | entier | Part des informations descriptives renseignées (lib/completude.ts). Rien n'est obligatoire pour l'étudiant : une valeur basse signale une gâchée moins documentée. |
+| `revue` | Revue de l'enseignant |  | code | acceptee ou refusee : décision de l'enseignant sur la gâchée ; vide si elle n'a pas été revue. |
+| `revue_perimee` | Modifiée depuis la revue |  | booléen | L'étudiant a modifié la gâchée après la décision de l'enseignant (la décision porte sur une version antérieure). Vide sans revue. |
 | `eprouvette_code` | Éprouvette |  | texte | Code de l'éprouvette (code de la gâchée suivi de -ENN). |
 | `coulee_le` | Coulée le |  | date | Jour du moulage de l'éprouvette. |
 | `age_cible_j` | Âge de cure visé | j | entier | Âge de cure prévu à l'écrasement. Les moyennes de l'application sont faites par âge visé. |
@@ -162,11 +186,13 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `vitesse_unite` | Unité de la vitesse |  | code | mm/min, kN/s ou kPa/s. |
 | `presse` | Presse |  | texte libre | Presse employée, telle que saisie. |
 | `import_presse` | Importé de la presse |  | booléen | Les mesures viennent d'un fichier de presse importé (et non d'une saisie). |
+| `courbe_en_ligne` | Courbe de presse en ligne |  | booléen | La courbe contrainte-déformation de l'éprouvette est sauvegardée en ligne (lisible par l'enseignant, et incluse dans l'export « Classe (JSON) »). Vide si l'information n'a pas pu être lue. |
+| `eprouvette_ecartee` | Écartée par l'enseignant |  | booléen | L'enseignant a écarté cette éprouvette lors de sa revue (la gâchée de l'étudiant n'est pas modifiée). Vide sans revue. |
 
 ## Table gachees
 
 Une ligne par gâchée. Elle reprend les colonnes de la gâchée de la table
-`essais` (de `operateur` à `completude_pct`), puis :
+`essais` (de `operateur` à `revue_perimee`), puis :
 
 | Clé | Libellé | Unité | Type | Description |
 |---|---|---|---|---|
@@ -192,6 +218,19 @@ l'instantané de la gâchée.
 | `w0_pct` | Teneur en eau initiale w₀ | % | nombre | Résidus seulement. |
 | `humidite_pct` | Humidité | % | nombre | Granulats seulement. |
 | `provenance` | Provenance |  | texte libre | Provenance (mine, site) du matériau. |
+| `date_echantillonnage` | Date d'échantillonnage |  | date | Jour du prélèvement du résidu caractérisé. Résidus seulement, depuis le catalogue. |
+| `d10_um` | D10 | µm | nombre | Diamètre sous lequel passent 10 % des grains (masse). Résidus seulement, depuis le catalogue. |
+| `d50_um` | D50 | µm | nombre | Diamètre médian des grains (50 % passant). Résidus seulement, depuis le catalogue. |
+| `d80_um` | D80 | µm | nombre | Diamètre sous lequel passent 80 % des grains. Résidus seulement, depuis le catalogue. |
+| `d90_um` | D90 | µm | nombre | Diamètre sous lequel passent 90 % des grains. Résidus seulement, depuis le catalogue. |
+| `p20_pct` | P20 (passant à 20 µm) | % | nombre | Part massique des grains plus fins que 20 µm. Résidus seulement, depuis le catalogue. |
+| `soufre_pct` | Soufre | % | nombre | Teneur massique en soufre total. Résidus seulement, depuis le catalogue. |
+| `phyllosilicates_pct` | Phyllosilicates | % | nombre | Teneur massique en phyllosilicates (argiles, micas…). Résidus seulement, depuis le catalogue. |
+| `muscovite_pct` | Muscovite | % | nombre | Teneur massique en muscovite. Résidus seulement, depuis le catalogue. |
+| `mineralogie` | Minéralogie |  | texte libre | Description libre de la minéralogie (phases principales, méthode). Résidus seulement, depuis le catalogue. |
+| `dmax_mm` | Dmax (granulat) | mm | nombre | Dimension maximale des grains du granulat. Granulats seulement, depuis le catalogue. |
+| `d50_mm` | D50 (granulat) | mm | nombre | Diamètre médian des grains du granulat. Granulats seulement, depuis le catalogue. |
+| `absorption_pct` | Absorption (granulat) | % | nombre | Absorption d'eau du granulat (masse). Granulats seulement, depuis le catalogue. |
 | `nb_gachees` | Gâchées |  | entier | Nombre de gâchées du jeu qui emploient ce matériau. |
 
 ## Manifeste (JSON)
@@ -203,11 +242,21 @@ l'instantané de la gâchée.
 | `dictionnaire_version` | version de ce dictionnaire (`DICTIONNAIRE_VERSION`) |
 | `exporte_le` | date et heure de l'export (ISO 8601, UTC) |
 | `session` | session exportée (« Toutes les sessions », « Sans session » ou son nom) |
+| `selection` | toutes les gâchées, ou seulement celles acceptées par l'enseignant et non modifiées depuis |
 | `nb_operateurs`, `nb_gachees`, `nb_eprouvettes`, `nb_essais_retenus`, `nb_materiaux` | comptes du jeu |
 | `versions_solveur` | versions des formules présentes dans le jeu |
 | `pseudonymisation` | la règle du pseudonyme |
 | `champs_retires` | les champs exclus de l'export |
 | `textes_libres` | les colonnes en texte libre, à relire avant diffusion publique |
+
+## Accès direct (SQL)
+
+Pour un accès sans passer par l'export : vues `vue_gachees` et `vue_essais`
+dans Supabase, mêmes clés que ci-dessus quand elles existent, même pseudonyme,
+mêmes règles d'UCS et d'essai retenu. Exemples et différences (dates en
+horodatage, identifiants internes `gachee_ref` et `eprouvette_ref`, valeurs mal
+typées rendues vides) : `supabase/README.md`, section « Accès direct aux
+essais ».
 
 ## Faire évoluer le jeu
 

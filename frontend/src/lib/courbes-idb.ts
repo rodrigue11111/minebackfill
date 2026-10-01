@@ -54,5 +54,9 @@ export function magasinIndexedDb(): MagasinCourbes | null {
     async supprimer(ids) {
       await transaction("readwrite", (m) => { for (const id of ids) m.delete(id); });
     },
+    async lister() {
+      const cles = await transaction<IDBValidKey[]>("readonly", (m) => m.getAllKeys());
+      return (cles ?? []).map(String);
+    },
   };
 }

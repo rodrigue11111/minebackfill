@@ -11,11 +11,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   loadAnnotationsFromStorage, loadGacheesFromStorage, loadSavedFromStorage,
-  persistAnnotations, persistGachees, persistSaved, useStore,
+  persistAnnotations, persistGachees, persistRevues, persistSaved, useStore,
 } from "./store";
 import { fusionnerAnnotations, type Annotation } from "./annotations";
 import {
-  lireMesAnnotations, marquerAnnotationsLues, messageErreurClasse, nbReponsesNonLues, repondreAnnotation, retirerAnnotation,
+  lireMesAnnotations, lireMesRevues, marquerAnnotationsLues, messageErreurClasse, nbReponsesNonLues, repondreAnnotation, retirerAnnotation,
 } from "./classe-reseau";
 import {
   cleDoc, cycle, deciderLiaison, nombreEnAttente,
@@ -26,7 +26,9 @@ import {
 } from "./sync-etat";
 import { basculerCompte } from "./sync-bascule";
 import { creerDepotLocal } from "./sync-local";
-import { transportSupabase } from "./sync-supabase";
+import { ecrivainCourbes, purgerMesCourbes, transportSupabase } from "./sync-supabase";
+import { cycleCourbes } from "./sync-courbes";
+import { chargerEtatCourbes, magasinCourbes, sauverEtatCourbes } from "./courbes-client";
 import { creerPlanificateur, type Planificateur, type StatutSync } from "./sync-planificateur";
 
 /**
@@ -149,6 +151,49 @@ async function rafraichirAnnotations(c: Courant): Promise<void> {
   }
 }
 
+/**
+ * Revues de l'enseignant sur MES gâchées : relues en entier (au plus une par
+ * gâchée), au même rythme que les commentaires. Base pas encore à jour : rien
+ * ne change. Échec : la copie locale reste (jamais « aucune revue »).
+ */
+async function rafraichirRevues(c: Courant): Promise<void> {
+  try {
+    const revues = await lireMesRevues(c.sb, c.uid);
+    if (revues === null || courant !== c) return;
+    persistRevues(revues);
+    useStore.setState({ revues });
+  } catch {
+    /* on réessaiera au prochain cycle */
+  }
+}
+
+/** Le nettoyage serveur des courbes n'a lieu qu'une fois par connexion. */
+let courbesPurgees = false;
+
+/**
+ * Courbes de presse : envoyées en ligne après chaque cycle réussi, au plus 10
+ * à la fois (sync-courbes.ts). Puis, une fois par connexion, nettoyage des
+ * courbes dont l'éprouvette n'existe plus en ligne. Échec : on reprendra.
+ */
+async function envoyerCourbes(c: Courant): Promise<void> {
+  const m = magasinCourbes();
+  const etatSync = chargerEtatSync();
+  if (!m || etatSync.uid !== c.uid) return;
+  try {
+    const r = await cycleCourbes({
+      gachees: loadGacheesFromStorage(), etatSync, etat: chargerEtatCourbes(c.uid),
+      lire: (id) => m.lire(id), ecrire: ecrivainCourbes(c.sb, () => c.uid),
+    });
+    if (courant === c) sauverEtatCourbes(r.etat);
+    if (!courbesPurgees && courant === c) {
+      courbesPurgees = true;
+      await purgerMesCourbes(c.sb, c.uid);
+    }
+  } catch {
+    /* magasin indisponible : on reprendra au prochain cycle */
+  }
+}
+
 /** Le fil local change (lecture, réponse, accusé) : stockage puis écran. */
 function enregistrerAnnotations(annotations: Annotation[], curseur = loadAnnotationsFromStorage().curseur): void {
   persistAnnotations({ curseur, annotations });
@@ -250,12 +295,14 @@ async function executerCycle(c: Courant, budget: number): Promise<ResultatCycle>
     });
     const fin = reporterSuppressions(depart, chargerEtatSync(), r.etat);
     sauverEtatSync(fin); // un échec (stockage plein) est signalé par le bandeau de stockage
+    if (!r.erreur) await envoyerCourbes(c);
     publier({
       enAttente: nombreEnAttente(fin, c.depot.lister()),
       ...(r.avis.length > 0 ? { avis: [...instantane.avis, ...r.avis].slice(-20) } : {}),
     });
     if (!r.erreur && Date.now() - derniereLectureAnnotations >= PERIODE_ANNOTATIONS_MS) {
       await rafraichirAnnotations(c);
+      await rafraichirRevues(c);
     }
     return { ...r, etat: fin };
   };
@@ -343,13 +390,15 @@ export function connecterSynchro(sb: SupabaseClient, uid: string, o: { prof?: bo
       lireResultats: loadSavedFromStorage, ecrireResultats: persistSaved,
       lireGachees: loadGacheesFromStorage, ecrireGachees: persistGachees,
       lireMiseDeCote, ecrireMiseDeCote, supprimerMiseDeCote,
-      viderAnnotations: () => { persistAnnotations({ curseur: null, annotations: [] }); },
+      // Commentaires et revues appartiennent au compte : vidés, puis relus.
+      viderAnnotations: () => { persistAnnotations({ curseur: null, annotations: [] }); persistRevues([]); },
     }, uid);
     if (r.ok && r.change) {
       const s = useStore.getState();
       s.loadSavedResults();
       s.loadGachees();
       s.loadAnnotations();
+      s.loadRevues();
     }
   }
   const etat = chargerEtatSync();
@@ -371,6 +420,7 @@ export function deconnecterSynchro(): void {
   courant?.arreterCompteur();
   courant = null;
   derniereLectureAnnotations = -Infinity;
+  courbesPurgees = false;
   publier({ ...INITIAL });
 }
 

@@ -20,6 +20,7 @@ import { alertesClasse } from "@/lib/classe-alertes";
 import CarteAlertes from "./CarteAlertes";
 import OngletEcheancier from "./OngletEcheancier";
 import { echeancierClasse } from "@/lib/classe-echeancier";
+import CarteRevue from "./CarteRevue";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";
 const profils: ProfilClasse[] = [{ id: A, email: "alice@x.ca", display_name: "Alice Tremblay", role: "etudiant" }];
@@ -78,6 +79,12 @@ describe("vues de l'enseignant — rendu", () => {
     expect(html).toContain("Malaxage");
     expect(html).toContain("410"); // seule la valeur retenue entre dans la moyenne à 7 j
     expect(html).toContain("7 j"); // âge réel de E01 (coulée le 10, écrasée le 17)
+    expect(html).not.toContain("Courbe en ligne : afficher"); // sans lecteur de courbe
+    const avecCourbes = rendu(createElement(GacheeLecture, {
+      gachee: etudiants[0].gachees[0], maintenant, formulations: [], chargerCourbe: async () => null,
+    }));
+    expect(avecCourbes).toContain("Courbe en ligne : afficher"); // E02, importée de la presse
+    expect(avecCourbes).toContain("envoyées en ligne par le site de l&#x27;étudiant");
   });
 
   it("gâchée intégrale : fiche d'essai (matériaux, cure, conditions de l'essai, complétude)", () => {
@@ -99,6 +106,28 @@ describe("vues de l'enseignant — rendu", () => {
     expect(html).toContain("1 mm/min");
     expect(html).toContain("Cônes aux deux extrémités : cône");
     expect(html).toContain("Non renseigné : ");
+  });
+
+  it("matériau absent du catalogue officiel : proposé à l'ajout (sans Gs, bouton désactivé)", () => {
+    const catalogue = {
+      residus: [{ id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, origine: "officiel" as const }],
+      granulats: [], onAjouter: () => {},
+    };
+    const vue = (residu: Record<string, unknown>) => {
+      const doc = { ...gachee, id: "gm", materiaux: { residu } };
+      const [e] = regrouper([ligne("gachee", doc)], profils, [], "toutes");
+      return rendu(createElement(GacheeLecture, { gachee: e.gachees[0], maintenant, formulations: [], catalogue }));
+    };
+    const inconnu = vue({ nom: "Résidus Goldex", gs: 2.9 });
+    expect(inconnu).toContain("n&#x27;est pas dans le catalogue officiel");
+    expect(inconnu).toMatch(/<button type="button" class="btn-discret"[^>]*>Ajouter au catalogue officiel<\/button>/);
+    expect(vue({ nom: "résidus laronde", gs: 3.1 })).not.toContain("Ajouter au catalogue officiel"); // même nom
+    expect(vue({ id: "res_laronde", nom: "LaRonde (lot 3)", gs: 3.1 })).not.toContain("Ajouter au catalogue officiel"); // même id
+    expect(vue({ nom: "Sans Gs" })).toMatch(/<button[^>]*disabled=""[^>]*>Ajouter au catalogue officiel/);
+    // Sans catalogue (autres usages de la vue) : rien n'est proposé.
+    const sansCatalogue = { ...gachee, id: "gn", materiaux: { residu: { nom: "Résidus Goldex", gs: 2.9 } } };
+    const [e] = regrouper([ligne("gachee", sansCatalogue)], profils, [], "toutes");
+    expect(rendu(createElement(GacheeLecture, { gachee: e.gachees[0], maintenant, formulations: [] }))).not.toContain("catalogue officiel");
   });
 
   it("gâchée allégée ou très ancienne : aucun tableau manquant ne fait planter", () => {
@@ -178,5 +207,49 @@ describe("vues de l'enseignant — rendu", () => {
     expect(html).toContain("Plus tard (1)"); // E03 attendue le 8 octobre, dans 9 j
     expect(html).toContain("G-20260910-01-E03");
     expect(html).toContain("Alice Tremblay");
+  });
+});
+
+describe("revue de l'enseignant : rendu", () => {
+  const [e] = regrouper([ligne("gachee", gachee)], profils, [], "toutes");
+  const g = e.gachees[0];
+  const actions = { disponible: true, onPoser: async () => true, onRetirer: async () => true };
+
+  it("sans décision : invitation, éprouvettes à écarter, refus impossible sans motif", () => {
+    const html = rendu(createElement(CarteRevue, { gachee: g, revue: undefined, actions }));
+    expect(html).toContain("en attente de votre revue"); // la gâchée d'exemple est terminée
+    expect(html).toContain("Écarter G-20260910-01-E01 (410 kPa)");
+    expect(html).toContain("Écarter G-20260910-01-E02");
+    expect(html).not.toContain("Écarter G-20260910-01-E03"); // encore en cure
+    expect(html).toContain("Motif (obligatoire pour un refus)");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Refuser la gâchée<\/button>/);
+    expect(html).not.toContain("Retirer la revue");
+  });
+
+  it("décision existante : état, « modifiée depuis », motif et éprouvette écartée repris, retrait possible", () => {
+    const html = rendu(createElement(CarteRevue, { gachee: g, actions,
+      revue: { decision: "refusee", motif: "Pesées incomplètes.", ecartees: ["e2"], maj: "2026-10-02T10:00:00Z", perimee: true } }));
+    expect(html).toContain("Revue : refusée");
+    expect(html).toContain("Modifiée depuis la revue");
+    expect(html).toContain("Pesées incomplètes.</textarea>");
+    expect(html).toMatch(/<input type="checkbox" checked=""[^>]*\/>Écarter G-20260910-01-E02/);
+    expect(html).toContain(">Retirer la revue<");
+    expect(html.match(/>Retirer</g)).toBeNull(); // jamais un bouton « Retirer » tout court
+  });
+
+  it("base pas à jour : la carte le dit, sans boutons", () => {
+    const html = rendu(createElement(CarteRevue, { gachee: g, revue: undefined, actions: { ...actions, disponible: false } }));
+    expect(html).toContain("supabase/schema.sql");
+    expect(html).not.toContain("Accepter la gâchée");
+  });
+
+  it("détail de l'étudiant : « À revoir » ou décision par gâchée ; rien quand les revues sont indisponibles", () => {
+    const base = { etudiant: e, annotations: [], lignes: [], onAnnoter: async () => true, ctx, onOuvrir: () => {} };
+    expect(rendu(createElement(DetailEtudiant, { ...base, revueDe: () => undefined }))).toContain("À revoir");
+    const decide = rendu(createElement(DetailEtudiant, { ...base,
+      revueDe: () => ({ decision: "acceptee" as const, motif: null, ecartees: [], maj: "m", perimee: true }) }));
+    expect(decide).toContain("Revue : acceptée");
+    expect(decide).toContain("modifiée depuis");
+    expect(rendu(createElement(DetailEtudiant, base))).not.toContain("À revoir");
   });
 });

@@ -16,11 +16,14 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { useAujourdhui } from "@/lib/use-aujourdhui";
 import { sessionActive, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import FiltreSession from "@/components/FiltreSession";
-import { exportClasse, regrouper, type EtudiantClasse, type LigneClasse, type ProfilClasse } from "@/lib/classe";
+import { cleLigne, exportClasse, regrouper, type EtudiantClasse, type LigneClasse, type ProfilClasse } from "@/lib/classe";
 import {
-  ajouterAnnotation, estReponse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireProfils, marquerAnnotationsLues,
-  messageErreurClasse, retirerAnnotation, type LigneAnnotation,
+  ajouterAnnotation, estReponse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireProfils, lireRevuesClasse, marquerAnnotationsLues,
+  lireCourbe, lireCourbesClasse, messageErreurClasse, poserRevue, retirerAnnotation, retirerRevue, type LigneAnnotation,
 } from "@/lib/classe-reseau";
+import { decoderCourbe } from "@/lib/courbes";
+import { cleRevue, indexerRevues, infoRevue, type RevueClasse } from "@/lib/revues";
+import type { ActionsRevue } from "@/components/classe/CarteRevue";
 import { rafraichirReponsesNonLues } from "@/lib/sync-client";
 import { nomFichier, telechargerBlob, telechargerTexte, versCsv } from "@/lib/export-fig";
 import { lignesCsvEprouvettes, lignesCsvSynthese } from "@/lib/classe-csv";
@@ -60,11 +63,15 @@ export default function ClassePage() {
   const catalogueResidus = useStore((s) => s.catalogue_residus);
   const catalogueGranulats = useStore((s) => s.catalogue_granulats);
   const catalogueLiants = useStore((s) => s.catalogue_liants);
+  const ajouterMateriauOfficiel = useStore((s) => s.ajouterMateriauOfficiel);
   const maintenant = useAujourdhui();
   const [filtre, setFiltre] = useState<FiltreSessionValeur | null>(null);
   const [lignes, setLignes] = useState<LigneClasse[]>([]);
   const [profils, setProfils] = useState<ProfilClasse[]>([]);
   const [annotations, setAnnotations] = useState<LigneAnnotation[]>([]);
+  // Revues des gâchées (décisions de l'enseignant). null : base pas à jour,
+  // la classe s'affiche quand même, sans revues.
+  const [revues, setRevues] = useState<Map<string, RevueClasse> | null>(new Map());
   // Réponses non lues au chargement : restent en évidence pendant la visite,
   // même une fois marquées lues.
   const [nouvelles, setNouvelles] = useState<Set<string>>(() => new Set());
@@ -91,14 +98,16 @@ export default function ClassePage() {
     setEtat("chargement");
     setErreur(null);
     try {
-      const [l, p, a] = await Promise.all([
+      const [l, p, a, r] = await Promise.all([
         lireClasse(sb, { complet: false, session: sessionServeur }),
         lireProfils(sb),
         lireAnnotationsClasse(sb),
+        lireRevuesClasse(sb),
       ]);
       setLignes(l);
       setProfils(p);
       setAnnotations(a);
+      setRevues(r === null ? null : indexerRevues(r));
       setNouvelles(new Set(a.filter((x) => estReponse(x) && !x.lu_le).map((x) => x.id)));
       setEtat("pret");
     } catch (e) {
@@ -117,6 +126,10 @@ export default function ClassePage() {
     [lignes, profils, sessions, filtreEffectif],
   );
   const couleurDe = new Map(etudiants.map((e, i) => [e.id, COULEURS[i % COULEURS.length]]));
+  const revs = useMemo(() => new Map(lignes.map((l) => [cleLigne(l), l.rev])), [lignes]);
+  const revueDe = revues
+    ? (ownerId: string, gacheeId: string) => infoRevue(revues, (o, id) => revs.get(cleLigne({ proprietaire: o, kind: "gachee", id })), ownerId, gacheeId)
+    : undefined;
   const comparaison = useMemo(() => comparerClasse(etudiants), [etudiants]);
   const alertes = useMemo(() => alertesClasse(etudiants, {
     maintenant, comparaison,
@@ -188,8 +201,11 @@ export default function ClassePage() {
     if (!sb) return;
     setExportEnCours(true);
     try {
-      const complet = await lireClasse(sb, { complet: true, session: sessionServeur });
-      const donnees = exportClasse(regrouper(complet, profils, sessions, filtreEffectif), filtreEffectif, new Date());
+      const [complet, courbes] = await Promise.all([
+        lireClasse(sb, { complet: true, session: sessionServeur }),
+        lireCourbesClasse(sb, true),
+      ]);
+      const donnees = exportClasse(regrouper(complet, profils, sessions, filtreEffectif), filtreEffectif, new Date(), courbes);
       telechargerBlob(new Blob([JSON.stringify(donnees, null, 2)], { type: "application/json" }),
         nomFichier(`MineBackfill_classe_${filtreEffectif}`, "json"));
     } catch (e) {
@@ -201,7 +217,7 @@ export default function ClassePage() {
 
   /** CSV depuis la classe déjà lue (valeurs mesurées ; copies de conflit exclues). */
   const exporterCsv = (quoi: "eprouvettes" | "synthese") => {
-    const lignesCsv = quoi === "eprouvettes" ? lignesCsvEprouvettes(etudiants, sessions) : lignesCsvSynthese(etudiants, sessions);
+    const lignesCsv = quoi === "eprouvettes" ? lignesCsvEprouvettes(etudiants, sessions, revueDe) : lignesCsvSynthese(etudiants, sessions, revueDe);
     telechargerTexte(versCsv(lignesCsv), nomFichier(`MineBackfill_classe_${quoi}_${filtreEffectif}`, "csv"), "text/csv;charset=utf-8");
   };
 
@@ -209,15 +225,21 @@ export default function ClassePage() {
    * Jeu d'essais PSEUDONYMISÉ (recherche, modèles) depuis la classe déjà lue :
    * ni nom ni courriel (voir lib/jeu-essais.ts et docs/DICTIONNAIRE_DONNEES.md).
    */
-  const exporterJeuEssais = async (format: "csv" | "json") => {
+  const exporterJeuEssais = async (format: "csv" | "json", seulementAcceptees = false) => {
     try {
+      // Qui a une courbe en ligne (colonne courbe_en_ligne) ; en échec, la
+      // colonne reste vide plutôt que de bloquer l'export.
+      const sb = getSupabase();
+      const courbesEnLigne = sb
+        ? await lireCourbesClasse(sb, false).then((l) => new Set(l.map((c) => `${c.proprietaire}|${c.eprouvetteId}`)), () => undefined)
+        : undefined;
       const jeu = construireJeuEssais({
-        etudiants, sessions, sessionLibelle: libelleSession,
+        etudiants, sessions, sessionLibelle: libelleSession, courbesEnLigne,
         pseudonymes: await pseudonymes(etudiants.map((e) => e.id)),
         catalogues: { residus: catalogueResidus, granulats: catalogueGranulats, liants: catalogueLiants },
-        maintenant: new Date(),
+        maintenant: new Date(), revueDe, seulementAcceptees,
       });
-      const nom = nomFichier(`MineBackfill_jeu-essais_${filtreEffectif}`, format);
+      const nom = nomFichier(`MineBackfill_jeu-essais${seulementAcceptees ? "-acceptees" : ""}_${filtreEffectif}`, format);
       if (format === "json") {
         telechargerBlob(new Blob([JSON.stringify(jeuEssaisJson(jeu), null, 2)], { type: "application/json" }), nom);
       } else {
@@ -227,6 +249,39 @@ export default function ClassePage() {
       window.alert(`Export impossible : ${messageErreurClasse(e)}`);
     }
   };
+  /** Décision de l'enseignant sur une gâchée : écrite par RPC, jamais dans la gâchée. */
+  const actionsRevue = (ref: RefDoc, rev: number | null): ActionsRevue => ({
+    disponible: revues !== null,
+    onPoser: async (d) => {
+      const sb = getSupabase();
+      if (!sb) return false;
+      try {
+        const r = await poserRevue(sb, { ownerId: ref.etudiantId, id: ref.id, rev, ...d });
+        setRevues((m) => new Map(m ?? []).set(cleRevue(r.ownerId, r.id), r));
+        return true;
+      } catch (e) {
+        window.alert(`Revue non enregistrée : ${messageErreurClasse(e)}`);
+        return false;
+      }
+    },
+    onRetirer: async () => {
+      const sb = getSupabase();
+      if (!sb) return false;
+      try {
+        await retirerRevue(sb, ref.etudiantId, ref.id);
+        setRevues((m) => {
+          const n = new Map(m ?? []);
+          n.delete(cleRevue(ref.etudiantId, ref.id));
+          return n;
+        });
+        return true;
+      } catch (e) {
+        window.alert(`Retrait impossible : ${messageErreurClasse(e)}`);
+        return false;
+      }
+    },
+  });
+
   const exporterDictionnaire = () =>
     telechargerTexte(versCsv(lignesCsvDictionnaire()), nomFichier("MineBackfill_dictionnaire-donnees", "csv"), "text/csv;charset=utf-8");
 
@@ -269,14 +324,22 @@ export default function ClassePage() {
   }
 
   const sel = etudiants.find((e) => e.id === selId) ?? null;
-  const resume = resumeClasse(etudiants, echeances, annotations);
+  const resume = resumeClasse(etudiants, echeances, annotations, revueDe);
 
   return (
     <Page>
       {doc ? (
         <VueDocument doc={doc} etudiant={etudiants.find((e) => e.id === doc.ref.etudiantId)}
           annotations={annotations} onAnnoter={annoter(doc.ref.etudiantId)} ctx={ctx}
-          onRetour={fermerDoc} maintenant={maintenant} units={units} />
+          onRetour={fermerDoc} maintenant={maintenant} units={units}
+          catalogue={{ residus: catalogueResidus, granulats: catalogueGranulats, onAjouter: ajouterMateriauOfficiel }}
+          revue={doc.ref.kind === "gachee" ? revues?.get(cleRevue(doc.ref.etudiantId, doc.ref.id)) : undefined}
+          chargerCourbe={async (eprouvetteId) => {
+            const sb = getSupabase();
+            const c = sb ? await lireCourbe(sb, doc.ref.etudiantId, eprouvetteId) : null;
+            return c ? decoderCourbe(c) : null;
+          }}
+          actionsRevue={doc.ref.kind === "gachee" ? actionsRevue(doc.ref, doc.etat === "pret" ? doc.doc.rev : null) : undefined} />
       ) : (
         <>
           <EnTetePage
@@ -296,6 +359,8 @@ export default function ClassePage() {
                     "separateur",
                     { libelle: "Jeu d'essais (CSV)", detail: "Pseudonymisé : sans nom ni courriel. Une ligne par éprouvette, pour la recherche et les modèles", desactive: etat !== "pret", onSelect: () => void exporterJeuEssais("csv") },
                     { libelle: "Jeu d'essais (JSON)", detail: "Pseudonymisé : essais, gâchées, matériaux, manifeste et dictionnaire", desactive: etat !== "pret", onSelect: () => void exporterJeuEssais("json") },
+                    { libelle: "Jeu d'essais, gâchées acceptées (CSV)", detail: "Seulement les gâchées que vous avez acceptées, non modifiées depuis", desactive: etat !== "pret" || revues === null, onSelect: () => void exporterJeuEssais("csv", true) },
+                    { libelle: "Jeu d'essais, gâchées acceptées (JSON)", detail: "Même sélection, avec le manifeste et le dictionnaire", desactive: etat !== "pret" || revues === null, onSelect: () => void exporterJeuEssais("json", true) },
                     { libelle: "Dictionnaire des données (CSV)", detail: "Le sens et l'unité de chaque colonne du jeu d'essais", onSelect: exporterDictionnaire },
                   ]}
                 />
@@ -334,6 +399,8 @@ export default function ClassePage() {
                     { libelle: "À écraser aujourd'hui", valeur: resume.aEcraser, ton: resume.enRetard > 0 ? "danger" : "normal",
                       detail: resume.enRetard > 0 ? `dont ${resume.enRetard} en retard` : undefined },
                     { libelle: "Réponses non lues", valeur: resume.reponsesNonLues, ton: resume.reponsesNonLues > 0 ? "accent" : "normal" },
+                    ...(resume.aRevoir !== null ? [{ libelle: "Gâchées à revoir", valeur: resume.aRevoir, ton: resume.aRevoir > 0 ? "alerte" as const : "normal" as const,
+                      detail: "terminées, sans décision ou modifiées depuis" }] : []),
                   ]} />
                   <div className="classe-grille">
                     <CarteAlertes alertes={alertes} onOuvrir={ouvrirDoc} />
@@ -342,7 +409,8 @@ export default function ClassePage() {
                         couleurDe={couleurDe} alertesParEtudiant={alertesParEtudiant} />
                       {sel && (
                         <DetailEtudiant etudiant={sel} annotations={annotations} lignes={lignes}
-                          onAnnoter={annoter(sel.id)} ctx={ctx} onOuvrir={ouvrirDoc} onRapport={() => void exporterPdf(sel)} />
+                          onAnnoter={annoter(sel.id)} ctx={ctx} onOuvrir={ouvrirDoc} onRapport={() => void exporterPdf(sel)}
+                          revueDe={revueDe ? (id) => revueDe(sel.id, id) : undefined} />
                       )}
                     </div>
                   </div>

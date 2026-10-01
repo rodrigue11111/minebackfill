@@ -28,9 +28,10 @@ import { essaiValide, gacheesRetenues, type EtudiantClasse } from "./classe";
 import { sessionEffective, type Session } from "./sessions";
 import { completudeGachee } from "./completude";
 import { materiauxDepuisFormulation } from "./gachee-materiaux";
-import { securiserCsv, type CelluleCsv } from "./classe-csv";
+import { securiserCsv, type CelluleCsv, type RevueDe } from "./classe-csv";
+import type { InfoRevue } from "./revues";
 import { fmtDate } from "./echeance-affichage";
-import type { GranulatItem, ResiduItem } from "./materials";
+import { CARACTERISATION_GRANULAT, CARACTERISATION_RESIDU, type ChampCaracterisation, type GranulatItem, type ResiduItem } from "./materials";
 import type { LiantCatalogueItem } from "./store";
 
 /** Version du format du jeu d'essais (structure du JSON). */
@@ -51,6 +52,8 @@ export interface Colonne<C> {
 }
 
 interface CtxGachee {
+  /** Compte de l'étudiant (interne : jamais exporté, seul le pseudonyme sort). */
+  ownerId: string;
   operateur: string;
   session: string;
   g: Gachee;
@@ -58,9 +61,15 @@ interface CtxGachee {
   m: MateriauxGachee;
   materiauxSource: "fiche" | "formulation" | "";
   completude: number;
+  /** Le résidu dans le catalogue de l'enseignant (sa caractérisation), s'il y est. */
+  residuCatalogue?: ResiduItem;
+  /** Décision de l'enseignant sur la gâchée, s'il y en a une. */
+  revue?: InfoRevue;
 }
 interface CtxEssai extends CtxGachee {
   ep: Eprouvette;
+  /** La courbe de presse est en ligne (null : inconnu). */
+  courbeEnLigne: boolean | null;
 }
 export interface LigneMateriau {
   type: "residu" | "granulat" | "liant";
@@ -72,6 +81,8 @@ export interface LigneMateriau {
   w0Pct?: number;
   humiditePct?: number;
   provenance?: string;
+  /** Entrée du catalogue (caractérisation), pour un matériau « catalogue ». */
+  caracterisation?: object;
   nbGachees: number;
 }
 
@@ -99,6 +110,11 @@ export function refMateriau(type: LigneMateriau["type"], m: { id?: string; nom?:
 }
 
 const liant = (c: CtxGachee, i: number) => c.m.liants?.[i];
+const typeDe = (ch: ChampCaracterisation): TypeColonne => (ch.type === "nombre" ? "nombre" : ch.type === "date" ? "date" : "texte libre");
+const valeurDe = (item: object | undefined, cle: string): Valeur => {
+  const v = (item as Record<string, unknown> | undefined)?.[cle];
+  return typeof v === "number" ? num(v) : typeof v === "string" ? txt(v) : null;
+};
 const PSEUDONYMISATION =
   "operateur = « op- » suivi des 12 premiers caractères hexadécimaux du SHA-256 de l'identifiant du compte. " +
   "Pseudonymisation et non anonymisation : la correspondance peut être refaite par qui détient la liste des comptes.";
@@ -145,6 +161,12 @@ const COLONNES_GACHEE: Colonne<CtxGachee>[] = [
     description: "Gs du résidu entré dans le calcul de la recette. Sans unité." },
   { cle: "residu_w0_pct", libelle: "Teneur en eau initiale w₀ du résidu (calcul)", unite: "%", type: "nombre", val: (c) => num(c.m.residu?.w0Pct),
     description: "w₀ du résidu entré dans le calcul de la recette (la valeur mesurée le jour de la gâchée est w0_mesure_pct)." },
+  // Caractérisation du résidu (catalogue de l'enseignant, jointure par l'id) :
+  // répétée ici pour que le CSV des essais se suffise à lui-même.
+  ...CARACTERISATION_RESIDU.filter((ch) => ch.type === "nombre").map((ch): Colonne<CtxGachee> => ({
+    cle: `residu_${ch.cle}`, libelle: `${ch.libelle} du résidu`, unite: ch.unite, type: "nombre", val: (c) => valeurDe(c.residuCatalogue, ch.cle),
+    description: `${ch.description} Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée.`,
+  })),
   { cle: "granulat_ref", libelle: "Granulat (référence)", type: "texte", val: (c) => refMateriau("granulat", c.m.granulat),
     description: "Identifiant du granulat dans le catalogue, sinon « instantane:granulat:<nom> ». RPG seulement." },
   { cle: "granulat_nom", libelle: "Granulat", type: "texte libre", val: (c) => txt(c.m.granulat?.nom),
@@ -196,6 +218,10 @@ const COLONNES_GACHEE: Colonne<CtxGachee>[] = [
     description: "Nombre de composants pesés hors de la tolérance de la gâchée. Vide si aucune pesée n'est enregistrée." },
   { cle: "completude_pct", libelle: "Complétude de la fiche d'essai", unite: "%", type: "entier", val: (c) => c.completude,
     description: "Part des informations descriptives renseignées (lib/completude.ts). Rien n'est obligatoire pour l'étudiant : une valeur basse signale une gâchée moins documentée." },
+  { cle: "revue", libelle: "Revue de l'enseignant", type: "code", val: (c) => c.revue?.decision ?? null,
+    description: "acceptee ou refusee : décision de l'enseignant sur la gâchée ; vide si elle n'a pas été revue." },
+  { cle: "revue_perimee", libelle: "Modifiée depuis la revue", type: "booléen", val: (c) => (c.revue ? c.revue.perimee : null),
+    description: "L'étudiant a modifié la gâchée après la décision de l'enseignant (la décision porte sur une version antérieure). Vide sans revue." },
 ];
 
 // ── Colonnes propres à l'éprouvette et à son essai ──
@@ -244,6 +270,10 @@ const COLONNES_EPROUVETTE: Colonne<CtxEssai>[] = [
   { cle: "presse", libelle: "Presse", type: "texte libre", val: (c) => txt(c.ep.essai?.presse), description: "Presse employée, telle que saisie." },
   { cle: "import_presse", libelle: "Importé de la presse", type: "booléen", val: (c) => !!c.ep.essai?.sourcePresse,
     description: "Les mesures viennent d'un fichier de presse importé (et non d'une saisie)." },
+  { cle: "courbe_en_ligne", libelle: "Courbe de presse en ligne", type: "booléen", val: (c) => c.courbeEnLigne,
+    description: "La courbe contrainte-déformation de l'éprouvette est sauvegardée en ligne (lisible par l'enseignant, et incluse dans l'export « Classe (JSON) »). Vide si l'information n'a pas pu être lue." },
+  { cle: "eprouvette_ecartee", libelle: "Écartée par l'enseignant", type: "booléen", val: (c) => (c.revue ? c.revue.ecartees.includes(c.ep.id) : null),
+    description: "L'enseignant a écarté cette éprouvette lors de sa revue (la gâchée de l'étudiant n'est pas modifiée). Vide sans revue." },
 ];
 
 export const COLONNES_ESSAIS: Colonne<CtxEssai>[] = [...COLONNES_GACHEE, ...COLONNES_EPROUVETTE];
@@ -268,6 +298,15 @@ export const COLONNES_MATERIAUX: Colonne<LigneMateriau>[] = [
   { cle: "w0_pct", libelle: "Teneur en eau initiale w₀", unite: "%", type: "nombre", val: (m) => num(m.w0Pct), description: "Résidus seulement." },
   { cle: "humidite_pct", libelle: "Humidité", unite: "%", type: "nombre", val: (m) => num(m.humiditePct), description: "Granulats seulement." },
   { cle: "provenance", libelle: "Provenance", type: "texte libre", val: (m) => txt(m.provenance), description: "Provenance (mine, site) du matériau." },
+  // Caractérisation : seulement pour un matériau décrit par le catalogue.
+  ...CARACTERISATION_RESIDU.map((ch): Colonne<LigneMateriau> => ({
+    cle: ch.cle, libelle: ch.libelle, unite: ch.unite, type: typeDe(ch), val: (m) => (m.type === "residu" ? valeurDe(m.caracterisation, ch.cle) : null),
+    description: `${ch.description} Résidus seulement, depuis le catalogue.`,
+  })),
+  ...CARACTERISATION_GRANULAT.map((ch): Colonne<LigneMateriau> => ({
+    cle: ch.cle, libelle: `${ch.libelle} (granulat)`, unite: ch.unite, type: typeDe(ch), val: (m) => (m.type === "granulat" ? valeurDe(m.caracterisation, ch.cle) : null),
+    description: `${ch.description} Granulats seulement, depuis le catalogue.`,
+  })),
   { cle: "nb_gachees", libelle: "Gâchées", type: "entier", val: (m) => m.nbGachees, description: "Nombre de gâchées du jeu qui emploient ce matériau." },
 ];
 
@@ -284,6 +323,12 @@ export interface EntreesJeuEssais {
   /** Catalogues de l'enseignant : jointure des matériaux, et repli pour les anciennes gâchées. */
   catalogues: { residus: ResiduItem[]; granulats: GranulatItem[]; liants: LiantCatalogueItem[] };
   maintenant: Date;
+  /** Revue de l'enseignant par gâchée (absent : revues indisponibles). */
+  revueDe?: RevueDe;
+  /** Seulement les gâchées ACCEPTÉES par l'enseignant et non modifiées depuis. */
+  seulementAcceptees?: boolean;
+  /** Courbes en ligne, « compte|éprouvette » (absent : inconnu, colonne vide). */
+  courbesEnLigne?: Set<string>;
 }
 
 export type Ligne = Record<string, Valeur>;
@@ -296,6 +341,7 @@ export interface JeuEssais {
     dictionnaire_version: number;
     exporte_le: string;
     session: string;
+    selection: string;
     nb_operateurs: number;
     nb_gachees: number;
     nb_eprouvettes: number;
@@ -342,8 +388,11 @@ export function construireJeuEssais(x: EntreesJeuEssais): JeuEssais {
           if (Object.keys(m).length > 0) materiauxSource = "formulation";
         }
       }
+      const revue = x.revueDe?.(e.id, g.id);
+      if (x.seulementAcceptees && !(revue?.decision === "acceptee" && !revue.perimee)) continue;
       ctxs.push({
-        operateur, g, m, materiauxSource,
+        ownerId: e.id, operateur, g, m, materiauxSource, revue,
+        residuCatalogue: m.residu?.id ? catalogues.residus.find((x) => x.id === m.residu?.id) : undefined,
         session: sessionEffective({ sessionId: g.sessionId, date: g.creeLe }, x.sessions)?.nom ?? "Sans session",
         p: parametresEffectifs(g, formulations),
         completude: completudeGachee(g).pct,
@@ -353,7 +402,11 @@ export function construireJeuEssais(x: EntreesJeuEssais): JeuEssais {
 
   const essais: Ligne[] = [];
   for (const c of ctxs) {
-    for (const ep of [...c.g.eprouvettes].sort((a, b) => a.code.localeCompare(b.code))) essais.push(ligne(COLONNES_ESSAIS, { ...c, ep }));
+    const ownerId = c.ownerId;
+    for (const ep of [...c.g.eprouvettes].sort((a, b) => a.code.localeCompare(b.code))) {
+      const courbeEnLigne = x.courbesEnLigne ? x.courbesEnLigne.has(`${ownerId}|${ep.id}`) : null;
+      essais.push(ligne(COLONNES_ESSAIS, { ...c, ep, courbeEnLigne }));
+    }
   }
   const materiaux = materiauxDuJeu(ctxs, catalogues);
 
@@ -365,7 +418,10 @@ export function construireJeuEssais(x: EntreesJeuEssais): JeuEssais {
       dictionnaire_version: DICTIONNAIRE_VERSION,
       exporte_le: x.maintenant.toISOString(),
       session: x.sessionLibelle,
-      nb_operateurs: operateurs.length,
+      selection: x.seulementAcceptees
+        ? "gâchées acceptées par l'enseignant et non modifiées depuis"
+        : "toutes les gâchées (copies de conflit exclues)",
+      nb_operateurs: new Set(ctxs.map((c) => c.operateur)).size,
       nb_gachees: ctxs.length,
       nb_eprouvettes: essais.length,
       nb_essais_retenus: essais.filter((l) => l.retenu === true).length,
@@ -399,14 +455,14 @@ function materiauxDuJeu(ctxs: CtxGachee[], cat: EntreesJeuEssais["catalogues"]):
     ajouter(refMateriau("residu", r), () => {
       const item = r?.id ? cat.residus.find((x) => x.id === r.id) : undefined;
       return item
-        ? { type: "residu", source: "catalogue", nom: item.nom, gs: item.gs, w0Pct: item.w0_pct, provenance: item.provenance }
+        ? { type: "residu", source: "catalogue", nom: item.nom, gs: item.gs, w0Pct: item.w0_pct, provenance: item.provenance, caracterisation: item }
         : { type: "residu", source: "instantane", nom: r?.nom, gs: r?.gs, w0Pct: r?.w0Pct, provenance: r?.provenance };
     }, vues);
     const gr = c.m.granulat;
     ajouter(refMateriau("granulat", gr), () => {
       const item = gr?.id ? cat.granulats.find((x) => x.id === gr.id) : undefined;
       return item
-        ? { type: "granulat", source: "catalogue", nom: item.nom, gs: item.gs, humiditePct: item.humidite_pct, provenance: item.provenance }
+        ? { type: "granulat", source: "catalogue", nom: item.nom, gs: item.gs, humiditePct: item.humidite_pct, provenance: item.provenance, caracterisation: item }
         : { type: "granulat", source: "instantane", nom: gr?.nom, gs: gr?.gs, humiditePct: gr?.humiditePct, provenance: gr?.provenance };
     }, vues);
     for (const l of c.m.liants ?? []) {

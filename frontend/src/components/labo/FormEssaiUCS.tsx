@@ -12,10 +12,16 @@ import { Champ } from "@/components/ui/Champ";
 import { Bandeau } from "@/components/ui/Bandeau";
 import ChampNombre from "@/components/ui/ChampNombre";
 import { isoVersDateInput } from "./outils";
+import CourbeEprouvette from "./CourbeEprouvette";
+import type { PointCourbe } from "@/lib/presse-urstm";
 
-export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes }: {
+export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes, chargerCourbe, chercherCourbeEnLigne }: {
   eprouvette: Eprouvette;
   onChange: (patch: Partial<EssaiUCS>) => void;
+  /** Courbe rangée sur cet appareil (magasin, ou encore dans la gâchée). */
+  chargerCourbe?: () => Promise<PointCourbe[] | null>;
+  /** Courbe envoyée en ligne depuis un autre appareil (rangée ici une fois lue). */
+  chercherCourbeEnLigne?: () => Promise<PointCourbe[] | null>;
   /** Recopie la vitesse de chargement sur toutes les éprouvettes écrasées de la gâchée. */
   onVitessePourToutes?: (v: EssaiUCS["vitesseChargement"]) => void;
 }) {
@@ -151,11 +157,14 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
                 )}
               </span>
             )}
-            {nbPointsCourbe(es) > 0 && (
-              <span>Courbe conservée : <strong>{nbPointsCourbe(es)} points</strong></span>
-            )}
           </div>
         </Bandeau>
+      )}
+      {nbPointsCourbe(es) > 0 && chargerCourbe && (
+        <CourbeEprouvette code={eprouvette.code} nbPoints={nbPointsCourbe(es)} charger={chargerCourbe} />
+      )}
+      {nbPointsCourbe(es) === 0 && es.sourcePresse && chercherCourbeEnLigne && (
+        <CourbeEprouvette code={eprouvette.code} nbPoints={0} charger={chercherCourbeEnLigne} enLigne />
       )}
 
       <label className="mix-case">

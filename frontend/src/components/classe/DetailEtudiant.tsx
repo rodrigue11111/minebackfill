@@ -10,6 +10,7 @@ import { ancresGachee } from "@/lib/ancres";
 import FilCommentaires from "./FilCommentaires";
 import { Carte } from "@/components/ui/Carte";
 import { dateCourte, lienBouton, Pastille, type RefDoc } from "./commun";
+import { aRevoir, LIBELLE_DECISION, type InfoRevue } from "@/lib/revues";
 
 export type NouvelleAnnotation = { kind: "resultat" | "gachee"; id: string; rev: number | null; ancre: string | null; texte: string };
 
@@ -61,7 +62,20 @@ export function revDe(lignes: LigneClasse[], proprietaire: string, kind: "result
   return lignes.find((l) => l.proprietaire === proprietaire && l.kind === kind && l.id === id)?.rev ?? null;
 }
 
-export default function DetailEtudiant({ etudiant, annotations, onAnnoter, ctx, lignes, onOuvrir, onRapport }: {
+/** État de revue d'une gâchée dans la liste de l'enseignant. */
+function PastilleRevue({ gachee, info }: { gachee: EtudiantClasse["gachees"][number]; info: InfoRevue | undefined }) {
+  if (info) {
+    return (
+      <>
+        {" "}<Pastille ton={info.decision === "acceptee" ? "vert" : "rouge"} title={info.motif ?? undefined}>Revue : {LIBELLE_DECISION[info.decision]}</Pastille>
+        {info.perimee && <> <Pastille ton="ambre" title="Modifiée par l'étudiant depuis votre décision">modifiée depuis</Pastille></>}
+      </>
+    );
+  }
+  return aRevoir(gachee, undefined) ? <> <Pastille ton="bleu">À revoir</Pastille></> : null;
+}
+
+export default function DetailEtudiant({ etudiant, annotations, onAnnoter, ctx, lignes, onOuvrir, onRapport, revueDe }: {
   etudiant: EtudiantClasse;
   annotations: LigneAnnotation[];
   onAnnoter: (a: NouvelleAnnotation) => Promise<boolean>;
@@ -70,6 +84,8 @@ export default function DetailEtudiant({ etudiant, annotations, onAnnoter, ctx, 
   onOuvrir: (ref: RefDoc) => void;
   /** Rapport PDF de cet étudiant. */
   onRapport?: () => void;
+  /** Revue d'une gâchée de cet étudiant (absent : base pas à jour, rien n'est affiché). */
+  revueDe?: (gacheeId: string) => InfoRevue | undefined;
 }) {
   const commentaires = (kind: "resultat" | "gachee", id: string) =>
     annotations.filter((a) => a.owner_id === etudiant.id && a.target_kind === kind && a.target_id === id);
@@ -89,6 +105,7 @@ export default function DetailEtudiant({ etudiant, annotations, onAnnoter, ctx, 
                 <div style={{ fontSize: 15, fontWeight: 600 }}>
                   {g.code} <span style={{ fontWeight: 400, color: "var(--texte-2)" }}>· {g.formulationLabel} · {g.categorie} · {dateCourte(g.creeLe)}</span>
                   {g.conflit && <> <Pastille ton="ambre">copie de conflit</Pastille></>}
+                  {revueDe && <PastilleRevue gachee={g} info={revueDe(g.id)} />}
                 </div>
                 <button type="button" style={lienBouton} onClick={() => onOuvrir({ etudiantId: etudiant.id, kind: "gachee", id: g.id })}>Ouvrir</button>
               </div>

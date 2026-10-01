@@ -18,6 +18,7 @@ import { genererCode, composantsDepuisRecette, parametresDepuisRecette, nbHorsTo
 import { snapshotProtocoles } from "@/lib/protocole";
 import { useAujourdhui } from "@/lib/use-aujourdhui";
 import { annotationsDe, docsAvecNonLus } from "@/lib/annotations";
+import { libelleRevue } from "@/lib/revues";
 import { courbesAOublier, idsCourbes } from "@/lib/courbes";
 import { oublierCourbes } from "@/lib/courbes-client";
 import { Page, EnTetePage } from "@/components/ui/Page";
@@ -49,6 +50,8 @@ export default function LaboPage() {
   // Filtre de session : la liste et les figures. L'échéancier, lui, montre
   // TOUTES les éprouvettes à écraser — on ne doit en manquer aucune.
   const sessions = useStore((s) => s.sessions);
+  const revues = useStore((s) => s.revues);
+  const revueDe = new Map(revues.map((r) => [r.id, r]));
   const catalogueResidus = useStore((s) => s.catalogue_residus);
   const catalogueGranulats = useStore((s) => s.catalogue_granulats);
   const [filtreSession, setFiltreSession] = useState<FiltreSessionValeur>("toutes");
@@ -104,6 +107,8 @@ export default function LaboPage() {
           annotations={annotationsDe(annotations, "gachee", g.id)}
           connecte={connecte}
           onMaj={(patch) => modifierGachee(g.id, patch)}
+          bibliotheque={{ residus: catalogueResidus, granulats: catalogueGranulats }}
+          revue={revueDe.get(g.id)}
           onRetour={() => setSelId(null)}
           onSupprimer={() => {
             if (window.confirm(`Supprimer la gâchée ${g.code} ?`)) {
@@ -227,6 +232,11 @@ export default function LaboPage() {
                           </span>
                         )}
                         {hors > 0 && <Pastille ton="danger">{hors} écart{hors > 1 ? "s" : ""} hors tolérance</Pastille>}
+                        {revueDe.get(g.id) && (
+                          <Pastille ton={revueDe.get(g.id)!.decision === "acceptee" ? "succes" : "danger"} title={revueDe.get(g.id)!.motif ?? undefined}>
+                            {libelleRevue(revueDe.get(g.id)!)}
+                          </Pastille>
+                        )}
                         {g.statut === "terminee" ? <Pastille ton="succes">Terminée</Pastille> : <Pastille ton="neutre">Brouillon</Pastille>}
                         <span className="ui-ligne-chevron"><Icone nom="chevron" taille={14} epaisseur={2.2} /></span>
                       </span>

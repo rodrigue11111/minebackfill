@@ -14,7 +14,7 @@ export function lireNombre(brut: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-export default function ChampNombre({ value, onChange, placeholder, id, className = "field-input", ariaLabel, style }: {
+export default function ChampNombre({ value, onChange, placeholder, id, className = "field-input", ariaLabel, style, disabled }: {
   value: number | undefined | null;
   onChange: (n: number | undefined) => void;
   placeholder?: string;
@@ -22,6 +22,7 @@ export default function ChampNombre({ value, onChange, placeholder, id, classNam
   className?: string;
   ariaLabel?: string;
   style?: React.CSSProperties;
+  disabled?: boolean;
 }) {
   const [brouillon, setBrouillon] = useState<string | null>(null);
   const affiche = brouillon !== null ? brouillon : value ?? "";
@@ -34,6 +35,7 @@ export default function ChampNombre({ value, onChange, placeholder, id, classNam
       style={style}
       aria-label={ariaLabel}
       placeholder={placeholder}
+      disabled={disabled}
       value={affiche}
       onFocus={() => setBrouillon(value === undefined || value === null ? "" : String(value))}
       onBlur={() => setBrouillon(null)}

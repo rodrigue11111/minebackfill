@@ -11,6 +11,7 @@ import {
   ErreurSync,
   type Curseur, type Envoi, type Kind, type LigneServeur, type ReponseEcriture, type Transport,
 } from "./sync-moteur";
+import type { EcrireCourbe } from "./sync-courbes";
 
 /** Délai au-delà duquel un appel est abandonné (réessayé plus tard). */
 const DELAI_APPEL_MS = 20000;
@@ -114,4 +115,42 @@ export function transportSupabase(sb: SupabaseClient, attendu: () => string): Tr
       };
     },
   };
+}
+
+/**
+ * Écriture d'un document « courbe » (ecrire_doc), hors moteur : les courbes
+ * sont envoyées par sync-courbes.ts, à part (voir son en-tête). Mêmes règles
+ * d'erreur que le transport : refus définitif, session, ou passager.
+ */
+export function ecrivainCourbes(sb: SupabaseClient, attendu: () => string): EcrireCourbe {
+  const rpc = sb.rpc.bind(sb) as unknown as Rpc;
+  return async (id, contenu, baseRev) => {
+    let r: { data: unknown; error: { code?: string; message?: string } | null };
+    try {
+      r = await rpc("ecrire_doc", {
+        p_attendu: attendu(), p_kind: "courbe", p_id: id, p_payload: contenu, p_base_rev: baseRev, p_supprime: false,
+      }).abortSignal(AbortSignal.timeout(DELAI_APPEL_MS));
+    } catch (e) {
+      throw classerErreur({ code: "reseau", message: e instanceof Error ? e.message : String(e) });
+    }
+    if (r.error) throw classerErreur(r.error);
+    const x = (Array.isArray(r.data) ? r.data[0] : undefined) as LigneEcrite | undefined;
+    if (!x || x.rev_serveur === null) return { ok: false, ligne: null };
+    if (x.ok) return { ok: true, rev: Number(x.rev_serveur) };
+    return { ok: false, ligne: { rev: Number(x.rev_serveur), supprime: !!x.supprime_serveur, contenu: x.contenu_serveur } };
+  };
+}
+
+/**
+ * Nettoyage serveur : met à la corbeille les courbes de CE compte dont
+ * l'éprouvette n'existe plus dans aucune gâchée en ligne (purger_mes_courbes).
+ * Base pas encore à jour, ou échec : sans conséquence (rend 0).
+ */
+export async function purgerMesCourbes(sb: SupabaseClient, attendu: string): Promise<number> {
+  try {
+    const { data, error } = await sb.rpc("purger_mes_courbes", { p_attendu: attendu });
+    return error ? 0 : Number(data) || 0;
+  } catch {
+    return 0;
+  }
 }

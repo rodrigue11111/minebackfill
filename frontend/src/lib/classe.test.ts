@@ -6,7 +6,7 @@ import {
 } from "./classe";
 import { annotationsDe, fusionnerAnnotations, migrerAnnotationV1, nonLuesDeLEnseignant, type Annotation } from "./annotations";
 import {
-  ErreurClasse, lireAnnotationsClasse, lireClasse, lireComptes, lireDocComplet, lireMesAnnotations, messageErreurClasse, repondreAnnotation, retirerAnnotation,
+  ErreurClasse, lireAnnotationsClasse, lireClasse, lireComptes, lireCourbe, lireCourbesClasse, lireDocComplet, lireMesAnnotations, messageErreurClasse, repondreAnnotation, retirerAnnotation,
 } from "./classe-reseau";
 import { confirmationAction } from "@/components/classe/OngletComptes";
 import type { Eprouvette } from "./eprouvette";
@@ -171,6 +171,21 @@ function clientRpc(pages: Record<string, unknown[][]>, erreur?: { code: string; 
   return { sb, appels };
 }
 
+describe("export JSON de la classe : courbes", () => {
+  it("seulement celles des éprouvettes exportées, sous une clé à part ; version inchangée", () => {
+    const etu = [{ id: A, nom: "A", email: null, resultats: [], gachees: [{ id: "g1", eprouvettes: [{ id: "e1" }] }], nbEssais: 0, derniereActivite: null }] as unknown as Parameters<typeof exportClasse>[0];
+    const courbes = [
+      { proprietaire: A, eprouvetteId: "e1", gacheeId: "g1", contenu: { v: 1 } },
+      { proprietaire: A, eprouvetteId: "e9", gacheeId: "g9", contenu: { v: 1 } },
+      { proprietaire: "autre", eprouvetteId: "e1", gacheeId: "g1", contenu: { v: 1 } },
+    ];
+    const x = exportClasse(etu, "toutes", new Date("2026-10-01T00:00:00Z"), courbes) as { version: number; courbes: { eprouvetteId: string; proprietaire: string }[] };
+    expect(x.version).toBe(1);
+    expect(x.courbes.map((c) => `${c.proprietaire}|${c.eprouvetteId}`)).toEqual([`${A}|e1`]);
+    expect(exportClasse(etu, "toutes", new Date())).not.toHaveProperty("courbes");
+  });
+});
+
 describe("classe-reseau", () => {
   const brut = (id: string, maj: string) => ({
     proprietaire: A, doc_kind: "gachee", doc_id: id, doc_rev: 4, maj_serveur: maj, cree_serveur: "c", supprime: false, contenu: { id },
@@ -285,6 +300,33 @@ describe("classe-reseau", () => {
     await expect(lireDocComplet(client(null, { code: "42501", message: "non" }), A, "gachee", "g3")).rejects.toMatchObject({ code: "42501" });
     expect(messageErreurClasse(new ErreurClasse("PGRST202", "Could not find the function"))).toMatch(/schema\.sql/);
     expect(messageErreurClasse(new ErreurClasse("42501", "refusé"))).toBe("refusé");
+  });
+
+  it("courbe d'une éprouvette : lue en ligne ; retirée ou absente : null", async () => {
+    const client = (data: unknown) => {
+      const chaine = { select: () => chaine, eq: () => chaine, maybeSingle: () => Promise.resolve({ data, error: null }) };
+      return { from: () => chaine } as unknown as SupabaseClient;
+    };
+    const c = { v: 1, eprouvetteId: "e1", gacheeId: "g1", t: [0, 1], f: [0, 2], d: [0, 3], s: [0, 4], e: [0, 5] };
+    expect(await lireCourbe(client({ payload: c, rev: 3, updated_at: "m", deleted: false }), A, "e1")).toEqual({ v: 1, t: [0, 1], f: [0, 2], d: [0, 3], s: [0, 4], e: [0, 5] });
+    expect(await lireCourbe(client({ payload: null, rev: 4, updated_at: "m", deleted: true }), A, "e1")).toBeNull();
+    expect(await lireCourbe(client(null), A, "e1")).toBeNull();
+  });
+
+  it("courbes de la classe : paginées, avec ou sans contenu", async () => {
+    const lignes = [
+      { user_id: A, id: "e1", payload: { v: 1, gacheeId: "g1", t: [], f: [], d: [], s: [], e: [] } },
+      { user_id: A, id: "e2", payload: { pas: "une courbe" } },
+    ];
+    const colonnes: string[] = [];
+    const chaine = {
+      select: (c: string) => { colonnes.push(c); return chaine; }, eq: () => chaine, order: () => chaine,
+      range: (de: number) => Promise.resolve({ data: de === 0 ? lignes : [], error: null }),
+    };
+    const sb = { from: () => chaine } as unknown as SupabaseClient;
+    expect((await lireCourbesClasse(sb, true)).map((c) => [c.eprouvetteId, c.gacheeId])).toEqual([["e1", "g1"]]);
+    expect((await lireCourbesClasse(sb, false)).map((c) => c.eprouvetteId)).toEqual(["e1", "e2"]);
+    expect(colonnes).toEqual(["user_id,id,payload", "user_id,id,payload", "user_id,id", "user_id,id"]);
   });
 
   it("comptes : lecture convertie ; droit refusé sur auth → marche à suivre dans Studio", async () => {

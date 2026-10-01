@@ -100,11 +100,39 @@ Communiquer ce mot de passe temporaire en personne ; l'étudiant le change
 aussitôt depuis « Compte ». **Son travail n'est jamais en danger** : il reste
 dans son navigateur, et en ligne dans son compte.
 
+### Revoir les gâchées terminées (accepter, refuser)
+Quand un étudiant marque une gâchée « terminée », elle compte dans la tuile
+**« Gâchées à revoir »** de la page Classe et porte la pastille « À revoir »
+dans son détail. Ouvrir la gâchée → carte **« Revue de l'enseignant »** :
+- **Accepter la gâchée**, ou **Refuser la gâchée** (le motif est alors
+  obligatoire ; il est montré à l'étudiant) ;
+- au besoin, cocher **« Écarter »** sur une éprouvette douteuse : elle est
+  signalée dans le jeu d'essais, sans modifier le travail de l'étudiant ;
+- **Retirer la revue** annule la décision.
+
+L'étudiant voit la décision dans son Labo (pastille « Revue : acceptée » ou
+« Revue : refusée », et le motif) à sa prochaine synchronisation, au plus
+5 minutes plus tard. S'il modifie ensuite la gâchée, elle repasse « À revoir »
+(« modifiée depuis la revue »). Le menu « Exporter » propose aussi le jeu
+d'essais limité aux **gâchées acceptées**.
+
+Prérequis, une seule fois : `supabase/schema.sql` exécuté dans SQL Editor
+après la mise en ligne de cette fonction (table `revues`). Sans lui, la carte
+de revue l'indique et le reste de la page Classe fonctionne normalement.
+
 ### Publier des matériaux/constantes à la classe
 Connecté avec un compte enseignant : Réglages → modifier les entrées
 officielles → « Publier en ligne » sur chaque carte. Les étudiants reçoivent
 la mise à jour à leur prochaine connexion (leurs entrées personnelles sont
 conservées).
+
+**Caractériser un résidu ou un granulat** (granulométrie, soufre,
+minéralogie…) : Réglages → carte du matériau → « Caractérisation » sous son
+entrée. Tout est facultatif ; le compteur (« 4/10 ») montre ce qui est
+renseigné. Ces valeurs entrent dans le jeu d'essais à chaque export. Un
+matériau qu'un étudiant a saisi lui-même se reprend depuis la page Classe :
+ouvrir sa gâchée → « Ajouter au catalogue officiel », puis le compléter et
+le publier depuis Réglages.
 
 ### Changer une variable d'environnement (URL Supabase, etc.)
 vercel.com → projet → Settings → Environment Variables → modifier → **puis
@@ -128,9 +156,12 @@ est la seule copie en ligne. Deux gestes, à faire vous-même :
    données (CSV) »).
 
 **Où ranger ces fichiers : PAS sur GitHub** (le dépôt est public, ce sont des
-données d'étudiants). Un espace de stockage de l'établissement convient. Les
-courbes de presse ne sont pas en ligne : chaque étudiant les garde dans son
-navigateur et dans SA sauvegarde locale (Réglages → Données locales → Exporter).
+données d'étudiants). Un espace de stockage de l'établissement convient.
+Depuis octobre 2026, les courbes de presse sont envoyées en ligne par le site
+de l'étudiant (une fois sa gâchée en ligne) : « Classe (JSON) » les contient
+(clé `courbes`). Une courbe importée avant n'y est qu'une fois le site de
+l'étudiant rouvert ; d'ici là, elle reste dans son navigateur et dans SA
+sauvegarde locale (Réglages → Données locales → Exporter).
 
 **Conservation des jeux d'essais.** Le but est un historique sur plusieurs
 années : garder chaque jeu daté, sans écraser le précédent (le nom du fichier
@@ -174,6 +205,8 @@ effacement demandé — vérifier d'abord le bon compte dans Classe → Comptes
 ```sql
 with u as (select id from auth.users where email = 'COURRIEL_DE_L_ETUDIANT')
 delete from public.annotations where owner_id in (select id from u);
+with u as (select id from auth.users where email = 'COURRIEL_DE_L_ETUDIANT')
+delete from public.revues where owner_id in (select id from u);
 with u as (select id from auth.users where email = 'COURRIEL_DE_L_ETUDIANT')
 delete from public.user_docs where user_id in (select id from u);
 with u as (select id from auth.users where email = 'COURRIEL_DE_L_ETUDIANT')

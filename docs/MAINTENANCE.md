@@ -66,12 +66,22 @@ classe. Les entrées officielles publiées remplacent la couche officielle des
 étudiants ; leurs entrées perso sont préservées.
 
 ### 2. Ajouter un champ à un type de matériau
-- `frontend/src/lib/materials.ts` : le champ dans l'interface + les défauts.
-- La carte : tableau `columns` du `MaterialCatalogueCard` concerné (Réglages).
-- **Incrémenter `MATERIALS_VERSION`** (store.tsx) et écrire la migration
-  (valeur par défaut pour les anciennes données) — voir `migrationCatalogueLiants`
-  comme modèle.
-- `materials-io.ts` si le champ doit voyager en CSV/JSON.
+- **Champ facultatif** (cas courant, ex. la caractérisation) : l'ajouter à
+  l'interface dans `frontend/src/lib/materials.ts` et à la liste
+  `CARACTERISATION_RESIDU` ou `CARACTERISATION_GRANULAT`. Cela suffit pour la
+  carte de Réglages (partie repliée « Caractérisation »), l'import et l'export
+  CSV/JSON (`materials-io.ts` en déduit ses colonnes, ajoutées à la fin ; une
+  case vide reste absente, jamais 0) et la table `materiaux` du jeu d'essais
+  (à décrire dans `docs/DICTIONNAIRE_DONNEES.md`, le test l'exige). **Ne PAS
+  incrémenter `MATERIALS_VERSION`** : `migrerMateriauxCloud` refuse un
+  catalogue publié de version supérieure, si bien qu'un étudiant dont le site
+  est encore en cache perdrait le catalogue officiel. Les clés inconnues
+  survivent déjà au chargement et à la publication.
+- **Champ obligatoire** (rare) : le champ dans l'interface + les défauts ;
+  la carte (tableau `columns` du `MaterialCatalogueCard`) ; **incrémenter
+  `MATERIALS_VERSION`** (store.tsx) et écrire la migration (valeur par défaut
+  pour les anciennes données), voir `migrationCatalogueLiants` comme modèle ;
+  `materials-io.ts` si le champ doit voyager en CSV/JSON.
 
 ### 3. Ajouter une méthode de calcul
 1. Backend : modèle d'entrée (`models.py`), solveur (idéalement une
@@ -168,7 +178,9 @@ optionnel+nullable pour les vieux localStorage).
 | `minebackfill_sync` | `{v,data}` | 1 | état de la synchronisation v2 (`sync-etat.ts`) — **hors sauvegarde** |
 | `minebackfill_compte_<uid>` | `{v,data}` | 1 | travail d'un compte mis de côté au changement de compte (`sync-bascule.ts`) — **hors sauvegarde** |
 | `minebackfill_annotations` | `{v,data}` | 2 | fil de commentaires lu en ligne ; v1 → v2 : curseur remis à zéro (tout est relu), `auteur`/`creeLe`/`luLe` complétés en gardant ceux déjà présents (`migrerAnnotationV1`) — **hors sauvegarde** |
-| IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par id d'éprouvette | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` |
+| IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par id d'éprouvette | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` ; orphelines balayées au démarrage (`balayerCourbesOrphelines`, prudent) |
+| `minebackfill_sync_courbes` | `{v,data}` | 1 | envoi des courbes en ligne (`sync-courbes.ts`) : révision et signature de chaque courbe envoyée, par compte — **hors sauvegarde** |
+| `minebackfill_revues` | `{v,data}` | 1 | revues de l'enseignant sur mes gâchées, relues en entier (`revues.ts`) — **hors sauvegarde** |
 | Sauvegarde (fichier) | `backup.ts` | schéma 6 | fusion par id, le local gagne ; courbes dans `data.courbes` |
 
 Toute évolution de schéma : incrémenter la version de LA clé concernée
@@ -497,8 +509,18 @@ rappelle sans le bloquer.
 - **Instantané des matériaux** : `materiauxDepuisFormulation`
   (`lib/gachee-materiaux.ts`), appelé une seule fois, à la création de la
   gâchée (`app/labo/page.tsx`). Il porte l'identité et les valeurs entrées
-  dans le calcul (Gs, w₀), pas la caractérisation du résidu : celle-ci vivra
-  dans le catalogue et se joindra par `materiaux.residu.id`.
+  dans le calcul (Gs, w₀), pas la caractérisation du résidu : celle-ci vit
+  dans le catalogue et se joint par `materiaux.residu.id`.
+- **Choix dans la bibliothèque** : avec la propriété facultative
+  `bibliotheque` (page Labo), l'éditeur propose le résidu et, en RPG, le
+  granulat parmi le catalogue (officiel et personnel) ou « Autre (saisie
+  libre) ». Un choix ne change que l'IDENTITÉ (id, nom, provenance) : Gs et w₀
+  restent ceux du calcul. Sans la propriété, le résidu se saisit en texte.
+- **Côté enseignant** : un matériau d'une gâchée absent du catalogue officiel
+  peut y être ajouté depuis la vue de la gâchée (« Ajouter au catalogue
+  officiel », action `ajouterMateriauOfficiel` du magasin, toujours avec un
+  NOUVEL id pour ne jamais doubler l'id d'un matériau personnel d'étudiant),
+  puis caractérisé et publié depuis Réglages.
 - **Complétude** : `completudeGachee` (`lib/completude.ts`), une liste de
   points `ok` / `manque` / `sans_objet` ; les « sans objet » ne comptent pas.
   Ajouter un point : une entrée dans `completudeGachee` et son libellé, puis
@@ -545,6 +567,87 @@ version lisible.
 - **Aucune formule nouvelle** : les valeurs viennent de `contrainteKpa`,
   `parametresEffectifs`, `essaiValide`, `completudeGachee`. Les copies de
   conflit sont exclues (`gacheesRetenues`).
+
+### 17. Revue des gâchées par l'enseignant
+
+« Marquer terminée » vaut soumission ; l'enseignant accepte ou refuse (motif
+obligatoire) et peut écarter des éprouvettes. Le mot « valide » reste réservé
+à `essaiValide` : une revue « accepte » ou « refuse ».
+
+- **SQL** (`supabase/schema.sql`, bloc « revues ») : table `revues`, une ligne
+  par document, clé (owner_id, target_kind, target_id). Lecture : RLS
+  (propriétaire ou `is_prof()`). Écriture : AUCUN droit direct ; seulement
+  `poser_revue` et `retirer_revue` (security definer, réservées à
+  l'enseignant, document existant exigé). L'étudiant lit par
+  `lire_mes_revues(p_attendu)` (garde de session 28000). Banc :
+  `schema-sql.test.ts`, bloc « revues de l'enseignant » (comptes propres).
+- **Client** : `lib/revues.ts` (pur : types, « modifiée depuis la revue » par
+  comparaison des révisions, « à revoir ») ; `classe-reseau.ts`
+  (`lireRevuesClasse`, `poserRevue`, `retirerRevue`, `lireMesRevues`). Base
+  pas à jour : les lectures rendent `null` et la classe se charge sans revues
+  (`schemaPasAJour` reconnaît aussi une table absente, PGRST205).
+- **Étudiant** : copie locale `minebackfill_revues` `{v:1, data}`, HORS
+  sauvegarde (elle appartient au serveur), relue avec les commentaires
+  (`sync-client.ts`), vidée au changement de compte.
+- **Écrans** : `CarteRevue` (vue d'une gâchée, page Classe ; jamais un bouton
+  dont le texte serait exactement « Retirer », voir `rendu.test.ts`),
+  pastilles dans `DetailEtudiant`, tuile « Gâchées à revoir » (`classe-resume.ts`),
+  pastille et bandeau dans le Labo de l'étudiant.
+- **Exports** : colonnes « Revue », « Motif de la revue », « Modifiée depuis
+  la revue », « Écartée par l'enseignant » à la fin des CSV de classe ; dans
+  le jeu d'essais `revue`, `revue_perimee`, `eprouvette_ecartee` et l'export
+  « gâchées acceptées » (`seulementAcceptees`).
+- **Effacer un compte** : ses revues bloquent la suppression comme ses
+  annotations (`docs/OPERATIONS.md`).
+
+### 18. Courbes de presse en ligne
+
+Les courbes vivent dans IndexedDB (`courbes.ts`, `courbes-idb.ts`) ;
+l'éprouvette n'en garde que `essai.courbeInfo`, qui reste LOCAL : la forme
+canonique des gâchées (`sync-local.ts`) continue de le retirer, sinon deux
+appareils se réécriraient la même gâchée à chaque cycle.
+
+- **Envoi** : `sync-courbes.ts` (pur), À PART du moteur (il ne connaît que
+  résultats et gâchées, et son dépôt est synchrone). Après chaque cycle
+  réussi (`sync-client.ts`), au plus 10 courbes : celles dont la gâchée est
+  déjà en ligne. Document « courbe », id = id de l'éprouvette, contenu =
+  colonnes + `eprouvetteId`, `gacheeId`, par `ecrire_doc`
+  (`ecrivainCourbes`, `sync-supabase.ts`). Un nouvel import change la
+  signature (`sourcePresse.importeLe`, nombre de points) et la courbe repart.
+  Courbe déjà en ligne (réponse perdue, autre appareil) : même contenu,
+  on retient sa révision ; sinon, l'import de cet appareil fait foi.
+- **Lecture** : à la demande seulement (`lireCourbe`, `classe-reseau.ts`) ;
+  `lire_docs` ne rend jamais les courbes. L'étudiant, sur un autre appareil :
+  « Courbe en ligne : afficher » (la courbe est alors rangée dans son
+  IndexedDB) ; l'enseignant : même bouton dans la vue de la gâchée.
+- **Affichage** : `CourbeEprouvette` (ouverte à la demande) et
+  `CourbeContrainteDeformation` (SVG, maximum marqué, PNG et CSV).
+- **Nettoyage** : en ligne, `purger_mes_courbes` (une fois par connexion,
+  une heure de grâce, security invoker) ; sur l'appareil,
+  `balayerCourbesOrphelines` au démarrage, qui ne fait RIEN au moindre doute
+  (gâchées ou travail mis de côté illisibles).
+- **Exports** : « Classe (JSON) » ajoute la clé `courbes` (version
+  inchangée) ; le jeu d'essais a la colonne `courbe_en_ligne`.
+- **Taille** : 151 points par courbe (`presse-fichier.ts`), environ 9 Ko en
+  ligne ; limites : 256 Kio par document, 25 Mo par compte.
+
+### 19. Accès direct SQL aux essais (vues)
+
+`supabase/schema.sql`, bloc « Accès direct » : vues `vue_gachees` et
+`vue_essais` (`security_invoker = true` : la RLS de `user_docs` et de
+`revues` s'applique à qui lit), fonctions de lecture sûre `jsonb_num` et
+`jsonb_ts`, `pseudonyme(uuid)` (même règle que `lib/pseudonyme.ts`),
+`parametre_gachee` (règle de `parametresEffectifs`), `exporter_essais`
+(enseignant). Banc : `schema-sql.test.ts`, bloc « accès direct ».
+
+- **Même résultat que le site** : le banc compare `ucs_kpa` à `contrainteKpa`
+  et `retenu` à `essaiValide`, et le pseudonyme SQL à celui du site. Une
+  règle qui change dans le site change aussi dans la vue, dans la même PR.
+- **Ajouter une colonne** : À LA FIN de la vue (`create or replace view`
+  refuse de renommer ou de déplacer une colonne), avec la clé du
+  dictionnaire si elle existe.
+- **Jamais** d'identifiant de compte dans une vue (le banc le vérifie), et
+  jamais de vue sans `security_invoker` (elle contournerait la RLS).
 
 ## Pièges connus
 

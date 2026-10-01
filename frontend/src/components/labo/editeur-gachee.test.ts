@@ -7,6 +7,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import EditeurGachee from "./EditeurGachee";
 import FormEssaiUCS from "./FormEssaiUCS";
+import CourbeContrainteDeformation from "./CourbeContrainteDeformation";
 import type { Gachee } from "@/lib/gachee";
 import type { Annotation } from "@/lib/annotations";
 
@@ -118,5 +119,87 @@ describe("formulaire d'essai : conditions de l'essai", () => {
     expect(html).toContain("Rupture (précision)");
     expect(html).toContain('value="cône"');
     expect(html).not.toContain("Appliquer cette vitesse");
+  });
+});
+
+describe("éditeur : matériaux choisis dans la bibliothèque", () => {
+  const bibliotheque = {
+    residus: [
+      { id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, origine: "officiel" as const },
+      { id: "res_perso", nom: "Mon résidu", gs: 3, w0_pct: 20, origine: "perso" as const },
+    ],
+    granulats: [{ id: "gra_laronde", nom: "Concassé LaRonde", gs: 2.8, humidite_pct: 0, origine: "officiel" as const }],
+  };
+  const avec = (g: Partial<Gachee>) => renderToStaticMarkup(createElement(EditeurGachee, {
+    gachee: { ...gachee, ...g }, maintenant: new Date(2026, 9, 7, 9), annotations: [], connecte: true, bibliotheque,
+    onMaj: () => {}, onRetour: () => {}, onSupprimer: () => {},
+  }));
+
+  it("résidu du catalogue sélectionné ; personnel signalé ; « Autre » proposé", () => {
+    const html = avec({ materiaux: { residu: { id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0Pct: 25 } } });
+    expect(html).toMatch(/<option value="res_laronde" selected="">Résidus LaRonde<\/option>/);
+    expect(html).toContain("Mon résidu (personnel)");
+    expect(html).toContain("Autre (saisie libre)");
+    expect(html).not.toContain('id="residu-nom"');
+    expect(html).not.toContain('id="granulat-choix"'); // RPC : pas de granulat
+  });
+
+  it("résidu saisi librement : « Autre » et son nom ; granulat en RPG", () => {
+    const html = avec({ categorie: "RPG", materiaux: { residu: { nom: "R-01", gs: 3.4 } } });
+    expect(html).toMatch(/<option value="autre" selected="">Autre \(saisie libre\)<\/option>/);
+    expect(html).toMatch(/id="residu-nom"[^>]*value="R-01"/);
+    expect(html).toContain('id="granulat-choix"');
+    expect(html).toContain("Concassé LaRonde");
+  });
+});
+
+describe("éditeur : revue de l'enseignant", () => {
+  const avec = (revue: Parameters<typeof EditeurGachee>[0]["revue"]) => renderToStaticMarkup(createElement(EditeurGachee, {
+    gachee, maintenant: new Date(2026, 9, 7, 9), annotations: [], connecte: true, revue,
+    onMaj: () => {}, onRetour: () => {}, onSupprimer: () => {},
+  }));
+
+  it("refusée : pastille avec le motif en infobulle, bandeau avec le motif et les éprouvettes écartées (par code)", () => {
+    const html = avec({ kind: "gachee", id: "g1", rev: 3, decision: "refusee", motif: "Pesées incomplètes.", ecartees: ["e2", "inconnue"], maj: "m" });
+    expect(html).toMatch(/title="Pesées incomplètes\."[^>]*>Revue : refusée</);
+    expect(html).toContain("Revue de l&#x27;enseignant : gâchée refusée.");
+    expect(html).toContain("Motif : Pesées incomplètes.");
+    expect(html).toContain("Éprouvette écartée par l&#x27;enseignant : G-20260929-01-E02.");
+  });
+
+  it("acceptée sans motif : la pastille seulement ; sans revue : rien", () => {
+    const html = avec({ kind: "gachee", id: "g1", rev: 3, decision: "acceptee", motif: null, ecartees: [], maj: "m" });
+    expect(html).toContain("Revue : acceptée");
+    expect(html).not.toContain("Revue de l&#x27;enseignant");
+    expect(avec(undefined)).not.toContain("Revue :");
+  });
+});
+
+describe("courbe contrainte-déformation", () => {
+  const essai = (p: Record<string, unknown>) => ({ contrainteKpaSaisie: 400, sourcePresse: { fichier: "p.xlsx", echantillon: "1", importeLe: coulee }, ...p });
+  const form = (es: Record<string, unknown>, props: Record<string, unknown>) => renderToStaticMarkup(createElement(FormEssaiUCS, {
+    eprouvette: { id: "e1", code: "E01", couleLe: coulee, ageJours: 7, statut: "ecrase", essai: essai(es) }, onChange: () => {}, ...props,
+  }));
+  const charger = async () => null;
+
+  it("courbe sur cet appareil : bouton avec le nombre de points ; ailleurs : « Courbe en ligne : afficher »", () => {
+    expect(form({ courbeInfo: { nbPoints: 151 } }, { chargerCourbe: charger })).toContain("Afficher la courbe (151 points)");
+    const enLigne = form({}, { chargerCourbe: charger, chercherCourbeEnLigne: charger });
+    expect(enLigne).toContain("Courbe en ligne : afficher");
+    expect(form({}, { chargerCourbe: charger })).not.toContain("Courbe en ligne"); // hors connexion
+    expect(renderToStaticMarkup(createElement(FormEssaiUCS, {
+      eprouvette: { id: "e2", code: "E02", couleLe: coulee, ageJours: 7, statut: "ecrase", essai: { contrainteKpaSaisie: 400 } },
+      onChange: () => {}, chercherCourbeEnLigne: charger,
+    }))).not.toContain("Courbe en ligne"); // saisie à la main : pas de courbe à chercher
+  });
+
+  it("le tracé : axes nommés, maximum marqué, description accessible", () => {
+    const pts = [0, 0.1, 0.2, 0.3].map((e, i) => ({ tempsS: i, chargeN: i * 10, deplacementMm: i / 10, deformationPct: e, contrainteKpa: [0, 300, 412, 380][i] }));
+    const svg = renderToStaticMarkup(createElement(CourbeContrainteDeformation, { points: pts, titre: "Éprouvette E01" }));
+    expect(svg).toContain("Déformation (%)");
+    expect(svg).toContain("Contrainte (kPa)");
+    expect(svg).toContain("Maximum : 412 kPa à 0,20 %");
+    expect(svg).toContain('role="img"');
+    expect(renderToStaticMarkup(createElement(CourbeContrainteDeformation, { points: pts.slice(0, 1), titre: "x" }))).toContain("Courbe sans points exploitables");
   });
 });

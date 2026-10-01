@@ -792,6 +792,356 @@ grant execute on function public.definir_role(uuid, text) to authenticated;
 grant execute on function public.bloquer_compte(uuid, boolean) to authenticated;
 
 -- ======================================================================
+--  courbes en ligne : nettoyage (2026-10). Les courbes de presse sont
+--  envoyées par le site comme documents « courbe » (id = id de l'éprouvette),
+--  à part de la synchronisation. Quand une gâchée ou une éprouvette
+--  disparaît, sa courbe devient orpheline : purger_mes_courbes la met à la
+--  corbeille (contenu effacé, trace « supprimé » gardée). Une heure de grâce :
+--  une courbe envoyée juste avant sa gâchée n'est jamais prise pour une
+--  orpheline. Security INVOKER : la RLS du compte s'applique, il ne touche
+--  que ses propres lignes. Une copie de conflit garde les ids d'éprouvette de
+--  l'original : sa courbe reste tant que l'une des deux existe.
+-- ======================================================================
+create or replace function public.purger_mes_courbes(p_attendu uuid)
+returns integer language plpgsql security invoker set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_n integer;
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  update public.user_docs c set deleted = true, payload = null
+   where c.user_id = v_uid and c.kind = 'courbe' and not c.deleted
+     and c.updated_at < clock_timestamp() - interval '1 hour'
+     and not exists (
+       select 1
+         from public.user_docs g
+        cross join lateral jsonb_array_elements(
+                case when jsonb_typeof(g.payload -> 'eprouvettes') = 'array'
+                     then g.payload -> 'eprouvettes' else '[]'::jsonb end) e
+        where g.user_id = v_uid and g.kind = 'gachee' and not g.deleted
+          and e ->> 'id' = c.id);
+  get diagnostics v_n = row_count;
+  return v_n;
+end $$;
+revoke execute on function public.purger_mes_courbes(uuid) from public, anon;
+grant execute on function public.purger_mes_courbes(uuid) to authenticated;
+
+-- ======================================================================
+--  revues : la décision de l'enseignant sur une gâchée (2026-10).
+--  « Marquer terminée » vaut soumission ; l'enseignant accepte ou refuse
+--  (motif obligatoire pour un refus) et peut écarter des éprouvettes. Il
+--  n'écrit jamais dans le document de l'étudiant : sa décision vit ici, une
+--  ligne par document. AUCUN droit d'écriture directe (ni insert, ni update,
+--  ni delete) : tout passe par poser_revue et retirer_revue (security
+--  definer), si bien qu'aucune politique d'écriture ne peut interroger sa
+--  propre table (récursion 42P17). Additif : un site plus ancien l'ignore.
+-- ======================================================================
+create table if not exists public.revues (
+  owner_id    uuid        not null references auth.users(id) on delete restrict,
+  target_kind text        not null check (target_kind in ('gachee')),
+  target_id   text        not null,
+  -- Révision du document au moment de la décision : « modifiée depuis la revue ».
+  target_rev  bigint,
+  decision    text        not null check (decision in ('acceptee', 'refusee')),
+  motif       text        check (motif is null or char_length(motif) between 1 and 2000),
+  -- Éprouvettes écartées par l'enseignant (ids), sans toucher au document.
+  ecartees    text[]      not null default '{}' check (cardinality(ecartees) <= 200),
+  reviewer_id uuid        not null references auth.users(id) on delete restrict,
+  deleted     boolean     not null default false,
+  created_at  timestamptz not null default clock_timestamp(),
+  updated_at  timestamptz not null default clock_timestamp(),
+  primary key (owner_id, target_kind, target_id),
+  constraint revues_motif_refus check (decision <> 'refusee' or motif is not null)
+);
+create index if not exists revues_maj_idx on public.revues (updated_at, owner_id);
+
+-- Lecture : l'étudiant les siennes, l'enseignant toutes. Écriture : aucune
+-- politique, et aucun droit (défense en profondeur : Supabase accorde tout à
+-- anon et authenticated sur une table nouvelle).
+alter table public.revues enable row level security;
+drop policy if exists revues_select on public.revues;
+create policy revues_select on public.revues for select to authenticated
+  using (owner_id = (select auth.uid()) or (select public.is_prof()));
+revoke all on public.revues from anon;
+revoke insert, update, delete, truncate on public.revues from authenticated;
+grant select on public.revues to authenticated;
+
+-- L'enseignant pose (ou remplace) sa décision sur un document qui existe.
+create or replace function public.poser_revue(
+  p_owner uuid, p_kind text, p_id text, p_rev bigint,
+  p_decision text, p_motif text, p_ecartees text[] default '{}'
+) returns table (maj_serveur timestamptz)
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_motif text := nullif(btrim(coalesce(p_motif, '')), '');
+  v_ecartees text[] := coalesce(p_ecartees, '{}'::text[]);
+begin
+  if v_uid is null or not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  if p_kind is distinct from 'gachee' or p_decision is null or p_decision not in ('acceptee', 'refusee') then
+    raise exception 'décision invalide' using errcode = '22023';
+  end if;
+  if p_decision = 'refusee' and v_motif is null then
+    raise exception 'un refus doit être motivé' using errcode = '22023';
+  end if;
+  if char_length(coalesce(v_motif, '')) > 2000 then
+    raise exception 'motif trop long (2000 caractères au plus)' using errcode = '22023';
+  end if;
+  if cardinality(v_ecartees) > 200
+     or exists (select 1 from unnest(v_ecartees) e where e is null or char_length(e) not between 1 and 100) then
+    raise exception 'éprouvettes écartées invalides' using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.user_docs d
+                  where d.user_id = p_owner and d.kind = p_kind and d.id = p_id and not d.deleted) then
+    raise exception 'document introuvable en ligne' using errcode = 'P0002';
+  end if;
+  return query
+    insert into public.revues as r (owner_id, target_kind, target_id, target_rev, decision, motif, ecartees, reviewer_id)
+    values (p_owner, p_kind, p_id, p_rev, p_decision, v_motif, v_ecartees, v_uid)
+    on conflict on constraint revues_pkey do update
+      set target_rev = excluded.target_rev, decision = excluded.decision, motif = excluded.motif,
+          ecartees = excluded.ecartees, reviewer_id = excluded.reviewer_id,
+          deleted = false, updated_at = clock_timestamp()
+    returning r.updated_at;
+end $$;
+
+-- L'enseignant retire sa décision (la ligne reste, marquée retirée).
+create or replace function public.retirer_revue(p_owner uuid, p_kind text, p_id text)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null or not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  update public.revues r set deleted = true, updated_at = clock_timestamp()
+   where r.owner_id = p_owner and r.target_kind = p_kind and r.target_id = p_id and not r.deleted;
+  return found;
+end $$;
+
+-- L'étudiant lit les décisions sur SON travail (au plus une par document).
+-- Colonnes de sortie nommées autrement que la table (ambiguïté plpgsql).
+create or replace function public.lire_mes_revues(p_attendu uuid)
+returns table (cible_kind text, cible_id text, cible_rev bigint, decision_revue text,
+               motif_revue text, ecartees_revue text[], maj_serveur timestamptz)
+language plpgsql stable security invoker set search_path = '' as $$
+declare v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null or p_attendu is distinct from v_uid then
+    raise exception 'session inattendue' using errcode = '28000';
+  end if;
+  return query
+    select r.target_kind, r.target_id, r.target_rev, r.decision, r.motif, r.ecartees, r.updated_at
+      from public.revues r
+     where r.owner_id = v_uid and not r.deleted
+     order by r.updated_at
+     limit 5000;
+end $$;
+
+revoke execute on function public.poser_revue(uuid, text, text, bigint, text, text, text[]) from public, anon;
+revoke execute on function public.retirer_revue(uuid, text, text) from public, anon;
+revoke execute on function public.lire_mes_revues(uuid) from public, anon;
+grant execute on function public.poser_revue(uuid, text, text, bigint, text, text, text[]) to authenticated;
+grant execute on function public.retirer_revue(uuid, text, text) to authenticated;
+grant execute on function public.lire_mes_revues(uuid) to authenticated;
+
+-- ======================================================================
+--  Accès direct (SQL) aux essais, pour la recherche (2026-10). Deux vues
+--  PSEUDONYMISÉES, avec les clés du jeu d'essais (docs/DICTIONNAIRE_DONNEES.md) :
+--  vue_gachees (une ligne par gâchée) et vue_essais (une ligne par éprouvette).
+--  security_invoker : la RLS s'applique à QUI LIT (l'étudiant voit les siennes,
+--  l'enseignant toute la classe, l'anonyme rien) ; sans cette option, une vue
+--  lirait avec les droits de son propriétaire et contournerait la RLS.
+--  Copies de conflit exclues. Aucune formule nouvelle : ucs_kpa suit
+--  contrainteKpa (eprouvette.ts), les paramètres suivent parametresEffectifs
+--  (gachee.ts). Ajouter une colonne : la placer À LA FIN (create or replace
+--  view refuse de renommer ou de déplacer une colonne existante).
+-- ======================================================================
+
+-- Lecture sûre d'une valeur JSON : null si ce n'est pas le type attendu (un
+-- document d'étudiant n'est pas validé par le serveur).
+create or replace function public.jsonb_num(p jsonb) returns double precision
+language sql immutable set search_path = '' as $$
+  select case when jsonb_typeof(p) = 'number' then (p #>> '{}')::double precision end
+$$;
+create or replace function public.jsonb_ts(p jsonb) returns timestamptz
+language plpgsql stable set search_path = '' as $$
+begin
+  if jsonb_typeof(p) is distinct from 'string' then return null; end if;
+  return (p #>> '{}')::timestamptz;
+exception when others then
+  return null;
+end $$;
+
+-- Pseudonyme d'un compte : MÊME règle que le site (frontend/src/lib/pseudonyme.ts).
+-- Security definer : pgcrypto vit dans le schéma `extensions`, dont l'usage
+-- n'est pas garanti à `authenticated` ; la fonction ne fait qu'un calcul
+-- d'empreinte, sans lire aucune table.
+create or replace function public.pseudonyme(p_id uuid) returns text
+language sql immutable security definer set search_path = '' as $$
+  select 'op-' || left(encode(extensions.digest(p_id::text, 'sha256'), 'hex'), 12)
+$$;
+
+-- Paramètre de formulation d'une gâchée : son instantané s'il existe, sinon la
+-- recette de sa formulation d'origine (parametresEffectifs).
+create or replace function public.parametre_gachee(p_gachee jsonb, p_recette jsonb, p_cle text, p_cle_recette text)
+returns double precision language sql immutable set search_path = '' as $$
+  select case when p_gachee ? 'parametres' then public.jsonb_num(p_gachee -> 'parametres' -> p_cle)
+              else public.jsonb_num(p_recette -> p_cle_recette) end
+$$;
+
+create or replace view public.vue_gachees with (security_invoker = true) as
+select
+  public.pseudonyme(d.user_id)                                   as operateur,
+  d.payload ->> 'sessionId'                                      as session_id,
+  d.id                                                           as gachee_ref,
+  d.payload ->> 'code'                                           as gachee_code,
+  public.jsonb_ts(d.payload -> 'creeLe')                         as gachee_le,
+  d.payload ->> 'statut'                                         as gachee_statut,
+  d.payload ->> 'categorie'                                      as categorie,
+  d.payload ->> 'formulationId'                                  as formulation_ref,
+  d.payload ->> 'solverVersion'                                  as solveur_version,
+  public.parametre_gachee(d.payload, f.recette, 'cwPct', 'solids_mass_pct') as cw_pct,
+  public.parametre_gachee(d.payload, f.recette, 'wcRatio', 'wc_ratio')      as el_ratio,
+  public.parametre_gachee(d.payload, f.recette, 'bwPct', 'bw_mass_pct')     as bw_pct,
+  public.parametre_gachee(d.payload, f.recette, 'wPct', 'w_mass_pct')       as w_pct,
+  d.payload #>> '{materiaux,residu,id}'                          as residu_ref,
+  d.payload #>> '{materiaux,residu,nom}'                         as residu_nom,
+  public.jsonb_num(d.payload #> '{materiaux,residu,gs}')         as residu_gs,
+  public.jsonb_num(d.payload #> '{materiaux,residu,w0Pct}')      as residu_w0_pct,
+  d.payload #>> '{materiaux,eau,type}'                           as eau_type,
+  public.jsonb_num(d.payload -> 'malaxageDureeMin')              as malaxage_min,
+  public.jsonb_num(d.payload -> 'w0MesurePct')                   as w0_mesure_pct,
+  public.jsonb_num(d.payload -> 'slumpMesureMm')                 as affaissement_mm,
+  public.jsonb_num(d.payload -> 'cwMesurePct')                   as cw_mesure_pct,
+  d.payload #>> '{cure,mode}'                                    as cure_mode,
+  public.jsonb_num(d.payload #> '{cure,temperatureC}')           as cure_temperature_c,
+  r.decision                                                     as revue,
+  case when r.decision is null then null
+       else r.target_rev is not null and d.rev > r.target_rev end as revue_perimee,
+  d.updated_at                                                   as maj
+from public.user_docs d
+left join lateral (
+  select x.payload -> 'recipes' -> greatest(0, least(
+           coalesce(public.jsonb_num(d.payload -> 'recetteIndex')::integer, 0),
+           jsonb_array_length(x.payload -> 'recipes') - 1)) as recette
+    from public.user_docs x
+   where x.user_id = d.user_id and x.kind = 'resultat' and x.id = d.payload ->> 'formulationId'
+     and not x.deleted and jsonb_typeof(x.payload -> 'recipes') = 'array'
+     and jsonb_array_length(x.payload -> 'recipes') > 0
+) f on true
+left join public.revues r
+  on r.owner_id = d.user_id and r.target_kind = 'gachee' and r.target_id = d.id and not r.deleted
+where d.kind = 'gachee' and not d.deleted and not (d.payload ? 'conflit');
+
+create or replace view public.vue_essais with (security_invoker = true) as
+select
+  public.pseudonyme(d.user_id)                                   as operateur,
+  d.payload ->> 'sessionId'                                      as session_id,
+  d.id                                                           as gachee_ref,
+  d.payload ->> 'code'                                           as gachee_code,
+  d.payload ->> 'categorie'                                      as categorie,
+  public.parametre_gachee(d.payload, f.recette, 'cwPct', 'solids_mass_pct') as cw_pct,
+  public.parametre_gachee(d.payload, f.recette, 'wcRatio', 'wc_ratio')      as el_ratio,
+  public.parametre_gachee(d.payload, f.recette, 'bwPct', 'bw_mass_pct')     as bw_pct,
+  public.parametre_gachee(d.payload, f.recette, 'wPct', 'w_mass_pct')       as w_pct,
+  d.payload #>> '{materiaux,residu,id}'                          as residu_ref,
+  d.payload #>> '{cure,mode}'                                    as cure_mode,
+  public.jsonb_num(d.payload #> '{cure,temperatureC}')           as cure_temperature_c,
+  e.value ->> 'id'                                               as eprouvette_ref,
+  e.value ->> 'code'                                             as eprouvette_code,
+  public.jsonb_ts(e.value -> 'couleLe')                          as coulee_le,
+  public.jsonb_num(e.value -> 'ageJours')                        as age_cible_j,
+  e.value ->> 'statut'                                           as statut,
+  case when e.value ->> 'statut' = 'ecrase' then public.jsonb_ts(e.value #> '{essai,date}') end as essai_le,
+  public.jsonb_num(e.value -> 'mouleDiametreMm')                 as moule_diametre_mm,
+  u.charge                                                       as charge_kn,
+  u.diametre                                                     as diametre_mm,
+  public.jsonb_num(e.value #> '{essai,hauteurMm}')               as hauteur_mm,
+  public.jsonb_num(e.value #> '{essai,masseG}')                  as masse_g,
+  u.ucs                                                          as ucs_kpa,
+  case when u.ucs is null then null
+       when u.saisie > 0 then case when (e.value -> 'essai') ? 'sourcePresse' then 'presse' else 'saisie' end
+       else 'calcul_fa' end                                      as ucs_source,
+  (u.ucs is not null and coalesce(e.value #> '{essai,exclu}', 'false') <> 'true'::jsonb) as retenu,
+  coalesce(e.value #> '{essai,exclu}', 'false') = 'true'::jsonb as exclu,
+  e.value #>> '{essai,modeRuptureCode}'                          as rupture_code,
+  public.jsonb_num(e.value #> '{essai,moduleYoungKpa}')          as module_young_kpa,
+  public.jsonb_num(e.value #> '{essai,deformationMaxPct}')       as deformation_max_pct,
+  public.jsonb_num(e.value #> '{essai,deflexionMaxMm}')          as deflexion_max_mm,
+  public.jsonb_num(e.value #> '{essai,vitesseChargement,valeur}') as vitesse_chargement,
+  e.value #>> '{essai,vitesseChargement,unite}'                  as vitesse_unite,
+  coalesce((e.value -> 'essai') ? 'sourcePresse', false)         as import_presse,
+  r.decision                                                     as revue,
+  case when r.decision is null then null
+       else r.target_rev is not null and d.rev > r.target_rev end as revue_perimee,
+  case when r.decision is null then null
+       else (e.value ->> 'id') = any (r.ecartees) end            as eprouvette_ecartee,
+  exists (select 1 from public.user_docs c
+           where c.user_id = d.user_id and c.kind = 'courbe' and c.id = e.value ->> 'id' and not c.deleted) as courbe_en_ligne
+from public.user_docs d
+left join lateral (
+  select x.payload -> 'recipes' -> greatest(0, least(
+           coalesce(public.jsonb_num(d.payload -> 'recetteIndex')::integer, 0),
+           jsonb_array_length(x.payload -> 'recipes') - 1)) as recette
+    from public.user_docs x
+   where x.user_id = d.user_id and x.kind = 'resultat' and x.id = d.payload ->> 'formulationId'
+     and not x.deleted and jsonb_typeof(x.payload -> 'recipes') = 'array'
+     and jsonb_array_length(x.payload -> 'recipes') > 0
+) f on true
+left join public.revues r
+  on r.owner_id = d.user_id and r.target_kind = 'gachee' and r.target_id = d.id and not r.deleted
+cross join lateral jsonb_array_elements(
+  case when jsonb_typeof(d.payload -> 'eprouvettes') = 'array' then d.payload -> 'eprouvettes' else '[]'::jsonb end) e
+cross join lateral (
+  -- contrainteKpa : contrainte directe positive, sinon F / A (kN, mm -> kPa),
+  -- et seulement pour une éprouvette écrasée (comme le jeu d'essais).
+  select v.saisie, v.charge, v.diametre,
+         case when e.value ->> 'statut' is distinct from 'ecrase' then null
+              when v.saisie > 0 then v.saisie
+              when v.charge > 0 and v.diametre > 0
+                then ((v.charge * 1000) / ((pi() * v.diametre * v.diametre) / 4)) * 1000
+         end as ucs
+    from (select public.jsonb_num(e.value #> '{essai,contrainteKpaSaisie}') as saisie,
+                 public.jsonb_num(e.value #> '{essai,chargeKn}')            as charge,
+                 public.jsonb_num(e.value #> '{essai,diametreMm}')          as diametre) v
+) u
+where d.kind = 'gachee' and not d.deleted and not (d.payload ? 'conflit');
+
+-- Enseignant : tous les essais d'une session (null : toutes). Les vues
+-- suffisent à la lecture ; cette fonction est le point d'entrée d'un export
+-- automatisé, et refuse explicitement tout autre compte.
+create or replace function public.exporter_essais(p_session text default null)
+returns setof public.vue_essais
+language plpgsql stable security invoker set search_path = '' as $$
+begin
+  if not public.is_prof() then
+    raise exception 'réservé à l''enseignant' using errcode = '42501';
+  end if;
+  return query
+    select * from public.vue_essais v
+     where p_session is null or v.session_id = p_session
+     order by v.operateur, v.gachee_code, v.eprouvette_code;
+end $$;
+
+revoke all on public.vue_gachees, public.vue_essais from anon;
+revoke insert, update, delete, truncate on public.vue_gachees, public.vue_essais from authenticated;
+grant select on public.vue_gachees, public.vue_essais to authenticated;
+revoke execute on function public.jsonb_num(jsonb) from public, anon;
+revoke execute on function public.jsonb_ts(jsonb) from public, anon;
+revoke execute on function public.pseudonyme(uuid) from public, anon;
+revoke execute on function public.parametre_gachee(jsonb, jsonb, text, text) from public, anon;
+revoke execute on function public.exporter_essais(text) from public, anon;
+grant execute on function public.jsonb_num(jsonb) to authenticated;
+grant execute on function public.jsonb_ts(jsonb) to authenticated;
+grant execute on function public.pseudonyme(uuid) to authenticated;
+grant execute on function public.parametre_gachee(jsonb, jsonb, text, text) to authenticated;
+grant execute on function public.exporter_essais(text) to authenticated;
+
+-- ======================================================================
 --  Reprise unique de saved_results (v1) dans user_docs. Ré-exécutable : un
 --  document déjà repris (ou supprimé depuis par l'étudiant) n'est pas touché.
 -- ======================================================================

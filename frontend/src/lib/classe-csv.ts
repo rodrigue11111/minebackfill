@@ -10,6 +10,7 @@
 import { agregerParAge, ageReelJours, contrainteKpa, dateCoulee, dateEcheance, libelleMoule, libelleRupture } from "./eprouvette";
 import { MODES_CURE, TYPES_EAU, horsTolerance, parametresEffectifs } from "./gachee";
 import { completudeGachee } from "./completude";
+import { LIBELLE_DECISION, type InfoRevue } from "./revues";
 import { sessionEffective, type Session } from "./sessions";
 import { essaiValide, gacheesRetenues, type EtudiantClasse } from "./classe";
 import { fmtDate } from "./echeance-affichage";
@@ -83,6 +84,12 @@ const EN_TETE_FICHE = [
   "Mode de cure", "Température de cure (°C)", "Humidité de cure (%)",
 ];
 
+/** Revue de l'enseignant (colonnes ajoutées à la fin, après la fiche). */
+export type RevueDe = (ownerId: string, gacheeId: string) => InfoRevue | undefined;
+const EN_TETE_REVUE = ["Revue", "Motif de la revue", "Modifiée depuis la revue"];
+const revueGachee = (r: InfoRevue | undefined): CelluleCsv[] =>
+  r ? [LIBELLE_DECISION[r.decision], r.motif ?? "", r.perimee ? "oui" : "non"] : ["", "", ""];
+
 const EN_TETE_COMMUN = ["Étudiant", "Courriel", "Session", "Gâchée", "Date de gâchée", "Catégorie", "Formulation", "Cw (%)", "E/L", "Bw (%)", "w (%)"];
 
 export const EN_TETES_EPROUVETTES = [
@@ -91,14 +98,16 @@ export const EN_TETES_EPROUVETTES = [
   "Module de Young (kPa)", "Déformation max (%)", "Fichier de presse",
   ...EN_TETE_FICHE, "Moule", "Diamètre du moule (mm)", "Hauteur du moule (mm)", "Masse (g)", "Vitesse de chargement",
   "Unité de vitesse", "Presse", "Code de rupture", "Déflexion max (mm)", "Complétude de la fiche (%)",
+  ...EN_TETE_REVUE, "Écartée par l'enseignant",
 ];
 
 /** Une ligne par éprouvette (en-tête compris). */
-export function lignesCsvEprouvettes(etudiants: EtudiantClasse[], sessions: Session[]): CelluleCsv[][] {
+export function lignesCsvEprouvettes(etudiants: EtudiantClasse[], sessions: Session[], revueDe?: RevueDe): CelluleCsv[][] {
   const lignes: CelluleCsv[][] = [EN_TETES_EPROUVETTES];
   for (const c of parcourir(etudiants, sessions)) {
     const fiche = ficheGachee(c.g);
     const completude = completudeGachee(c.g).pct;
+    const revue = revueDe?.(c.e.id, c.g.id);
     const eps = [...c.g.eprouvettes].sort((a, b) => a.code.localeCompare(b.code));
     for (const ep of eps) {
       const es = ep.essai;
@@ -111,6 +120,7 @@ export function lignesCsvEprouvettes(etudiants: EtudiantClasse[], sessions: Sess
         ...fiche, libelleMoule(ep), ep.mouleDiametreMm ?? null, ep.mouleHauteurMm ?? null, es?.masseG ?? null,
         es?.vitesseChargement?.valeur ?? null, es?.vitesseChargement?.unite ?? "", es?.presse ?? "",
         es?.modeRuptureCode ?? "", es?.deflexionMaxMm ?? null, completude,
+        ...revueGachee(revue), revue ? (revue.ecartees.includes(ep.id) ? "oui" : "non") : "",
       ]);
     }
   }
@@ -119,16 +129,16 @@ export function lignesCsvEprouvettes(etudiants: EtudiantClasse[], sessions: Sess
 
 export const EN_TETES_SYNTHESE = [
   ...EN_TETE_COMMUN, "Âge (j)", "n", "Exclues", "UCS moyenne (kPa)", "Écart-type (kPa)", "CV (%)", "Pesées hors tolérance",
-  ...EN_TETE_FICHE, "Complétude de la fiche (%)",
+  ...EN_TETE_FICHE, "Complétude de la fiche (%)", ...EN_TETE_REVUE,
 ];
 
 /** Une ligne par gâchée et par âge mesuré (une ligne sans âge si rien n'est mesuré). */
-export function lignesCsvSynthese(etudiants: EtudiantClasse[], sessions: Session[]): CelluleCsv[][] {
+export function lignesCsvSynthese(etudiants: EtudiantClasse[], sessions: Session[], revueDe?: RevueDe): CelluleCsv[][] {
   const lignes: CelluleCsv[][] = [EN_TETES_SYNTHESE];
   for (const c of parcourir(etudiants, sessions)) {
     // Pesées : inconnues (cellule vide) si la gâchée n'en porte aucune.
     const hors = c.g.composants.length === 0 ? null : c.g.composants.filter((x) => horsTolerance(x, c.g.tolerancePct)).length;
-    const fin = [...ficheGachee(c.g), completudeGachee(c.g).pct];
+    const fin = [...ficheGachee(c.g), completudeGachee(c.g).pct, ...revueGachee(revueDe?.(c.e.id, c.g.id))];
     const ages = agregerParAge(c.g.eprouvettes);
     if (ages.length === 0) {
       lignes.push([...tete(c), null, 0, 0, null, null, null, hors, ...fin]);

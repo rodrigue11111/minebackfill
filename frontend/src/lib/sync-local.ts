@@ -9,8 +9,9 @@
 //   une version plus récente. D'où aussi : une écriture refusée rend « echec »,
 //   et le moteur n'avance pas.
 // - Forme CANONIQUE = ce qui part en ligne. Sans `ownerId` (information locale)
-//   ni les courbes de presse (lourdes : elles restent sur l'appareil, dans la
-//   gâchée ou dans IndexedDB — `courbe` ou sa référence `courbeInfo`). Écrire
+//   ni les courbes de presse (lourdes : rangées sur l'appareil, dans la
+//   gâchée ou dans IndexedDB — `courbe` ou sa référence `courbeInfo` ; elles
+//   partent en ligne À PART, par sync-courbes.ts). Écrire
 //   une version serveur RÉATTACHE ces champs locaux, sinon chaque
 //   synchronisation effacerait les courbes.
 // - Un résultat estampillé au nom d'un AUTRE compte (ancienne fusion de la v1
