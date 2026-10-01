@@ -7,8 +7,9 @@
 //     des essais retenus d'UNE gâchée — jamais de moyenne entre gâchées).
 // Copies de conflit exclues (elles répètent les éprouvettes de l'original).
 
-import { agregerParAge, ageReelJours, contrainteKpa, dateCoulee, dateEcheance } from "./eprouvette";
-import { horsTolerance, parametresEffectifs } from "./gachee";
+import { agregerParAge, ageReelJours, contrainteKpa, dateCoulee, dateEcheance, libelleMoule, libelleRupture } from "./eprouvette";
+import { MODES_CURE, TYPES_EAU, horsTolerance, parametresEffectifs } from "./gachee";
+import { completudeGachee } from "./completude";
 import { sessionEffective, type Session } from "./sessions";
 import { essaiValide, gacheesRetenues, type EtudiantClasse } from "./classe";
 import { fmtDate } from "./echeance-affichage";
@@ -63,18 +64,41 @@ const tete = (c: Contexte): CelluleCsv[] => [
   c.e.nom, c.e.email ?? "", c.session, c.g.code, jour(c.g.creeLe), c.g.categorie, c.g.formulationLabel ?? "",
   c.p?.cwPct ?? null, c.p?.wcRatio ?? null, c.p?.bwPct ?? null, c.p?.wPct ?? null,
 ];
+// Fiche d'essai de la gâchée (colonnes AJOUTÉES À LA FIN des deux tableaux :
+// les classeurs déjà montés par l'enseignant gardent leurs références).
+const ficheGachee = (g: Contexte["g"]): CelluleCsv[] => {
+  const m = g.materiaux;
+  const liants = (m?.liants ?? [])
+    .map((l) => `${l.nom ?? l.code ?? "Liant"}${l.fractionPct != null ? ` ${l.fractionPct.toLocaleString("fr-CA", { maximumFractionDigits: 1 })} %` : ""}`)
+    .join(", ");
+  return [
+    m?.residu?.nom ?? "", liants, TYPES_EAU.find((t) => t.valeur === m?.eau?.type)?.libelle ?? "",
+    m?.adjuvant?.nom ?? "", m?.adjuvant?.dosage ?? null, m?.adjuvant?.dosage != null ? m.adjuvant.dosageUnite ?? "" : "",
+    g.malaxageDureeMin ?? null, MODES_CURE.find((c) => c.valeur === g.cure?.mode)?.libelle ?? "",
+    g.cure?.temperatureC ?? null, g.cure?.humiditePct ?? null,
+  ];
+};
+const EN_TETE_FICHE = [
+  "Résidu", "Liants", "Eau de gâchage", "Adjuvant", "Dosage d'adjuvant", "Unité du dosage", "Durée de malaxage (min)",
+  "Mode de cure", "Température de cure (°C)", "Humidité de cure (%)",
+];
+
 const EN_TETE_COMMUN = ["Étudiant", "Courriel", "Session", "Gâchée", "Date de gâchée", "Catégorie", "Formulation", "Cw (%)", "E/L", "Bw (%)", "w (%)"];
 
 export const EN_TETES_EPROUVETTES = [
   ...EN_TETE_COMMUN, "Éprouvette", "Coulée le", "Âge cible (j)", "Échéance", "Statut", "Date d'essai", "Âge réel (j)",
   "Charge (kN)", "Diamètre (mm)", "Hauteur (mm)", "UCS (kPa)", "Valide", "Exclue", "Justification", "Mode de rupture",
   "Module de Young (kPa)", "Déformation max (%)", "Fichier de presse",
+  ...EN_TETE_FICHE, "Moule", "Diamètre du moule (mm)", "Hauteur du moule (mm)", "Masse (g)", "Vitesse de chargement",
+  "Unité de vitesse", "Presse", "Code de rupture", "Déflexion max (mm)", "Complétude de la fiche (%)",
 ];
 
 /** Une ligne par éprouvette (en-tête compris). */
 export function lignesCsvEprouvettes(etudiants: EtudiantClasse[], sessions: Session[]): CelluleCsv[][] {
   const lignes: CelluleCsv[][] = [EN_TETES_EPROUVETTES];
   for (const c of parcourir(etudiants, sessions)) {
+    const fiche = ficheGachee(c.g);
+    const completude = completudeGachee(c.g).pct;
     const eps = [...c.g.eprouvettes].sort((a, b) => a.code.localeCompare(b.code));
     for (const ep of eps) {
       const es = ep.essai;
@@ -82,8 +106,11 @@ export function lignesCsvEprouvettes(etudiants: EtudiantClasse[], sessions: Sess
         ...tete(c), ep.code, fmtDate(dateCoulee(ep)), ep.ageJours, fmtDate(dateEcheance(ep)),
         ep.statut === "ecrase" ? "écrasée" : "en cure", jour(es?.date), ep.statut === "ecrase" ? ageReelJours(ep) : null,
         es?.chargeKn ?? null, es?.diametreMm ?? null, es?.hauteurMm ?? null, contrainteKpa(es),
-        essaiValide(ep) ? "oui" : "non", es?.exclu ? "oui" : "non", es?.justificationExclusion ?? "", es?.modeRupture ?? "",
+        essaiValide(ep) ? "oui" : "non", es?.exclu ? "oui" : "non", es?.justificationExclusion ?? "", libelleRupture(es),
         es?.moduleYoungKpa ?? null, es?.deformationMaxPct ?? null, es?.sourcePresse?.fichier ?? "",
+        ...fiche, libelleMoule(ep), ep.mouleDiametreMm ?? null, ep.mouleHauteurMm ?? null, es?.masseG ?? null,
+        es?.vitesseChargement?.valeur ?? null, es?.vitesseChargement?.unite ?? "", es?.presse ?? "",
+        es?.modeRuptureCode ?? "", es?.deflexionMaxMm ?? null, completude,
       ]);
     }
   }
@@ -92,6 +119,7 @@ export function lignesCsvEprouvettes(etudiants: EtudiantClasse[], sessions: Sess
 
 export const EN_TETES_SYNTHESE = [
   ...EN_TETE_COMMUN, "Âge (j)", "n", "Exclues", "UCS moyenne (kPa)", "Écart-type (kPa)", "CV (%)", "Pesées hors tolérance",
+  ...EN_TETE_FICHE, "Complétude de la fiche (%)",
 ];
 
 /** Une ligne par gâchée et par âge mesuré (une ligne sans âge si rien n'est mesuré). */
@@ -100,13 +128,14 @@ export function lignesCsvSynthese(etudiants: EtudiantClasse[], sessions: Session
   for (const c of parcourir(etudiants, sessions)) {
     // Pesées : inconnues (cellule vide) si la gâchée n'en porte aucune.
     const hors = c.g.composants.length === 0 ? null : c.g.composants.filter((x) => horsTolerance(x, c.g.tolerancePct)).length;
+    const fin = [...ficheGachee(c.g), completudeGachee(c.g).pct];
     const ages = agregerParAge(c.g.eprouvettes);
     if (ages.length === 0) {
-      lignes.push([...tete(c), null, 0, 0, null, null, null, hors]);
+      lignes.push([...tete(c), null, 0, 0, null, null, null, hors, ...fin]);
       continue;
     }
     for (const a of ages) {
-      lignes.push([...tete(c), a.ageJours, a.n, a.nExclus, arrondi(a.moyenneKpa, 1), arrondi(a.ecartTypeKpa, 1), arrondi(a.cvPct, 1), hors]);
+      lignes.push([...tete(c), a.ageJours, a.n, a.nExclus, arrondi(a.moyenneKpa, 1), arrondi(a.ecartTypeKpa, 1), arrondi(a.cvPct, 1), hors, ...fin]);
     }
   }
   return securiserCsv(lignes);

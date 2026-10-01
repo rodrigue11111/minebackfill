@@ -63,6 +63,43 @@ describe("export CSV de la classe", () => {
     expect(versCsv([e1])).toContain(";1234,56;oui;");
   });
 
+  it("éprouvettes : fiche d'essai en colonnes ajoutées à la fin, anciennes colonnes inchangées", () => {
+    // Les classeurs de l'enseignant pointent sur ces positions : elles ne bougent pas.
+    expect(EN_TETES_EPROUVETTES.slice(0, 32)).toEqual([
+      "Étudiant", "Courriel", "Session", "Gâchée", "Date de gâchée", "Catégorie", "Formulation", "Cw (%)", "E/L", "Bw (%)", "w (%)",
+      "Éprouvette", "Coulée le", "Âge cible (j)", "Échéance", "Statut", "Date d'essai", "Âge réel (j)",
+      "Charge (kN)", "Diamètre (mm)", "Hauteur (mm)", "UCS (kPa)", "Valide", "Exclue", "Justification", "Mode de rupture",
+      "Module de Young (kPa)", "Déformation max (%)", "Fichier de presse", "Résidu", "Liants", "Eau de gâchage",
+    ]);
+    const g = gachee("g3", {
+      materiaux: { residu: { nom: "Résidus LaRonde" }, liants: [{ code: "CP10", nom: "Ciment GU", fractionPct: 80 }, { code: "SLAG", fractionPct: 20 }], eau: { type: "robinet" } },
+      cure: { mode: "chambre_humide", temperatureC: 23 }, malaxageDureeMin: 5,
+      eprouvettes: [{ id: "x", code: "G-g3-E01", couleLe: new Date(2026, 8, 10, 12).toISOString(), ageJours: 28, statut: "ecrase", mouleDiametreMm: 50, mouleHauteurMm: 100,
+        essai: { contrainteKpaSaisie: 800, masseG: 412.5, vitesseChargement: { valeur: 1, unite: "mm/min" }, modeRuptureCode: "cone", deflexionMaxMm: 0.8 } }],
+    });
+    const [e] = regrouper([ligne(g)], profils, sessions, "toutes");
+    const [, l] = lignesCsvEprouvettes([e], sessions);
+    const col = (nom: string) => EN_TETES_EPROUVETTES.indexOf(nom);
+    expect(l[col("Résidu")]).toBe("Résidus LaRonde");
+    expect(l[col("Liants")]).toBe("Ciment GU 80 %, SLAG 20 %");
+    expect(l[col("Eau de gâchage")]).toBe("Eau du robinet");
+    expect(l[col("Mode de cure")]).toBe("Chambre humide");
+    expect(l[col("Température de cure (°C)")]).toBe(23);
+    expect(l[col("Moule")]).toBe("Cylindre 50 × 100 mm");
+    expect(l[col("Diamètre du moule (mm)")]).toBe(50);
+    expect(l[col("Masse (g)")]).toBe(412.5);
+    expect(l[col("Vitesse de chargement")]).toBe(1);
+    expect(l[col("Unité de vitesse")]).toBe("mm/min");
+    expect(l[col("Mode de rupture")]).toBe("Cônes aux deux extrémités");
+    expect(l[col("Code de rupture")]).toBe("cone");
+    expect(l[col("Déflexion max (mm)")]).toBe(0.8);
+    expect(typeof l[col("Complétude de la fiche (%)")]).toBe("number");
+    // Gâchée sans fiche : cellules vides, pas d'erreur.
+    const [, vide] = lignesCsvEprouvettes(etudiants, sessions);
+    expect(vide[col("Résidu")]).toBe("");
+    expect(vide[col("Masse (g)")]).toBeNull();
+  });
+
   it("synthèse : une ligne par gâchée et par âge mesuré, pesées hors tolérance comptées", () => {
     const l = lignesCsvSynthese(etudiants, sessions);
     expect(l[0]).toEqual(EN_TETES_SYNTHESE);
@@ -73,6 +110,8 @@ describe("export CSV de la classe", () => {
     expect(l[1][col("Exclues")]).toBe(1);
     expect(l[1][col("UCS moyenne (kPa)")]).toBe(1234.6);
     expect(l[1][col("Pesées hors tolérance")]).toBe(1); // liant +6 %, eau +0,5 %
+    expect(EN_TETES_SYNTHESE.at(-1)).toBe("Complétude de la fiche (%)");
+    expect(l[1]).toHaveLength(EN_TETES_SYNTHESE.length);
   });
 
   it("synthèse : gâchée sans mesure ni pesée → une ligne, pesées inconnues", () => {
