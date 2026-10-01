@@ -34,7 +34,7 @@ export default function CloudSync() {
       const { data: profil, error: erreurProfil } = await sb
         .from("profiles").select("role, display_name").eq("id", userId).maybeSingle();
       if (erreurProfil) {
-        console.warn("MineBackfill : lecture du profil impossible —", erreurProfil.message);
+        console.warn("MineBackfill : lecture du profil impossible :", erreurProfil.message);
       }
       const p = profil as { role?: UserRole; display_name?: string | null } | null;
       const role = (p?.role ?? "etudiant") as UserRole;

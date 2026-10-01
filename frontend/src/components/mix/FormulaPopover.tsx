@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { FORMULA_MAP, type Formula } from "@/lib/formulas-data";
 import type { Recipe } from "@/lib/types";
+import { TIRET } from "@/lib/format";
 
 /* ── Value substitution: map formula variable symbols to recipe fields ──
    Exporté pour un test d'invariant : chaque clé doit correspondre au `symbol`
@@ -115,7 +116,7 @@ function getFormulaValues(formula: Formula, recipe: Recipe): { symbol: string; d
 }
 
 const fmtVal = (v: number | null, digits = 4): string => {
-  if (v === null || v === undefined || Number.isNaN(v)) return "\u2014";
+  if (v === null || v === undefined || Number.isNaN(v)) return TIRET;
   if (Math.abs(v) >= 100) return v.toFixed(2);
   if (Math.abs(v) >= 1) return v.toFixed(3);
   return v.toFixed(digits);
@@ -267,7 +268,7 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
 
             {/* Reference */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "var(--texte-3)" }}>
-              <span>Ref : {formula.chapter}, p.{formula.pageNumber}</span>
+              <span>Source : {formula.chapter}, p. {formula.pageNumber}</span>
               {related.length > 0 && (
                 <span>
                   Voir aussi : {related.map((id) => (

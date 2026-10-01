@@ -1028,7 +1028,7 @@ textarea.field-input { min-height: 88px; line-height: 1.5; resize: vertical; }
 .labo-ajout > summary { cursor: pointer; font-size: 15px; font-weight: 500; color: var(--accent); list-style: none; }
 .labo-ajout > summary::-webkit-details-marker { display: none; }
 .labo-ajout > summary::before { content: "+ "; }
-.labo-ajout[open] > summary::before { content: "– "; }
+.labo-ajout[open] > summary::before { content: "\2212  "; }
 .labo-ajout-corps { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
 .labo-grille-ajout { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .labo-ages { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

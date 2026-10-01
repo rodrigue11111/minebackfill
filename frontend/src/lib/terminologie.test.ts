@@ -41,7 +41,7 @@ const RETIRES: [RegExp, string][] = [
   [/Quantité \(nb\. de moules\)/, "Nombre de moules par recette"],
   [/Remblai pâte granulaire/, "Remblai en pâte granulaire"],
   [/Résultats RRC \/ CRF|RRC \/ CRF|RRC\/CRF/, "RRC"],
-  [/"Cw%"|"Bw%"|Cw% —|Bw% —/, "Cw / Bw sans « % » collé au symbole"],
+  [/"Cw%"|"Bw%"|[CB]w%/, "Cw / Bw sans « % » collé au symbole"],
   [/Ciment \$\{/, "nomLiant() (« Liant n » en repli)"],
 ];
 

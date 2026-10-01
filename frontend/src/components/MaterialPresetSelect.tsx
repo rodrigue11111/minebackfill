@@ -45,7 +45,7 @@ export default function MaterialPresetSelect({ kind, role, label, onPick, matche
           if (m) onPick(m);
         }}
       >
-        <option value="">— personnalisé —</option>
+        <option value="">Personnalisé</option>
         {items.map((m) => {
           const prov = "provenance" in m && m.provenance ? ` (${m.provenance})` : "";
           return <option key={m.id} value={m.id}>{m.nom}{prov}</option>;

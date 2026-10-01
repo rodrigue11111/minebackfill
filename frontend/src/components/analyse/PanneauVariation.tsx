@@ -5,6 +5,7 @@ import { statsSerie, indexProche } from "@/lib/courbe-analyse";
 import { sortiesPour, type CategorieAnalyse } from "@/lib/analyse-series";
 import { tenuFixe, type ParamCle } from "@/lib/analyse-fixe";
 import type { InstantaneAnalyse } from "@/lib/analyse-instantane";
+import { TIRET } from "@/lib/format";
 
 /**
  * « Ce qui est tenu fixe » / « Ce qui varie sur la plage ».
@@ -105,7 +106,7 @@ export default function PanneauVariation({
               <tr key={meta.cle}>
                 <td style={{ padding: "4px 6px", color: meta.couleur, fontWeight: 600, borderTop: "1px solid var(--filet)" }}>{meta.label}</td>
                 <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>
-                  {vRef !== null && vRef !== undefined && Number.isFinite(vRef) ? fmt(vRef, meta.unite) : "—"}
+                  {vRef !== null && vRef !== undefined && Number.isFinite(vRef) ? fmt(vRef, meta.unite) : TIRET}
                 </td>
                 <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{fmt(stats.min, meta.unite)}</td>
                 <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{fmt(stats.max, meta.unite)}</td>

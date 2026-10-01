@@ -32,7 +32,7 @@ export default function Sauvegarder({ onSave, nomParDefaut, desactive = false }:
             <Bandeau ton={issue === "ok" ? "succes" : "danger"} role={issue === "ok" ? "status" : "alert"}>
               {issue === "ok"
                 ? "Sauvegarde effectuée : le résultat est dans l'Historique."
-                : "Sauvegarde locale impossible (stockage plein ou bloqué) — exportez vos données depuis Réglages."}
+                : "Sauvegarde locale impossible (stockage plein ou bloqué). Exportez vos données depuis Réglages."}
             </Bandeau>
             <button type="button" className="btn-secondary" onClick={() => setOuverte(false)}>Fermer</button>
           </>

@@ -53,7 +53,9 @@ introduire de dépendance à un service externe.
    (Supabase) est une couche optionnelle en écriture fire-and-forget. Aucune
    fonctionnalité ne doit exiger le réseau pour fonctionner.
 5. **Conventions de forme.** UI et messages en français avec accents corrects,
-   aucun emoji, un commit par item, CI verte avant de merger.
+   aucun emoji, aucun tiret cadratin ni demi-cadratin dans un texte affiché
+   ou exporté (recette 13, règle 8), un commit par item, CI verte avant de
+   merger.
 
 ## Recettes
 
@@ -201,9 +203,12 @@ mode** (elle exige un vrai compte prof), le reste fonctionne 100 % en local.
   projets** (MineBackfill et portail), et par environnement : on peut ouvrir
   les comptes sur les aperçus (Preview, reliés à un projet Supabase de
   préproduction) en gardant la production en mode test.
-- **Assistant IA** : en mode test, la page `/assistant` (et son lien dans
-  Réglages) est OUVERTE sans compte — la route `/api/assistant` saute la
-  vérification du rôle dans ce mode uniquement (bandeau affiché sur la page).
+- **Assistant IA** : en mode test, la page `/assistant` est OUVERTE sans
+  compte, par son adresse. Son lien dans Réglages, lui, n'apparaît qu'à un
+  vrai compte enseignant (`isProf`, pas `vueAdmin`) : en mode test, tout le
+  monde a la vue enseignant, étudiants compris (décision du 2026-09-30). La
+  route `/api/assistant` saute la vérification du rôle dans ce mode
+  uniquement (bandeau affiché sur la page).
   Il reste 503 « non configuré » tant que `ASSISTANT_GITHUB_TOKEN` /
   `ASSISTANT_GITHUB_REPO` ne sont pas définies sur Vercel. Conséquence
   assumée : quiconque connaît l'URL peut créer une issue GitHub pendant la
@@ -227,7 +232,9 @@ Aucune recette ne couvrait ce module ; voici ses points d'accroche.
 2. entrée dans `_SERIES` (`backend/app/core/analyse.py`), **en APPEND** ;
 3. `SERIES_CANONIQUE` dans `backend/app/tests/test_balayage.py` — tuple
    **ORDONNÉ**, réordonner casse `test_series_keys_sentinelle` ;
-4. entrée `SortieMeta` dans `frontend/src/lib/analyse-series.ts` (`SORTIES`) ;
+4. entrée `SortieMeta` dans `frontend/src/lib/analyse-series.ts` (`SORTIES`),
+   libellé au format du glossaire (`libelle()`, « Rapport eau/liant E/L ») et
+   unité `SANS_UNITE` (`lib/format.ts`) pour une grandeur sans dimension ;
 5. la copie `SERIES_CANONIQUE` dans `analyse-series.test.ts` (comparaison
    triée, l'ordre y est libre).
 Si l'unité est nouvelle, la brancher dans `fmtStat` (page Analyse) **et**
@@ -246,7 +253,9 @@ indispensables :
    (modèle existant : `AM` refusé en RPC) ;
 4. `PARAMS_CANONIQUE` dans `test_balayage.py`, et sa copie dans
    `analyse-series.test.ts` ;
-5. entrée `ParamMeta` dans `PARAMS` (`analyse-series.ts`) ;
+5. entrée `ParamMeta` dans `PARAMS` (`analyse-series.ts`), avec son
+   `symbole` (« Bw ») : l'infobulle et la pente l'affichent ; on ne découpe
+   plus le libellé ;
 6. membre de `ParamCle` **et** branche dans `valeurReference`
    (`frontend/src/lib/analyse-fixe.ts`) : le `switch` y est exhaustif, donc
    un oubli est une erreur de compilation.
@@ -396,6 +405,23 @@ une seule couleur d'accent. Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
    change là (le commentaire « GARDER EN PHASE » le rappelle).
 7. **`/industrie`** n'est liée nulle part et n'a pas été refaite : elle
    hérite des couleurs, pas de la mise en page. Ne pas s'en servir de modèle.
+8. **Typographie** (décision du 2026-09-30) : aucun tiret cadratin « — »
+   ni demi-cadratin « – » dans un texte affiché ou exporté, car ils font
+   « texte écrit par une IA ». À la place :
+   - une incise : parenthèses ou virgules ;
+   - une explication : deux-points ; une phrase distincte : un point ;
+   - un titre composé : deux-points (« Méthode 1 : masse totale de
+     remblai ») ;
+   - un intervalle : « 3 à 10 » ; un signe moins dans une formule : « − »
+     (U+2212) ;
+   - une ligne d'export à plusieurs champs : « | », déjà employé.
+   La valeur absente reste « — », mais seulement par `TIRET`
+   (`lib/format.ts`) : pour en changer, c'est une ligne. Une grandeur sans
+   unité porte `SANS_UNITE` ; `libelleAvecUnite` et `valeurAvecUnite`
+   l'affichent. Gardes : `lib/typographie.test.ts` (textes du frontend et
+   du portail, `content` des CSS) et `backend/app/tests/test_typographie.py`
+   (messages de l'API ; les docstrings et descriptions de `/docs` sont
+   exemptées).
 
 **Ajouter une page** : `<Page>` + `<EnTetePage titre=… sousTitre=… actions=…>`,
 puis des `<Carte titre=…>` ; les réglages en `ListeGroupee`, les champs en
@@ -434,7 +460,8 @@ pour une méthode) ; `pnpm test` désigne les tests qui l'épinglent
 plus revenir, l'ajouter à `RETIRES` dans `lib/terminologie.test.ts` : ce test
 parcourt le code de l'interface et échoue s'il le retrouve (exemptés : les
 tests, le glossaire, le catalogue de formules, les types générés,
-`/industrie`).
+`/industrie`). Son voisin `lib/typographie.test.ts`, lui, couvre aussi le
+catalogue de formules et `/industrie` (recette 13, règle 8).
 
 **Ajouter un terme** : une entrée dans `GLOSSAIRE` avec sa source ; une norme
 nouvelle dans `NORMES_REF`. `glossaire.test.ts` vérifie que les clés sont
@@ -480,8 +507,10 @@ reporte dans `NORMES_REF` (et dans les protocoles par défaut,
   remplacés ; `assainirTextePdf(doc)` l'applique à tous les `doc.text` d'un
   document. Ajouter un PDF = appeler `assainirTextePdf` sur son document.
 - **Espace perdue en JSX** : constaté sur le portail, un texte sur plusieurs
-  lignes qui commence par une espace juste après une expression (`{n} projets
-  — chaque…`) a perdu cette espace au rendu. Écrire `{" "}` explicitement.
+  lignes qui commence par une espace juste après une expression (`{n} projets`
+  suivi de texte) a perdu cette espace au rendu ; de même, une ligne qui finit
+  par une ponctuation devant `{expression}` à la ligne suivante. Écrire
+  `{" "}` explicitement.
 - **Vérification navigateur** : pas de harnais E2E commité ; le rituel est
   `pnpm add -D playwright-core` (éphémère), script de smoke contre le build de
   prod avec Edge (`channel`/executablePath), puis `pnpm remove playwright-core`.

@@ -69,7 +69,7 @@ export default function FormEssaiUCS({ eprouvette, onChange }: {
               {" "}Votre calcul F / A donnerait{" "}
               <strong>{Math.round(calculee).toLocaleString("fr-CA")} kPa</strong>
               {ecartPct !== null && (
-                <> — soit un écart de <strong>{ecartPct.toLocaleString("fr-CA", { maximumFractionDigits: 2 })} %</strong>
+                <>, soit un écart de <strong>{ecartPct.toLocaleString("fr-CA", { maximumFractionDigits: 2 })} %</strong>
                   {Math.abs(ecartPct) < 0.5 ? " (les deux concordent)" : ""}</>
               )}.
             </>
@@ -83,7 +83,7 @@ export default function FormEssaiUCS({ eprouvette, onChange }: {
         // le temps de cure RÉEL (à distinguer de l'âge cible, sur lequel les
         // moyennes sont faites).
         <Bandeau ton="info">
-          <strong>Importé de la presse</strong> — fichier « {es.sourcePresse.fichier} », échantillon {es.sourcePresse.echantillon}
+          <strong>Importé de la presse</strong> : fichier « {es.sourcePresse.fichier} », échantillon {es.sourcePresse.echantillon}
           {es.sourcePresse.operateur ? `, opérateur ${es.sourcePresse.operateur}` : ""}
           {es.sourcePresse.commentaires ? `, commentaire « ${es.sourcePresse.commentaires} »` : ""}.
           <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 18px", marginTop: 4 }}>
@@ -97,7 +97,7 @@ export default function FormEssaiUCS({ eprouvette, onChange }: {
               <span>
                 Cure réelle : <strong>{es.tempsDeCureReelJours} j</strong>
                 {es.tempsDeCureReelJours !== eprouvette.ageJours && (
-                  <span style={{ color: "var(--alerte-texte)" }}> (âge cible {eprouvette.ageJours} j — les moyennes suivent la cible)</span>
+                  <span style={{ color: "var(--alerte-texte)" }}> (âge cible {eprouvette.ageJours} j ; les moyennes suivent la cible)</span>
                 )}
               </span>
             )}

@@ -7,6 +7,7 @@ import { libelleGroupe, MIN_GACHEES_REPERE, type Comparaison, type GroupeCompara
 import { SEUILS_ALERTES } from "@/lib/classe-alertes";
 import { dateCourte, lienBouton, nombre, td, tdNum, th, type RefDoc } from "./commun";
 import { Carte } from "@/components/ui/Carte";
+import { TIRET } from "@/lib/format";
 
 function CarteGroupe({ groupe, onOuvrir }: { groupe: GroupeComparaison; onOuvrir: (ref: RefDoc) => void }) {
   const ages = groupe.parAge.map((a) => a.ageJours);
@@ -51,9 +52,9 @@ function CarteGroupe({ groupe, onOuvrir }: { groupe: GroupeComparaison; onOuvrir
                   <td style={{ ...tdNum, fontWeight: 700 }}>{nombre(l.moyenneKpa, 0)}</td>
                   <td style={tdNum}>{nombre(l.ecartTypeKpa, 0)}</td>
                   <td style={tdNum}>{l.n}{l.nExclus > 0 && <span style={{ color: "var(--texte-3)" }}> (+{l.nExclus} exclue{l.nExclus > 1 ? "s" : ""})</span>}</td>
-                  <td style={tdNum}>{l.cvPct === null ? "—" : `${nombre(l.cvPct, 1)} %`}</td>
+                  <td style={tdNum}>{l.cvPct === null ? TIRET : `${nombre(l.cvPct, 1)} %`}</td>
                   <td style={{ ...tdNum, color: l.ecartMedianePct === null ? "var(--texte-3)" : Math.abs(l.ecartMedianePct) > SEUILS_ALERTES.ecartMedianePct ? "var(--hors-tolerance-texte)" : "var(--texte)" }}>
-                    {l.ecartMedianePct === null ? "—" : `${l.ecartMedianePct > 0 ? "+" : ""}${nombre(l.ecartMedianePct, 0)} %`}
+                    {l.ecartMedianePct === null ? TIRET : `${l.ecartMedianePct > 0 ? "+" : ""}${nombre(l.ecartMedianePct, 0)} %`}
                   </td>
                 </tr>
               ))}
@@ -61,7 +62,7 @@ function CarteGroupe({ groupe, onOuvrir }: { groupe: GroupeComparaison; onOuvrir
           </table>
           <p className="classe-intro" style={{ marginTop: 10 }}>
             {bloc.repere
-              ? <>Repère de dispersion à {bloc.ageJours} j : médiane {nombre(bloc.repere.medianeKpa, 0)} kPa, étendue {nombre(bloc.repere.minKpa, 0)} – {nombre(bloc.repere.maxKpa, 0)} kPa ({bloc.repere.nGachees} gâchées).</>
+              ? <>Repère de dispersion à {bloc.ageJours} j : médiane {nombre(bloc.repere.medianeKpa, 0)} kPa, étendue de {nombre(bloc.repere.minKpa, 0)} à {nombre(bloc.repere.maxKpa, 0)} kPa ({bloc.repere.nGachees} gâchées).</>
               : <>Moins de {MIN_GACHEES_REPERE} gâchées à cet âge : pas de repère de dispersion.</>}
           </p>
         </div>
@@ -90,7 +91,7 @@ export default function OngletComparaison({ comparaison, onOuvrir }: { comparais
         <details className="classe-seuils">
           <summary style={{ cursor: "pointer" }}>{comparaison.sansParametres.length} gâchée(s) sans Cw ou Bw connu, non classée(s)</summary>
           <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
-            {comparaison.sansParametres.map((x) => <li key={`${x.etudiantId}:${x.gacheeId}`}>{x.etudiant} — {x.code}</li>)}
+            {comparaison.sansParametres.map((x) => <li key={`${x.etudiantId}:${x.gacheeId}`}>{x.etudiant}, {x.code}</li>)}
           </ul>
         </details>
       )}

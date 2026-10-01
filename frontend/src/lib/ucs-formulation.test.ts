@@ -4,6 +4,7 @@ import { parametresEffectifs } from "./gachee";
 import type { Gachee } from "./gachee";
 import type { Eprouvette } from "./eprouvette";
 import type { Recipe } from "./types";
+import { SANS_UNITE, TIRET } from "./format";
 
 function eprouvette(age: number, chargeKn?: number, exclu = false): Eprouvette {
   return {
@@ -96,7 +97,14 @@ describe("ucs-formulation — nuageUcs", () => {
       expect(n.points).toHaveLength(1);
       expect(a.label.length).toBeGreaterThan(0);
       expect(a.unite.length).toBeGreaterThan(0);
+      expect(a.unite).not.toBe(TIRET);
     }
+  });
+
+  it("l'en-tête CSV d'un axe sans unité n'ajoute pas de parenthèses", () => {
+    const enTete = lignesCsvNuage(nuageUcs([], [], "wcRatio", 28), "wcRatio")[0];
+    expect(enTete[1]).toBe(AXES_FORMULATION.find((a) => a.cle === "wcRatio")?.label);
+    expect(AXES_FORMULATION.find((a) => a.cle === "wcRatio")?.unite).toBe(SANS_UNITE);
   });
 });
 

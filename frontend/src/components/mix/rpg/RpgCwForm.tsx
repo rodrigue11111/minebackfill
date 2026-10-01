@@ -147,7 +147,7 @@ export default function RpgCwForm() {
       <CardSection title="Taux massique de liant Bw par recette" subtitle="Bw = Mb / (Mr + Ma) × 100, masses sèches">
         <GrilleChamps une={numRecipes === 1}>
           {Array.from({ length: numRecipes }).map((_, i) => (
-            <Field key={i} label={<><PointRecette i={i} />Recette {i + 1} — Bw</>} unit="%">
+            <Field key={i} label={<><PointRecette i={i} />Recette {i + 1} : Bw</>} unit="%">
               <input type="number" step="any" className="field-input" placeholder="ex : 5"
                 value={rpgCw.binder_pct?.[i] ?? ""} onChange={(e) => setRpgCwRecipe(i, { binder_pct: num(e.target.value) })} />
             </Field>

@@ -372,7 +372,7 @@ function FormulaDetail({
             alignItems: "center",
           }}
         >
-          <span>Source : S5 — Chap. 4 · GNM1002 · Prof. T. Belem</span>
+          <span>Source : S5, chap. 4 · GNM1002 · Prof. T. Belem</span>
           <span style={{ fontWeight: 600 }}>p.&thinsp;{formula.pageNumber}</span>
         </div>
       </div>
@@ -651,7 +651,7 @@ function SearchInput({
                 key={i}
                 type="button"
                 className="frm-suggestion"
-                onMouseDown={() => { onChange(s.symbol ?? s.label.split(" — ")[0]); setOpen(false); }}
+                onMouseDown={() => { onChange(s.symbol ?? s.label); setOpen(false); }}
               >
                 <span
                   style={{
@@ -678,7 +678,7 @@ function SearchInput({
                   {s.symbol ? (
                     <>
                       <KaTeX tex={s.symbol} />
-                      {s.description ? <span style={{ color: "var(--texte-2)" }}> — {s.description}</span> : null}
+                      {s.description ? <span style={{ color: "var(--texte-2)", marginLeft: 8 }}>{s.description}</span> : null}
                     </>
                   ) : (
                     s.label
@@ -929,7 +929,7 @@ function DeriveResultCard({
         {knownVars.map((v) => (
           <span
             key={v.symbol}
-            title={`${v.description}${v.unit ? ` [${v.unit}]` : ""} — connu`}
+            title={`${v.description}${v.unit ? ` [${v.unit}]` : ""} (connu)`}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -949,7 +949,7 @@ function DeriveResultCard({
         {unknownVars.map((v) => (
           <span
             key={v.symbol}
-            title={`${v.description}${v.unit ? ` [${v.unit}]` : ""} — à trouver`}
+            title={`${v.description}${v.unit ? ` [${v.unit}]` : ""} (à trouver)`}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -1042,7 +1042,7 @@ function DeriveMode({ onOpenFormula }: { onOpenFormula: (id: string) => void }) 
             marginBottom: 8,
           }}
         >
-          Variables connues ({selected.size}) — cliquez pour retirer
+          Variables connues ({selected.size}) : cliquez sur une variable pour la retirer
         </div>
         {selected.size === 0 ? (
           <div style={{ fontSize: 12.5, color: "var(--texte-3)", fontStyle: "italic" }}>
@@ -1145,7 +1145,7 @@ function DeriveMode({ onOpenFormula }: { onOpenFormula: (id: string) => void }) 
               marginBottom: 12,
             }}
           >
-            Formules calculables — {derivable.length} trouvée{derivable.length !== 1 ? "s" : ""}
+            Formules calculables : {derivable.length} trouvée{derivable.length !== 1 ? "s" : ""}
             , triées par couverture
           </div>
           {derivable.length === 0 ? (
@@ -1243,7 +1243,7 @@ export default function FormulaLibraryPage() {
     <Page>
       <EnTetePage
         titre="Formules"
-        sousTitre={<>Bibliothèque des formules du cours. Source : <em>S5 — Chapitre 4 · GNM1002-H2026 · Prof. Tikou Belem</em>.</>}
+        sousTitre={<>Bibliothèque des formules du cours. Source : <em>S5, chapitre 4 · GNM1002-H2026 · Prof. Tikou Belem</em>.</>}
       />
 
       <BandeChiffres
@@ -1299,7 +1299,7 @@ export default function FormulaLibraryPage() {
             <div className="frm-filtres-titre">Sections</div>
             {["all", ...SECTIONS].map((sec) => {
               const active = selectedSection === sec;
-              const label = sec === "all" ? "Toutes les formules" : sec.split("—")[0].trim();
+              const label = sec === "all" ? "Toutes les formules" : sec;
               const count = sectionCounts[sec] ?? 0;
               return (
                 <button

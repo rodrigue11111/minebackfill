@@ -15,12 +15,13 @@ import {
 } from "@/lib/ucs-formulation";
 import { telechargerTexte, celluleCsv, nomFichier } from "@/lib/export-fig";
 import type { Recipe } from "@/lib/types";
+import { TIRET, libelleAvecUnite } from "@/lib/format";
 import { Carte } from "@/components/ui/Carte";
 import { Bandeau } from "@/components/ui/Bandeau";
 import Segmente from "@/components/ui/Segmente";
 import CourbeUCS, { type SerieUCS } from "./CourbeUCS";
 
-const fmtParam = (v: number | undefined, suffixe = "") => (v != null ? `${v.toLocaleString("fr-CA", { maximumFractionDigits: 2 })}${suffixe}` : "—");
+const fmtParam = (v: number | undefined, suffixe = "") => (v != null ? `${v.toLocaleString("fr-CA", { maximumFractionDigits: 2 })}${suffixe}` : TIRET);
 
 // Palette étendue (au-delà des 4 couleurs de recette) pour distinguer plus de
 // gâchées sur la même courbe.
@@ -118,13 +119,13 @@ export default function ResultatsUCS({ gachees, formulations }: {
             <li>dans la gâchée, carte <strong>« Éprouvettes »</strong> → <strong>Ajouter des éprouvettes</strong> : un âge de cure
               et un nombre de réplicats ;</li>
             <li>le jour de l&apos;essai, cocher l&apos;éprouvette (<strong>« Marquer écrasée »</strong>) ;</li>
-            <li>saisir <strong>« Charge à la rupture »</strong> et <strong>« Diamètre »</strong> —
+            <li>saisir <strong>« Charge à la rupture »</strong> et <strong>« Diamètre »</strong> :
               la résistance est calculée automatiquement.</li>
           </ol>
           <p className="labo-vide" style={{ margin: 0 }}>
             Si votre laboratoire fournit un classeur de presse, le bouton{" "}
             <strong>« Importer un fichier de presse »</strong> de la gâchée remplit ces essais sans
-            ressaisie. <strong>La saisie à la main reste possible dans tous les cas</strong> — et
+            ressaisie. <strong>La saisie à la main reste possible dans tous les cas</strong>, et
             les deux voies donnent le même résultat. Le graphique apparaît dès la première éprouvette écrasée.
           </p>
         </Carte>
@@ -148,7 +149,7 @@ export default function ResultatsUCS({ gachees, formulations }: {
             </div>
             <p className="ui-liste-pied" style={{ margin: 0 }}>
               La couleur reste attachée à la gâchée : en masquer une ne change pas la couleur des autres.
-              La palette compte {COULEURS_SERIE.length} couleurs et se répète au-delà — raison de plus pour
+              La palette compte {COULEURS_SERIE.length} couleurs et se répète au-delà : raison de plus pour
               n&apos;afficher que les gâchées qui vous intéressent.
             </p>
           </Carte>
@@ -189,7 +190,7 @@ export default function ResultatsUCS({ gachees, formulations }: {
                   series={seriesNuage}
                   relier={false}
                   ticksX="rondes"
-                  xLabel={`${metaAxe?.label ?? axe}${metaAxe && metaAxe.unite !== "—" ? ` (${metaAxe.unite})` : ""}`}
+                  xLabel={metaAxe ? libelleAvecUnite(metaAxe.label, metaAxe.unite) : axe}
                   formatX={(x) => x.toLocaleString("fr-CA", { maximumFractionDigits: 3 })}
                   messageVide={`Aucune gâchée ne porte à la fois une mesure à ${age} j et un paramètre de formulation connu.`}
                 />
@@ -203,7 +204,7 @@ export default function ResultatsUCS({ gachees, formulations }: {
                     <div className="ui-liste-titre" style={{ color: "var(--alerte-texte)" }}>Gâchées absentes de cette figure ({nuage.ecartees.length})</div>
                     <ul className="labo-etapes" style={{ fontSize: 13 }}>
                       {nuage.ecartees.map((e) => (
-                        <li key={e.code}><strong>{e.code}</strong> — {e.raison}</li>
+                        <li key={e.code}><strong>{e.code}</strong> : {e.raison}</li>
                       ))}
                     </ul>
                   </div>
@@ -216,7 +217,7 @@ export default function ResultatsUCS({ gachees, formulations }: {
           <Bandeau ton="neutre">
             <strong>Comment lire ces graphiques.</strong> Les points sont les{" "}
             <strong>moyennes</strong> des éprouvettes retenues et les barres verticales valent ± un écart-type.
-            Aucune valeur n&apos;est <strong>prédite ni modélisée</strong> — le programme ne dispose d&apos;aucun
+            Aucune valeur n&apos;est <strong>prédite ni modélisée</strong> : le programme ne dispose d&apos;aucun
             modèle de prédiction validé. Aucune <strong>droite d&apos;ajustement</strong> n&apos;est tracée et aucune
             valeur n&apos;est <strong>interpolée</strong> : seuls des âges réellement mesurés sont proposés.
             {nbMasquees > 0 && (
@@ -254,7 +255,7 @@ export default function ResultatsUCS({ gachees, formulations }: {
                         <td>{j === 0 ? fmtParam(parametresEffectifs(d.g, formulations)?.bwPct, " %") : ""}</td>
                         <td>{a.ageJours} j</td>
                         <td style={{ fontWeight: 600 }}>{Math.round(a.moyenneKpa as number).toLocaleString("fr-CA")}</td>
-                        <td>{a.ecartTypeKpa !== null ? Math.round(a.ecartTypeKpa).toLocaleString("fr-CA") : "—"}</td>
+                        <td>{a.ecartTypeKpa !== null ? Math.round(a.ecartTypeKpa).toLocaleString("fr-CA") : TIRET}</td>
                         <td>{a.n}</td>
                       </tr>
                     )),

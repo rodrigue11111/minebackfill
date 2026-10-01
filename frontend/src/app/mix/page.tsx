@@ -118,7 +118,7 @@ export default function MixPage() {
             ariaLabel="Méthode de calcul"
             valeur={method}
             onChange={(m) => setMethod(m as RpcMethod)}
-            options={methodes.map((m) => ({ valeur: m.method, libelle: m.labels.court, libelleCourt: m.labels.telephone, title: `${m.labels.long} — ${m.description}` }))}
+            options={methodes.map((m) => ({ valeur: m.method, libelle: m.labels.court, libelleCourt: m.labels.telephone, title: `${m.labels.long}. ${m.description}` }))}
           />
         )}
       </div>

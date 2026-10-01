@@ -30,7 +30,7 @@ export function pastilleSynchro(s: InstantaneSync): { ton: TonPastille; libelle:
     case "en_attente": return { ton: "alerte", libelle: `Sauvegarde en ligne : ${s.enAttente} modification(s) en attente` };
     case "hors_ligne": return { ton: "neutre", libelle: "Hors ligne : vos modifications partiront au retour du réseau" };
     case "pause": return { ton: "danger", libelle: "Sauvegarde en ligne en pause (activité anormale), reprise automatique" };
-    case "erreur": return { ton: "danger", libelle: "Sauvegarde en ligne : erreur — voir la page Compte" };
+    case "erreur": return { ton: "danger", libelle: "Sauvegarde en ligne : erreur, voir la page Compte" };
     default: return null;
   }
 }
@@ -85,7 +85,7 @@ export default function BarreHaut() {
       </nav>
 
       <div className="ui-barre-droite">
-        <a className="ui-barre-portail" href={PORTAIL_URL} title="Portail des projets — basculer vers une autre application">
+        <a className="ui-barre-portail" href={PORTAIL_URL} title="Portail des projets : basculer vers une autre application">
           <Icone nom="portail" taille={16} />
           <span className="ui-barre-portail-libelle">{PORTAIL_LABEL}</span>
         </a>
@@ -95,7 +95,7 @@ export default function BarreHaut() {
             className="ui-compte"
             aria-current={estActif(pathname, LIEN_COMPTE.href) ? "page" : undefined}
             title={session
-              ? `${session.displayName || session.email} (${session.role === "prof" ? "Enseignant" : "Étudiant"})${pastille ? ` — ${pastille.libelle}` : ""}`
+              ? `${session.displayName || session.email} (${session.role === "prof" ? "Enseignant" : "Étudiant"})${pastille ? ` · ${pastille.libelle}` : ""}`
               : "Se connecter"}
           >
             <span className={`ui-compte-initiales${session ? (session.role === "prof" ? " ui-compte-initiales-prof" : "") : " ui-compte-initiales-vide"}`}>

@@ -78,7 +78,7 @@ export function FilEtudiant({ kind, id, liste, connecte, ancre = null }: {
                   <span className="fil-date"> · {dateHeure(a.creeLe)}</span>
                 </div>
                 <div className="fil-texte">
-                  {a.ancre && !ancre && <strong>{a.ancre} — </strong>}
+                  {a.ancre && !ancre && <strong>{a.ancre} : </strong>}
                   <span style={{ whiteSpace: "pre-wrap" }}>{a.texte}</span>
                 </div>
                 <div className="fil-pied">

@@ -9,8 +9,8 @@ export const APP_NAME_VERSION = `${APP_NAME} v${APP_VERSION}`;
 export const MODULE_ID = "Module 1";
 export const MODULE_LABEL = "Dimensionnement des mélanges";
 
-/** Pied de page court des exports (« MineBackfill v1.0 — Module 1 »). */
-export const EXPORT_FOOTER = `${APP_NAME_VERSION} — ${MODULE_ID}`;
+/** Pied de page court des exports (« MineBackfill v1.0 · Module 1 », comme la feuille « Plus »). */
+export const EXPORT_FOOTER = `${APP_NAME_VERSION} · ${MODULE_ID}`;
 
 /**
  * Portail des projets du programme (annuaire : MineBackfill, CPB Cockpit,

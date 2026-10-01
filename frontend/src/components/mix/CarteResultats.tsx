@@ -13,7 +13,7 @@ import BarresPhases from "@/components/analyse/BarresPhases";
 import { SectionsRapport, TableauLignes, TableauRrc, SectionHeader } from "@/components/mix/SectionsRapport";
 import { lignesResume, nbLignesRapport, type ReportCtx } from "@/lib/report-schema";
 import { fromStoreMass } from "@/lib/units";
-import { fmt } from "@/lib/format";
+import { fmt, TIRET } from "@/lib/format";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
 import type { Recipe, RrcRecipe } from "@/lib/types";
 
@@ -23,7 +23,7 @@ import type { Recipe, RrcRecipe } from "@/lib/types";
  * tableaux de résultats.
  */
 export function chiffreMasse(v: number | null | undefined): string {
-  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  if (v === null || v === undefined || Number.isNaN(v)) return TIRET;
   const a = Math.abs(v);
   const [ent, dec] = fmt(v, a >= 100 ? 0 : a >= 10 ? 1 : a >= 1 ? 2 : 3).split(".");
   const groupe = ent.replace(/\B(?=(\d{3})+(?!\d))/g, "\u202F");
@@ -97,7 +97,7 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
     >
       {!donnees || n === 0 ? (
         <>
-          <TuilesChiffres chiffres={["Liant", "Eau totale", "Résidu sec", "Rapport E/L"].map((libelle) => ({ libelle, valeur: "—" }))} />
+          <TuilesChiffres chiffres={["Liant", "Eau totale", "Résidu sec", "Rapport E/L"].map((libelle) => ({ libelle, valeur: TIRET }))} />
           <p className="mix-vide">Renseignez les paramètres, puis cliquez sur <strong>Calculer</strong> : les chiffres clés et le tableau résumé s&apos;affichent ici.</p>
         </>
       ) : donnees.genre === "rrc" ? (
@@ -123,7 +123,7 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
             <>
               <SectionsRapport recipes={donnees.recipes} ctx={donnees.ctx} grille={pleinEcran} onFormulaClick={onFormulaClick} choisie={n > 1 ? choisie : undefined} />
               <section className="mix-rapport-section">
-                <SectionHeader title="Composition des phases" sub="Répartition volumique par recette — vue détaillée dans la page Analyse" />
+                <SectionHeader title="Composition des phases" sub="Répartition volumique par recette ; vue détaillée dans la page Analyse" />
                 <BarresPhases recipes={donnees.recipes} base="volume" compact />
               </section>
             </>

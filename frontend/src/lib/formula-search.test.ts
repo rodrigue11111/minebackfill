@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getSuggestions, normalise } from "./formula-search";
+import { FORMULA_MAP } from "./formulas-data";
 
 // formula-search.ts n'avait aucun test. Ceux-ci portent sur le défaut
 // corrigé : une suggestion de variable livrait un seul libellé où le symbole
@@ -21,9 +22,9 @@ describe("formula-search — suggestions de variables", () => {
 
   it("le symbole est le LaTeX brut, propre à être rendu par KaTeX", () => {
     const s = getSuggestions("solide").find((x) => x.type === "variable");
-    // Pas de séparateur « — » dans le symbole : c'est ce qui rendait le
-    // découpage du libellé fragile côté écran.
-    expect(s!.symbol).not.toContain(" — ");
+    // Le symbole est exactement celui d'une variable de la formule : l'écran
+    // le rend tel quel, sans découper le libellé.
+    expect(FORMULA_MAP.get(s!.formulaId!)?.variables.map((v) => v.symbol)).toContain(s!.symbol);
   });
 
   it("les suggestions non variables ne portent pas ces champs", () => {
@@ -53,5 +54,9 @@ describe("formula-search — normalise", () => {
 
   it("est insensible à la casse et aux espaces superflus", () => {
     expect(normalise("  Cw   POURCENT ")).toBe(normalise("cw pourcent"));
+  });
+
+  it("le signe moins « − » du catalogue se retrouve avec le « - » tapé", () => {
+    expect(normalise("n = 1 − Cv")).toBe(normalise("n = 1 - Cv"));
   });
 });

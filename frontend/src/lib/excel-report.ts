@@ -67,7 +67,7 @@ export async function exportToExcel(
   for (let c = 3; c <= totalCols; c++) ws.getColumn(c).width = 18;
 
   /* ── Title block ── */
-  const titleRow = ws.addRow(["MINEBACKFILL — Résultats de calcul"]);
+  const titleRow = ws.addRow(["MineBackfill : résultats de calcul"]);
   ws.mergeCells(titleRow.number, 1, titleRow.number, totalCols);
   titleRow.height = 36;
   const titleCell = titleRow.getCell(1);
@@ -77,7 +77,7 @@ export async function exportToExcel(
 
   /* ── Subtitle ── */
   const subRow = ws.addRow([
-    `${category} — ${methodLabel(category as Category, method)}  |  ${recipes.length} recette${recipes.length > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
+    `${category}  |  ${methodLabel(category as Category, method)}  |  ${recipes.length} recette${recipes.length > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
   ]);
   ws.mergeCells(subRow.number, 1, subRow.number, totalCols);
   subRow.height = 24;

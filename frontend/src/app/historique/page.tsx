@@ -59,7 +59,7 @@ export default function HistoriquePage() {
     <Page>
       <EnTetePage
         titre="Historique"
-        sousTitre={`${savedResults.length} résultat${savedResults.length !== 1 ? "s" : ""} sauvegardé${savedResults.length !== 1 ? "s" : ""} sur cet appareil — pensez à exporter vos données (navigateur uniquement).`}
+        sousTitre={`${savedResults.length} résultat${savedResults.length !== 1 ? "s" : ""} sauvegardé${savedResults.length !== 1 ? "s" : ""} sur cet appareil. Pensez à exporter vos données (navigateur uniquement).`}
         actions={<Link href="/mix" className="btn-discret">Retour aux calculs</Link>}
       />
 

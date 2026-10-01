@@ -15,6 +15,7 @@ import { Page, EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
 import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
 import { Pastille, type TonPastille } from "@/components/ui/Pastille";
+import { TIRET } from "@/lib/format";
 
 type EtatBackend = "verification" | "operationnel" | "injoignable";
 
@@ -166,7 +167,7 @@ export default function DiagnosticPage() {
         titre="Diagnostic technique"
         sousTitre={<>Cette page rassemble les informations utiles au dépannage à distance.
           Cliquez sur « Copier le diagnostic » puis collez le résultat dans votre
-          message à l&apos;enseignant ou à l&apos;assistant.</>}
+          message à l&apos;enseignant.</>}
         actions={
           <>
             <Link href="/reglages" className="btn-discret">Retour aux réglages</Link>
@@ -180,7 +181,7 @@ export default function DiagnosticPage() {
       {/* ── Application ── */}
       <Carte titre="Application">
         <ListeGroupee>
-          <LigneListe libelle="Application" valeur={`${APP_NAME_VERSION} — ${MODULE_ID}`} />
+          <LigneListe libelle="Application" valeur={`${APP_NAME_VERSION} · ${MODULE_ID}`} />
           <LigneListe libelle="Solveur (référence)" valeur={SOLVER_VERSION} />
           <LigneListe libelle="Estampille du solveur actif" valeur={hydrated ? estampille : "…"} />
         </ListeGroupee>
@@ -221,7 +222,7 @@ export default function DiagnosticPage() {
                       <td style={{ fontFamily: "var(--font-geist-mono, monospace)", fontSize: 12.5 }}>{e.cle}</td>
                       <td style={{ textAlign: "right" }}>{e.taille_ko.toFixed(1)}</td>
                       <td style={{ textAlign: "right" }}>{e.version}</td>
-                      <td style={{ textAlign: "right" }}>{e.nb_elements ?? "—"}</td>
+                      <td style={{ textAlign: "right" }}>{e.nb_elements ?? TIRET}</td>
                     </tr>
                   ))}
                 </tbody>

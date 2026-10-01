@@ -17,6 +17,7 @@ import { estReponse, type LigneAnnotation } from "./classe-reseau";
 import { fmtDate } from "./echeance-affichage";
 import { methodLabel } from "./method-registry";
 import { nombrePdf } from "./texte-pdf";
+import { TIRET } from "./format";
 
 export type BlocRapport =
   | { type: "titre"; texte: string; niveau: 1 | 2 }
@@ -46,15 +47,15 @@ export interface ContexteRapport {
 export { pourPdf, nombrePdf } from "./texte-pdf";
 
 const jour = (iso: string | null | undefined): string => {
-  if (!iso) return "—";
+  if (!iso) return TIRET;
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : fmtDate(d);
+  return Number.isNaN(d.getTime()) ? TIRET : fmtDate(d);
 };
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
 
 function ucsParAge(g: EtudiantClasse["gachees"][number]): string {
   const a = agregerParAge(g.eprouvettes);
-  if (a.length === 0) return "—";
+  if (a.length === 0) return TIRET;
   return a.map((x) => `${x.ageJours} j : ${nombrePdf(x.moyenneKpa)}${x.ecartTypeKpa !== null ? ` ± ${nombrePdf(x.ecartTypeKpa)}` : ""} (n=${x.n}${x.nExclus ? `, ${x.nExclus} excl.` : ""})`).join(" ; ");
 }
 
@@ -94,7 +95,7 @@ function chapitreEtudiant(e: EtudiantClasse, ctx: ContexteRapport): BlocRapport[
           g.code, jour(g.creeLe), `${g.formulationLabel ?? ""} (${g.categorie})`,
           nombrePdf(p?.cwPct, 1), nombrePdf(p?.bwPct, 2), ucsParAge(g),
           String(g.eprouvettes.filter((x) => x.statut !== "ecrase").length),
-          g.composants.length === 0 ? "—" : String(g.composants.filter((c) => horsTolerance(c, g.tolerancePct)).length),
+          g.composants.length === 0 ? TIRET : String(g.composants.filter((c) => horsTolerance(c, g.tolerancePct)).length),
         ];
       }),
     });
@@ -117,7 +118,7 @@ function chapitreEtudiant(e: EtudiantClasse, ctx: ContexteRapport): BlocRapport[
     blocs.push({
       type: "tableau",
       colonnes: [{ titre: "Type", largeur: 44 }, { titre: "Document", largeur: 28 }, { titre: "Détail", largeur: 160 }],
-      lignes: alertes.map((a) => [LIBELLES_ALERTES[a.type], a.cible?.code ?? "—", a.message]),
+      lignes: alertes.map((a) => [LIBELLES_ALERTES[a.type], a.cible?.code ?? TIRET, a.message]),
     });
   }
 
@@ -134,7 +135,7 @@ function chapitreEtudiant(e: EtudiantClasse, ctx: ContexteRapport): BlocRapport[
       lignes: fil.map((a) => [
         nomDoc(a) + (a.ancre ? ` (${a.ancre})` : ""),
         estReponse(a) ? e.nom : a.auteur_id === ctx.moi ? "Vous" : "Enseignant",
-        jour(a.created_at ?? a.updated_at), a.texte, a.lu_le ? jour(a.lu_le) : "—",
+        jour(a.created_at ?? a.updated_at), a.texte, a.lu_le ? jour(a.lu_le) : TIRET,
       ]),
     });
   }
@@ -168,7 +169,7 @@ export function documentRapportClasse(etudiants: EtudiantClasse[], ctx: Contexte
       const fil = ctx.annotations.filter((a) => a.owner_id === e.id);
       const reponses = fil.filter(estReponse).length;
       return [
-        e.nom, e.email ?? "—", String(e.resultats.length), String(gacheesRetenues(e).length), String(e.nbEssais),
+        e.nom, e.email ?? TIRET, String(e.resultats.length), String(gacheesRetenues(e).length), String(e.nbEssais),
         jour(e.derniereActivite), String(ctx.alertes.filter((a) => a.etudiantId === e.id).length),
         `${fil.length - reponses}${reponses > 0 ? ` (+ ${pluriel(reponses, "réponse")})` : ""}`,
       ];
@@ -190,7 +191,7 @@ export function documentRapportClasse(etudiants: EtudiantClasse[], ctx: Contexte
     const v = a.lignes.map((l) => l.moyenneKpa);
     return [
       libelleGroupe(g), `${a.ageJours} j`, String(a.lignes.length), String(new Set(a.lignes.map((l) => l.etudiantId)).size),
-      `${nombrePdf(Math.min(...v))} – ${nombrePdf(Math.max(...v))}`,
+      `${nombrePdf(Math.min(...v))} à ${nombrePdf(Math.max(...v))}`,
     ];
   }));
   if (lignesGroupes.length > 0) {
@@ -198,7 +199,7 @@ export function documentRapportClasse(etudiants: EtudiantClasse[], ctx: Contexte
     blocs.push({ type: "texte", texte: "Même catégorie, Cw et Bw arrondis au demi-point. Étendue des UCS moyennes par gâchée ; aucune moyenne entre gâchées (lots, opérateurs et protocoles différents).", discret: true });
     blocs.push({
       type: "tableau",
-      colonnes: [{ titre: "Formulation", largeur: 70 }, { titre: "Âge", largeur: 16 }, { titre: "Gâchées", largeur: 18, alignement: "d" }, { titre: "Étudiants", largeur: 18, alignement: "d" }, { titre: "UCS min – max (kPa)", largeur: 40, alignement: "d" }],
+      colonnes: [{ titre: "Formulation", largeur: 70 }, { titre: "Âge", largeur: 16 }, { titre: "Gâchées", largeur: 18, alignement: "d" }, { titre: "Étudiants", largeur: 18, alignement: "d" }, { titre: "Étendue de l'UCS (kPa)", largeur: 40, alignement: "d" }],
       lignes: lignesGroupes,
     });
   }
@@ -213,5 +214,5 @@ export function documentRapportClasse(etudiants: EtudiantClasse[], ctx: Contexte
 
 /** Le chapitre d'un seul étudiant. */
 export function documentRapportEtudiant(e: EtudiantClasse, ctx: ContexteRapport): DocumentRapport {
-  return { ...enTete(ctx, `Rapport — ${e.nom}`), blocs: chapitreEtudiant(e, ctx) };
+  return { ...enTete(ctx, `Rapport individuel : ${e.nom}`), blocs: chapitreEtudiant(e, ctx) };
 }

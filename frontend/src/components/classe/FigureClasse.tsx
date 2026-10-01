@@ -7,6 +7,7 @@ import CourbeUCS, { type SerieUCS } from "@/components/labo/CourbeUCS";
 import { AXES_FORMULATION, axeMeta, type AxeFormulation } from "@/lib/ucs-formulation";
 import { agesClasse, nuageClasse, type EtudiantClasse } from "@/lib/classe";
 import { COULEURS } from "./commun";
+import { libelleAvecUnite } from "@/lib/format";
 
 export default function FigureClasse({ etudiants, couleurDe }: { etudiants: EtudiantClasse[]; couleurDe: Map<string, string> }) {
   const [axe, setAxe] = useState<AxeFormulation>("bwPct");
@@ -46,14 +47,14 @@ export default function FigureClasse({ etudiants, couleurDe }: { etudiants: Etud
         )}
       </div>
       <CourbeUCS series={series} relier={false} ticksX="rondes"
-        xLabel={(() => { const m = axeMeta(axe); return m ? `${m.label}${m.unite !== "—" ? ` (${m.unite})` : ""}` : axe; })()}
+        xLabel={(() => { const m = axeMeta(axe); return m ? libelleAvecUnite(m.label, m.unite) : axe; })()}
         formatX={(x) => x.toLocaleString("fr-CA", { maximumFractionDigits: 2 })}
         messageVide="Aucune gâchée de la classe n'a de mesure exploitable à cet âge." />
       {nuage.ecartees.length > 0 && (
         <details className="classe-seuils">
           <summary>{nuage.ecartees.length} gâchée(s) absente(s) de cette figure</summary>
           <ul>
-            {nuage.ecartees.map((x, i) => <li key={i}>{x.etudiant} — {x.code} : {x.raison}</li>)}
+            {nuage.ecartees.map((x, i) => <li key={i}>{x.etudiant}, {x.code} : {x.raison}</li>)}
           </ul>
         </details>
       )}

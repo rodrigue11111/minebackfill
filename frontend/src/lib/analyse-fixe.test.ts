@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { estParamCle, valeurReference, tenuFixe, type ParamCle } from "./analyse-fixe";
 import { PARAMS } from "./analyse-series";
 import type { InstantaneAnalyse } from "./analyse-instantane";
+import { libelle } from "./glossaire";
 
 function inst(extra: Partial<InstantaneAnalyse> = {}): InstantaneAnalyse {
   return {
@@ -47,23 +48,30 @@ describe("analyse-fixe — valeurReference", () => {
   });
 });
 
+// Libellé de chaque paramètre balayable dans la liste « tenu fixe ».
+const LIBELLE_FIXE: Record<ParamCle, string> = {
+  binder_mass_pct: libelle("bw"),
+  solids_mass_pct: libelle("cw"),
+  saturation_pct: libelle("sr"),
+  aggregate_fraction_pct: libelle("am"),
+};
+const CLES = Object.keys(LIBELLE_FIXE) as ParamCle[];
+
 describe("analyse-fixe — tenuFixe", () => {
-  it("retire le paramètre balayé de la liste", () => {
-    const labels = (p: ParamCle) => tenuFixe(instRpg(), p).map((x) => x.label).join(" | ");
-    expect(labels("binder_mass_pct")).not.toContain("Bw —");
-    expect(labels("binder_mass_pct")).toContain("Cw —");
-    expect(labels("solids_mass_pct")).not.toContain("Cw —");
-    expect(labels("solids_mass_pct")).toContain("Bw —");
-    expect(labels("saturation_pct")).not.toContain("Sr —");
-    expect(labels("aggregate_fraction_pct")).not.toContain("Am —");
+  it("retire le paramètre balayé de la liste et garde les trois autres", () => {
+    for (const balaye of CLES) {
+      const labels = tenuFixe(instRpg(), balaye).map((x) => x.label);
+      expect(labels).not.toContain(LIBELLE_FIXE[balaye]);
+      for (const autre of CLES.filter((c) => c !== balaye)) expect(labels).toContain(LIBELLE_FIXE[autre]);
+    }
   });
 
   it("n'annonce Am et le Gs du granulat qu'en RPG", () => {
-    const rpc = tenuFixe(inst(), "binder_mass_pct").map((x) => x.label).join(" | ");
-    expect(rpc).not.toContain("Am —");
+    const rpc = tenuFixe(inst(), "binder_mass_pct").map((x) => x.label);
+    expect(rpc).not.toContain(LIBELLE_FIXE.aggregate_fraction_pct);
     expect(rpc).not.toContain("Gs du granulat");
-    const rpg = tenuFixe(instRpg(), "binder_mass_pct").map((x) => x.label).join(" | ");
-    expect(rpg).toContain("Am —");
+    const rpg = tenuFixe(instRpg(), "binder_mass_pct").map((x) => x.label);
+    expect(rpg).toContain(LIBELLE_FIXE.aggregate_fraction_pct);
     expect(rpg).toContain("Gs du granulat");
   });
 

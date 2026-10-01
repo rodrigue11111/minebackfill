@@ -8,6 +8,7 @@ import { bloquerCompte, definirRole, lireComptes, messageErreurClasse, type Comp
 import { dateCourte, Pastille, td, th } from "./commun";
 import { Carte } from "@/components/ui/Carte";
 import { Bandeau } from "@/components/ui/Bandeau";
+import { TIRET } from "@/lib/format";
 
 const nomDe = (c: CompteClasse) => c.nom?.trim() || c.courriel || `Compte ${c.id.slice(0, 8)}`;
 
@@ -96,8 +97,8 @@ export default function OngletComptes({ moi, onChangement }: {
                 const bloque = c.bloqueJusquA !== null;
                 return (
                   <tr key={c.id} style={{ background: bloque ? "var(--danger-pale)" : undefined }}>
-                    <td style={{ ...td, fontWeight: 600 }}>{c.nom?.trim() || "—"}</td>
-                    <td style={td}>{c.courriel ?? "—"}</td>
+                    <td style={{ ...td, fontWeight: 600 }}>{c.nom?.trim() || TIRET}</td>
+                    <td style={td}>{c.courriel ?? TIRET}</td>
                     <td style={td}>{c.role === "prof" ? <Pastille ton="bleu">enseignant</Pastille> : "étudiant"}</td>
                     <td style={td}>{dateCourte(c.creeLe)}</td>
                     <td style={td}>{dateCourte(c.derniereConnexion)}</td>

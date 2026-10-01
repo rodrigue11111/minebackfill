@@ -141,7 +141,7 @@ export function TableauRrc({ recipes, massLabel, toMass, choisie }: {
 }) {
   return (
     <section className="mix-rapport-section">
-      <SectionHeader title="Remblai rocheux cimenté (RRC)" sub="masses, retardateur de prise et coulis de ciment — cours, dia 65 à 70" />
+      <SectionHeader title="Remblai rocheux cimenté (RRC)" sub="masses, retardateur de prise et coulis de ciment (cours, dia 65 à 70)" />
       <div className="mix-tableau-defilant">
         <table className="result-table">
           <thead>

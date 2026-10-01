@@ -96,7 +96,7 @@ export default function AssistantPage() {
     setErreur(null);
     try {
       const t = await jeton();
-      if (!t && !MODE_TEST_SANS_COMPTE) throw new Error("Session expirée — reconnectez-vous.");
+      if (!t && !MODE_TEST_SANS_COMPTE) throw new Error("Session expirée : reconnectez-vous.");
       const r = await fetch("/api/assistant", {
         method: "POST",
         headers: {
@@ -139,8 +139,8 @@ export default function AssistantPage() {
       <EnTetePage
         titre="Assistant IA"
         sousTitre={<>Décrivez la modification souhaitée comme à un assistant humain. L&apos;IA
-          travaille dans le dépôt du projet et ouvre une <strong>Pull Request</strong> —
-          tests automatiques et aperçu cliquable — <strong>rien ne part en
+          travaille dans le dépôt du projet et ouvre une <strong>Pull Request</strong> (tests
+          automatiques et aperçu cliquable) : <strong>rien ne part en
           production sans votre validation</strong>. Comptez quelques minutes par
           réponse.</>}
       />
@@ -200,7 +200,7 @@ export default function AssistantPage() {
             <div className="assistant-fil">
               {messages.length === 0 && (
                 <p className="classe-rien" style={{ padding: "18px 4px" }}>
-                  {issue ? "Chargement de la conversation..." : "Exemples : « Ajoute le liant GUb-SF (Gs 2,95) aux liants officiels. » — « Le bouton d'export PDF affiche une erreur, corrige-le. »"}
+                  {issue ? "Chargement de la conversation..." : "Exemples : « Ajoute le liant GUb-SF (Gs 2,95) aux liants officiels. » ou « Le bouton d'export PDF affiche une erreur, corrige-le. »"}
                 </p>
               )}
               {messages.map((m, i) => {
@@ -208,7 +208,7 @@ export default function AssistantPage() {
                 return (
                   <div key={i} className={estIa ? "assistant-bulle assistant-bulle-ia" : "assistant-bulle assistant-bulle-moi"}>
                     <div className="assistant-bulle-tete">
-                      {estIa ? "Assistant" : "Vous"} — {new Date(m.date).toLocaleString("fr-CA")}
+                      {estIa ? "Assistant" : "Vous"} · {new Date(m.date).toLocaleString("fr-CA")}
                     </div>
                     <div className="assistant-bulle-corps">
                       {m.corps}
@@ -240,7 +240,7 @@ export default function AssistantPage() {
           <p className="ui-liste-pied">
             Chaque demande devient une issue GitHub traitée par l&apos;IA mainteneuse
             du dépôt. La modification arrive sous forme de Pull Request avec tests
-            et aperçu — c&apos;est votre clic « Merge » (dans GitHub) qui met en ligne.
+            et aperçu : c&apos;est votre clic « Merge » (dans GitHub) qui met en ligne.
             L&apos;actualisation ici est automatique (20 s).
           </p>
         </>

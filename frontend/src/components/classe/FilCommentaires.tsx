@@ -41,7 +41,7 @@ export default function FilCommentaires({ liste, moi, nomEtudiant, nouvelles, on
               <span style={{ display: "block", fontSize: 13, fontWeight: 600 }}>
                 {auteur}{nouvelle && <span style={{ color: "var(--alerte-texte)" }}> · nouvelle réponse</span>}
               </span>
-              {a.ancre ? <strong>{a.ancre} — </strong> : null}{a.texte}
+              {a.ancre ? <strong>{a.ancre} : </strong> : null}{a.texte}
               <span style={{ display: "block", fontSize: 12.5, color: "var(--texte-2)", marginTop: 3 }}>
                 {dateHeure(a.created_at ?? a.updated_at)}
                 {!reponse && a.lu_le !== undefined && (a.lu_le ? ` · vu par l'étudiant le ${dateHeure(a.lu_le)}` : " · pas encore vu")}

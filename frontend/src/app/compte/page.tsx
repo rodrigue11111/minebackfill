@@ -25,9 +25,9 @@ const LIBELLES_STATUT: Record<InstantaneSync["statut"], string> = {
   a_jour: "À jour",
   en_attente: "Envoi dans quelques secondes",
   en_cours: "Envoi en cours…",
-  hors_ligne: "Hors ligne — tout partira au retour du réseau",
+  hors_ligne: "Hors ligne : tout partira au retour du réseau",
   erreur: "Erreur",
-  pause: "En pause (activité anormale) — reprise automatique dans 10 min",
+  pause: "En pause (activité anormale) : reprise automatique dans 10 min",
 };
 
 /**

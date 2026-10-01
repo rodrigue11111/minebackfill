@@ -188,7 +188,7 @@ export default function PortailPage() {
               ))}
             </div>
             <p className="p-note">
-              {PROJETS.length} projet{PROJETS.length > 1 ? "s" : ""}{" "}— chaque application
+              {PROJETS.length} projet{PROJETS.length > 1 ? "s" : ""}. Chaque application
               s&apos;ouvre dans un nouvel onglet.
             </p>
           </>
@@ -302,7 +302,7 @@ export default function PortailPage() {
       {/* ── Pied ── */}
       <footer className="p-pied">
         <div className="p-pied-contenu">
-          <span>Progiciel Belem — portail des projets</span>
+          <span>Progiciel Belem, portail des projets</span>
           <span>Programme de M. Belem</span>
         </div>
       </footer>

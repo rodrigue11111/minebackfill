@@ -26,6 +26,13 @@ français simple dans tes réponses d'issue/PR.
   localStorage (enveloppes versionnées `{v, data}`, migrations — voir
   MAINTENANCE.md recette 8).
 - UI et textes en **français avec accents corrects**, **aucun emoji**.
+- **Aucun tiret cadratin « — » ni demi-cadratin « – »** dans un texte
+  affiché ou exporté (ils font « texte écrit par une IA ») : virgule,
+  deux-points, parenthèses ou point ; « 3 à 10 » pour un intervalle ; « − »
+  (U+2212) pour un signe moins dans une formule. Valeur absente : `TIRET` de
+  `frontend/src/lib/format.ts`, jamais écrit en dur. Gardes :
+  `frontend/src/lib/typographie.test.ts` et
+  `backend/app/tests/test_typographie.py`.
 - Travaille TOUJOURS en branche + Pull Request — jamais de push direct sur
   master. Décris dans la PR : quoi, pourquoi, comment vérifier (l'aperçu
   Vercel de la PR permet de cliquer-tester).

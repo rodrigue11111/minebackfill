@@ -109,7 +109,7 @@ export async function construirePdf(d: DocumentRapport): Promise<JsPdf> {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(...GRIS);
-    doc.text(pourPdf(`MineBackfill — ${d.titre}`), MARGE, hauteurPage - 6);
+    doc.text(pourPdf(`MineBackfill  |  ${d.titre}`), MARGE, hauteurPage - 6);
     doc.text(pourPdf(`page ${i}/${n}`), largeurPage - MARGE, hauteurPage - 6, { align: "right" });
   }
   return doc;

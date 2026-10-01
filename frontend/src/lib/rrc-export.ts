@@ -10,6 +10,7 @@ import { RRC_ROWS } from "@/lib/report-schema";
 import { fmt as fmtNum } from "@/lib/format";
 import { APP_NAME } from "@/lib/branding";
 import { assainirTextePdf } from "@/lib/texte-pdf";
+import { TIRET } from "./format";
 
 export async function exportRrcExcel(
   recipes: RrcRecipe[],
@@ -23,8 +24,8 @@ export async function exportRrcExcel(
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("RRC");
-  ws.addRow(["MINEBACKFILL — Remblai rocheux cimenté (RRC)"]).font = { bold: true, size: 14 };
-  ws.addRow([`Projet : ${general.project_name ?? "—"}`, `Opérateur : ${general.operator_name ?? "—"}`]);
+  ws.addRow(["MineBackfill : remblai rocheux cimenté (RRC)"]).font = { bold: true, size: 14 };
+  ws.addRow([`Projet : ${general.project_name ?? TIRET}`, `Opérateur : ${general.operator_name ?? TIRET}`]);
   ws.addRow([`Date : ${new Date().toLocaleDateString("fr-CA")}`]);
   ws.addRow([]);
 
@@ -34,7 +35,7 @@ export async function exportRrcExcel(
   for (const l of RRC_ROWS) {
     ws.addRow([l.label(massLabel), ...recipes.map((r) => {
       const v = l.getter(r, toMass);
-      return v === null ? "—" : parseFloat(v.toFixed(l.digits));
+      return v === null ? TIRET : parseFloat(v.toFixed(l.digits));
     })]);
   }
   ws.getColumn(1).width = 38;
@@ -69,7 +70,7 @@ export async function exportRrcPdf(
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(255, 255, 255);
-    doc.text("FEUILLE DE PRÉPARATION — REMBLAI ROCHEUX CIMENTÉ", mL, 11.5);
+    doc.text("FEUILLE DE PRÉPARATION DU REMBLAI ROCHEUX CIMENTÉ", mL, 11.5);
     doc.setFillColor(26, 58, 138);
     doc.rect(0, 18, pageW, 8, "F");
     doc.setFontSize(9);
@@ -84,7 +85,7 @@ export async function exportRrcPdf(
       ["Projet", general.project_name || "________________________"],
       ["Opérateur", general.operator_name || "________________________"],
       ["Date", new Date().toLocaleDateString("fr-CA")],
-      ["Chantier", `V = ${fmtNum(r.crf_volume_m3, 1)} m3 — masse totale de RRC = ${fmtNum(toMass(r.total_mass_kg), 0)} ${massLabel}`],
+      ["Chantier", `V = ${fmtNum(r.crf_volume_m3, 1)} m3 ; masse totale de RRC = ${fmtNum(toMass(r.total_mass_kg), 0)} ${massLabel}`],
     ];
     infos.forEach(([k, v]) => {
       doc.setFont("helvetica", "bold");
@@ -137,7 +138,7 @@ export async function exportRrcPdf(
     y += 5.5;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
-    doc.text(`Masse : ${fmtNum(toMass(r.slurry_mass_kg), 1)} ${massLabel}   —   Volume : ${fmtNum(r.slurry_volume_m3, 2)} m3   —   Dosage en retardateur D_m : ${fmtNum(r.retarder_dosage_mass_pct, 3)} % de M_c`, mL, y);
+    doc.text(`Masse : ${fmtNum(toMass(r.slurry_mass_kg), 1)} ${massLabel}  |  Volume : ${fmtNum(r.slurry_volume_m3, 2)} m3  |  Dosage en retardateur D_m : ${fmtNum(r.retarder_dosage_mass_pct, 3)} % de M_c`, mL, y);
     y += 8;
 
     doc.setFontSize(9.5);
@@ -149,7 +150,7 @@ export async function exportRrcPdf(
 
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
-    doc.text(`${APP_NAME} — RRC  |  ${new Date().toLocaleDateString("fr-CA")}`, mL, pageH - 8);
+    doc.text(`${APP_NAME}  |  RRC  |  ${new Date().toLocaleDateString("fr-CA")}`, mL, pageH - 8);
   });
 
   doc.save(`MineBackfill_RRC_preparation_${new Date().toISOString().slice(0, 10)}.pdf`);

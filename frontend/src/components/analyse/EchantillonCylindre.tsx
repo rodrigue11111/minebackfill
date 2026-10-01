@@ -70,7 +70,7 @@ export default function EchantillonCylindre({ recipe }: { recipe: Recipe }) {
       {[...bandes].reverse().map((p, i) => (
         <g key={p.cle} transform={`translate(180 ${TOP + 6 + i * 22})`}>
           <rect x={0} y={-9} width={12} height={12} rx={3} fill={p.couleur} stroke="rgba(0,0,0,0.1)" />
-          <text x={18} y={1} fontSize={12} fill="#374151">{p.label} — {pct(p.frac)}</text>
+          <text x={18} y={1} fontSize={12} fill="#374151">{p.label} : {pct(p.frac)}</text>
         </g>
       ))}
     </svg>

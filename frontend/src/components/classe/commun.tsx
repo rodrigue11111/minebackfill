@@ -2,25 +2,26 @@
 
 import type React from "react";
 import { Pastille as PastilleUi, type TonPastille } from "@/components/ui/Pastille";
+import { TIRET } from "@/lib/format";
 
 /** Une couleur par étudiant (figure, pastilles). */
 export const COULEURS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4d7c0f", "#0f766e", "#9333ea"];
 
 export function dateCourte(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return TIRET;
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("fr-CA");
+  return Number.isNaN(d.getTime()) ? TIRET : d.toLocaleDateString("fr-CA");
 }
 
 export function dateHeure(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return TIRET;
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("fr-CA", { dateStyle: "medium", timeStyle: "short" });
+  return Number.isNaN(d.getTime()) ? TIRET : d.toLocaleString("fr-CA", { dateStyle: "medium", timeStyle: "short" });
 }
 
 /** Nombre à la française (virgule), « — » si absent. */
 export function nombre(v: number | null | undefined, decimales = 0): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  if (v === null || v === undefined || !Number.isFinite(v)) return TIRET;
   return v.toLocaleString("fr-CA", { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
 }
 

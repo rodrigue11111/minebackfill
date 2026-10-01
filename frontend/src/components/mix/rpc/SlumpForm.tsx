@@ -125,7 +125,7 @@ export default function SlumpForm() {
       <CardSection title="Taux massique de liant Bw par recette">
         <GrilleChamps une={numRecipes === 1}>
           {Array.from({ length: numRecipes }).map((_, i) => (
-            <Field key={i} label={<><PointRecette i={i} />Recette {i + 1} — Bw</>} unit="%">
+            <Field key={i} label={<><PointRecette i={i} />Recette {i + 1} : Bw</>} unit="%">
               <input type="number" step="any" className="field-input" placeholder="ex : 4.5"
                 value={slump.binder_pct?.[i] ?? ""} onChange={(e) => setSlumpRecipe(i, { binder_pct: num(e.target.value) })} />
             </Field>

@@ -26,6 +26,7 @@ import FriseCure from "./FriseCure";
 import Pesees from "./Pesees";
 import CarteEprouvettes from "./CarteEprouvettes";
 import { dateLongue, nouvelId } from "./outils";
+import { TIRET } from "@/lib/format";
 
 type VueTelephone = "pesees" | "eprouvettes" | "echanges";
 
@@ -195,11 +196,11 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                 <LigneListe libelle="Lot de résidu" htmlFor="lot-residu"><input id="lot-residu" className="field-input" value={g.lotResidu ?? ""} onChange={(e) => onMaj({ lotResidu: e.target.value })} /></LigneListe>
                 <LigneListe libelle="Lot de granulat" htmlFor="lot-granulat"><input id="lot-granulat" className="field-input" value={g.lotGranulat ?? ""} onChange={(e) => onMaj({ lotGranulat: e.target.value })} /></LigneListe>
                 <LigneListe libelle="Lot de liant" htmlFor="lot-liant"><input id="lot-liant" className="field-input" value={g.lotLiant ?? ""} onChange={(e) => onMaj({ lotLiant: e.target.value })} /></LigneListe>
-                <LigneListe libelle="w₀ mesuré (%)" detail="Teneur en eau du résidu, mesure du jour" htmlFor="w0-mesure"><ChampNombre id="w0-mesure" placeholder="—" value={g.w0MesurePct} onChange={(n) => onMaj({ w0MesurePct: n })} /></LigneListe>
-                <LigneListe libelle="Affaissement mesuré (mm)" detail="Cône d'Abrams, ASTM C143/C143M" htmlFor="affaissement"><ChampNombre id="affaissement" placeholder="—" value={g.slumpMesureMm} onChange={(n) => onMaj({ slumpMesureMm: n })} /></LigneListe>
-                <LigneListe libelle="Température (°C)" htmlFor="temperature"><ChampNombre id="temperature" placeholder="—" value={g.temperatureC} onChange={(n) => onMaj({ temperatureC: n })} /></LigneListe>
-                <LigneListe libelle="w mesuré (%)" htmlFor="w-mesure"><ChampNombre id="w-mesure" placeholder="—" value={g.wMesurePct} onChange={(n) => onMaj({ wMesurePct: n })} /></LigneListe>
-                <LigneListe libelle="Cw mesuré (%)" htmlFor="cw-mesure"><ChampNombre id="cw-mesure" placeholder="—" value={g.cwMesurePct} onChange={(n) => onMaj({ cwMesurePct: n })} /></LigneListe>
+                <LigneListe libelle="w₀ mesuré (%)" detail="Teneur en eau du résidu, mesure du jour" htmlFor="w0-mesure"><ChampNombre id="w0-mesure" placeholder={TIRET} value={g.w0MesurePct} onChange={(n) => onMaj({ w0MesurePct: n })} /></LigneListe>
+                <LigneListe libelle="Affaissement mesuré (mm)" detail="Cône d'Abrams, ASTM C143/C143M" htmlFor="affaissement"><ChampNombre id="affaissement" placeholder={TIRET} value={g.slumpMesureMm} onChange={(n) => onMaj({ slumpMesureMm: n })} /></LigneListe>
+                <LigneListe libelle="Température (°C)" htmlFor="temperature"><ChampNombre id="temperature" placeholder={TIRET} value={g.temperatureC} onChange={(n) => onMaj({ temperatureC: n })} /></LigneListe>
+                <LigneListe libelle="w mesuré (%)" htmlFor="w-mesure"><ChampNombre id="w-mesure" placeholder={TIRET} value={g.wMesurePct} onChange={(n) => onMaj({ wMesurePct: n })} /></LigneListe>
+                <LigneListe libelle="Cw mesuré (%)" htmlFor="cw-mesure"><ChampNombre id="cw-mesure" placeholder={TIRET} value={g.cwMesurePct} onChange={(n) => onMaj({ cwMesurePct: n })} /></LigneListe>
               </ListeGroupee>
             </div>
           </Carte>

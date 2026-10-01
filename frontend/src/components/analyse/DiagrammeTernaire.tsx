@@ -70,7 +70,7 @@ export default function DiagrammeTernaire({
         const nom = titres?.[i] ?? `R${i + 1}`;
         return (
           <g key={i}>
-            <title>{`${nom} — ${meta.sommets[0]} ${pct(p.a)}, ${meta.sommets[1]} ${pct(p.b)}, ${meta.sommets[2]} ${pct(p.c)}`}</title>
+            <title>{`${nom} : ${meta.sommets[0]} ${pct(p.a)}, ${meta.sommets[1]} ${pct(p.b)}, ${meta.sommets[2]} ${pct(p.c)}`}</title>
             <circle cx={px} cy={py} r={5} fill={coul} stroke="#fff" strokeWidth={1.5} />
             <text x={px + 8} y={py + 4} fontSize={11} fontWeight={700} fill={coul}>{nom}</text>
           </g>

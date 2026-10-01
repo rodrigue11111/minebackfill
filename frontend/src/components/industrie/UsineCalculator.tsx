@@ -132,21 +132,21 @@ export default function UsineCalculator() {
           </Field>
           <div style={{ fontSize: 12.5, color: "#374151" }}>
             <div style={{ fontWeight: 600, marginBottom: 3 }}>Par poste ({heuresParPoste || 0} h)</div>
-            liant {fmt(r.liant_tph * (heuresParPoste || 0), 1)} t — eau {fmt(r.eau_a_ajouter_tph * (heuresParPoste || 0), 1)} t —
+            liant {fmt(r.liant_tph * (heuresParPoste || 0), 1)} t, eau {fmt(r.eau_a_ajouter_tph * (heuresParPoste || 0), 1)} t,
             remblai {fmt(r.remblai_total_tph * (heuresParPoste || 0), 0)} t
           </div>
           <div style={{ fontSize: 12.5, color: "#374151" }}>
             <div style={{ fontWeight: 600, marginBottom: 3 }}>Par jour (24 h)</div>
-            liant {fmt(r.liant_tph * 24, 1)} t — eau {fmt(r.eau_a_ajouter_tph * 24, 1)} t —
+            liant {fmt(r.liant_tph * 24, 1)} t, eau {fmt(r.eau_a_ajouter_tph * 24, 1)} t,
             remblai {fmt(r.remblai_total_tph * 24, 0)} t
           </div>
         </div>
 
         {coutLiantParHeure !== null ? (
           <p style={{ fontSize: 12.5, color: "#374151", marginTop: 12 }}>
-            <strong>Coût du liant :</strong> {fmt(coutLiantParHeure, 0)} $/h
-            — {fmt(coutLiantParHeure * (heuresParPoste || 0), 0)} $/poste
-            — {fmt(coutLiantParHeure * 24, 0)} $/jour
+            <strong>Coût du liant :</strong> {fmt(coutLiantParHeure, 0)} $/h, soit{" "}
+            {fmt(coutLiantParHeure * (heuresParPoste || 0), 0)} $/poste et{" "}
+            {fmt(coutLiantParHeure * 24, 0)} $/jour
             <span style={{ color: "#94a3b8" }}> (mélange de liants et prix de la page Informations / Réglages)</span>
           </p>
         ) : (

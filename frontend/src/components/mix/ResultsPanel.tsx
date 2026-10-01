@@ -93,7 +93,7 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
               onClick={async () => { const { exportRrcPdf } = await import("@/lib/rrc-export"); exportRrcPdf(rrcRecipes, general, units); }}>
               Feuille labo
             </button>
-            <Sauvegarder desactive={vide} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={`RRC — ${dateDuJour}`} />
+            <Sauvegarder desactive={vide} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={`RRC du ${dateDuJour}`} />
             {pleinEcranMenu && (
               <Menu className="ui-bouton-icone" ariaLabel="Autres actions" declencheur={<Icone nom="plus" taille={18} epaisseur={2} />} elements={[pleinEcranMenu]} />
             )}
@@ -132,7 +132,7 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
               onClick={async () => { const { exportToPdf } = await import("@/lib/pdf-report"); exportToPdf(recipes, general, binderName, category, method, units); }}>
               PDF
             </button>
-            <Sauvegarder desactive={vide} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={`${category} ${methodLabel(category, method)} — ${dateDuJour}`} />
+            <Sauvegarder desactive={vide} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={`${category} ${methodLabel(category, method)} du ${dateDuJour}`} />
             <Menu
               className="ui-bouton-icone"
               ariaLabel="Autres actions"

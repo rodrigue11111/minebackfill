@@ -84,7 +84,7 @@ export async function exportToPdf(
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...WHITE);
-  doc.text("MINEBACKFILL — Résultats de calcul", marginL, 13);
+  doc.text("MineBackfill : résultats de calcul", marginL, 13);
 
   // Sub-banner
   doc.setFillColor(26, 58, 138);
@@ -93,7 +93,7 @@ export async function exportToPdf(
   doc.setFont("helvetica", "italic");
   doc.setTextColor(200, 210, 240);
   doc.text(
-    `${category} — ${libelleMethode}  |  ${recipeCount} recette${recipeCount > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
+    `${category}  |  ${libelleMethode}  |  ${recipeCount} recette${recipeCount > 1 ? "s" : ""}  |  ${new Date().toLocaleDateString("fr-CA")}`,
     marginL, 27,
   );
   y = 36;

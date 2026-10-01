@@ -8,7 +8,11 @@
 // hors table à un équivalent sûr ; les lettres grecques des symboles du cours
 // (ρh, γd, θ, κ) sont écrites en toutes lettres (rho_h, gamma_d, theta, kappa).
 
-const CP1252_EXTRA = new Set([..."€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ"]);
+import { TIRET } from "./format";
+
+/** Signes de WinAnsi au-delà de Latin-1 (les seuls tirets permis par le garde typographique). */
+export const WINANSI_EXTRA = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
+const CP1252_EXTRA = new Set([...WINANSI_EXTRA]);
 
 const EQUIVALENTS: Record<string, string> = {
   "\u202F": " ", "\u2009": " ", "\u2007": " ", "\u200B": "", "\u2212": "-", "\u2011": "-", "\u2010": "-",
@@ -43,7 +47,7 @@ export function pourPdf(s: string): string {
 
 /** Nombre à virgule décimale, milliers séparés par une espace ordinaire. */
 export function nombrePdf(v: number | null | undefined, dec = 0): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  if (v === null || v === undefined || !Number.isFinite(v)) return TIRET;
   const [ent, frac] = Math.abs(v).toFixed(dec).split(".");
   const groupe = ent.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   return `${v < 0 && Number(Math.abs(v).toFixed(dec)) !== 0 ? "-" : ""}${groupe}${frac ? `,${frac}` : ""}`;

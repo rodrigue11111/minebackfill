@@ -24,6 +24,7 @@ const masseAjoutComposantN = (c: RecipeComponents | null | undefined, i: number)
 import { fmt as fmtNum } from "@/lib/format";
 import { APP_NAME } from "@/lib/branding";
 import { assainirTextePdf } from "@/lib/texte-pdf";
+import { TIRET } from "./format";
 
 const NAVY: [number, number, number] = [12, 30, 66];
 const WHITE: [number, number, number] = [255, 255, 255];
@@ -74,15 +75,15 @@ export async function exportPreparationPdf(
 
   const contenant = () => {
     const t = general.container_type as string | null;
-    if (!t) return "—";
+    if (!t) return TIRET;
     const label = CONTENANT_LABELS[t] ?? t;
     if (t === "section_hauteur")
-      return `${label} — ${fmtNum(general.container_section, 1)} cm² x ${fmtNum(general.container_height, 1)} cm`;
+      return `${label} : ${fmtNum(general.container_section, 1)} cm² x ${fmtNum(general.container_height, 1)} cm`;
     if (t === "rayon_hauteur")
-      return `${label} — r ${fmtNum(general.container_radius, 2)} cm x h ${fmtNum(general.container_height, 1)} cm`;
+      return `${label} : r ${fmtNum(general.container_radius, 2)} cm x h ${fmtNum(general.container_height, 1)} cm`;
     if (t === "volume")
-      return `${label} — ${fmtNum(general.container_volume_m3, 4)} m³`;
-    return `${label} — ${fmtNum(general.container_length, 1)} x ${fmtNum(general.container_width, 1)} x ${fmtNum(general.container_height, 1)} cm`;
+      return `${label} : ${fmtNum(general.container_volume_m3, 4)} m³`;
+    return `${label} : ${fmtNum(general.container_length, 1)} x ${fmtNum(general.container_width, 1)} x ${fmtNum(general.container_height, 1)} cm`;
   };
 
   recipes.forEach((r, idx) => {
@@ -95,14 +96,14 @@ export async function exportPreparationPdf(
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...WHITE);
-    doc.text("FEUILLE DE PRÉPARATION — LABORATOIRE", mL, 11.5);
+    doc.text("FEUILLE DE PRÉPARATION AU LABORATOIRE", mL, 11.5);
     doc.setFillColor(26, 58, 138);
     doc.rect(0, 18, pageW, 8, "F");
     doc.setFontSize(9);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(200, 210, 240);
     doc.text(
-      `${category} — ${libelleMethode}  |  Recette ${idx + 1} / ${recipes.length}  |  Bw = ${fmtNum(r.bw_mass_pct, 2)} %`,
+      `${category}  |  ${libelleMethode}  |  Recette ${idx + 1} / ${recipes.length}  |  Bw = ${fmtNum(r.bw_mass_pct, 2)} %`,
       mL, 23.5,
     );
     y = 33;
@@ -232,7 +233,7 @@ export async function exportPreparationPdf(
     // ── Pied de page ──
     doc.setFontSize(8);
     doc.setTextColor(...TEXT_MUTED);
-    doc.text(`${APP_NAME} — feuille de préparation  |  ${new Date().toLocaleDateString("fr-CA")}`, mL, pageH - 8);
+    doc.text(`${APP_NAME}  |  Feuille de préparation  |  ${new Date().toLocaleDateString("fr-CA")}`, mL, pageH - 8);
     doc.text(`Recette ${idx + 1}/${recipes.length}`, pageW - mR, pageH - 8, { align: "right" });
   });
 

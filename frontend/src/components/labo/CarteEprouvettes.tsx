@@ -87,7 +87,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
       couleLe: fmtDate(dateCoulee(e)), echeance: fmtDate(dateEcheance(e)),
       ageJours: e.ageJours, moule: e.moule,
     }));
-    imprimerHtml(etiquettesHtml(etiquettes, `Étiquettes — gâchée ${gachee.code}`));
+    imprimerHtml(etiquettesHtml(etiquettes, `Étiquettes de la gâchée ${gachee.code}`));
   };
 
   const agesUsuels = AGES_CURE_DEFAUT.map(String) as string[];
