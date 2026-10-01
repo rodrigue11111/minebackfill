@@ -226,6 +226,34 @@ les vrais noms des essais normalisés. Décisions :
   (masqué visuellement, pas `display: none`), sinon le bouton n'a plus de nom.
 - **Hors périmètre, signalé** : `/industrie` (non liée) n'a pas été refaite.
 
+## Tirets « style IA » retirés (2026-09-30)
+Demande : les tirets cadratins « — » faisaient reconnaître des textes écrits
+par une IA ; les retirer de tout ce que la plateforme affiche ou exporte.
+Décisions :
+- **Ponctuation ordinaire, phrase par phrase** (virgule, deux-points,
+  parenthèses, point), jamais un remplacement aveugle ; « 3 à 10 » pour un
+  intervalle, « − » pour un signe moins. Les flèches et les points médians
+  restent (choix de l'utilisateur).
+- **La valeur absente garde « — »** (convention des tableaux, choix de
+  l'utilisateur), mais par une seule constante, `TIRET`. La grandeur sans
+  unité, qui réutilisait ce caractère, a sa propre marque lisible,
+  `SANS_UNITE` (« sans unité ») : une confusion des deux ne peut plus
+  afficher un « — » comme titre d'axe.
+- **Le tiret ne sert plus de donnée** : le symbole d'un paramètre balayé
+  vient d'un champ `symbole`, plus du découpage de son libellé ; la page
+  Formules affiche le nom complet d'une section, ce qui corrige deux puces
+  identiques.
+- **Deux gardes**, frontend (arbre syntaxique TypeScript : chaînes et textes
+  JSX, pas les commentaires) et backend (arbre Python : messages de l'API,
+  pas la documentation `/docs`), plus la règle dans `CLAUDE.md`, pour que
+  l'IA mainteneuse du dépôt n'en remette pas.
+- **Les données déjà enregistrées ne sont pas réécrites** (« additif
+  d'abord ») : un résultat sauvegardé sous « RPC Dosage selon Cw — date »
+  garde son nom ; seuls les nouveaux noms proposés changent.
+- **Assistant IA** : son lien n'est plus montré qu'à un vrai compte
+  enseignant ; en mode test, tout le monde avait la vue enseignant, donc les
+  étudiants le voyaient.
+
 ## Ce que ça implique pour la suite
 - Les golden tests + oracles sont le filet : toute évolution des formules
   passe par eux (recette 6 de `docs/MAINTENANCE.md`).

@@ -80,7 +80,7 @@ l'on choisit un nouveau mot de passe. Deux réglages Supabase sont requis :
    (Microsoft 365, « Safe Links ») ouvrent chaque lien pour l'analyser : le
    lien arrivait « expiré » chez l'étudiant. Ce modèle mène à la page de
    l'application, qui ne vérifie le jeton qu'au clic sur « Enregistrer » :
-   - Sujet : `MineBackfill — choisir un nouveau mot de passe`
+   - Sujet : `MineBackfill : choisir un nouveau mot de passe`
    - Message :
      ```html
      <h2>Nouveau mot de passe</h2>
