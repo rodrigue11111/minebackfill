@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { volumeMouleM3 } from "./contenant";
+import { parametresVolume, volumeMouleM3, volumeTotalM3 } from "./contenant";
 
 describe("volume d'un moule (même géométrie que le calcul)", () => {
   it("cylindre, section × hauteur, pavé, volume saisi ; dimensions incomplètes : null", () => {
@@ -12,5 +12,25 @@ describe("volume d'un moule (même géométrie que le calcul)", () => {
     expect(volumeMouleM3({ container_type: "rayon_hauteur", container_radius: 3.81 })).toBeNull();
     expect(volumeMouleM3({ container_type: "longueur_largeur_hauteur", container_length: 0, container_width: 1, container_height: 1 })).toBeNull();
     expect(volumeMouleM3({})).toBeNull();
+  });
+});
+
+describe("volume total VT par recette (même formule que le calcul)", () => {
+  it("VT = volume d'un moule × moules par recette × κ ; donnée manquante ou non positive : null", () => {
+    expect(volumeTotalM3(0.002, 3, 1.05)).toBeCloseTo(0.0063, 12);
+    expect(volumeTotalM3(null, 3, 1.05)).toBeNull();
+    expect(volumeTotalM3(0.002, 0, 1.05)).toBeNull();
+    expect(volumeTotalM3(0.002, 3, undefined)).toBeNull();
+  });
+
+  it("moules et κ de la méthode active ; l'essai-erreur prend sa méthode de base ; RRC : aucun", () => {
+    const etat = {
+      cw: { desired_qty: 3, safety_factor: 1.05 }, wb: { desired_qty: 2, safety_factor: 1.1 },
+      essai: { base_method: "wb" }, rpgCw: { desired_qty: 4, safety_factor: 1 },
+    };
+    expect(parametresVolume({ ...etat, category: "RPC", method: "dosage_cw" })).toEqual({ moules: 3, kappa: 1.05, methode: "Dosage selon Cw" });
+    expect(parametresVolume({ ...etat, category: "RPC", method: "essai" })).toMatchObject({ moules: 2, kappa: 1.1, methode: "Dosage selon E/L" });
+    expect(parametresVolume({ ...etat, category: "RPG", method: "dosage_cw" })).toMatchObject({ moules: 4, kappa: 1 });
+    expect(parametresVolume({ ...etat, category: "RRC", method: "rrc" })).toBeNull();
   });
 });

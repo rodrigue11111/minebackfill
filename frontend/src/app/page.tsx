@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { confirmerExemple, LIBELLE_EXEMPLE } from "@/lib/exemple";
-import { volumeMouleM3 } from "@/lib/contenant";
+import { parametresVolume, volumeMouleM3, volumeTotalM3 } from "@/lib/contenant";
 import Parcours from "@/components/ui/Parcours";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -32,7 +32,8 @@ const CONTAINER_TYPES = [
 
 export default function GeneralInfoPage() {
   const router = useRouter();
-  const { general, setGeneral, catalogue_liants, fillTestData, units, setUnits, loadUnits } = useStore();
+  const store = useStore();
+  const { general, setGeneral, catalogue_liants, fillTestData, units, setUnits, loadUnits } = store;
   const [testLoaded, setTestLoaded] = useState(false);
   // Texte exact en cours de saisie par champ de dimension. Tant qu'un champ
   // est dans cette table, on affiche ce que l'utilisateur tape (sans re-passer
@@ -62,6 +63,10 @@ export default function GeneralInfoPage() {
   // seule préférence globale, aussi modifiable dans Réglages.
   const volumeUnit = units.volume as VolumeUnit;
   const volumeMoule = volumeMouleM3(general);
+  // Volume total par recette, avec les moules et le κ de la méthode active de Calculs.
+  const paramVolume = parametresVolume(store as unknown as Parameters<typeof parametresVolume>[0]);
+  const volumeTotal = volumeTotalM3(volumeMoule, paramVolume?.moules, paramVolume?.kappa);
+  const vol = (m3: number) => (fromStoreVolume(m3, volumeUnit) ?? 0).toLocaleString("fr-CA", { maximumSignificantDigits: 6 });
 
   const dimFields = new Set(["container_height", "container_radius", "container_length", "container_width"]);
 
@@ -241,8 +246,14 @@ export default function GeneralInfoPage() {
             // Même géométrie que le calcul : l'étudiant voit tout de suite
             // ce qu'un moule contient (et repère une dimension mal saisie).
             <p className="ui-liste-pied" style={{ margin: 0 }}>
-              Volume d&apos;un moule : <strong>{(fromStoreVolume(volumeMoule, volumeUnit) ?? 0).toLocaleString("fr-CA", { maximumSignificantDigits: 6 })} {VOLUME_LABELS[volumeUnit]}</strong>.
-              {" "}Le volume total VT à préparer figure dans les résultats (rapport complet, section « Volumes »).
+              Volume d&apos;un moule : <strong>{vol(volumeMoule)} {VOLUME_LABELS[volumeUnit]}</strong>.
+              {volumeTotal !== null && paramVolume && (
+                <>
+                  {" "}Volume total à préparer par recette : VT = {vol(volumeMoule)} × {paramVolume.moules} moule{paramVolume.moules! > 1 ? "s" : ""} × κ {paramVolume.kappa!.toLocaleString("fr-CA")} = <strong>{vol(volumeTotal)} {VOLUME_LABELS[volumeUnit]}</strong>
+                  {" "}(moules par recette et facteur de perte κ : page Calculs, {paramVolume.methode}).
+                </>
+              )}
+              {store.category === "RRC" && " En RRC, la quantité vient de la page Calculs (volume du chantier ou masse totale), pas du moule."}
             </p>
           )}
         </Carte>
