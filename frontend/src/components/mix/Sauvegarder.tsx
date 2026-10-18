@@ -32,11 +32,11 @@ export default function Sauvegarder({ onSave, nomParDefaut, desactive = false }:
           <>
             <Bandeau ton={issue === "ok" ? "succes" : "danger"} role={issue === "ok" ? "status" : "alert"}>
               {issue === "ok"
-                ? "Sauvegarde effectuée : le résultat est dans l'Historique."
+                ? "Sauvegarde effectuée : le résultat est dans Mes calculs."
                 : "Sauvegarde locale impossible (stockage plein ou bloqué). Exportez vos données depuis Réglages."}
             </Bandeau>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-              {issue === "ok" && <Link href="/historique" className="btn-discret">Ouvrir l&apos;Historique</Link>}
+              {issue === "ok" && <Link href="/historique" className="btn-discret">Ouvrir Mes calculs</Link>}
               <button type="button" className="btn-secondary" onClick={() => setOuverte(false)}>Fermer</button>
             </div>
           </>

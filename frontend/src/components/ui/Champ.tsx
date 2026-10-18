@@ -2,7 +2,7 @@
 // droite dans le champ, aide dessous. Sans hook : le contrôle est fourni en
 // enfant (input, select, ChampNombre).
 
-export function Champ({ libelle, unite, aide, children, htmlFor, erreur }: {
+export function Champ({ libelle, unite, aide, children, htmlFor, erreur, avis }: {
   libelle: React.ReactNode;
   unite?: React.ReactNode;
   aide?: React.ReactNode;
@@ -10,6 +10,8 @@ export function Champ({ libelle, unite, aide, children, htmlFor, erreur }: {
   /** Id du contrôle (sinon l'étiquette l'enveloppe). */
   htmlFor?: string;
   erreur?: React.ReactNode;
+  /** Avis doux (valeur inhabituelle), jamais un blocage. */
+  avis?: React.ReactNode;
 }) {
   const corps = (
     <>
@@ -19,6 +21,7 @@ export function Champ({ libelle, unite, aide, children, htmlFor, erreur }: {
         {unite && <span className="ui-champ-unite" aria-hidden="true">{unite}</span>}
       </span>
       {erreur && <span className="ui-champ-erreur">{erreur}</span>}
+      {!erreur && avis && <span className="ui-champ-avis" role="status">{avis}</span>}
       {aide && <span className="ui-champ-aide">{aide}</span>}
     </>
   );

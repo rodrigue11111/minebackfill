@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import CarteResultats, { chiffreMasse, chiffresRecette } from "./CarteResultats";
+import CarteResultats, { chiffreMasse, chiffresCaracteristiques, chiffresRecette } from "./CarteResultats";
 import { lignesResume, nbLignesRapport, type ReportCtx } from "@/lib/report-schema";
 import { DEFAULT_UNITS } from "@/lib/units";
 import type { Recipe, RrcRecipe } from "@/lib/types";
@@ -15,8 +15,8 @@ const ctx: ReportCtx = {
   binderName: (n) => `Liant ${n}`, isEssai: false, isRpg: false, bcount: 1,
 };
 const recette = (bw: number) => ({
-  bw_mass_pct: bw, solids_mass_pct: 75, wc_ratio: 7.1, w_mass_pct: 33.3, void_ratio: 1.1, saturation_pct: 100,
-  components: { residue_dry_mass_kg: 1380, binder_total_mass_kg: 69, water_total_mass_kg: 483 },
+  bw_mass_pct: bw, solids_mass_pct: 75, wc_ratio: 7.1, w_mass_pct: 33.3, void_ratio: 1.1, porosity: 0.524, saturation_pct: 100, bulk_density_kg_m3: 2014.1,
+  components: { residue_dry_mass_kg: 1380, residue_wet_mass_kg: 1708.6, binder_total_mass_kg: 69, water_total_mass_kg: 483, water_to_add_mass_kg: 154.4 },
 }) as unknown as Recipe;
 
 const rendu = (props: Parameters<typeof CarteResultats>[0]) => renderToStaticMarkup(createElement(CarteResultats, props));
@@ -44,14 +44,18 @@ describe("report-schema — résumé et rapport complet", () => {
 });
 
 describe("CarteResultats", () => {
-  it("deux recettes : sélecteur, quatre chiffres clés, tableau résumé, lien du rapport complet", () => {
+  it("deux recettes : sélecteur, « À préparer » et « Caractéristiques », tableau résumé, lien du rapport complet, formules", () => {
     const html = rendu({ sousTitre: "2 recettes", actions: null, donnees: { genre: "rpc", recipes: [recette(5), recette(6)], ctx } });
     expect(html).toContain('aria-label="Recette affichée"');
     expect(html).toContain("Recette 2");
     expect(html).toContain("Rapport E/L");
-    expect(html).toContain("1\u202F380");
+    expect(html).toContain("1\u202F709"); // r\u00E9sidu humide \u00E0 pr\u00E9parer
     expect(html).toContain("Rapport eau/liant E/L");
-    expect(html).toContain("Voir les 41 lignes du rapport complet");
+    expect(html).toContain("Voir tous les paramètres (41 lignes du rapport)");
+    expect(html).toContain("À préparer");
+    expect(html).toContain("Caractéristiques");
+    expect(html).toContain("Formules utilisées pour ce résultat");
+    expect(html).toContain(">F009<");
     // La recette choisie (1) est mise en valeur dans le tableau.
     expect(html).toContain("mix-col-choisie");
   });
@@ -65,7 +69,7 @@ describe("CarteResultats", () => {
     const html = rendu({ sousTitre: "", actions: null, pleinEcran: true, donnees: { genre: "rpc", recipes: [recette(5)], ctx } });
     expect(html).toContain("mix-rapport-grille");
     expect(html).toContain("Masses et poids volumiques");
-    expect(html).not.toContain("Voir les");
+    expect(html).not.toContain("Voir tous les paramètres");
   });
 
   it("RRC : ciment, eau, roches stériles, E/L du coulis et tableau RRC", () => {
@@ -96,6 +100,22 @@ describe("chiffres clés", () => {
 
   it("les masses suivent l'unité choisie", () => {
     const g = chiffresRecette(recette(5), { ...ctx, units: { ...DEFAULT_UNITS, mass: "g" }, massLabel: "g" });
-    expect(g[0]).toMatchObject({ libelle: "Liant", valeur: "69\u202F000", unite: "g" });
+    expect(g.find((c) => c.libelle === "Liant")).toMatchObject({ valeur: "69\u202F000", unite: "g" });
+  });
+});
+
+describe("chiffres : \u00E0 pr\u00E9parer et caract\u00E9ristiques", () => {
+  it("\u00E0 pr\u00E9parer : r\u00E9sidu humide, liant, eau \u00E0 ajouter, total ; eau n\u00E9gative : \u00AB Eau \u00E0 retirer \u00BB ; granulat en RPG", () => {
+    expect(chiffresRecette(recette(5), ctx).map((c) => c.libelle)).toEqual(["R\u00E9sidu humide", "Liant", "Eau \u00E0 ajouter", "Total du remblai"]);
+    const r = recette(5);
+    const retirer = { ...r, components: { ...r.components, water_to_add_mass_kg: -2.5 } } as unknown as Recipe;
+    expect(chiffresRecette(retirer, ctx).find((c) => c.libelle === "Eau \u00E0 retirer")).toMatchObject({ valeur: "2.50" });
+    expect(chiffresRecette(r, { ...ctx, isRpg: true }).map((c) => c.libelle)).toContain("Granulat sec");
+  });
+
+  it("caract\u00E9ristiques : Cw, Bw, E/L, \u03C1h, e, n", () => {
+    const c = chiffresCaracteristiques(recette(5), ctx);
+    expect(c.map((x) => x.libelle)).toEqual(["Cw", "Bw", "Rapport E/L", "\u03C1h", "Indice des vides e", "Porosit\u00E9 n"]);
+    expect(c[0]).toMatchObject({ valeur: "75.00", unite: "%" });
   });
 });

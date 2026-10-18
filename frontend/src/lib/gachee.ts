@@ -318,3 +318,32 @@ export function parametresEffectifs(
   const i = Math.min(Math.max(g.recetteIndex ?? 0, 0), form.recipes.length - 1);
   return parametresDepuisRecette(form.recipes[i]);
 }
+
+/** Une étape du fil d'une gâchée (Labo). */
+export interface EtapeGachee {
+  n: number;
+  libelle: string;
+  etat: "faite" | "en_cours" | "a_venir";
+}
+
+/**
+ * Fil d'une gâchée, du malaxage à l'UCS : où en est l'étudiant, déduit de ce
+ * qu'il a déjà saisi (rien n'est demandé en plus). 1 Gâchée : pesées
+ * saisies ; 2 Moulage : éprouvettes moulées ; 3 Cure : éprouvettes en cure ;
+ * 4 Écrasement : au moins une écrasée ; 5 UCS : au moins une mesure.
+ */
+export function etapesGachee(g: Pick<Gachee, "composants" | "eprouvettes">, ucsMesuree: (e: Gachee["eprouvettes"][number]) => boolean): EtapeGachee[] {
+  const pesee = (g.composants ?? []).some((c) => c.peseeKg !== undefined);
+  const moulees = (g.eprouvettes ?? []).length > 0;
+  const ecrasees = (g.eprouvettes ?? []).filter((e) => e.statut === "ecrase");
+  const enCure = (g.eprouvettes ?? []).some((e) => e.statut !== "ecrase");
+  const mesure = ecrasees.some(ucsMesuree);
+  // Faite ou pas ; la première étape pas encore faite est « en cours ». La
+  // cure n'est faite que quand plus aucune éprouvette n'y est (des
+  // éprouvettes de 7 j écrasées pendant que celles de 28 j durcissent : cure
+  // en cours, écrasement et UCS déjà faits).
+  const faites = [pesee || moulees, moulees, moulees && !enCure, ecrasees.length > 0, mesure];
+  const libelles = ["Gâchée", "Moulage", "Cure", "Écrasement", "UCS"];
+  const courante = faites.findIndex((f) => !f);
+  return libelles.map((libelle, i) => ({ n: i + 1, libelle, etat: faites[i] ? "faite" : i === courante ? "en_cours" : "a_venir" }));
+}

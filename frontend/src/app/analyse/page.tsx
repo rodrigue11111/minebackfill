@@ -8,6 +8,7 @@
 // n'est réimplémenté côté client.
 
 import React, { useMemo, useRef, useState } from "react";
+import { EXEMPLES_ANALYSE, type ExempleAnalyse } from "@/lib/analyse-exemples";
 import { Page, EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
 import { Champ } from "@/components/ui/Champ";
@@ -160,6 +161,21 @@ export default function AnalysePage() {
     const m = paramMeta(cle);
     if (m) { setXMin(m.defautMin); setXMax(m.defautMax); }
     setResultats(null);
+  };
+
+  // Exemple choisi : paramètre, plage et grandeurs réglés ; l'étudiant trace.
+  const [exemple, setExemple] = useState<ExempleAnalyse | null>(null);
+  const boutonTracer = useRef<HTMLButtonElement>(null);
+  const appliquerExemple = (x: ExempleAnalyse) => {
+    setExemple(x);
+    setParam(x.param);
+    setXMin(x.min);
+    setXMax(x.max);
+    const valides = new Set(sortiesPour(categorie).map((s) => s.cle));
+    setSorties(x.sorties.filter((k) => valides.has(k)));
+    setResultats(null);
+    setError(null);
+    boutonTracer.current?.focus();
   };
 
   const basculerSortie = (cle: string) =>
@@ -514,6 +530,19 @@ export default function AnalysePage() {
 
         {mode === "courbes" ? (
           <>
+            <Carte titre="Exemples à essayer">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {EXEMPLES_ANALYSE.map((x) => (
+                  <button key={x.question} type="button" className="btn-secondary" onClick={() => appliquerExemple(x)}>{x.question}</button>
+                ))}
+              </div>
+              {exemple && (
+                <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "var(--texte-2)" }} role="status">
+                  <strong style={{ color: "var(--texte)" }}>{exemple.question}</strong> {exemple.aRegarder} Cliquez sur « Tracer la courbe ».
+                </p>
+              )}
+            </Carte>
+
             <Carte titre="Paramètres de la courbe">
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div className="analyse-plage">
@@ -566,7 +595,7 @@ export default function AnalysePage() {
                 </div>
 
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                  <button type="button" onClick={tracer} disabled={loading} className="btn-primary">
+                  <button ref={boutonTracer} type="button" onClick={tracer} disabled={loading} className="btn-primary">
                     {loading ? "Calcul en cours…" : "Tracer la courbe"}
                   </button>
                   <button type="button" onClick={() => fichierRef.current?.click()} className="btn-secondary"

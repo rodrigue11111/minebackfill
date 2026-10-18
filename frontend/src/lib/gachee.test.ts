@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   ecart, horsTolerance, nbHorsTolerance, genererCode, composantsDepuisRecette, parametresDepuisRecette, groupeSansVide, materiauxSansVide,
-  cibleLisible, masseLisible, plageTolerance,
+  cibleLisible, masseLisible, plageTolerance, etapesGachee,
   type Gachee, type ComposantPese,
 } from "./gachee";
 import type { Recipe } from "./types";
@@ -140,5 +140,20 @@ describe("pesées : masses lisibles", () => {
     expect(plageTolerance(0.05, 2)).toBe("49,0 à 51,0 g");
     expect(plageTolerance(1.5, 2)).toBe("1,470 à 1,530 kg");
     expect(masseLisible(0.047)).not.toBe("0,0 kg");
+  });
+});
+
+describe("fil d'une gâchée", () => {
+  const ep = (statut: "en_cure" | "ecrase", mesure = false) => ({ id: "e", code: "E", couleLe: "x", ageJours: 7, statut, ...(mesure ? { essai: { contrainteKpaSaisie: 300 } } : {}) });
+  const fil = (composants: { peseeKg?: number }[], eprouvettes: ReturnType<typeof ep>[]) =>
+    etapesGachee({ composants, eprouvettes } as never, (e) => !!e.essai?.contrainteKpaSaisie).map((x) => x.etat);
+  it("se déduit de ce qui est saisi ; la première étape pas faite est en cours", () => {
+    expect(fil([{}], [])).toEqual(["en_cours", "a_venir", "a_venir", "a_venir", "a_venir"]);
+    expect(fil([{ peseeKg: 1 }], [])).toEqual(["faite", "en_cours", "a_venir", "a_venir", "a_venir"]);
+    expect(fil([{ peseeKg: 1 }], [ep("en_cure")])).toEqual(["faite", "faite", "en_cours", "a_venir", "a_venir"]);
+    // 7 j écrasée et mesurée, 28 j encore en cure.
+    expect(fil([{ peseeKg: 1 }], [ep("ecrase", true), ep("en_cure")])).toEqual(["faite", "faite", "en_cours", "faite", "faite"]);
+    expect(fil([{ peseeKg: 1 }], [ep("ecrase", true)])).toEqual(["faite", "faite", "faite", "faite", "faite"]);
+    expect(fil([{ peseeKg: 1 }], [ep("ecrase")])).toEqual(["faite", "faite", "faite", "faite", "en_cours"]);
   });
 });

@@ -58,7 +58,7 @@ export default function HistoriquePage() {
   return (
     <Page>
       <EnTetePage
-        titre="Historique"
+        titre="Mes calculs"
         sousTitre={`${savedResults.length} résultat${savedResults.length !== 1 ? "s" : ""} sauvegardé${savedResults.length !== 1 ? "s" : ""} sur cet appareil. Pensez à exporter vos données (navigateur uniquement).`}
         actions={<Link href="/mix" className="btn-discret">Retour aux calculs</Link>}
       />

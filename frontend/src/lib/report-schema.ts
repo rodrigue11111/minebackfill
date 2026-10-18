@@ -215,3 +215,13 @@ export const RRC_ROWS: RrcReportRow[] = [
   { label: (m) => `Coulis de ciment (${m})`, getter: (r, toMass) => toMass(r.slurry_mass_kg), digits: 3 },
   { label: () => "Volume de coulis (m3)", getter: (r) => r.slurry_volume_m3 ?? null, digits: 3 },
 ];
+
+/** Formules du rapport pour ce contexte, sans doublon, dans l'ordre du rapport
+ *  (« Formules utilisées pour ce résultat »). */
+export function formulesDuRapport(ctx: ReportCtx): string[] {
+  const vues = new Set<string>();
+  for (const s of REPORT_SECTIONS) {
+    for (const row of rowsForSection(s.id, ctx)) for (const id of row.formulaIds ?? []) vues.add(id);
+  }
+  return [...vues];
+}

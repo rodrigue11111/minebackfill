@@ -90,8 +90,8 @@ export default function SlumpForm() {
           <Field label="Affaissement visé S" unit={slumpLabel}>
             <input type="number" step="any" className="field-input" placeholder="ex : 180" value={fromStoreSlump(slump.slump_mm, units.slump) ?? ""} onChange={(e) => setSlump({ slump_mm: toStoreSlump(num(e.target.value), units.slump) ?? undefined })} />
           </Field>
-          <Field label="Degré de saturation Sr" unit="%" hint="100 % = pâte saturée">
-            <input type="number" step="any" className="field-input" placeholder="ex : 100" value={slump.saturation_pct ?? ""} onChange={(e) => setSlump({ saturation_pct: num(e.target.value) })} />
+          <Field plage="sr" valeur={slump.saturation_pct} label="Degré de saturation Sr" unit="%" hint="100 % = pâte saturée">
+            <input type="number" step="any" className="field-input" placeholder="ex : 100" value={slump.saturation_pct || ""} onChange={(e) => setSlump({ saturation_pct: num(e.target.value) })} />
           </Field>
         </GrilleChamps>
       </CardSection>
@@ -103,10 +103,10 @@ export default function SlumpForm() {
               onPick={(m) => { const r = m as ResiduItem; setSlump({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
               matches={(m) => { const r = m as ResiduItem; return r.gs === slump.residue_sg && r.w0_pct === slump.residue_w_pct; }} />
           </div>
-          <Field label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
-            <input type="number" step="any" className="field-input" placeholder="ex : 3.4" value={slump.residue_sg ?? ""} onChange={(e) => setSlump({ residue_sg: num(e.target.value) })} />
+          <Field plage="gs" valeur={slump.residue_sg} label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
+            <input type="number" step="any" className="field-input" placeholder="ex : 3.4" value={slump.residue_sg || ""} onChange={(e) => setSlump({ residue_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Teneur en eau massique du résidu w₀" unit="%">
+          <Field plage="w0" valeur={slump.residue_w_pct} label="Teneur en eau massique du résidu w₀" unit="%">
             <input type="number" step="any" className="field-input" placeholder="ex : 23.8" value={slump.residue_w_pct ?? ""} onChange={(e) => setSlump({ residue_w_pct: num(e.target.value) })} />
           </Field>
         </GrilleChamps>
@@ -117,7 +117,7 @@ export default function SlumpForm() {
           <Field label="Nombre de moules par recette">
             <input type="number" className="field-input" min={1} value={slump.desired_qty ?? 1} onChange={(e) => setSlump({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de perte κ" hint={KAPPA_AIDE}>
+          <Field plage="kappa" valeur={slump.safety_factor ?? 1} label="Facteur de perte κ" hint={KAPPA_AIDE}>
             <input type="number" step="any" className="field-input" min={1} value={slump.safety_factor ?? 1} onChange={(e) => setSlump({ safety_factor: num(e.target.value) })} />
           </Field>
         </GrilleChamps>

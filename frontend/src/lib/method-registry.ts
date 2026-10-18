@@ -38,6 +38,8 @@ export interface MethodDescriptor {
   };
   /** Complément affiché dans le panneau de gauche. */
   description: string;
+  /** Quand l'utiliser : une phrase, sous le choix de méthode (Calculs) et dans le Guide. */
+  quand: string;
   /** Endpoint backend (proxifié par Next). */
   endpoint: string;
   stateKey: MethodStateKey;
@@ -50,30 +52,44 @@ export const CATEGORY_INFO: { id: Category; label: string; desc: string }[] = [
   { id: "RRC", label: T.rrc.court, desc: T.rrc.long },
 ];
 
+// Quand utiliser chaque méthode (textes du Guide, source unique).
+const QUAND_DOSAGE_CW = "Vous fixez le pourcentage solide massique Cw du mélange. C'est la méthode la plus courante en pratique.";
+const QUAND_WB = "Vous imposez un rapport eau/liant E/L (noté aussi E/C ou W/C), par exemple tiré d'essais de résistance antérieurs.";
+const QUAND_SLUMP = "Vous visez un affaissement donné au cône d'Abrams (ASTM C143/C143M) et voulez en déduire le Cw. Modèle empirique calé sur le RPC.";
+const QUAND_ESSAI = "Vous avez une recette de base (dosage selon Cw ou selon E/L) et avez fait des ajouts après la mesure de l'affaissement : résidu sec, résidu humide, eau (et granulat en RPG).";
+const QUAND_RRC = "Remblai rocheux cimenté : vous connaissez la quantité à produire (volume du chantier ou masse totale) et visez un Bw et un E/L du coulis.";
+
+/** Les mêmes textes, par méthode (Guide). */
+export const QUAND_METHODE = { dosage_cw: QUAND_DOSAGE_CW, wb: QUAND_WB, slump: QUAND_SLUMP, essai: QUAND_ESSAI, rrc: QUAND_RRC } as const;
+
 export const METHOD_REGISTRY: MethodDescriptor[] = [
   // ── RPC ──
   {
     category: "RPC", method: "dosage_cw",
     labels: { long: "Dosage selon Cw", court: "Selon Cw", fichier: "dosage-Cw", telephone: "Cw" },
     description: "Pourcentage solide massique fixé",
+    quand: QUAND_DOSAGE_CW,
     endpoint: "/rpc/cw", stateKey: "cw", resultKey: "cwResult",
   },
   {
     category: "RPC", method: "wb",
     labels: { long: "Dosage selon E/L", court: "Selon E/L", fichier: "dosage-EL", telephone: "E/L" },
     description: "Rapport eau/liant fixé",
+    quand: QUAND_WB,
     endpoint: "/rpc/wb", stateKey: "wb", resultKey: "wbResult",
   },
   {
     category: "RPC", method: "slump",
     labels: { long: "Modèle prédictif (affaissement)", court: "Modèle prédictif", fichier: "modele-predictif", telephone: "Prédictif" },
     description: "Cw prédit à partir de l'affaissement visé",
+    quand: QUAND_SLUMP,
     endpoint: "/rpc/slump", stateKey: "slump", resultKey: "slumpResult",
   },
   {
     category: "RPC", method: "essai",
     labels: { long: "Méthode essai-erreur", court: "Essai-erreur", fichier: "essai-erreur", telephone: "Essai" },
     description: "Ajouts réels après mesure de l'affaissement",
+    quand: QUAND_ESSAI,
     endpoint: "/rpc/essai", stateKey: "essai", resultKey: "essaiResult",
   },
   // ── RPG (pas de modèle prédictif : il est calé sur le RPC) ──
@@ -81,18 +97,21 @@ export const METHOD_REGISTRY: MethodDescriptor[] = [
     category: "RPG", method: "dosage_cw",
     labels: { long: "Dosage selon Cw", court: "Selon Cw", fichier: "dosage-Cw", telephone: "Cw" },
     description: "Pourcentage solide massique fixé",
+    quand: QUAND_DOSAGE_CW,
     endpoint: "/rpg/cw", stateKey: "rpgCw", resultKey: "rpgCwResult",
   },
   {
     category: "RPG", method: "wb",
     labels: { long: "Dosage selon E/L", court: "Selon E/L", fichier: "dosage-EL", telephone: "E/L" },
     description: "Rapport eau/liant fixé",
+    quand: QUAND_WB,
     endpoint: "/rpg/wb", stateKey: "rpgWb", resultKey: "rpgWbResult",
   },
   {
     category: "RPG", method: "essai",
     labels: { long: "Méthode essai-erreur", court: "Essai-erreur", fichier: "essai-erreur", telephone: "Essai" },
     description: "Ajouts réels après mesure de l'affaissement",
+    quand: QUAND_ESSAI,
     endpoint: "/rpg/essai", stateKey: "rpgEssai", resultKey: "rpgEssaiResult",
   },
   // ── RRC ──
@@ -100,6 +119,7 @@ export const METHOD_REGISTRY: MethodDescriptor[] = [
     category: "RRC", method: "rrc",
     labels: { long: "Dosage selon Bw et E/L du coulis", court: "Bw et E/L du coulis", fichier: "RRC", telephone: "RRC" },
     description: T.rrc.long,
+    quand: QUAND_RRC,
     endpoint: "/rrc/dosage", stateKey: "rrc", resultKey: "rrcResult",
   },
 ];

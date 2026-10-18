@@ -111,7 +111,16 @@ l'essai-erreur, informations, constantes, liants ; jamais les mesures au
 laboratoire). Le panneau de résultats compare à l'affichage : entrées
 changées, bandeau « Résultats périmés » et ni sauvegarde ni export. Le
 formulaire efface son résultat en cas d'erreur (`set…Result(null)` dans le
-`catch`). Une restauration depuis l'Historique reprend l'empreinte.
+`catch`). Une restauration depuis Mes calculs (`/historique`) reprend
+l'empreinte.
+
+**Pédagogie** (2026-10) : chaque méthode porte aussi `quand` (quand
+l'utiliser, une phrase), affichée sous le choix de méthode et lue par le
+Guide (`QUAND_METHODE`) : une seule source. Les plages usuelles des champs
+vivent dans `lib/plages.ts` (tableau du Guide et rappel sous chaque champ,
+`<Field plage=… valeur=…>`) ; une valeur hors plage reçoit un avis doux,
+jamais un refus. Gs et w₀ du résidu sont partagés par les formulaires
+(`partagerResidu`, `store.tsx`).
 
 ### 4. Ajouter une ligne au rapport de résultats
 `frontend/src/lib/report-schema.ts` UNIQUEMENT (section, libellé, unité,

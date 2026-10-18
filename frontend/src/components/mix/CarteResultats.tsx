@@ -11,8 +11,10 @@ import Segmente from "@/components/ui/Segmente";
 import { TuilesChiffres, type Chiffre } from "@/components/ui/Chiffres";
 import BarresPhases from "@/components/analyse/BarresPhases";
 import { SectionsRapport, TableauLignes, TableauRrc, SectionHeader } from "@/components/mix/SectionsRapport";
-import { lignesResume, nbLignesRapport, type ReportCtx } from "@/lib/report-schema";
-import { fromStoreMass } from "@/lib/units";
+import { formulesDuRapport, lignesResume, nbLignesRapport, type ReportCtx } from "@/lib/report-schema";
+import { fromStoreDensity, fromStoreMass } from "@/lib/units";
+import { masseRemblaiTotaleKg } from "@/lib/derived";
+import { FORMULA_MAP } from "@/lib/formulas-data";
 import { fmt, TIRET } from "@/lib/format";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
 import type { Recipe, RrcRecipe } from "@/lib/types";
@@ -30,15 +32,33 @@ export function chiffreMasse(v: number | null | undefined): string {
   return dec ? `${groupe}.${dec}` : groupe;
 }
 
-/** Les quatre chiffres clés d'une recette RPC/RPG. */
+/**
+ * « À préparer » : ce que l'étudiant pèse pour la recette (résidu humide tel
+ * que reçu, granulat en RPG, liant, eau à ajouter) et la masse totale du
+ * remblai. Valeurs du calcul, sans formule nouvelle.
+ */
 export function chiffresRecette(r: Recipe | undefined, ctx: ReportCtx): Chiffre[] {
   const m = (kg: number | null | undefined) => chiffreMasse(fromStoreMass(kg, ctx.units.mass));
   const c = r?.components;
+  const eau = c?.water_to_add_mass_kg;
   return [
+    { libelle: "Résidu humide", valeur: m(c?.residue_wet_mass_kg), unite: ctx.massLabel },
+    ...(ctx.isRpg ? [{ libelle: "Granulat sec", valeur: m(c?.aggregate_dry_mass_kg), unite: ctx.massLabel }] : []),
     { libelle: "Liant", valeur: m(c?.binder_total_mass_kg), unite: ctx.massLabel },
-    { libelle: "Eau totale", valeur: m(c?.water_total_mass_kg), unite: ctx.massLabel },
-    { libelle: "Résidu sec", valeur: m(c?.residue_dry_mass_kg), unite: ctx.massLabel },
+    { libelle: typeof eau === "number" && eau < 0 ? "Eau à retirer" : "Eau à ajouter", valeur: m(typeof eau === "number" ? Math.abs(eau) : eau), unite: ctx.massLabel },
+    { libelle: "Total du remblai", valeur: m(r ? masseRemblaiTotaleKg(r) : undefined), unite: ctx.massLabel },
+  ];
+}
+
+/** « Caractéristiques » de la recette : Cw, Bw, E/L, ρh, e, n (valeurs du calcul). */
+export function chiffresCaracteristiques(r: Recipe | undefined, ctx: ReportCtx): Chiffre[] {
+  return [
+    { libelle: "Cw", valeur: fmt(r?.solids_mass_pct, 2), unite: "%" },
+    { libelle: ctx.isEssai ? "Bw atteint" : "Bw", valeur: fmt(r?.bw_mass_pct, 2), unite: "%" },
     { libelle: "Rapport E/L", valeur: fmt(r?.wc_ratio, 2) },
+    { libelle: "ρh", valeur: fmt(fromStoreDensity(r?.bulk_density_kg_m3, ctx.units.density), 3), unite: ctx.densLabel },
+    { libelle: "Indice des vides e", valeur: fmt(r?.void_ratio, 3) },
+    { libelle: "Porosité n", valeur: fmt(r?.porosity, 3) },
   ];
 }
 
@@ -50,6 +70,31 @@ export function chiffresRrc(r: RrcRecipe | undefined, massLabel: string, toMass:
     { libelle: "Roches stériles", valeur: chiffreMasse(toMass(r?.waste_rock_mass_kg)), unite: massLabel },
     { libelle: "E/L du coulis", valeur: fmt(r?.wc_ratio, 2) },
   ];
+}
+
+/**
+ * « Formules utilisées pour ce résultat » : les formules du rapport, chacune
+ * ouvrant sa fiche (la même fenêtre que les valeurs « fx »).
+ */
+function FormulesUtilisees({ ids, recipe, onFormulaClick }: {
+  ids: string[];
+  recipe: Recipe | undefined;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe, rect: DOMRect) => void;
+}) {
+  if (ids.length === 0) return null;
+  return (
+    <section className="mix-formules" aria-label="Formules utilisées pour ce résultat">
+      <span className="mix-groupe-titre">Formules utilisées pour ce résultat</span>
+      <span className="mix-formules-liste">
+        {ids.map((id) => (onFormulaClick && recipe ? (
+          <button key={id} type="button" className="mix-formule" title={FORMULA_MAP.get(id)?.title ?? id}
+            onClick={(e) => onFormulaClick([id], recipe, e.currentTarget.getBoundingClientRect())}>{id}</button>
+        ) : (
+          <span key={id} className="mix-formule" title={FORMULA_MAP.get(id)?.title ?? id}>{id}</span>
+        )))}
+      </span>
+    </section>
+  );
 }
 
 export type DonneesResultats =
@@ -100,7 +145,7 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
       {avis}
       {!donnees || n === 0 ? (
         <>
-          <TuilesChiffres chiffres={["Liant", "Eau totale", "Résidu sec", "Rapport E/L"].map((libelle) => ({ libelle, valeur: TIRET }))} />
+          <TuilesChiffres chiffres={["Résidu humide", "Liant", "Eau à ajouter", "Total du remblai"].map((libelle) => ({ libelle, valeur: TIRET }))} />
           <p className="mix-vide">Renseignez les paramètres, puis cliquez sur <strong>Calculer</strong> : les chiffres clés et le tableau résumé s&apos;affichent ici.</p>
         </>
       ) : donnees.genre === "rrc" ? (
@@ -113,13 +158,17 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
       ) : (
         <>
           <ChoixRecette n={n} choisie={choisie} onChoisir={setChoix} />
-          <TuilesChiffres ariaLabel={`Chiffres clés, recette ${choisie + 1}`} chiffres={chiffresRecette(donnees.recipes[choisie], donnees.ctx)} />
+          <p className="mix-groupe-titre">À préparer</p>
+          <TuilesChiffres ariaLabel={`À préparer, recette ${choisie + 1}`} chiffres={chiffresRecette(donnees.recipes[choisie], donnees.ctx)} />
+          <BarresPhases recipes={[donnees.recipes[choisie]]} base="masse" compact />
+          <p className="mix-groupe-titre">Caractéristiques</p>
+          <TuilesChiffres ariaLabel={`Caractéristiques, recette ${choisie + 1}`} chiffres={chiffresCaracteristiques(donnees.recipes[choisie], donnees.ctx)} />
           {!rapport && (
             <TableauLignes lignes={lignesResume(donnees.ctx)} recipes={donnees.recipes} ctx={donnees.ctx} choisie={n > 1 ? choisie : undefined} onFormulaClick={onFormulaClick} />
           )}
           {!pleinEcran && (
             <button type="button" className="btn-discret mix-lien-rapport" aria-expanded={rapport} onClick={() => setRapportOuvert((v) => !v)}>
-              {rapport ? "Revenir au résumé" : `Voir les ${nbLignesRapport(donnees.ctx)} lignes du rapport complet`}
+              {rapport ? "Revenir au résumé" : `Voir tous les paramètres (${nbLignesRapport(donnees.ctx)} lignes du rapport)`}
             </button>
           )}
           {rapport && (
@@ -131,6 +180,7 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
               </section>
             </>
           )}
+          <FormulesUtilisees ids={formulesDuRapport(donnees.ctx)} recipe={donnees.recipes[choisie]} onFormulaClick={onFormulaClick} />
         </>
       )}
     </Carte>

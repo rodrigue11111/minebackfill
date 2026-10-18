@@ -11,6 +11,9 @@ import { Page, EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
 import { Bandeau } from "@/components/ui/Bandeau";
 import Segmente from "@/components/ui/Segmente";
+import Parcours from "@/components/ui/Parcours";
+import { confirmerExemple, LIBELLE_EXEMPLE } from "@/lib/exemple";
+import { etapeCalculs } from "@/lib/parcours";
 import ResultsPanel from "@/src/components/mix/ResultsPanel";
 import CwForm from "@/src/components/mix/rpc/CwForm";
 import WbForm from "@/src/components/mix/rpc/WbForm";
@@ -66,6 +69,8 @@ export default function MixPage() {
   };
 
   const chargerValeursTest = () => {
+    // L'exemple remplace le projet : jamais sans l'accord de l'étudiant.
+    if (!confirmerExemple()) return;
     try {
       fillTestData();
       setTestCharge(true);
@@ -79,6 +84,9 @@ export default function MixPage() {
   const methodes = methodsFor(category);
   const d = descriptorFor(category, method);
   const Formulaire = d ? FORM_BY_STATE_KEY[d.stateKey] : null;
+  // Parcours : étape 5 dès qu'un résultat de la méthode choisie est affiché.
+  const resultat = useStore((s) => (d ? (s[d.resultKey] as { recipes?: unknown[] } | null) : null));
+  const aUnResultat = !!resultat?.recipes?.length;
   const projet = [general?.project_name, general?.residue_id && `résidu ${general.residue_id}`, general?.operator_name]
     .filter(Boolean).join(" · ");
 
@@ -95,13 +103,14 @@ export default function MixPage() {
         actions={
           <>
             <button type="button" className="btn-discret" onClick={chargerValeursTest} aria-live="polite">
-              {testCharge ? "Valeurs chargées" : "Valeurs de test"}
+              {testCharge ? "Exemple chargé" : LIBELLE_EXEMPLE}
             </button>
             <Link href="/reglages" className="btn-discret">Réglages</Link>
           </>
         }
       />
 
+      <Parcours courante={etapeCalculs(aUnResultat)} />
       <div className="mix-choix">
         <Segmente
           ariaLabel="Catégorie de remblai"
@@ -122,6 +131,13 @@ export default function MixPage() {
           />
         )}
       </div>
+      {d && (
+        // Quand utiliser la méthode choisie (texte du Guide, method-registry).
+        <p className="mix-quand">
+          <strong>{infoCategorie?.desc ?? category} · {d.labels.long}</strong> : {d.quand}{" "}
+          <Link href="/guide">Guide</Link>
+        </p>
+      )}
 
       <div className={pleinEcran ? "mix-grille mix-grille-plein" : "mix-grille"}>
         {!pleinEcran && (

@@ -90,7 +90,7 @@ export default function RpgWbForm() {
               onPick={(m) => { const g = m as GranulatItem; setRpgWb({ aggregate_sg: g.gs, aggregate_fraction_pct: g.fraction_defaut_pct ?? rpgWb.aggregate_fraction_pct }); }}
               matches={(m) => (m as GranulatItem).gs === rpgWb.aggregate_sg} />
           </div>
-          <Field label="Densité relative du granulat Gs" hint="Sans unité : Gs = ρs/ρw">
+          <Field plage="gsGranulat" valeur={rpgWb.aggregate_sg} label="Densité relative du granulat Gs" hint="Sans unité : Gs = ρs/ρw">
             <input type="number" step="any" className="field-input" placeholder="ex : 2.65"
               value={rpgWb.aggregate_sg || ""}
               onChange={(e) => setRpgWb({ aggregate_sg: num(e.target.value) })} />
@@ -111,15 +111,15 @@ export default function RpgWbForm() {
               onPick={(m) => { const r = m as ResiduItem; setRpgWb({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
               matches={(m) => { const r = m as ResiduItem; return r.gs === rpgWb.residue_sg && r.w0_pct === rpgWb.residue_w_pct; }} />
           </div>
-          <Field label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
+          <Field plage="gs" valeur={rpgWb.residue_sg} label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
             <input type="number" step="any" className="field-input" placeholder="ex : 3.4"
               value={rpgWb.residue_sg || ""} onChange={(e) => setRpgWb({ residue_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Teneur en eau massique du résidu w₀" unit="%">
+          <Field plage="w0" valeur={rpgWb.residue_w_pct} label="Teneur en eau massique du résidu w₀" unit="%">
             <input type="number" step="any" className="field-input" placeholder="ex : 23.8"
-              value={rpgWb.residue_w_pct || ""} onChange={(e) => setRpgWb({ residue_w_pct: num(e.target.value) })} />
+              value={rpgWb.residue_w_pct ?? ""} onChange={(e) => setRpgWb({ residue_w_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Degré de saturation Sr" unit="%">
+          <Field plage="sr" valeur={rpgWb.saturation_pct} label="Degré de saturation Sr" unit="%">
             <input type="number" step="any" className="field-input" placeholder="ex : 100"
               value={rpgWb.saturation_pct || ""} onChange={(e) => setRpgWb({ saturation_pct: num(e.target.value) })} />
           </Field>
@@ -133,7 +133,7 @@ export default function RpgWbForm() {
               value={rpgWb.desired_qty ?? 1}
               onChange={(e) => setRpgWb({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de perte κ" hint={KAPPA_AIDE}>
+          <Field plage="kappa" valeur={rpgWb.safety_factor ?? 1} label="Facteur de perte κ" hint={KAPPA_AIDE}>
             <input type="number" step="any" className="field-input" min={1}
               value={rpgWb.safety_factor ?? 1}
               onChange={(e) => setRpgWb({ safety_factor: num(e.target.value) })} />
@@ -147,11 +147,11 @@ export default function RpgWbForm() {
           <div key={i} className="mix-recette">
             <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
             <GrilleChamps>
-              <Field label="Taux massique de liant Bw" unit="%" hint="Masse de liant / masse sèche de résidu et de granulat">
+              <Field plage="bw" valeur={rpgWb.binder_pct?.[i]} label="Taux massique de liant Bw" unit="%" hint="Masse de liant / masse sèche de résidu et de granulat">
                 <input type="number" step="any" className="field-input" placeholder="ex : 5"
                   value={rpgWb.binder_pct?.[i] ?? ""} onChange={(e) => setRpgWbRecipe(i, { binder_pct: num(e.target.value) })} />
               </Field>
-              <Field label="Rapport eau/liant E/L" hint="Ex. : 4 à 8">
+              <Field plage="el" valeur={rpgWb.wc_ratio?.[i]} label="Rapport eau/liant E/L" hint="Ex. : 4 à 8">
                 <input type="number" step="any" className="field-input" placeholder="ex : 6.0"
                   value={rpgWb.wc_ratio?.[i] ?? ""} onChange={(e) => setRpgWbRecipe(i, { wc_ratio: num(e.target.value) })} />
               </Field>

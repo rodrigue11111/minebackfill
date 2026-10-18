@@ -476,6 +476,34 @@ textarea.field-input { min-height: 88px; line-height: 1.5; resize: vertical; }
 }
 .ui-champ-aide { font-size: 12.5px; color: var(--texte-2); line-height: 1.4; }
 .ui-champ-erreur { font-size: 12.5px; color: var(--danger-texte); }
+.ui-champ-avis { font-size: 12.5px; color: var(--alerte-texte); line-height: 1.4; }
+/* Parcours d'un calcul (components/ui/Parcours.tsx) : étapes du Guide. */
+.parcours ol { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: center; }
+.parcours li { display: flex; align-items: center; font-size: 13px; }
+.parcours li + li::before { content: ""; width: 14px; height: 1px; background: var(--filet-fort); margin-right: 4px; }
+.parcours a { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; color: var(--texte-2); text-decoration: none; }
+.parcours a:hover { background: var(--accent-pale); color: var(--texte); }
+.parcours-n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; font-weight: 600; background: var(--filet-fort); color: var(--texte); }
+.parcours-actuelle a { background: var(--accent-pale); color: var(--accent); font-weight: 600; }
+.parcours-actuelle .parcours-n { background: var(--accent); color: #fff; }
+.parcours-faite .parcours-n { background: var(--accent-pale); color: var(--accent); }
+.parcours-etape { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; color: var(--texte-2); }
+.parcours-actuelle .parcours-etape { background: var(--accent-pale); color: var(--accent); font-weight: 600; }
+.labo-fil { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; margin-bottom: 10px; }
+.labo-fil .parcours ol { margin: 0; }
+.labo-sauvegarde { margin: 0; font-size: 13px; color: var(--texte-2); }
+/* Texte lu par les lecteurs d'écran seulement. */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+/* Quand utiliser la méthode choisie (page Calculs). */
+.mix-quand { margin: 4px 0 12px; font-size: 13.5px; color: var(--texte-2); line-height: 1.5; max-width: 72ch; }
+.mix-quand strong { color: var(--texte); font-weight: 600; }
+/* Carte Résultats : groupes « À préparer » et « Caractéristiques », formules. */
+.mix-groupe-titre { display: block; margin: 10px 0 4px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--texte-2); }
+.mix-formules { margin-top: 12px; }
+.mix-formules-liste { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.mix-formule { font: inherit; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--filet-fort); background: transparent; color: var(--accent); cursor: pointer; }
+span.mix-formule { color: var(--texte-2); cursor: default; }
+.mix-formule:hover { background: var(--accent-pale); }
 
 /* ── Contrôle segmenté ── */
 .ui-segmente {

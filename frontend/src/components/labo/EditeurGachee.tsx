@@ -31,6 +31,7 @@ import { CarteProtocolesFiges } from "./Carte";
 import FriseCure from "./FriseCure";
 import Pesees from "./Pesees";
 import CarteEprouvettes from "./CarteEprouvettes";
+import FilGachee from "./FilGachee";
 import { dateLongue, nouvelId } from "./outils";
 import { TIRET } from "@/lib/format";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
@@ -209,6 +210,8 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
           </>
         }
       />
+
+      <FilGachee gachee={g} connecte={connecte} />
 
       {revue && (revue.motif || ecarteesCodes.length > 0) && (
         <Bandeau ton="neutre" titre={`Revue de l'enseignant : gâchée ${LIBELLE_DECISION[revue.decision]}.`}>

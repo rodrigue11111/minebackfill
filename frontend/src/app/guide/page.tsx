@@ -1,5 +1,7 @@
 // src/app/guide/page.tsx
 import Link from "next/link";
+import { PLAGES } from "@/lib/plages";
+import { QUAND_METHODE } from "@/lib/method-registry";
 import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
 import SectionGlossaire from "@/components/guide/SectionGlossaire";
 import { Page, EnTetePage } from "@/components/ui/Page";
@@ -277,7 +279,7 @@ export default function GuidePage() {
           <Method
             badge="Dosage selon Cw"
             title="Dosage selon le pourcentage solide massique Cw"
-            when="Vous fixez le pourcentage solide massique Cw du mélange. C'est la méthode la plus courante en pratique."
+            when={QUAND_METHODE.dosage_cw}
             inputs={[
               "Cw : pourcentage solide massique (%)",
               "Sr : degré de saturation visé (%)",
@@ -292,7 +294,7 @@ export default function GuidePage() {
           <Method
             badge="Dosage selon E/L"
             title="Dosage selon le rapport eau/liant E/L"
-            when="Vous imposez un rapport eau/liant E/L (noté aussi E/C ou W/C), par exemple tiré d'essais de résistance antérieurs."
+            when={QUAND_METHODE.wb}
             inputs={[
               "Bw : taux massique de liant de chaque recette (%)",
               "E/L : rapport eau/liant de chaque recette (ex. : 4,0 ; 6,5)",
@@ -306,7 +308,7 @@ export default function GuidePage() {
           <Method
             badge="Modèle prédictif (RPC seulement)"
             title="Cw prédit à partir de l'affaissement visé"
-            when="Vous visez un affaissement donné au cône d'Abrams (ASTM C143/C143M) et voulez en déduire le Cw. Modèle empirique calé sur le RPC."
+            when={QUAND_METHODE.slump}
             inputs={[
               "Affaissement visé S (mm)",
               "Type de cône : petit cône (non normalisé, converti par le facteur 2,335) ou cône d'Abrams de 300 mm",
@@ -318,7 +320,7 @@ export default function GuidePage() {
           <Method
             badge="Essai-erreur"
             title="Correction d'une recette de base par les ajouts réels"
-            when="Vous avez une recette de base (dosage selon Cw ou selon E/L) et avez fait des ajouts après la mesure de l'affaissement : résidu sec, résidu humide, eau (et granulat en RPG)."
+            when={QUAND_METHODE.essai}
             inputs={[
               "Méthode de base : dosage selon Cw ou selon E/L (avec tous ses paramètres)",
               "Pour chaque recette : masse de résidu sec ajoutée",
@@ -331,7 +333,7 @@ export default function GuidePage() {
           <Method
             badge="RRC"
             title="Dosage selon Bw et le rapport E/L du coulis"
-            when="Remblai rocheux cimenté : vous connaissez la quantité à produire (volume du chantier ou masse totale) et visez un Bw et un E/L du coulis."
+            when={QUAND_METHODE.rrc}
             inputs={[
               "Volume du chantier et masse volumique humide, ou masse totale de RRC",
               "Bw (ciment / roches stériles) et rapport E/L du coulis de chaque recette",
@@ -364,18 +366,18 @@ export default function GuidePage() {
               </thead>
               <tbody>
                 {[
-                  ["Gs du résidu", TIRET, "2,6 à 4,0", "Densité relative des grains (Gs = ρs/ρw), sans unité. Mesurée au pycnomètre (ASTM D854). Valeur typique : 2,85 à 3,20 pour des résidus de mines métalliques."],
-                  ["w₀", "%", "0 à 35 %", "Teneur en eau massique du résidu tel que reçu (ASTM D2216). Elle réduit l'eau à ajouter."],
-                  ["Cw", "%", "65 à 85 %", "Pourcentage solide massique : masse des solides / masse totale du remblai frais. Plus il est élevé, plus la pâte est épaisse. Usuel : 72 à 80 % pour un RPC."],
-                  ["Bw", "%", "3 à 12 %", "Taux massique de liant : masse de liant / masse sèche de résidu (et de granulat en RPG). Bw = 5 % : 5 kg de liant pour 100 kg de résidu sec."],
-                  ["Sr", "%", "80 à 100 %", "Degré de saturation : volume d'eau / volume des vides. Sr = 100 % : pâte saturée, sans air. Généralement 100 % pour un RPC."],
-                  ["E/L (W/C)", TIRET, "3 à 10", "Rapport eau/liant : masse d'eau / masse de liant. Plus il est élevé, plus la pâte est fluide et moins elle est résistante."],
-                  ["Gs du liant", TIRET, "2,6 à 3,2", "Densité relative de l'agent liant (ASTM C188), calculée comme moyenne harmonique pondérée de ses composants."],
-                  ["Am (RPG)", "%", "10 à 60 %", "Fraction massique de granulat dans les solides hors liant. Am = 30 % : 30 g de granulat pour 100 g de (résidu + granulat)."],
-                  ["Gs du granulat (RPG)", TIRET, "2,50 à 2,80", "Densité relative du granulat (sable ou roche concassée). Valeur typique d'un sable siliceux : 2,65."],
-                  ["S", "mm", "150 à 250", "Affaissement au cône d'Abrams (ASTM C143/C143M). 178 mm (7 po) sert de référence de consistance."],
+                  ["Gs du résidu", TIRET, PLAGES.gs.texte, "Densité relative des grains (Gs = ρs/ρw), sans unité. Mesurée au pycnomètre (ASTM D854). Valeur typique : 2,85 à 3,20 pour des résidus de mines métalliques."],
+                  ["w₀", "%", PLAGES.w0.texte, "Teneur en eau massique du résidu tel que reçu (ASTM D2216). Elle réduit l'eau à ajouter."],
+                  ["Cw", "%", PLAGES.cw.texte, "Pourcentage solide massique : masse des solides / masse totale du remblai frais. Plus il est élevé, plus la pâte est épaisse. Usuel : 72 à 80 % pour un RPC."],
+                  ["Bw", "%", PLAGES.bw.texte, "Taux massique de liant : masse de liant / masse sèche de résidu (et de granulat en RPG). Bw = 5 % : 5 kg de liant pour 100 kg de résidu sec."],
+                  ["Sr", "%", PLAGES.sr.texte, "Degré de saturation : volume d'eau / volume des vides. Sr = 100 % : pâte saturée, sans air. Généralement 100 % pour un RPC."],
+                  ["E/L (W/C)", TIRET, PLAGES.el.texte, "Rapport eau/liant : masse d'eau / masse de liant. Plus il est élevé, plus la pâte est fluide et moins elle est résistante."],
+                  ["Gs du liant", TIRET, PLAGES.gsLiant.texte, "Densité relative de l'agent liant (ASTM C188), calculée comme moyenne harmonique pondérée de ses composants."],
+                  ["Am (RPG)", "%", PLAGES.am.texte, "Fraction massique de granulat dans les solides hors liant. Am = 30 % : 30 g de granulat pour 100 g de (résidu + granulat)."],
+                  ["Gs du granulat (RPG)", TIRET, PLAGES.gsGranulat.texte, "Densité relative du granulat (sable ou roche concassée). Valeur typique d'un sable siliceux : 2,65."],
+                  ["S", "mm", PLAGES.slump.texte, "Affaissement au cône d'Abrams (ASTM C143/C143M). 178 mm (7 po) sert de référence de consistance."],
                   ["Nombre de moules", TIRET, "1 à plus de 200", "Nombre de moules par recette. Détermine le volume total à préparer."],
-                  ["κ (facteur de perte)", TIRET, "1,0 à 1,25", "Multiplie les masses pour compenser les pertes au malaxage et au moulage. κ = 1 : aucun surplus ; le cours retient souvent 1,25. Appelé « facteur de sécurité » dans les feuilles de calcul."],
+                  ["κ (facteur de perte)", TIRET, PLAGES.kappa.texte, "Multiplie les masses pour compenser les pertes au malaxage et au moulage. κ = 1 : aucun surplus ; le cours retient souvent 1,25. Appelé « facteur de sécurité » dans les feuilles de calcul."],
                 ].map(([param, unit, range, desc]) => (
                   <tr key={param as string}>
                     <td><strong>{param}</strong></td>
@@ -534,7 +536,7 @@ export default function GuidePage() {
               </p>
               <p>
                 <strong>Échanges avec l&apos;enseignant</strong> : ses commentaires apparaissent sous le
-                résultat (Historique) ou la gâchée (Labo) concernés, visibles de vous seul, avec une
+                résultat (Mes calculs) ou la gâchée (Labo) concernés, visibles de vous seul, avec une
                 pastille « commentaire non lu » dans la liste. Vous pouvez y <strong>répondre</strong> ;
                 chacun voit si l&apos;autre a lu (« vu le … »).
               </p>

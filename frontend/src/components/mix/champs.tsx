@@ -5,17 +5,23 @@
 // Présentation seulement : la logique de calcul reste dans chaque formulaire.
 
 import { Champ } from "@/components/ui/Champ";
+import { avisHorsPlage, rappelPlage, type ClePlage } from "@/lib/plages";
 import Segmente from "@/components/ui/Segmente";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
 
 /** Champ à libellé au-dessus ; `unit` s'affiche à droite dans la saisie. */
-export function Field({ label, hint, unit, children }: {
+export function Field({ label, hint, unit, children, plage, valeur }: {
   label: React.ReactNode;
   hint?: React.ReactNode;
   unit?: React.ReactNode;
   children: React.ReactNode;
+  /** Plage usuelle (Guide) : rappelée sous le champ, avis doux hors plage. */
+  plage?: ClePlage;
+  /** Valeur saisie, pour l'avis hors plage. */
+  valeur?: number | null;
 }) {
-  return <Champ libelle={label} aide={hint} unite={unit}>{children}</Champ>;
+  const aide = plage ? <>{hint}{hint ? " " : null}{rappelPlage(plage)}</> : hint;
+  return <Champ libelle={label} aide={aide} unite={unit} avis={plage ? avisHorsPlage(plage, valeur) : undefined}>{children}</Champ>;
 }
 
 /** Sous-partie du formulaire (dans la carte « Paramètres »), séparée par un filet. */
@@ -99,7 +105,7 @@ export function PiedFormulaire({ loading, onCalculer, onReinitialiser, note }: {
         {loading ? (<><span className="mix-roue" aria-hidden="true" />Calcul en cours…</>) : "Calculer"}
       </button>
       <div className="mix-pied-ligne">
-        <span className="mix-pied-note">{note ?? "Les valeurs restent sur cet appareil ; sauvegardez un résultat pour le retrouver dans l'Historique."}</span>
+        <span className="mix-pied-note">{note ?? "Les valeurs restent sur cet appareil ; sauvegardez un résultat pour le retrouver dans Mes calculs."}</span>
         <button type="button" className="btn-discret" onClick={onReinitialiser}>Réinitialiser</button>
       </div>
     </div>

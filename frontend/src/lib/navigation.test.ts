@@ -16,15 +16,15 @@ describe("navigation — liens", () => {
 });
 
 describe("navigation — téléphone", () => {
-  it("étudiant : Informations, Calculs, Labo, Historique ; le reste dans Plus", () => {
+  it("étudiant : Informations, Calculs, Labo, Mes calculs ; le reste dans Plus", () => {
     const { onglets, plus } = ongletsTelephone("etudiant");
-    expect(onglets.map((l) => l.label)).toEqual(["Informations", "Calculs", "Labo", "Historique"]);
+    expect(onglets.map((l) => l.label)).toEqual(["Informations", "Calculs", "Labo", "Mes calculs"]);
     expect(plus.map((l) => l.label)).toEqual(["Analyse", "Formules", "Guide", "Réglages"]);
   });
 
-  it("enseignant : Calculs, Labo, Classe, Historique ; Informations passe dans Plus", () => {
+  it("enseignant : Calculs, Labo, Classe, Mes calculs ; Informations passe dans Plus", () => {
     const { onglets, plus } = ongletsTelephone("prof");
-    expect(onglets.map((l) => l.label)).toEqual(["Calculs", "Labo", "Classe", "Historique"]);
+    expect(onglets.map((l) => l.label)).toEqual(["Calculs", "Labo", "Classe", "Mes calculs"]);
     expect(plus.map((l) => l.label)).toContain("Informations");
   });
 
