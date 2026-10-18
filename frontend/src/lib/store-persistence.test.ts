@@ -419,3 +419,17 @@ describe("store — résultats périmés", () => {
     expect(s().empreintesCalcul.cwResult).toBeUndefined();
   });
 });
+
+describe("store — Gs et w₀ du résidu partagés par les méthodes", () => {
+  it("saisis dans une méthode, ils valent pour les autres ; le reste de chaque formulaire est intact", () => {
+    const s = () => useStore.getState();
+    s().setCw({ solid_mass_pct: 78 });
+    s().setWb({ residue_sg: 3.12, residue_w_pct: 21 });
+    for (const k of ["cw", "wb", "slump", "rpgCw", "rpgWb"] as const) {
+      expect([k, s()[k].residue_sg, s()[k].residue_w_pct]).toEqual([k, 3.12, 21]);
+    }
+    expect(s().cw.solid_mass_pct).toBe(78);
+    s().setRpgCw({ aggregate_sg: 2.65 });
+    expect(s().cw.residue_sg).toBe(3.12);
+  });
+});

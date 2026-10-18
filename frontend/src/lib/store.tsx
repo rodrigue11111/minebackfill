@@ -909,6 +909,19 @@ export function migrerMateriauxCloud(env: { v: number; data: unknown } | null | 
 }
 
 /**
+ * Gs et w₀ du résidu, PARTAGÉS par les méthodes : le même résidu ne se
+ * ressaisit pas d'une méthode à l'autre (Cw, E/L, prédictif, RPG).
+ */
+const ETATS_RESIDU = ["cw", "wb", "slump", "rpgCw", "rpgWb"] as const;
+function partagerResidu(state: AppState, patch: { residue_sg?: number; residue_w_pct?: number }): Partial<AppState> {
+  const commun: { residue_sg?: number; residue_w_pct?: number } = {};
+  if (patch.residue_sg !== undefined) commun.residue_sg = patch.residue_sg;
+  if (patch.residue_w_pct !== undefined) commun.residue_w_pct = patch.residue_w_pct;
+  if (Object.keys(commun).length === 0) return {};
+  return Object.fromEntries(ETATS_RESIDU.map((k) => [k, { ...state[k], ...commun }])) as Partial<AppState>;
+}
+
+/**
  * Un résultat arrive (ou s'efface) : il est rangé avec l'empreinte de ses
  * entrées à cet instant (resultat-perime.ts). Un résultat effacé n'en a plus.
  */
@@ -1146,6 +1159,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
   setCw: (patch) =>
     set((state) => ({
+      ...partagerResidu(state, patch),
       cw: {
         ...state.cw,
         ...patch,
@@ -1180,6 +1194,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
   setWb: (patch) =>
     set((state) => ({
+      ...partagerResidu(state, patch),
       wb: {
         ...state.wb,
         ...patch,
@@ -1215,6 +1230,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
   setSlump: (patch) =>
     set((state) => ({
+      ...partagerResidu(state, patch),
       slump: {
         ...state.slump,
         ...patch,
@@ -1275,7 +1291,7 @@ export const useStore = create<AppState>((set, get) => ({
     binder_pct: zeros4(),
   },
   setRpgCw: (patch) =>
-    set((state) => ({ rpgCw: { ...state.rpgCw, ...patch } })),
+    set((state) => ({ ...partagerResidu(state, patch), rpgCw: { ...state.rpgCw, ...patch } })),
   setRpgCwRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.rpgCw.binder_pct];
@@ -1298,7 +1314,7 @@ export const useStore = create<AppState>((set, get) => ({
     wc_ratio: zeros4(),
   },
   setRpgWb: (patch) =>
-    set((state) => ({ rpgWb: { ...state.rpgWb, ...patch } })),
+    set((state) => ({ ...partagerResidu(state, patch), rpgWb: { ...state.rpgWb, ...patch } })),
   setRpgWbRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.rpgWb.binder_pct];

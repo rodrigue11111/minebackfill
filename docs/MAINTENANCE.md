@@ -192,6 +192,7 @@ optionnel+nullable pour les vieux localStorage).
 | IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par clé de courbe (`cleCourbe` : `<idEprouvette>:<importeLe>`, ou l'id d'éprouvette pour une courbe d'origine inconnue) | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` (avec `importeLe` depuis le 2026-10-18) ; orphelines balayées au démarrage (`balayerCourbesOrphelines`, prudent) |
 | `minebackfill_sync_courbes` | `{v,data}` | 2 | envoi des courbes en ligne (`sync-courbes.ts`) : `{ comptes: { [uid]: { envoyees, bloquees } } }`, par id de document ; v1 → v2 : compte repris, entrées abandonnées (`migrerEtatCourbes`) — **hors sauvegarde** |
 | `minebackfill_revues` | `{v,data}` | 1 | revues de l'enseignant sur mes gâchées, relues en entier (`revues.ts`) — **hors sauvegarde** |
+| `minebackfill_brouillon_calculs` | `{v,data}` | 1 | brouillon des formulaires de Calculs (catégorie, méthode, état de chaque formulaire), relu au démarrage et rangé à chaque modification (`brouillon-calculs.ts`, `StoreHydrator`) ; fusionné sur les défauts au chargement. Les résultats ne sont pas rangés ; **hors sauvegarde** |
 | Sauvegarde (fichier) | `backup.ts` | schéma 6 | fusion par id, le local gagne ; courbes dans `data.courbes` |
 
 Toute évolution de schéma : incrémenter la version de LA clé concernée
