@@ -115,10 +115,20 @@ gardé par `resultat-perime.test.ts`) ; prise à l'arrivée, une saisie faite
 pendant l'attente passerait pour celle du résultat. Le panneau de résultats
 compare à l'affichage : entrées changées, bandeau « Résultats périmés » et
 ni sauvegarde ni export. Le formulaire efface son résultat en cas d'erreur
-(`set…Result(null)` dans le `catch`). Une restauration depuis l'Historique
-remet les entrées (pour l'essai-erreur, aussi sa méthode de base, rangée
-dans `base_cw` / `base_wb`) puis reprend l'empreinte ; un essai-erreur
-sauvegardé sans sa base est restauré « périmé » (`EMPREINTE_INCONNUE`).
+(`set…Result(null)` dans le `catch`). Une restauration depuis Mes calculs
+(`/historique`) remet les entrées (pour l'essai-erreur, aussi sa méthode
+de base, rangée dans `base_cw` / `base_wb`) puis reprend l'empreinte ; un
+essai-erreur sauvegardé sans sa base est restauré « périmé »
+(`EMPREINTE_INCONNUE`).
+
+**Pédagogie** (2026-10) : chaque méthode porte aussi `quand` (quand
+l'utiliser, une phrase), affichée sous le choix de méthode et lue par le
+Guide (`QUAND_METHODE`) : une seule source. Les plages usuelles des champs
+vivent dans `lib/plages.ts` (tableau du Guide et rappel sous chaque champ,
+`<Field plage=… valeur=…>`) ; une valeur hors plage reçoit un avis doux,
+jamais un refus. Gs et w₀ du résidu sont partagés par les formulaires
+(`partagerResidu`, `store.tsx`), y compris après un rechargement depuis
+Mes calculs (`restoreSavedResult` les repartage).
 
 ### 4. Ajouter une ligne au rapport de résultats
 `frontend/src/lib/report-schema.ts` UNIQUEMENT (section, libellé, unité,
@@ -199,6 +209,7 @@ optionnel+nullable pour les vieux localStorage).
 | IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par clé de courbe (`cleCourbe` : `<idEprouvette>:<importeLe>`, ou l'id d'éprouvette pour une courbe d'origine inconnue) | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` (avec `importeLe` depuis le 2026-10-18) ; orphelines balayées au démarrage (`balayerCourbesOrphelines`, prudent) |
 | `minebackfill_sync_courbes` | `{v,data}` | 2 | envoi des courbes en ligne (`sync-courbes.ts`) : `{ comptes: { [uid]: { envoyees, bloquees } } }`, par id de document ; v1 → v2 : compte repris, entrées abandonnées (`migrerEtatCourbes`) — **hors sauvegarde** |
 | `minebackfill_revues` | `{v,data}` | 1 | revues de l'enseignant sur mes gâchées, relues en entier (`revues.ts`) — **hors sauvegarde** |
+| `minebackfill_brouillon_calculs` | `{v,data}` | 1 | brouillon des formulaires de Calculs (catégorie, méthode, état de chaque formulaire), relu au démarrage et rangé à chaque modification (`brouillon-calculs.ts`, `StoreHydrator`) ; fusionné sur les défauts au chargement. Les résultats ne sont pas rangés ; **hors sauvegarde** |
 | Sauvegarde (fichier) | `backup.ts` | schéma 6 | fusion par id, le local gagne ; courbes dans `data.courbes` |
 
 Toute évolution de schéma : incrémenter la version de LA clé concernée

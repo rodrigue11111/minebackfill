@@ -85,14 +85,14 @@ export default function WbForm() {
               onPick={(m) => { const r = m as ResiduItem; setWb({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
               matches={(m) => { const r = m as ResiduItem; return r.gs === wb.residue_sg && r.w0_pct === wb.residue_w_pct; }} />
           </div>
-          <Field label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
-            <input type="number" step="any" className="field-input" placeholder="ex : 3.4" value={wb?.residue_sg ?? ""} onChange={(e) => setWb({ residue_sg: num(e.target.value) })} />
+          <Field plage="gs" valeur={wb?.residue_sg} label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
+            <input type="number" step="any" className="field-input" placeholder="ex : 3.4" value={wb?.residue_sg || ""} onChange={(e) => setWb({ residue_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Teneur en eau massique du résidu w₀" unit="%" hint="Résidu tel que reçu (ASTM D2216)">
+          <Field plage="w0" valeur={wb?.residue_w_pct} label="Teneur en eau massique du résidu w₀" unit="%" hint="Résidu tel que reçu (ASTM D2216)">
             <input type="number" step="any" className="field-input" placeholder="ex : 23.8" value={wb?.residue_w_pct ?? ""} onChange={(e) => setWb({ residue_w_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Degré de saturation Sr" unit="%" hint="100 % = pâte saturée">
-            <input type="number" step="any" className="field-input" placeholder="ex : 100" value={wb?.saturation_pct ?? ""} onChange={(e) => setWb({ saturation_pct: num(e.target.value) })} />
+          <Field plage="sr" valeur={wb?.saturation_pct} label="Degré de saturation Sr" unit="%" hint="100 % = pâte saturée">
+            <input type="number" step="any" className="field-input" placeholder="ex : 100" value={wb?.saturation_pct || ""} onChange={(e) => setWb({ saturation_pct: num(e.target.value) })} />
           </Field>
         </GrilleChamps>
       </CardSection>
@@ -102,7 +102,7 @@ export default function WbForm() {
           <Field label="Nombre de moules par recette">
             <input type="number" className="field-input" min={1} value={wb?.desired_qty ?? 1} onChange={(e) => setWb({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de perte κ" hint={KAPPA_AIDE}>
+          <Field plage="kappa" valeur={wb?.safety_factor ?? 1} label="Facteur de perte κ" hint={KAPPA_AIDE}>
             <input type="number" step="any" className="field-input" min={1} value={wb?.safety_factor ?? 1} onChange={(e) => setWb({ safety_factor: num(e.target.value) })} />
           </Field>
         </GrilleChamps>
@@ -114,11 +114,11 @@ export default function WbForm() {
           <div key={i} className="mix-recette">
             <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
             <GrilleChamps>
-              <Field label="Taux massique de liant Bw" unit="%" hint="Masse de liant / masse sèche de résidu">
+              <Field plage="bw" valeur={wb?.binder_pct?.[i]} label="Taux massique de liant Bw" unit="%" hint="Masse de liant / masse sèche de résidu">
                 <input type="number" step="any" className="field-input" placeholder="ex : 4.5"
                   value={wb?.binder_pct?.[i] ?? ""} onChange={(e) => setWbRecipe(i, { binder_pct: num(e.target.value) })} />
               </Field>
-              <Field label="Rapport eau/liant E/L" hint="Ex. : 4 à 8">
+              <Field plage="el" valeur={wb?.wc_ratio?.[i]} label="Rapport eau/liant E/L" hint="Ex. : 4 à 8">
                 <input type="number" step="any" className="field-input" placeholder="ex : 6.0"
                   value={wb?.wc_ratio?.[i] ?? ""} onChange={(e) => setWbRecipe(i, { wc_ratio: num(e.target.value) })} />
               </Field>

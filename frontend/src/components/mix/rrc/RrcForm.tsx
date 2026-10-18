@@ -119,7 +119,7 @@ export default function RrcForm() {
               matches={(m) => (m as RetardateurItem).densite_g_ml === rrc.retarder_density}
             />
           </div>
-          <Field label="Densité relative du ciment Gs" hint="Pour le volume du coulis (ASTM C188)">
+          <Field plage="gsLiant" valeur={rrc.cement_sg} label="Densité relative du ciment Gs" hint="Pour le volume du coulis (ASTM C188)">
             <input type="number" step="any" className="field-input" placeholder="ex : 3.15"
               value={rrc.cement_sg || ""} onChange={(e) => setRrc({ cement_sg: num(e.target.value) })} />
           </Field>
@@ -141,7 +141,7 @@ export default function RrcForm() {
           <div key={i} className="mix-recette">
             <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
             <GrilleChamps>
-              <Field label="Taux massique de liant Bw" unit="%">
+              <Field plage="bw" valeur={rrc.binder_pct?.[i]} label="Taux massique de liant Bw" unit="%">
                 <input type="number" step="any" className="field-input" placeholder="ex : 5"
                   value={rrc.binder_pct?.[i] || ""} onChange={(e) => setRrcRecipe(i, { binder_pct: num(e.target.value) })} />
               </Field>

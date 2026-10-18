@@ -47,7 +47,7 @@ export default function SessionsCard({ vueAdmin, peutPublier, onPublier }: {
       </button>
     ) : undefined}>
       <p className="classe-intro">
-        Chaque résultat et chaque gâchée créés pendant une session la portent : l&apos;Historique,
+        Chaque résultat et chaque gâchée créés pendant une session la portent : Mes calculs,
         le Labo et le tableau de bord de la classe se filtrent par session, d&apos;une année à
         l&apos;autre. Le travail antérieur est rangé d&apos;après sa date ; hors de toute session, il
         apparaît « Sans session ».

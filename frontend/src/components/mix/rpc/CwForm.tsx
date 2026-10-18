@@ -89,21 +89,21 @@ export default function CwForm() {
               matches={(m) => { const r = m as ResiduItem; return r.gs === cw.residue_sg && r.w0_pct === cw.residue_w_pct; }}
             />
           </div>
-          <Field label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
+          <Field plage="gs" valeur={cw.residue_sg} label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
             <input type="number" step="any" className="field-input" placeholder="ex : 3.4"
-              value={cw.residue_sg ?? ""} onChange={(e) => setCw({ residue_sg: num(e.target.value) })} />
+              value={cw.residue_sg || ""} onChange={(e) => setCw({ residue_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Teneur en eau massique du résidu w₀" unit="%" hint="Résidu tel que reçu (ASTM D2216)">
+          <Field plage="w0" valeur={cw.residue_w_pct} label="Teneur en eau massique du résidu w₀" unit="%" hint="Résidu tel que reçu (ASTM D2216)">
             <input type="number" step="any" className="field-input" placeholder="ex : 23.8"
               value={cw.residue_w_pct ?? ""} onChange={(e) => setCw({ residue_w_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Pourcentage solide massique Cw" unit="%" hint="Masse des solides / masse totale du remblai">
+          <Field plage="cw" valeur={cw.solid_mass_pct} label="Pourcentage solide massique Cw" unit="%" hint="Masse des solides / masse totale du remblai">
             <input type="number" step="any" className="field-input" placeholder="ex : 78"
-              value={cw.solid_mass_pct ?? ""} onChange={(e) => setCw({ solid_mass_pct: num(e.target.value) })} />
+              value={cw.solid_mass_pct || ""} onChange={(e) => setCw({ solid_mass_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Degré de saturation Sr" unit="%" hint="100 % = pâte saturée">
+          <Field plage="sr" valeur={cw.saturation_pct} label="Degré de saturation Sr" unit="%" hint="100 % = pâte saturée">
             <input type="number" step="any" className="field-input" placeholder="ex : 100"
-              value={cw.saturation_pct ?? ""} onChange={(e) => setCw({ saturation_pct: num(e.target.value) })} />
+              value={cw.saturation_pct || ""} onChange={(e) => setCw({ saturation_pct: num(e.target.value) })} />
           </Field>
         </GrilleChamps>
       </CardSection>
@@ -114,7 +114,7 @@ export default function CwForm() {
             <input type="number" className="field-input" min={1}
               value={cw.desired_qty ?? 1} onChange={(e) => setCw({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de perte κ" hint={KAPPA_AIDE}>
+          <Field plage="kappa" valeur={cw.safety_factor ?? 1} label="Facteur de perte κ" hint={KAPPA_AIDE}>
             <input type="number" step="any" className="field-input" min={1}
               value={cw.safety_factor ?? 1} onChange={(e) => setCw({ safety_factor: num(e.target.value) })} />
           </Field>

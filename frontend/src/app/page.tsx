@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { confirmerExemple, LIBELLE_EXEMPLE } from "@/lib/exemple";
+import { parametresVolume, volumeMouleM3, volumeTotalM3 } from "@/lib/contenant";
+import Parcours from "@/components/ui/Parcours";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { useStore, lireBinders, patchBinders, MAX_BINDERS } from "@/lib/store";
@@ -27,16 +30,10 @@ const CONTAINER_TYPES = [
   { value: "volume", label: "Volume direct", court: "Volume" },
 ] as const;
 
-/** Ce que l'exemple remplace, dit avant de le faire. */
-const CONFIRMATION_EXEMPLE =
-  "Charger l'exemple Intra 2017 ? Il remplace le projet (opérateur, nom, résidu), le contenant " +
-  "(55 × 20 × 10 m, soit un volume industriel de 11 000 m³, celui du classeur du professeur), " +
-  "le liant et les entrées des formulaires de calcul. Deux liants de l'exemple (GU et laitier GGBFS) " +
-  "sont ajoutés au catalogue s'ils n'y sont pas.";
-
 export default function GeneralInfoPage() {
   const router = useRouter();
-  const { general, setGeneral, catalogue_liants, fillTestData, units, setUnits, loadUnits } = useStore();
+  const store = useStore();
+  const { general, setGeneral, catalogue_liants, fillTestData, units, setUnits, loadUnits } = store;
   const [testLoaded, setTestLoaded] = useState(false);
   // Texte exact en cours de saisie par champ de dimension. Tant qu'un champ
   // est dans cette table, on affiche ce que l'utilisateur tape (sans re-passer
@@ -65,6 +62,11 @@ export default function GeneralInfoPage() {
   // Unité de volume (saisie du contenant ET affichage des résultats) : une
   // seule préférence globale, aussi modifiable dans Réglages.
   const volumeUnit = units.volume as VolumeUnit;
+  const volumeMoule = volumeMouleM3(general);
+  // Volume total par recette, avec les moules et le κ de la méthode active de Calculs.
+  const paramVolume = parametresVolume(store as unknown as Parameters<typeof parametresVolume>[0]);
+  const volumeTotal = volumeTotalM3(volumeMoule, paramVolume?.moules, paramVolume?.kappa);
+  const vol = (m3: number) => (fromStoreVolume(m3, volumeUnit) ?? 0).toLocaleString("fr-CA", { maximumSignificantDigits: 6 });
 
   const dimFields = new Set(["container_height", "container_radius", "container_length", "container_width"]);
 
@@ -159,6 +161,7 @@ export default function GeneralInfoPage() {
           </>
         }
       />
+      <Parcours courante={1} />
 
       <form onSubmit={handleSave} className="info-formulaire">
         {/* ── 1. Identification ── */}
@@ -239,6 +242,20 @@ export default function GeneralInfoPage() {
                 champDim("container_volume_m3", "Volume du contenant", VOLUME_LABELS[volumeUnit], fromStoreVolume(general.container_volume_m3, volumeUnit), "Ex. : 1.65")}
             </div>
           )}
+          {volumeMoule !== null && (
+            // Même géométrie que le calcul : l'étudiant voit tout de suite
+            // ce qu'un moule contient (et repère une dimension mal saisie).
+            <p className="ui-liste-pied" style={{ margin: 0 }}>
+              Volume d&apos;un moule : <strong>{vol(volumeMoule)} {VOLUME_LABELS[volumeUnit]}</strong>.
+              {volumeTotal !== null && paramVolume && (
+                <>
+                  {" "}Volume total à préparer par recette : VT = {vol(volumeMoule)} × {paramVolume.moules} moule{paramVolume.moules! > 1 ? "s" : ""} × κ {paramVolume.kappa!.toLocaleString("fr-CA")} = <strong>{vol(volumeTotal)} {VOLUME_LABELS[volumeUnit]}</strong>
+                  {" "}(moules par recette et facteur de perte κ : page Calculs, {paramVolume.methode}).
+                </>
+              )}
+              {store.category === "RRC" && " En RRC, la quantité vient de la page Calculs (volume du chantier ou masse totale), pas du moule."}
+            </p>
+          )}
         </Carte>
 
         {/* ── 3. Agent liant ── */}
@@ -316,12 +333,12 @@ export default function GeneralInfoPage() {
             className="btn-secondary"
             onClick={() => {
               // L'exemple remplace le projet : jamais sans l'accord de l'étudiant.
-              if (!window.confirm(CONFIRMATION_EXEMPLE)) return;
+              if (!confirmerExemple()) return;
               try { fillTestData(); setTestLoaded(true); setTimeout(() => setTestLoaded(false), 4000); } catch (e) { console.error("[fillTestData] error:", e); }
             }}
             title="Charge les valeurs du classeur de référence Intra 2017 (après confirmation)"
           >
-            {testLoaded ? "Exemple Intra 2017 chargé" : "Exemple Intra 2017"}
+            {testLoaded ? "Exemple chargé" : LIBELLE_EXEMPLE}
           </button>
           <button type="submit" className="btn-primary" disabled={!fractionsOk}
             title={fractionsOk ? undefined : "La somme des fractions du liant doit être égale à 100 %"}>

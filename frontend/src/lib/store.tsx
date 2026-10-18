@@ -10,7 +10,7 @@ import { protocolesDefaut, type Protocole } from "./protocole";
 import { sessionActive, validerSessions, type Session } from "./sessions";
 import { migrerAnnotationV1, type Annotation } from "./annotations";
 import type { Revue } from "./revues";
-import { descriptorFor, type MethodResultKey } from "./method-registry";
+import { descriptorFor, type MethodResultKey, type MethodStateKey } from "./method-registry";
 import { EMPREINTE_INCONNUE, empreinteEntrees } from "./resultat-perime";
 import type { MesureLabo } from "./mesures";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
@@ -909,6 +909,19 @@ export function migrerMateriauxCloud(env: { v: number; data: unknown } | null | 
 }
 
 /**
+ * Gs et w₀ du résidu, PARTAGÉS par les méthodes : le même résidu ne se
+ * ressaisit pas d'une méthode à l'autre (Cw, E/L, prédictif, RPG).
+ */
+const ETATS_RESIDU = ["cw", "wb", "slump", "rpgCw", "rpgWb"] as const;
+function partagerResidu(state: AppState, patch: { residue_sg?: number; residue_w_pct?: number }): Partial<AppState> {
+  const commun: { residue_sg?: number; residue_w_pct?: number } = {};
+  if (patch.residue_sg !== undefined) commun.residue_sg = patch.residue_sg;
+  if (patch.residue_w_pct !== undefined) commun.residue_w_pct = patch.residue_w_pct;
+  if (Object.keys(commun).length === 0) return {};
+  return Object.fromEntries(ETATS_RESIDU.map((k) => [k, { ...state[k], ...commun }])) as Partial<AppState>;
+}
+
+/**
  * Poser un résultat avec l'empreinte des entrées prise AU DÉPART de la
  * requête (`empreinteAuDepart`), ou l'effacer. Le type l'impose : un
  * formulaire ne peut pas ranger une réponse sans dire de quelles entrées elle
@@ -1169,6 +1182,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
   setCw: (patch) =>
     set((state) => ({
+      ...partagerResidu(state, patch),
       cw: {
         ...state.cw,
         ...patch,
@@ -1203,6 +1217,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
   setWb: (patch) =>
     set((state) => ({
+      ...partagerResidu(state, patch),
       wb: {
         ...state.wb,
         ...patch,
@@ -1238,6 +1253,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
   setSlump: (patch) =>
     set((state) => ({
+      ...partagerResidu(state, patch),
       slump: {
         ...state.slump,
         ...patch,
@@ -1298,7 +1314,7 @@ export const useStore = create<AppState>((set, get) => ({
     binder_pct: zeros4(),
   },
   setRpgCw: (patch) =>
-    set((state) => ({ rpgCw: { ...state.rpgCw, ...patch } })),
+    set((state) => ({ ...partagerResidu(state, patch), rpgCw: { ...state.rpgCw, ...patch } })),
   setRpgCwRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.rpgCw.binder_pct];
@@ -1321,7 +1337,7 @@ export const useStore = create<AppState>((set, get) => ({
     wc_ratio: zeros4(),
   },
   setRpgWb: (patch) =>
-    set((state) => ({ rpgWb: { ...state.rpgWb, ...patch } })),
+    set((state) => ({ ...partagerResidu(state, patch), rpgWb: { ...state.rpgWb, ...patch } })),
   setRpgWbRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.rpgWb.binder_pct];
@@ -1724,6 +1740,8 @@ export const useStore = create<AppState>((set, get) => ({
     // d'elle. Une sauvegarde sans base (antérieure à 2026-10) ne peut pas la
     // rendre : le résultat restauré est dit périmé (recalcul demandé).
     let baseInconnue = false;
+    // État d'où viennent le Gs et le w₀ du résidu restaurés (partagés ensuite).
+    let etatResidu: MethodStateKey | undefined;
     if (d) {
       const p = patch as Record<string, unknown>;
       p[d.resultKey] = result;
@@ -1732,13 +1750,19 @@ export const useStore = create<AppState>((set, get) => ({
         if (entry.inputs) p[d.stateKey] = { ...essai, base_cw: undefined, base_wb: undefined };
         const dBase = essai.base_method ? descriptorFor(entry.category, essai.base_method) : undefined;
         const base = essai.base_method === "wb" ? base_wb : base_cw;
-        if (dBase && base) p[dBase.stateKey] = { ...(state[dBase.stateKey] as object), ...base };
-        else baseInconnue = true;
+        if (dBase && base) {
+          p[dBase.stateKey] = { ...(state[dBase.stateKey] as object), ...base };
+          etatResidu = dBase.stateKey;
+        } else baseInconnue = true;
       } else if (entry.inputs) {
         p[d.stateKey] = entry.inputs;
+        etatResidu = d.stateKey;
       }
     }
     set(patch);
+    // Gs et w₀ du résidu restaurés valent pour toutes les méthodes, comme une
+    // saisie (partagerResidu) : sinon « Selon E/L » garderait l'ancien Gs.
+    if (etatResidu) set((s) => partagerResidu(s, s[etatResidu] as { residue_sg?: number; residue_w_pct?: number }));
     // Le résultat restauré correspond aux entrées restaurées : nouvelle empreinte.
     if (d) set((s) => avecEmpreinte(s, d.resultKey, s[d.resultKey], baseInconnue ? EMPREINTE_INCONNUE : undefined));
     return true;

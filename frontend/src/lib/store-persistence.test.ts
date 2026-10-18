@@ -420,6 +420,20 @@ describe("store — résultats périmés", () => {
   });
 });
 
+describe("store — Gs et w₀ du résidu partagés par les méthodes", () => {
+  it("saisis dans une méthode, ils valent pour les autres ; le reste de chaque formulaire est intact", () => {
+    const s = () => useStore.getState();
+    s().setCw({ solid_mass_pct: 78 });
+    s().setWb({ residue_sg: 3.12, residue_w_pct: 21 });
+    for (const k of ["cw", "wb", "slump", "rpgCw", "rpgWb"] as const) {
+      expect([k, s()[k].residue_sg, s()[k].residue_w_pct]).toEqual([k, 3.12, 21]);
+    }
+    expect(s().cw.solid_mass_pct).toBe(78);
+    s().setRpgCw({ aggregate_sg: 2.65 });
+    expect(s().cw.residue_sg).toBe(3.12);
+  });
+});
+
 describe("store — résultats périmés : revue du 2026-10-18", () => {
   const recette = { category: "RPC", method: "dosage_cw", recipes: [{ bw_mass_pct: 4.5 }] } as never;
   const perime = (cle: "cwResult" | "essaiResult" | "rpgEssaiResult") =>
@@ -488,5 +502,21 @@ describe("store — résultats périmés : revue du 2026-10-18", () => {
     expect(s().cw.solid_mass_pct).toBe(80);
     expect(s().essaiResult?.recipes).toHaveLength(1);
     expect(perime("essaiResult")).toBe(true);
+  });
+});
+
+describe("store — recharger un résultat : Gs et w₀ partagés", () => {
+  it("le Gs et le w₀ rechargés valent pour toutes les méthodes ; le résultat rechargé reste à jour", () => {
+    const s = () => useStore.getState();
+    s().setCw({ residue_sg: 3.05, residue_w_pct: 24 });
+    useStore.setState({ category: "RPC", method: "dosage_cw", cwResult: { category: "RPC", method: "dosage_cw", recipes: [{ bw_mass_pct: 4.5 }] } as never });
+    expect(s().saveCurrentResult("Gs 3,05")).toBe(true);
+    const id = s().savedResults.find((r) => r.label === "Gs 3,05")!.id;
+    s().setWb({ residue_sg: 2.8, residue_w_pct: 10 }); // partagé : cw passe aussi à 2,8
+    expect(s().restoreSavedResult(id)).toBe(true);
+    for (const k of ["cw", "wb", "slump", "rpgCw", "rpgWb"] as const) {
+      expect([k, s()[k].residue_sg, s()[k].residue_w_pct]).toEqual([k, 3.05, 24]);
+    }
+    expect(resultatPerime(s() as never, "cwResult", s().empreintesCalcul.cwResult)).toBe(false);
   });
 });

@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { balayerCourbesOrphelines, deplacerCourbesStockees } from "@/lib/courbes-client";
+import { loadVersioned, persistVersioned } from "@/lib/persisted";
+import { BROUILLON_KEY, BROUILLON_VERSION, brouillonModifie, extraireBrouillon, patchDepuisBrouillon } from "@/lib/brouillon-calculs";
 
 /**
  * Hydrate l'état du store depuis localStorage une fois, au montage global de
@@ -62,6 +64,28 @@ export default function StoreHydrator() {
     loadAnnotations,
     loadRevues,
   ]);
+
+  // Brouillon des formulaires de Calculs (brouillon-calculs.ts) : relu une
+  // fois au démarrage, puis rangé après chaque modification (courte pause, et
+  // tout de suite quand la page se ferme). Avant, un rechargement vidait tout.
+  useEffect(() => {
+    const brut = loadVersioned<unknown>(BROUILLON_KEY, BROUILLON_VERSION, (d) => d, null);
+    if (brut) useStore.setState(patchDepuisBrouillon(useStore.getState() as never, brut) as never);
+    let minuteur: number | undefined;
+    const ranger = () => {
+      window.clearTimeout(minuteur);
+      minuteur = undefined;
+      persistVersioned(BROUILLON_KEY, BROUILLON_VERSION, extraireBrouillon(useStore.getState() as never));
+    };
+    const desabonner = useStore.subscribe((etat, avant) => {
+      if (!brouillonModifie(etat as never, avant as never)) return;
+      window.clearTimeout(minuteur);
+      minuteur = window.setTimeout(ranger, 400);
+    });
+    const surFermeture = () => { if (minuteur !== undefined) ranger(); };
+    window.addEventListener("pagehide", surFermeture);
+    return () => { desabonner(); window.removeEventListener("pagehide", surFermeture); window.clearTimeout(minuteur); };
+  }, []);
 
   // Synchronisation multi-onglets : l'événement `storage` ne se déclenche que
   // dans les AUTRES onglets. Quand l'un écrit une clé, les autres ré-hydratent

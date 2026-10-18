@@ -93,7 +93,7 @@ export default function RpgCwForm() {
               onPick={(m) => { const g = m as GranulatItem; setRpgCw({ aggregate_sg: g.gs, aggregate_fraction_pct: g.fraction_defaut_pct ?? rpgCw.aggregate_fraction_pct }); }}
               matches={(m) => (m as GranulatItem).gs === rpgCw.aggregate_sg} />
           </div>
-          <Field label="Densité relative du granulat Gs" hint="Sans unité : Gs = ρs/ρw">
+          <Field plage="gsGranulat" valeur={rpgCw.aggregate_sg} label="Densité relative du granulat Gs" hint="Sans unité : Gs = ρs/ρw">
             <input type="number" step="any" className="field-input" placeholder="ex : 2.65"
               value={rpgCw.aggregate_sg || ""}
               onChange={(e) => setRpgCw({ aggregate_sg: num(e.target.value) })} />
@@ -114,19 +114,19 @@ export default function RpgCwForm() {
               onPick={(m) => { const r = m as ResiduItem; setRpgCw({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
               matches={(m) => { const r = m as ResiduItem; return r.gs === rpgCw.residue_sg && r.w0_pct === rpgCw.residue_w_pct; }} />
           </div>
-          <Field label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
+          <Field plage="gs" valeur={rpgCw.residue_sg} label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
             <input type="number" step="any" className="field-input" placeholder="ex : 3.4"
               value={rpgCw.residue_sg || ""} onChange={(e) => setRpgCw({ residue_sg: num(e.target.value) })} />
           </Field>
-          <Field label="Teneur en eau massique du résidu w₀" unit="%">
+          <Field plage="w0" valeur={rpgCw.residue_w_pct} label="Teneur en eau massique du résidu w₀" unit="%">
             <input type="number" step="any" className="field-input" placeholder="ex : 23.8"
-              value={rpgCw.residue_w_pct || ""} onChange={(e) => setRpgCw({ residue_w_pct: num(e.target.value) })} />
+              value={rpgCw.residue_w_pct ?? ""} onChange={(e) => setRpgCw({ residue_w_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Pourcentage solide massique Cw" unit="%" hint="Masse des solides / masse totale du remblai">
+          <Field plage="cw" valeur={rpgCw.solid_mass_pct} label="Pourcentage solide massique Cw" unit="%" hint="Masse des solides / masse totale du remblai">
             <input type="number" step="any" className="field-input" placeholder="ex : 78"
               value={rpgCw.solid_mass_pct || ""} onChange={(e) => setRpgCw({ solid_mass_pct: num(e.target.value) })} />
           </Field>
-          <Field label="Degré de saturation Sr" unit="%">
+          <Field plage="sr" valeur={rpgCw.saturation_pct} label="Degré de saturation Sr" unit="%">
             <input type="number" step="any" className="field-input" placeholder="ex : 100"
               value={rpgCw.saturation_pct || ""} onChange={(e) => setRpgCw({ saturation_pct: num(e.target.value) })} />
           </Field>
@@ -140,7 +140,7 @@ export default function RpgCwForm() {
               value={rpgCw.desired_qty ?? 1}
               onChange={(e) => setRpgCw({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field label="Facteur de perte κ" hint={KAPPA_AIDE}>
+          <Field plage="kappa" valeur={rpgCw.safety_factor ?? 1} label="Facteur de perte κ" hint={KAPPA_AIDE}>
             <input type="number" step="any" className="field-input" min={1}
               value={rpgCw.safety_factor ?? 1}
               onChange={(e) => setRpgCw({ safety_factor: num(e.target.value) })} />
