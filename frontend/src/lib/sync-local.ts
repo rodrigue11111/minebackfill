@@ -10,10 +10,12 @@
 //   et le moteur n'avance pas.
 // - Forme CANONIQUE = ce qui part en ligne. Sans `ownerId` (information locale)
 //   ni les courbes de presse (lourdes : rangées sur l'appareil, dans la
-//   gâchée ou dans IndexedDB — `courbe` ou sa référence `courbeInfo` ; elles
-//   partent en ligne À PART, par sync-courbes.ts). Écrire
-//   une version serveur RÉATTACHE ces champs locaux, sinon chaque
-//   synchronisation effacerait les courbes.
+//   gâchée ou dans IndexedDB, `courbe` ou sa référence `courbeInfo` ; elles
+//   partent en ligne À PART, par sync-courbes.ts). Écrire une version serveur
+//   RÉATTACHE ces champs locaux, sinon chaque synchronisation effacerait les
+//   courbes ; mais seulement à une éprouvette qui désigne toujours le même
+//   import de presse (sinon la courbe d'un ancien import passerait pour
+//   celle du nouveau).
 // - Un résultat estampillé au nom d'un AUTRE compte (ancienne fusion de la v1
 //   chez l'enseignant, sauvegarde importée) n'est jamais envoyé : il reste
 //   local, invisible pour le moteur.
@@ -69,25 +71,39 @@ export function canoniqueGachee(g: Gachee): unknown {
   };
 }
 
-/** Champs locaux de courbe (courbe ou référence) par id d'éprouvette. */
-type ChampsCourbe = { courbe?: PointCourbe[]; courbeInfo?: { nbPoints: number } };
+/**
+ * Champs locaux de courbe (courbe ou référence) par id d'éprouvette, avec
+ * l'import auquel ils se rapportent : celui de la référence quand il est
+ * connu, sinon celui que l'éprouvette locale désignait (courbe d'origine
+ * inconnue, voir courbes.ts).
+ */
+type ChampsCourbe = { champs: { courbe: PointCourbe[] } | { courbeInfo: { nbPoints: number; importeLe?: string } }; importe: string | undefined };
 function courbesDe(g: Gachee | undefined): Map<string, ChampsCourbe> {
   const m = new Map<string, ChampsCourbe>();
   for (const e of g?.eprouvettes ?? []) {
-    if (e.essai?.courbe) m.set(e.id, { courbe: e.essai.courbe });
-    else if (e.essai?.courbeInfo) m.set(e.id, { courbeInfo: e.essai.courbeInfo });
+    const importeLocal = e.essai?.sourcePresse?.importeLe;
+    if (e.essai?.courbe) m.set(e.id, { champs: { courbe: e.essai.courbe }, importe: importeLocal });
+    else if (e.essai?.courbeInfo) m.set(e.id, { champs: { courbeInfo: e.essai.courbeInfo }, importe: e.essai.courbeInfo.importeLe ?? importeLocal });
   }
   return m;
 }
 
-/** Réattache les champs locaux de courbe aux éprouvettes (même id) d'une gâchée reçue. */
+/**
+ * Réattache les champs locaux de courbe aux éprouvettes (même id) d'une
+ * gâchée reçue, si elles désignent toujours le même import. Une éprouvette
+ * réimportée ailleurs (autre `importeLe`), ou dont l'import a été retiré,
+ * perd la courbe locale : celle-ci ne lui correspond plus (le magasin la
+ * balaiera), et l'écran propose de lire la courbe du nouvel import en ligne.
+ */
 function avecCourbes(g: Gachee, courbes: Map<string, ChampsCourbe>): Gachee {
   if (courbes.size === 0 || !Array.isArray(g.eprouvettes)) return g;
   return {
     ...g,
     eprouvettes: g.eprouvettes.map((e) => {
       const c = courbes.get(e.id);
-      return c && e.essai && !aChampsLocaux(e) ? { ...e, essai: { ...e.essai, ...c } } : e;
+      if (!c || !e.essai || aChampsLocaux(e)) return e;
+      if (e.essai.sourcePresse?.importeLe !== c.importe) return e;
+      return { ...e, essai: { ...e.essai, ...c.champs } };
     }),
   };
 }
@@ -182,13 +198,12 @@ export function creerDepotLocal(s: SourcesLocales): DepotLocal {
     const source = contenu as { id: string };
     const copie = { ...(contenu as object), id: nouvelId, conflit: { de: source.id, le } };
     if (kind !== "gachee") return copie;
-    // La copie garde les courbes de l'original local (elles ne sont pas en
-    // ligne : sans cela, la version de l'étudiant les perdrait) — mais
-    // seulement celles rangées DANS la gâchée : une référence au magasin
-    // serait partagée avec l'original, et supprimer la copie l'effacerait.
+    // La copie est la version de l'étudiant : elle garde ses courbes locales,
+    // références au magasin comprises (sans cela, le balayage des orphelines
+    // effacerait une courbe que seule la copie désigne encore). Une référence
+    // partagée avec l'original est protégée par courbesAOublier.
     const original = s.lireGachees().find((g) => g?.id === source.id);
-    const enLigne = new Map([...courbesDe(original)].filter(([, c]) => c.courbe));
-    return avecCourbes(copie as unknown as Gachee, enLigne);
+    return avecCourbes(copie as unknown as Gachee, courbesDe(original));
   }
 
   return { lister, appliquer, copieDeConflit };

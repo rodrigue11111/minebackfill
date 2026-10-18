@@ -8,82 +8,84 @@
 // donc envoyées ici, après chaque cycle, et relues à la demande.
 //
 // Règles :
-//   - une courbe part quand sa gâchée est déjà connue en ligne (sinon le
-//     nettoyage serveur, qui retire les courbes sans gâchée, pourrait la
-//     prendre pour une orpheline) ;
-//   - document « courbe », id = id de l'éprouvette, contenu = colonnes +
-//     rattachement { eprouvetteId, gacheeId } ;
+//   - UN DOCUMENT PAR IMPORT : document « courbe », id = clé de la courbe
+//     `<idEprouvette>:<importeLe>` (courbes.ts, cleCourbe), contenu = colonnes
+//     + rattachement { eprouvetteId, gacheeId, importeLe }. Un document n'est
+//     jamais réécrit par un autre import : deux appareils qui envoient des
+//     imports différents écrivent deux documents, et les lecteurs prennent
+//     celui que la gâchée désigne ;
+//   - seule part une courbe d'origine vérifiée (courbeInfo.importeLe égal à
+//     sourcePresse.importeLe) : une courbe d'origine inconnue reste locale ;
+//   - une courbe part quand la version en ligne connue de sa gâchée est la
+//     version locale (même empreinte) : sinon le nettoyage serveur, qui retire
+//     les courbes qu'aucune gâchée en ligne ne désigne, pourrait la retirer.
+//     Simple économie : la protection contre les écrasements vient de
+//     l'identifiant par import ;
 //   - la forme canonique des gâchées ne change pas : `courbeInfo` reste
 //     local, jamais synchronisé (sinon deux appareils se réécriraient) ;
-//   - au plus `budget` courbes par cycle (quota de l'offre gratuite).
+//   - au plus `budget` envois par cycle (quota de l'offre gratuite) ; une
+//     courbe absente du magasin ne compte pas.
 
 import type { Gachee } from "./gachee";
-import type { CourbeColonnes } from "./courbes";
+import { cleCourbe, origineVerifiee, type CourbeColonnes } from "./courbes";
 import { cleDoc, ErreurSync, type EtatSync, type LigneServeur } from "./sync-moteur";
 import { empreinte } from "./sync-empreinte";
+import { canoniqueGachee, RE_ID_DOC } from "./sync-local";
 
-/** État de l'envoi des courbes (stockage local, HORS sauvegarde). */
+/** État de l'envoi des courbes d'UN compte (stockage local, HORS sauvegarde). */
 export interface EtatCourbes {
-  v: 1;
-  /** Compte auquel cet état se rapporte ; un autre compte repart de zéro. */
-  uid: string | null;
-  /** Courbes confirmées en ligne : révision serveur et signature envoyée. */
-  envoyees: Record<string, { rev: number; signature: string }>;
-  /** Refusées par le serveur (taille, quota) : pas de nouvel essai tant que
-   *  la courbe ne change pas. */
+  /** Documents « courbe » confirmés en ligne, par identifiant : révision serveur. */
+  envoyees: Record<string, { rev: number }>;
+  /** Refusés par le serveur (taille, quota), par identifiant : code d'erreur.
+   *  Pas de nouvel essai avant la prochaine connexion. */
   bloquees: Record<string, string>;
 }
 
-export function etatCourbesInitial(uid: string | null): EtatCourbes {
-  return { v: 1, uid, envoyees: {}, bloquees: {} };
-}
-
-/**
- * Signature d'une courbe locale, sans lire IndexedDB : un nouvel import de
- * presse change `sourcePresse.importeLe` (et souvent le nombre de points).
- */
-export function signatureCourbe(essai: { sourcePresse?: { importeLe?: string }; courbeInfo?: { nbPoints: number } } | undefined): string {
-  return `${essai?.sourcePresse?.importeLe ?? ""}|${essai?.courbeInfo?.nbPoints ?? 0}`;
+export function etatCourbesInitial(): EtatCourbes {
+  return { envoyees: {}, bloquees: {} };
 }
 
 export interface CourbeAEnvoyer {
+  /** Identifiant du document en ligne (clé de la courbe). */
+  cle: string;
   eprouvetteId: string;
   gacheeId: string;
-  signature: string;
-  /** Révision connue en ligne (renvoi après un nouvel import), sinon null. */
-  baseRev: number | null;
+  importeLe: string;
 }
 
-/** Courbes à envoyer ce cycle, dans l'ordre des gâchées. */
+/**
+ * Courbes à envoyer, dans l'ordre des gâchées, copies de conflit comprises :
+ * chaque gâchée à jour en ligne propose ses courbes d'origine vérifiée ; une
+ * clé n'est proposée qu'une fois (un original et sa copie du même import
+ * partagent la courbe). Un original avec l'import Y et sa copie avec
+ * l'import X proposent deux courbes.
+ */
 export function planifierCourbes(
   gachees: Gachee[],
   etatSync: Pick<EtatSync, "docs">,
   etat: EtatCourbes,
-  budget = 10,
 ): CourbeAEnvoyer[] {
   const r: CourbeAEnvoyer[] = [];
-  const vus = new Set<string>();
+  const vues = new Set<string>();
   for (const g of gachees) {
-    // Une copie de conflit garde les ids d'éprouvette de l'original : sa
-    // courbe est celle de l'original, envoyée avec lui.
-    if (g.conflit) continue;
-    if (etatSync.docs[cleDoc("gachee", g.id)]?.rev == null) continue;
-    for (const e of g.eprouvettes ?? []) {
-      if (!e.essai?.courbeInfo || vus.has(e.id)) continue;
-      vus.add(e.id);
-      const signature = signatureCourbe(e.essai);
-      const deja = etat.envoyees[e.id];
-      if (deja?.signature === signature || etat.bloquees[e.id] === signature) continue;
-      r.push({ eprouvetteId: e.id, gacheeId: g.id, signature, baseRev: deja?.rev ?? null });
-      if (r.length >= budget) return r;
+    const candidates = (g.eprouvettes ?? []).filter((e) => origineVerifiee(e.essai));
+    if (candidates.length === 0) continue;
+    const enLigne = etatSync.docs[cleDoc("gachee", g.id)];
+    if (enLigne?.rev == null || enLigne.empreinte !== empreinte(canoniqueGachee(g))) continue;
+    for (const e of candidates) {
+      const cle = cleCourbe(e);
+      if (vues.has(cle) || !RE_ID_DOC.test(cle)) continue;
+      vues.add(cle);
+      if (etat.envoyees[cle] || etat.bloquees[cle] !== undefined) continue;
+      r.push({ cle, eprouvetteId: e.id, gacheeId: g.id, importeLe: e.essai!.courbeInfo!.importeLe! });
     }
   }
   return r;
 }
 
 /** Contenu du document « courbe ». */
-export function contenuCourbe(p: Pick<CourbeAEnvoyer, "eprouvetteId" | "gacheeId">, c: CourbeColonnes): Record<string, unknown> {
-  return { v: 1, eprouvetteId: p.eprouvetteId, gacheeId: p.gacheeId, t: c.t, f: c.f, d: c.d, s: c.s, e: c.e };
+export function contenuCourbe(p: Pick<CourbeAEnvoyer, "eprouvetteId" | "gacheeId" | "importeLe">, c: CourbeColonnes): Record<string, unknown> {
+  return { v: 1, eprouvetteId: p.eprouvetteId, gacheeId: p.gacheeId, importeLe: p.importeLe, t: c.t, f: c.f, d: c.d, s: c.s, e: c.e };
 }
 
 /** Écriture d'un document « courbe » (ecrire_doc), injectée. */
@@ -94,56 +96,69 @@ export type EcrireCourbe = (id: string, contenu: unknown, baseRev: number | null
  * Envoie UNE courbe. Rend la révision serveur, ou null (à réessayer plus
  * tard). Cas traités :
  *   - création acceptée ;
- *   - la courbe existe déjà en ligne (réponse perdue, autre appareil) : même
- *     contenu, on retient sa révision ; contenu différent ou retiré, on la
- *     réécrit sur la révision lue (l'import de cet appareil fait foi) ;
- *   - renvoi après un nouvel import, sur une révision qui a bougé : idem.
+ *   - le document existe déjà en ligne (réponse perdue, autre appareil) :
+ *     c'est le même import (même identifiant), on retient sa révision SANS
+ *     réécrire, même si le contenu diffère ;
+ *   - le document a été retiré (nettoyage serveur) : on le recrée.
  * Les erreurs (ErreurSync) remontent.
  */
-export async function envoyerCourbe(ecrire: EcrireCourbe, p: CourbeAEnvoyer, contenu: unknown): Promise<number | null> {
-  const r = await ecrire(p.eprouvetteId, contenu, p.baseRev);
+export async function envoyerCourbe(ecrire: EcrireCourbe, p: Pick<CourbeAEnvoyer, "cle">, contenu: unknown): Promise<number | null> {
+  const r = await ecrire(p.cle, contenu, null);
   if (r.ok) return r.rev;
-  if (r.ligne === null) {
-    // Plus rien en ligne (renvoi) : on recrée.
-    const c = await ecrire(p.eprouvetteId, contenu, null);
-    return c.ok ? c.rev : null;
-  }
-  if (!r.ligne.supprime && empreinte(r.ligne.contenu) === empreinte(contenu)) return r.ligne.rev;
-  const s = await ecrire(p.eprouvetteId, contenu, r.ligne.rev);
+  if (r.ligne === null) return null;
+  if (!r.ligne.supprime) return r.ligne.rev;
+  const s = await ecrire(p.cle, contenu, r.ligne.rev);
   return s.ok ? s.rev : null;
 }
 
 /**
  * Un cycle d'envoi : planifie, lit chaque courbe dans le magasin, l'envoie,
  * et rend le nouvel état. Une erreur passagère arrête le cycle (on reprendra
- * au suivant) ; un refus définitif bloque la courbe jusqu'à ce qu'elle change.
+ * au suivant) ; un refus définitif bloque la courbe. `reste` : courbes encore
+ * à envoyer (budget épuisé, erreur, réponse à reprendre) ; `budgetEpuise` :
+ * relancer bientôt.
  */
 export async function cycleCourbes(args: {
   gachees: Gachee[];
   etatSync: Pick<EtatSync, "docs">;
   etat: EtatCourbes;
-  lire: (id: string) => Promise<CourbeColonnes | null>;
+  lire: (cle: string) => Promise<CourbeColonnes | null>;
   ecrire: EcrireCourbe;
   budget?: number;
-}): Promise<{ etat: EtatCourbes; envoyees: number }> {
-  const etat: EtatCourbes = { ...args.etat, envoyees: { ...args.etat.envoyees }, bloquees: { ...args.etat.bloquees } };
+}): Promise<{ etat: EtatCourbes; envoyees: number; reste: number; budgetEpuise: boolean }> {
+  const budget = args.budget ?? 10;
+  const etat: EtatCourbes = { envoyees: { ...args.etat.envoyees }, bloquees: { ...args.etat.bloquees } };
+  const plan = planifierCourbes(args.gachees, args.etatSync, etat);
   let envoyees = 0;
-  for (const p of planifierCourbes(args.gachees, args.etatSync, etat, args.budget)) {
-    const courbe = await args.lire(p.eprouvetteId);
-    if (!courbe) continue; // pas (ou plus) dans le magasin de cet appareil
+  let reglees = 0;
+  let i = 0;
+  for (; i < plan.length && envoyees < budget; i++) {
+    const p = plan[i];
+    const courbe = await args.lire(p.cle);
+    if (!courbe) { reglees++; continue; } // pas (ou plus) dans le magasin de cet appareil
     try {
+      envoyees++;
       const rev = await envoyerCourbe(args.ecrire, p, contenuCourbe(p, courbe));
       if (rev === null) continue;
-      etat.envoyees[p.eprouvetteId] = { rev, signature: p.signature };
-      delete etat.bloquees[p.eprouvetteId];
-      envoyees++;
+      etat.envoyees[p.cle] = { rev };
+      delete etat.bloquees[p.cle];
+      reglees++;
     } catch (e) {
       if (e instanceof ErreurSync && e.nature === "permanente") {
-        etat.bloquees[p.eprouvetteId] = p.signature;
+        etat.bloquees[p.cle] = e.code;
+        reglees++;
         continue;
       }
       break; // passagère ou session : on reprendra au prochain cycle
     }
   }
-  return { etat, envoyees };
+  return { etat, envoyees, reste: plan.length - reglees, budgetEpuise: envoyees >= budget && i < plan.length };
+}
+
+/** Le nettoyage serveur a retiré ces documents : ils ne sont plus en ligne. */
+export function oublierPurgees(etat: EtatCourbes, ids: string[]): EtatCourbes {
+  if (ids.length === 0) return etat;
+  const envoyees = { ...etat.envoyees };
+  for (const id of ids) delete envoyees[id];
+  return { ...etat, envoyees };
 }

@@ -5,6 +5,8 @@ import { empreinte } from "./sync-empreinte";
 import { cycle, etatInitial, type EtatSync, type Kind } from "./sync-moteur";
 import { canoniqueGachee, canoniqueResultat, creerDepotLocal, type SourcesLocales } from "./sync-local";
 import { FauxServeur, FauxTransport } from "./sync-faux-serveur";
+import { planifierCourbes } from "./sync-courbes";
+import { courbesOrphelines } from "./courbes";
 
 // Stockage local en mémoire, avec les mêmes contrats que le magasin :
 // écritures qui peuvent échouer, rechargement signalé après écriture.
@@ -39,6 +41,20 @@ function gachee(id: string, titre = "x", avecCourbe = false): Gachee {
       essai: { date: "2026-10-26T12:00:00.000Z", contrainteKpaSaisie: 196, ...(avecCourbe ? { courbe } : {}) },
     }],
   } as unknown as Gachee;
+}
+
+const X = "2026-10-01T10:00:00.000Z";
+const Y = "2026-10-02T15:30:00.000Z";
+
+/** L'éprouvette de la gâchée désigne l'import `importeLe` (null : aucun import), avec ces champs locaux de courbe. */
+function avecImport(g: Gachee, importeLe: string | null, champs: Record<string, unknown>): Gachee {
+  const [e] = g.eprouvettes;
+  const essai: Record<string, unknown> = { ...e.essai };
+  delete essai.courbe;
+  delete essai.courbeInfo;
+  delete essai.sourcePresse;
+  if (importeLe) essai.sourcePresse = { fichier: "p.xlsx", echantillon: "1", importeLe };
+  return { ...g, eprouvettes: [{ ...e, essai: { ...essai, ...champs } }] } as Gachee;
 }
 
 function resultat(id: string, ownerId?: string): SavedResult {
@@ -94,6 +110,29 @@ describe("sync-local — dépôt", () => {
     expect(s.gachees[0].eprouvettes[0].essai?.courbeInfo).toEqual({ nbPoints: 151 });
   });
 
+  it("courbe réattachée seulement à une éprouvette du MÊME import ; réimportée ailleurs ou import retiré : plus de courbe", () => {
+    const cas: [string, Record<string, unknown>, string | null, boolean][] = [
+      // [cas, champs locaux, import reçu, réattachée ?]
+      ["référence vérifiée, même import", { courbeInfo: { nbPoints: 151, importeLe: X } }, X, true],
+      ["référence vérifiée, réimportée ailleurs", { courbeInfo: { nbPoints: 151, importeLe: X } }, Y, false],
+      ["référence vérifiée, import retiré", { courbeInfo: { nbPoints: 151, importeLe: X } }, null, false],
+      ["ancienne référence, même import désigné", { courbeInfo: { nbPoints: 151 } }, X, true],
+      ["ancienne référence, réimportée ailleurs", { courbeInfo: { nbPoints: 151 } }, Y, false],
+      ["courbe dans la gâchée, réimportée ailleurs", { courbe }, Y, false],
+      ["courbe dans la gâchée, même import", { courbe }, X, true],
+    ];
+    for (const [nom, champs, recuImporte, attendu] of cas) {
+      const { s, depot } = stockage();
+      s.gachees = [avecImport(gachee("g1", "local"), X, champs)];
+      const D = depot.lister().get("gachee:g1")!;
+      const recu = canoniqueGachee(avecImport(gachee("g1", "serveur"), recuImporte, {}));
+      depot.appliquer([{ type: "ecrire", kind: "gachee", id: "g1", contenu: recu, attendu: D.empreinte }]);
+      const essai = s.gachees[0].eprouvettes[0].essai as Record<string, unknown>;
+      expect([nom, Object.keys(champs).every((k) => k in essai)]).toEqual([nom, attendu]);
+      if (!attendu) expect([nom, "courbe" in essai || "courbeInfo" in essai]).toEqual([nom, false]);
+    }
+  });
+
   it("un résultat reçu est estampillé au compte lié", () => {
     const { s, depot } = stockage("u1");
     depot.appliquer([{ type: "ecrire", kind: "resultat", id: "r1", contenu: canoniqueResultat(resultat("r1")), attendu: null }]);
@@ -136,6 +175,15 @@ describe("sync-local — dépôt", () => {
     expect(copie.conflit).toEqual({ de: "g1", le: "2026-09-28T12:00:00.000Z" });
     expect(copie.eprouvettes[0].essai?.courbe).toEqual(courbe);
   });
+
+  it("la copie de conflit garde aussi la référence au magasin (courbeInfo) : rien à balayer", () => {
+    const { s, depot } = stockage();
+    s.gachees = [avecImport(gachee("g1", "local"), X, { courbeInfo: { nbPoints: 151, importeLe: X } })];
+    const D = depot.lister().get("gachee:g1")!;
+    const copie = depot.copieDeConflit("gachee", D.contenu, "g1.conflit.ab12", "2026-09-28T12:00:00.000Z") as Gachee;
+    expect(copie.eprouvettes[0].essai?.courbeInfo).toEqual({ nbPoints: 151, importeLe: X });
+    expect(courbesOrphelines([`g1-e1:${X}`], [copie])).toEqual([]);
+  });
 });
 
 describe("sync-local — avec le moteur", () => {
@@ -163,5 +211,33 @@ describe("sync-local — avec le moteur", () => {
     expect(X.s.gachees[0].eprouvettes[0].essai?.courbe).toEqual(courbe);
     // Et rien ne repart : la courbe n'est pas une modification.
     expect((await cycle(eX, tX, X.depot, opt)).envoyes).toBe(0);
+  });
+
+  it("B lit la courbe en ligne (import X), puis A réimporte (Y) : B perd sa référence et n'envoie rien", async () => {
+    const serveur = new FauxServeur();
+    const opt = { maintenant: () => "2026-09-28T12:00:00.000Z", alea: () => "zz01" };
+    const A = stockage();
+    const B = stockage();
+    let eA: EtatSync = { ...etatInitial(), uid: "u1" };
+    let eB: EtatSync = { ...etatInitial(), uid: "u1" };
+    const tA = new FauxTransport(serveur, "u1", () => "u1");
+    const tB = new FauxTransport(serveur, "u1", () => "u1");
+
+    A.s.gachees = [avecImport(gachee("g1"), X, { courbeInfo: { nbPoints: 151, importeLe: X } })];
+    eA = (await cycle(eA, tA, A.depot, opt)).etat;
+    eB = (await cycle(eB, tB, B.depot, opt)).etat;
+    // B lit la courbe X en ligne et la range : sa référence nomme l'import X.
+    B.s.gachees = [avecImport(B.s.gachees[0], X, { courbeInfo: { nbPoints: 151, importeLe: X } })];
+    expect(planifierCourbes(B.s.gachees, eB, { envoyees: {}, bloquees: {} }).map((p) => p.cle)).toEqual([`g1-e1:${X}`]);
+
+    // A réimporte : la gâchée désigne Y.
+    A.s.gachees = [avecImport(A.s.gachees[0], Y, { courbeInfo: { nbPoints: 140, importeLe: Y } })];
+    await cycle(eA, tA, A.depot, opt);
+    eB = (await cycle(eB, tB, B.depot, opt)).etat;
+    const essaiB = B.s.gachees[0].eprouvettes[0].essai!;
+    expect(essaiB.sourcePresse?.importeLe).toBe(Y);
+    expect(essaiB.courbeInfo).toBeUndefined(); // l'écran propose « Courbe en ligne : afficher » (Y)
+    expect(planifierCourbes(B.s.gachees, eB, { envoyees: {}, bloquees: {} })).toEqual([]);
+    expect(courbesOrphelines([`g1-e1:${X}`], B.s.gachees)).toEqual([`g1-e1:${X}`]);
   });
 });

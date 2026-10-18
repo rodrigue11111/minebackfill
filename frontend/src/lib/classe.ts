@@ -9,6 +9,7 @@ import type { SavedResult } from "./store";
 import { contrainteKpa, type Eprouvette } from "./eprouvette";
 import { nuageUcs, type AxeFormulation, type PointNuage } from "./ucs-formulation";
 import { correspond, type FiltreSession, type Session } from "./sessions";
+import { courbesRetenues } from "./courbes";
 
 /** Une ligne rendue par lire_docs_classe. */
 export interface LigneClasse {
@@ -177,16 +178,40 @@ export function agesClasse(etudiants: EtudiantClasse[]): number[] {
  * (l'offre gratuite n'en fait aucune). À ranger HORS de GitHub : il contient
  * des données d'étudiants.
  */
+/** Éprouvettes des gâchées exportées, avec l'import que chacune désigne. */
+function eprouvettesDesCourbes(etudiants: EtudiantClasse[]): { proprietaire: string; eprouvetteId: string; importeLe?: string }[] {
+  return etudiants.flatMap((e) => e.gachees.flatMap((g) => (g.eprouvettes ?? []).map((x) => ({
+    proprietaire: e.id, eprouvetteId: x.id, importeLe: x.essai?.sourcePresse?.importeLe,
+  }))));
+}
+
+/**
+ * Éprouvettes (`compte|id`) qui ont une courbe en ligne : celle de leur
+ * import, ou un ancien document sans import (colonne courbe_en_ligne).
+ */
+export function eprouvettesAvecCourbe(
+  etudiants: EtudiantClasse[],
+  courbes: { proprietaire: string; eprouvetteId: string; importeLe: string | null }[],
+): Set<string> {
+  return new Set(courbesRetenues(courbes, eprouvettesDesCourbes(etudiants)).map((c) => `${c.proprietaire}|${c.eprouvetteId}`));
+}
+
 export function exportClasse(
   etudiants: EtudiantClasse[],
   filtre: FiltreSession,
   maintenant: Date,
-  courbes?: { proprietaire: string; eprouvetteId: string; gacheeId: string | null; contenu: unknown }[],
+  courbes?: { proprietaire: string; eprouvetteId: string; gacheeId: string | null; importeLe: string | null; contenu: unknown }[],
 ): unknown {
-  // Courbes de presse (en ligne depuis 2026-10) : celles des éprouvettes des
-  // gâchées exportées, sous une clé à part. La version reste 1 : un ancien
-  // lecteur ignore simplement la clé.
-  const eprouvettes = new Set(etudiants.flatMap((e) => e.gachees.flatMap((g) => g.eprouvettes.map((x) => `${e.id}|${x.id}`))));
+  // Courbes de presse (en ligne depuis 2026-10) : celle de l'import que
+  // chaque éprouvette exportée désigne (ou l'ancien document sans import,
+  // marqué origineNonVerifiee), sous une clé à part. La version reste 1 : un
+  // ancien lecteur ignore simplement la clé.
+  const retenues = courbes
+    ? courbesRetenues(courbes, eprouvettesDesCourbes(etudiants)).map(({ origineNonVerifiee, ...c }) => ({
+      proprietaire: c.proprietaire, eprouvetteId: c.eprouvetteId, gacheeId: c.gacheeId, importeLe: c.importeLe,
+      ...(origineNonVerifiee ? { origineNonVerifiee: true } : {}), contenu: c.contenu,
+    }))
+    : undefined;
   return {
     application: "MineBackfill",
     type: "export-classe",
@@ -196,6 +221,6 @@ export function exportClasse(
     etudiants: etudiants.map((e) => ({
       id: e.id, nom: e.nom, email: e.email, resultats: e.resultats, gachees: e.gachees,
     })),
-    ...(courbes ? { courbes: courbes.filter((c) => eprouvettes.has(`${c.proprietaire}|${c.eprouvetteId}`)) } : {}),
+    ...(retenues ? { courbes: retenues } : {}),
   };
 }

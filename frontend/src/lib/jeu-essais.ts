@@ -271,7 +271,7 @@ const COLONNES_EPROUVETTE: Colonne<CtxEssai>[] = [
   { cle: "import_presse", libelle: "Importé de la presse", type: "booléen", val: (c) => !!c.ep.essai?.sourcePresse,
     description: "Les mesures viennent d'un fichier de presse importé (et non d'une saisie)." },
   { cle: "courbe_en_ligne", libelle: "Courbe de presse en ligne", type: "booléen", val: (c) => c.courbeEnLigne,
-    description: "La courbe contrainte-déformation de l'éprouvette est sauvegardée en ligne (lisible par l'enseignant, et incluse dans l'export « Classe (JSON) »). Vide si l'information n'a pas pu être lue." },
+    description: "La courbe contrainte-déformation de l'éprouvette est sauvegardée en ligne : celle de l'import de presse que l'éprouvette désigne, ou une courbe envoyée avant le 18 octobre 2026 (origine non vérifiée). Lisible par l'enseignant, incluse dans l'export « Classe (JSON) ». Vide si l'information n'a pas pu être lue." },
   { cle: "eprouvette_ecartee", libelle: "Écartée par l'enseignant", type: "booléen", val: (c) => (c.revue ? c.revue.ecartees.includes(c.ep.id) : null),
     description: "L'enseignant a écarté cette éprouvette lors de sa revue (la gâchée de l'étudiant n'est pas modifiée). Vide sans revue." },
 ];

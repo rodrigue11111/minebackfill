@@ -13,7 +13,7 @@ import type { Gachee } from "./gachee";
 import type { Protocole } from "./protocole";
 import { ecrireLocal } from "./persisted";
 import {
-  estCourbeColonnes, resoudreCourbesImportees, type CourbeColonnes, type MagasinCourbes,
+  cleCourbe, estCourbeColonnes, resoudreCourbesImportees, type CourbeColonnes, type MagasinCourbes,
 } from "./courbes";
 import { magasinCourbes } from "./courbes-client";
 
@@ -97,15 +97,18 @@ function lire(cle: string): unknown {
 /**
  * Télécharge un fichier JSON contenant toutes les données locales, courbes de
  * presse comprises (lues dans le magasin : sans elles, une sauvegarde
- * restaurée ailleurs les perdrait).
+ * restaurée ailleurs les perdrait). Les courbes sont rangées sous leur clé
+ * (cleCourbe : par import quand il est connu) ; le schéma ne change pas, une
+ * clé reste un texte.
  */
 export async function exporterDonnees(magasin: MagasinCourbes | null = magasinCourbes()): Promise<void> {
   const courbes: Record<string, CourbeColonnes> = {};
   if (magasin) {
     for (const g of loadGacheesFromStorage()) for (const e of g.eprouvettes ?? []) {
       if (!e.essai?.courbeInfo) continue;
-      const c = await magasin.lire(e.id).catch(() => null);
-      if (c) courbes[e.id] = c;
+      const cle = cleCourbe(e);
+      const c = await magasin.lire(cle).catch(() => null);
+      if (c) courbes[cle] = c;
     }
   }
   const backup: Backup = {
@@ -188,12 +191,15 @@ export async function importerDonnees(
           if (brutes && typeof brutes === "object") {
             for (const [id, c] of Object.entries(brutes)) if (estCourbeColonnes(c)) courbesFichier[id] = c;
           }
-          const voulues = nouveaux.flatMap((g) => (g.eprouvettes ?? [])
-            .filter((e) => e.essai?.courbeInfo && courbesFichier[e.id]).map((e) => e.id));
+          // Clé de courbe : celle sous laquelle le fichier la range (un
+          // fichier d'avant le 2026-10-18 n'a que des références sans import,
+          // donc l'ancienne clé, celle de ses courbes).
+          const voulues = [...new Set(nouveaux.flatMap((g) => (g.eprouvettes ?? [])
+            .filter((e) => e.essai?.courbeInfo && courbesFichier[cleCourbe(e)]).map((e) => cleCourbe(e))))];
           let enregistrees = new Set<string>();
           if (magasin && voulues.length > 0) {
             try {
-              await magasin.ecrire(voulues.map((id) => [id, courbesFichier[id]]));
+              await magasin.ecrire(voulues.map((cle) => [cle, courbesFichier[cle]]));
               enregistrees = new Set(voulues);
             } catch { /* magasin indisponible : courbes remises dans les gâchées */ }
           }

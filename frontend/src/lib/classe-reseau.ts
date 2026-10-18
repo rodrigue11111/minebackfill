@@ -6,7 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Annotation } from "./annotations";
 import type { LigneClasse, ProfilClasse } from "./classe";
-import { courbeDepuisContenu, type CourbeColonnes } from "./courbes";
+import { cleImport, courbeDepuisContenu, type CourbeColonnes } from "./courbes";
 import {
   revueClasseDepuisLigne, revueDepuisLigne,
   type DecisionRevue, type LigneMesRevues, type LigneRevueClasse, type Revue, type RevueClasse,
@@ -126,47 +126,93 @@ export async function lireDocComplet(
   return { contenu: d.payload, rev: Number(d.rev), maj: d.updated_at, supprime: d.deleted };
 }
 
+/** Une courbe lue en ligne, avec ce qu'on sait de son origine. */
+export interface CourbeLue {
+  courbe: CourbeColonnes;
+  /** Identifiant du document lu (clé de la courbe). */
+  cle: string;
+  rev: number;
+  /** Ancien document (identifiant = id de l'éprouvette, sans import) : rien
+   *  ne prouve qu'il vient de l'import que la gâchée désigne. */
+  origineNonVerifiee: boolean;
+}
+
 /**
- * Courbe de presse d'une éprouvette, lue en ligne à la demande (document
- * « courbe », id = id de l'éprouvette). L'étudiant lit les siennes, l'enseignant
- * celles de la classe (RLS). null : pas (ou plus) de courbe en ligne.
+ * Courbe de presse d'une éprouvette, lue en ligne à la demande. D'abord le
+ * document de l'import que la gâchée désigne (`<idEprouvette>:<importeLe>`) ;
+ * à défaut, l'ancien document `<idEprouvette>` (écrit avant le 2026-10-18),
+ * d'origine non vérifiée. L'étudiant lit les siennes, l'enseignant celles de
+ * la classe (RLS). null : pas (ou plus) de courbe en ligne.
  */
-export async function lireCourbe(sb: SupabaseClient, proprietaire: string, eprouvetteId: string): Promise<CourbeColonnes | null> {
+export async function lireCourbe(
+  sb: SupabaseClient, proprietaire: string, eprouvetteId: string, importeLe: string | undefined,
+): Promise<CourbeLue | null> {
+  if (importeLe) {
+    const cle = cleImport(eprouvetteId, importeLe);
+    const d = await lireDocComplet(sb, proprietaire, "courbe", cle);
+    const courbe = d && !d.supprime ? courbeDepuisContenu(d.contenu) : null;
+    if (d && courbe) return { courbe, cle, rev: d.rev, origineNonVerifiee: false };
+  }
   const d = await lireDocComplet(sb, proprietaire, "courbe", eprouvetteId);
-  return d && !d.supprime ? courbeDepuisContenu(d.contenu) : null;
+  const courbe = d && !d.supprime ? courbeDepuisContenu(d.contenu) : null;
+  if (!d || !courbe) return null;
+  const importeDoc = (d.contenu as { importeLe?: unknown }).importeLe;
+  return { courbe, cle: eprouvetteId, rev: d.rev, origineNonVerifiee: !importeLe || importeDoc !== importeLe };
 }
 
 /** Une courbe de la classe, avec son rattachement (export JSON). */
 export interface CourbeClasse {
   proprietaire: string;
+  /** Identifiant du document (clé de la courbe). */
+  id: string;
   eprouvetteId: string;
   gacheeId: string | null;
+  /** Import dont la courbe vient ; null : ancien document, sans import. */
+  importeLe: string | null;
   contenu: CourbeColonnes;
 }
 
+const COURBE_VIDE: CourbeColonnes = { v: 1, t: [], f: [], d: [], s: [], e: [] };
+/** Pages plus petites avec le contenu : une courbe pèse ~19 Ko. */
+const PAGE_COURBES = 100;
+
 /**
- * Enseignant : courbes en ligne de la classe. Sans contenu (`avecContenu`
- * faux) : seulement qui a quoi, pour la colonne courbe_en_ligne du jeu
- * d'essais. Les erreurs sont levées.
+ * Enseignant : courbes en ligne des comptes donnés (ceux qu'on exporte).
+ * Sans contenu (`avecContenu` faux) : seulement le rattachement, pour la
+ * colonne courbe_en_ligne du jeu d'essais. Lecture par compte, paginée par
+ * identifiant (sans décalage : une courbe ajoutée pendant la lecture ne fait
+ * rien sauter). Les erreurs sont levées.
  */
-export async function lireCourbesClasse(sb: SupabaseClient, avecContenu: boolean): Promise<CourbeClasse[]> {
+export async function lireCourbesClasse(sb: SupabaseClient, avecContenu: boolean, proprietaires: string[]): Promise<CourbeClasse[]> {
   const toutes: CourbeClasse[] = [];
-  for (let debut = 0, p = 0; p < MAX_PAGES; p++) {
-    const { data, error } = await sb.from("user_docs")
-      .select(avecContenu ? "user_id,id,payload" : "user_id,id")
-      .eq("kind", "courbe").eq("deleted", false)
-      .order("user_id", { ascending: true }).order("id", { ascending: true })
-      .range(debut, debut + PAGE - 1);
-    if (error) throw echec(error);
-    const page = (data ?? []) as unknown as { user_id: string; id: string; payload?: unknown }[];
-    if (page.length === 0) break;
-    for (const l of page) {
-      const contenu = avecContenu ? courbeDepuisContenu(l.payload) : { v: 1 as const, t: [], f: [], d: [], s: [], e: [] };
-      if (!contenu) continue;
-      const gacheeId = (l.payload as { gacheeId?: unknown } | undefined)?.gacheeId;
-      toutes.push({ proprietaire: l.user_id, eprouvetteId: l.id, gacheeId: typeof gacheeId === "string" ? gacheeId : null, contenu });
+  const taille = avecContenu ? PAGE_COURBES : PAGE;
+  const colonnes = avecContenu
+    ? "id,payload"
+    : "id,eprouvetteId:payload->>eprouvetteId,gacheeId:payload->>gacheeId,importeLe:payload->>importeLe";
+  for (const proprietaire of [...new Set(proprietaires)]) {
+    let apres: string | null = null;
+    for (let p = 0; p < MAX_PAGES; p++) {
+      let q = sb.from("user_docs").select(colonnes)
+        .eq("user_id", proprietaire).eq("kind", "courbe").eq("deleted", false);
+      if (apres !== null) q = q.gt("id", apres);
+      const { data, error } = await q.order("id", { ascending: true }).limit(taille);
+      if (error) throw echec(error);
+      const page = (data ?? []) as unknown as { id: string; payload?: unknown; eprouvetteId?: unknown; gacheeId?: unknown; importeLe?: unknown }[];
+      // Fin à la page vide seulement : le serveur peut rendre moins de lignes
+      // que demandé (max_rows) sans que la lecture soit finie.
+      if (page.length === 0) break;
+      for (const l of page) {
+        const meta = (avecContenu ? l.payload : l) as { eprouvetteId?: unknown; gacheeId?: unknown; importeLe?: unknown } | null | undefined;
+        const contenu = avecContenu ? courbeDepuisContenu(l.payload) : COURBE_VIDE;
+        if (!contenu) continue;
+        const texte = (x: unknown) => (typeof x === "string" && x ? x : null);
+        toutes.push({
+          proprietaire, id: l.id, eprouvetteId: texte(meta?.eprouvetteId) ?? l.id,
+          gacheeId: texte(meta?.gacheeId), importeLe: texte(meta?.importeLe), contenu,
+        });
+      }
+      apres = page[page.length - 1].id;
     }
-    debut += page.length;
   }
   return toutes;
 }

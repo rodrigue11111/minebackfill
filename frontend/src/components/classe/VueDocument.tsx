@@ -9,7 +9,8 @@ import type { DocComplet, LigneAnnotation } from "@/lib/classe-reseau";
 import GacheeLecture, { type CatalogueEnseignant } from "./GacheeLecture";
 import CarteRevue, { type ActionsRevue } from "./CarteRevue";
 import { revuePerimee, type RevueClasse } from "@/lib/revues";
-import type { PointCourbe } from "@/lib/presse-urstm";
+import type { CourbeAffichee } from "@/lib/courbes";
+import type { Eprouvette } from "@/lib/eprouvette";
 import ResultatLecture from "./ResultatLecture";
 import FilCommentaires from "./FilCommentaires";
 import { EnTetePage } from "@/components/ui/Page";
@@ -40,7 +41,7 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
   revue?: RevueClasse;
   actionsRevue?: ActionsRevue;
   /** Courbe de presse d'une éprouvette de ce document (lecture en ligne). */
-  chargerCourbe?: (eprouvetteId: string) => Promise<PointCourbe[] | null>;
+  chargerCourbe?: (e: Eprouvette) => Promise<CourbeAffichee | null>;
 }) {
   const { ref } = doc;
   const contenu = doc.etat === "pret" && !doc.doc.supprime ? doc.doc.contenu : null;

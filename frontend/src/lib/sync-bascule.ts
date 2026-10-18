@@ -6,9 +6,10 @@
 // connecte :
 // - le travail du compte précédent quitte l'écran. S'il est entièrement en
 //   ligne, il n'y a rien à garder ici. S'il reste des modifications non
-//   envoyées, ou des courbes de presse (qui ne vont pas en ligne), il est
-//   MIS DE CÔTÉ sur cet appareil et retrouvé à la prochaine connexion de ce
-//   compte ici ;
+//   envoyées, ou des courbes de presse (envoyées à part par sync-courbes.ts,
+//   et pas toutes : une courbe d'origine inconnue reste sur l'appareil), il
+//   est MIS DE CÔTÉ sur cet appareil et retrouvé à la prochaine connexion de
+//   ce compte ici ;
 // - le nouveau compte retrouve ce qui avait été mis de côté pour lui, sinon
 //   son travail redescend du serveur.
 // Jamais le travail d'un compte n'est envoyé sous un autre.

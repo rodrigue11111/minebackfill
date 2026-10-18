@@ -14,8 +14,10 @@ import {
 import type { Gachee } from "@/lib/gachee";
 import type { Annotation } from "@/lib/annotations";
 import { badgeEcheance, fmtDate } from "@/lib/echeance-affichage";
-import { courbesAOublier } from "@/lib/courbes";
-import { enregistrerCourbes, oublierCourbes } from "@/lib/courbes-client";
+import {
+  appliquerImportPresse, cleAffectation, clesCourbesEprouvette, courbesAOublier, decoderCourbe, origineNonVerifiee, type CourbeAffichee,
+} from "@/lib/courbes";
+import { enregistrerCourbes, lireCourbeLocale, marquerCourbeEnLigne, oublierCourbes, rangerCourbe } from "@/lib/courbes-client";
 import { Carte } from "@/components/ui/Carte";
 import { Champ } from "@/components/ui/Champ";
 import { Bandeau } from "@/components/ui/Bandeau";
@@ -25,8 +27,6 @@ import Segmente from "@/components/ui/Segmente";
 import { FilEtudiant } from "@/components/AnnotationsDoc";
 import ImportPresse from "./ImportPresse";
 import FormEssaiUCS from "./FormEssaiUCS";
-import { decoderCourbe } from "@/lib/courbes";
-import { lireCourbeLocale, rangerCourbe } from "@/lib/courbes-client";
 import { lireCourbe } from "@/lib/classe-reseau";
 import { getSupabase } from "@/lib/supabase";
 import { dateCourteFr, imprimerHtml, isoJourMidi, isoVersDateInput, nouvelId } from "./outils";
@@ -82,19 +82,36 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
 
   // Courbe de presse : rangée ici (magasin, ou encore dans la gâchée), sinon
   // cherchée en ligne (envoyée depuis un autre appareil), puis rangée ici.
-  const chargerCourbe = (e: Eprouvette) => async () =>
-    e.essai?.courbe?.length ? e.essai.courbe : lireCourbeLocale(e.id);
-  const chercherEnLigne = (e: Eprouvette) => async () => {
+  const chargerCourbe = (e: Eprouvette) => async (): Promise<CourbeAffichee | null> => {
+    const points = e.essai?.courbe?.length ? e.essai.courbe : await lireCourbeLocale(e);
+    return points ? { points, origineNonVerifiee: origineNonVerifiee(e.essai) } : null;
+  };
+  const chercherEnLigne = (e: Eprouvette) => async (): Promise<CourbeAffichee | null> => {
     const sb = getSupabase();
     if (!sb || !uid) return null;
-    const c = await lireCourbe(sb, uid, e.id);
-    if (!c) return null;
-    if (await rangerCourbe(e.id, c)) majEssai(e.id, { courbeInfo: { nbPoints: c.t.length } });
-    return decoderCourbe(c);
+    const importeLe = e.essai?.sourcePresse?.importeLe;
+    const lue = await lireCourbe(sb, uid, e.id, importeLe);
+    if (!lue) return null;
+    // Seule la courbe de l'import désigné est rangée ici ; un ancien document
+    // (origine non vérifiée) est seulement affiché.
+    if (!lue.origineNonVerifiee && importeLe && await rangerCourbe(lue.cle, lue.courbe)) {
+      marquerCourbeEnLigne(uid, lue.cle, lue.rev);
+      // Sur l'état FRAIS du magasin : la gâchée a pu changer pendant la
+      // lecture (autre saisie, nouvel import). Rien n'est posé si
+      // l'éprouvette désigne désormais un autre import.
+      const actuelle = useStore.getState().gachees.find((x) => x.id === gachee.id);
+      const ep = actuelle?.eprouvettes.find((x) => x.id === e.id);
+      if (actuelle && ep?.essai && ep.essai.sourcePresse?.importeLe === importeLe && !ep.essai.courbeInfo && !ep.essai.courbe) {
+        onChange(actuelle.eprouvettes.map((x) => (x.id === e.id
+          ? { ...x, essai: { ...x.essai, courbeInfo: { nbPoints: lue.courbe.t.length, importeLe } } } : x)));
+      }
+    }
+    return { points: decoderCourbe(lue.courbe), origineNonVerifiee: lue.origineNonVerifiee };
   };
   const retirer = (id: string) => {
-    onChange(gachee.eprouvettes.filter((e) => e.id !== id));
-    oublierCourbes(courbesAOublier([id], useStore.getState().gachees.filter((x) => x.id !== gachee.id)));
+    const e = gachee.eprouvettes.find((x) => x.id === id);
+    onChange(gachee.eprouvettes.filter((x) => x.id !== id));
+    if (e) oublierCourbes(courbesAOublier(clesCourbesEprouvette(e), useStore.getState().gachees.filter((x) => x.id !== gachee.id)));
   };
 
   // Diamètre du moule nominal, proposé comme diamètre de l'essai s'il manque
@@ -148,27 +165,21 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
         idEntree={idImport}
         sansBouton
         onAppliquer={async (affectations) => {
-          // Les courbes vont D'ABORD dans IndexedDB ; l'éprouvette n'en
-          // garde qu'une référence. Si l'enregistrement échoue (ou si le
-          // navigateur n'a pas IndexedDB), la courbe reste dans la gâchée,
+          // Les courbes vont D'ABORD dans IndexedDB, sous la clé de LEUR
+          // import (idEprouvette:importeLe) ; l'éprouvette n'en garde qu'une
+          // référence, qui nomme cet import. Si l'enregistrement échoue (ou si
+          // le navigateur n'a pas IndexedDB), la courbe reste dans la gâchée,
           // comme avant : aucune perte.
           const enregistrees = await enregistrerCourbes(
-            affectations.filter((a) => a.essai.courbe?.length).map((a) => [a.eprouvetteId, a.essai.courbe!]));
+            affectations.filter((a) => a.essai.courbe?.length).map((a) => [cleAffectation(a), a.essai.courbe!]));
           // Un seul onChange pour toutes les affectations : appeler
           // majEssai en boucle repartirait de l'état d'avant et
-          // n'en garderait que la dernière.
-          const parId = new Map(affectations.map((a) => {
-            if (!enregistrees.has(a.eprouvetteId) || !a.essai.courbe) return [a.eprouvetteId, a.essai];
-            const essai = { ...a.essai, courbeInfo: { nbPoints: a.essai.courbe.length } };
-            delete essai.courbe;
-            return [a.eprouvetteId, essai];
-          }));
-          onChange(gachee.eprouvettes.map((e) => {
-            const patch = parId.get(e.id);
-            return patch
-              ? { ...e, statut: "ecrase" as const, essai: { ...(e.essai ?? {}), ...patch, ...diametreDuMoule(e, { ...e.essai, ...patch }) } }
-              : e;
-          }));
+          // n'en garderait que la dernière. Un nouvel import remplace la
+          // courbe du précédent ; l'ancienne est retirée du magasin, sauf si
+          // une autre gâchée la désigne encore.
+          const r = appliquerImportPresse(gachee.eprouvettes, affectations, enregistrees, diametreDuMoule);
+          onChange(r.eprouvettes);
+          oublierCourbes(courbesAOublier(r.anciennes, useStore.getState().gachees.filter((x) => x.id !== gachee.id)));
         }}
       />
 
@@ -217,6 +228,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                     {e.statut === "ecrase" && (
                       <FormEssaiUCS eprouvette={e} onChange={(patch) => majEssai(e.id, patch)}
                         chargerCourbe={chargerCourbe(e)} chercherCourbeEnLigne={connecte && uid ? chercherEnLigne(e) : undefined}
+                        idImport={idImport}
                         onVitessePourToutes={gachee.eprouvettes.filter((x) => x.statut === "ecrase").length > 1 ? vitessePourToutes : undefined} />
                     )}
                     <div className="labo-actions">
