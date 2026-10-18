@@ -10,7 +10,9 @@ import { protocolesDefaut, type Protocole } from "./protocole";
 import { sessionActive, validerSessions, type Session } from "./sessions";
 import { migrerAnnotationV1, type Annotation } from "./annotations";
 import type { Revue } from "./revues";
-import { descriptorFor } from "./method-registry";
+import { descriptorFor, type MethodResultKey } from "./method-registry";
+import { empreinteEntrees } from "./resultat-perime";
+import type { MesureLabo } from "./mesures";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
 import {
@@ -232,6 +234,9 @@ export interface EssaiInputsState {
     ajout_residu_humide?: number;
     ajout_eau?: number;
   }[];
+  /** Mesures au laboratoire après la gâchée, par recette (affaissement, essai
+   *  de teneur en eau). Sauvegardées avec le résultat ; jamais envoyées au calcul. */
+  mesures?: MesureLabo[];
 }
 
 export interface RpgEssaiAdjustment {
@@ -254,6 +259,8 @@ export interface RpgEssaiState {
   ajustements: RpgEssaiAdjustment[];
   /** Affaissement visé du protocole essai-erreur (mm) — défaut 178 (7 po). */
   slump_cible_mm?: number;
+  /** Mesures au laboratoire (voir EssaiInputsState.mesures). */
+  mesures?: MesureLabo[];
 }
 
 export interface RrcState {
@@ -586,6 +593,8 @@ interface AppState {
   setCw: (patch: Partial<CwState>) => void;
   setCwRecipe: (index: number, patch: { binder_pct?: number }) => void;
   cwResult: RpcCwResponse | null;
+  /** Empreinte des entrées de chaque résultat, prise quand il arrive (resultat-perime.ts). En mémoire seulement. */
+  empreintesCalcul: Partial<Record<MethodResultKey, string>>;
   setCwResult: (res: RpcCwResponse | null) => void;
 
   wb: WbState;
@@ -899,6 +908,17 @@ export function migrerMateriauxCloud(env: { v: number; data: unknown } | null | 
   return data as MaterialItem[];
 }
 
+/**
+ * Un résultat arrive (ou s'efface) : il est rangé avec l'empreinte de ses
+ * entrées à cet instant (resultat-perime.ts). Un résultat effacé n'en a plus.
+ */
+function avecEmpreinte(state: AppState, cle: MethodResultKey, res: unknown): Partial<AppState> {
+  const empreintesCalcul = { ...state.empreintesCalcul };
+  if (res) empreintesCalcul[cle] = empreinteEntrees(state as unknown as Record<string, unknown>, cle);
+  else delete empreintesCalcul[cle];
+  return { [cle]: res, empreintesCalcul } as Partial<AppState>;
+}
+
 export const useStore = create<AppState>((set, get) => ({
   // Par défaut on appelle l'API en relatif (/rpc, /rpg) via le proxy Next.js
   API: process.env.NEXT_PUBLIC_API_URL?.trim() || "",
@@ -1144,8 +1164,9 @@ export const useStore = create<AppState>((set, get) => ({
         },
       };
     }),
+  empreintesCalcul: {},
   cwResult: null,
-  setCwResult: (res) => set({ cwResult: res }),
+  setCwResult: (res) => set((state) => avecEmpreinte(state, "cwResult", res)),
 
   wb: {
     saturation_pct: 0,
@@ -1179,7 +1200,7 @@ export const useStore = create<AppState>((set, get) => ({
       };
     }),
   wbResult: null,
-  setWbResult: (res) => set({ wbResult: res }),
+  setWbResult: (res) => set((state) => avecEmpreinte(state, "wbResult", res)),
 
   slump: {
     cone_type: "mini",
@@ -1211,7 +1232,7 @@ export const useStore = create<AppState>((set, get) => ({
       };
     }),
   slumpResult: null,
-  setSlumpResult: (res) => set({ slumpResult: res }),
+  setSlumpResult: (res) => set((state) => avecEmpreinte(state, "slumpResult", res)),
 
   essai: {
     base_method: "dosage_cw",
@@ -1239,7 +1260,7 @@ export const useStore = create<AppState>((set, get) => ({
       };
     }),
   essaiResult: null,
-  setEssaiResult: (res) => set({ essaiResult: res }),
+  setEssaiResult: (res) => set((state) => avecEmpreinte(state, "essaiResult", res)),
 
   rpgCw: {
     solid_mass_pct: 0,
@@ -1262,7 +1283,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rpgCw: { ...state.rpgCw, binder_pct } };
     }),
   rpgCwResult: null,
-  setRpgCwResult: (res) => set({ rpgCwResult: res }),
+  setRpgCwResult: (res) => set((state) => avecEmpreinte(state, "rpgCwResult", res)),
 
   rpgWb: {
     saturation_pct: 0,
@@ -1287,7 +1308,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rpgWb: { ...state.rpgWb, binder_pct, wc_ratio } };
     }),
   rpgWbResult: null,
-  setRpgWbResult: (res) => set({ rpgWbResult: res }),
+  setRpgWbResult: (res) => set((state) => avecEmpreinte(state, "rpgWbResult", res)),
 
   rpgEssai: {
     base_method: "dosage_cw",
@@ -1305,7 +1326,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rpgEssai: { ...state.rpgEssai, ajustements } };
     }),
   rpgEssaiResult: null,
-  setRpgEssaiResult: (res) => set({ rpgEssaiResult: res }),
+  setRpgEssaiResult: (res) => set((state) => avecEmpreinte(state, "rpgEssaiResult", res)),
 
   // ── RRC ── valeurs par défaut prêtes pour la démo (Dias 66-70)
   rrc: {
@@ -1330,7 +1351,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rrc: { ...state.rrc, binder_pct, wc_ratio } };
     }),
   rrcResult: null,
-  setRrcResult: (res) => set({ rrcResult: res }),
+  setRrcResult: (res) => set((state) => avecEmpreinte(state, "rrcResult", res)),
 
   fillTestData: () =>
     set((state) => {
@@ -1348,15 +1369,17 @@ export const useStore = create<AppState>((set, get) => ({
 
       // Liants de la feuille : 20 % GU (Gs 3.15) + 80 % Slag GGBFS (Gs 2.9).
       // On les AJOUTE au catalogue s'ils n'existent pas (sans toucher aux
-      // entrées existantes de l'utilisateur).
+      // entrées existantes de l'utilisateur). Pas les entrées officielles CP10
+      // et SLAG : leurs Gs (3,1543 et 2,8426) ne sont pas ceux de la feuille,
+      // et l'exemple ne la reproduirait plus. Le nom dit d'où ils viennent.
       const catalogue = [...state.catalogue_liants];
       const upsert = (code: string, nom: string, gsLiant: number) => {
         if (!catalogue.some((l) => l.code === code)) {
           catalogue.push({ id: `liant_${code.toLowerCase()}`, code, nom, gs: gsLiant });
         }
       };
-      upsert("GU", "Ciment GU (T10)", 3.15);
-      upsert("GGBFS", "Slag (GGBFS)", 2.9);
+      upsert("GU", "Ciment GU (exemple Intra 2017)", 3.15);
+      upsert("GGBFS", "Laitier GGBFS (exemple Intra 2017)", 2.9);
 
       const newGeneral: GeneralInfo = {
         operator_name: "Démo Intra 2017",
@@ -1656,6 +1679,8 @@ export const useStore = create<AppState>((set, get) => ({
         patch.rrcResult = entry.rrc.result;
       }
       set(patch);
+      // Le résultat restauré correspond aux entrées restaurées : nouvelle empreinte.
+      set((s) => avecEmpreinte(s, "rrcResult", s.rrcResult));
       return true;
     }
 
@@ -1675,6 +1700,8 @@ export const useStore = create<AppState>((set, get) => ({
       if (entry.inputs) p[d.stateKey] = entry.inputs;
     }
     set(patch);
+    // Le résultat restauré correspond aux entrées restaurées : nouvelle empreinte.
+    if (d) set((s) => avecEmpreinte(s, d.resultKey, s[d.resultKey]));
     return true;
   },
   deleteSavedResult: (id) =>

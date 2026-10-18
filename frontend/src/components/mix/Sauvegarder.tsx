@@ -4,6 +4,7 @@
 // RPC/RPG et RRC (avant : deux copies divergentes dans ResultsPanel).
 
 import { useState } from "react";
+import Link from "next/link";
 import Feuille from "@/components/ui/Feuille";
 import { Champ } from "@/components/ui/Champ";
 import { Bandeau } from "@/components/ui/Bandeau";
@@ -34,7 +35,10 @@ export default function Sauvegarder({ onSave, nomParDefaut, desactive = false }:
                 ? "Sauvegarde effectuée : le résultat est dans l'Historique."
                 : "Sauvegarde locale impossible (stockage plein ou bloqué). Exportez vos données depuis Réglages."}
             </Bandeau>
-            <button type="button" className="btn-secondary" onClick={() => setOuverte(false)}>Fermer</button>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              {issue === "ok" && <Link href="/historique" className="btn-discret">Ouvrir l&apos;Historique</Link>}
+              <button type="button" className="btn-secondary" onClick={() => setOuverte(false)}>Fermer</button>
+            </div>
           </>
         ) : (
           <form

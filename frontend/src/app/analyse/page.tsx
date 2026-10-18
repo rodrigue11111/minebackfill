@@ -88,14 +88,23 @@ export default function AnalysePage() {
   const { API, general, constantes, catalogue_liants, cw, rpgCw } = useStore();
 
   const [mode, setMode] = useState<Mode>("courbes");
-  const [categorie, setCategorie] = useState<CategorieAnalyse>("RPG");
+  // La catégorie de Calculs (RRC : pas de balayage, donc RPC). Ouvrir
+  // toujours en RPG lisait la recette RPG (vide, ou l'exemple) après un
+  // calcul RPC, d'où « mélange RPC/RPG » et « la page ne fonctionne pas ».
+  const [categorie, setCategorie] = useState<CategorieAnalyse>(() => (useStore.getState().category === "RPG" ? "RPG" : "RPC"));
 
   // Courbes
-  const [param, setParam] = useState("binder_mass_pct");
+  const [param, setParam] = useState(() => {
+    const params = paramsPour(categorie);
+    return params.some((p) => p.cle === "binder_mass_pct") ? "binder_mass_pct" : params[0].cle;
+  });
   const [xMin, setXMin] = useState(1);
   const [xMax, setXMax] = useState(10);
   const [steps, setSteps] = useState(40);
-  const [sorties, setSorties] = useState<string[]>(DEFAUT_SORTIES);
+  const [sorties, setSorties] = useState<string[]>(() => {
+    const valides = new Set(sortiesPour(categorie).map((s) => s.cle));
+    return DEFAUT_SORTIES.filter((k) => valides.has(k));
+  });
   const [modeCourbe, setModeCourbe] = useState<"absolu" | "ecart">("absolu");
   // Liste plutôt que valeur unique : le cas courant a un seul élément, et
   // `res` en reste le premier — toutes les lectures existantes sont donc
@@ -480,7 +489,7 @@ export default function AnalysePage() {
       </div>
 
         {/* ── Recette de base (valeurs reprises de Calculs) ── */}
-        <Carte titre="Recette de base (reprise de Calculs)">
+        <Carte titre={`Recette de base (reprise de Calculs → ${categorie}, dosage selon Cw)`}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 18, fontSize: 14, color: "var(--texte)" }}>
             <span>Gs résidu : <strong>{fmt(base.residue_sg, 3)}</strong></span>
             <span>w₀ : <strong>{fmt(base.residue_w_pct, 1)} %</strong></span>

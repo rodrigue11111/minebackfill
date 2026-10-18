@@ -59,6 +59,8 @@ export default function WbForm() {
       }
       setWbResult(data);
     } catch (err) {
+      // Une erreur ne laisse jamais l'ancien résultat à l'écran (ni sauvegardable).
+      setWbResult(null);
       if (err instanceof TypeError) {
         setError(messageErreurReseau());
       } else {

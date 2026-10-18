@@ -123,6 +123,8 @@ export default function RpgEssaiForm() {
       }
       setRpgEssaiResult(data);
     } catch (e) {
+      // Une erreur ne laisse jamais l'ancien résultat à l'écran (ni sauvegardable).
+      setRpgEssaiResult(null);
       if (e instanceof TypeError) {
         setError(messageErreurReseau());
       } else {
@@ -232,12 +234,14 @@ export default function RpgEssaiForm() {
         numRecipes={numRecipes}
         recipes={rpgEssaiResult?.recipes}
         slumpCibleMm={rpgEssai.slump_cible_mm ?? 178}
+        mesures={rpgEssai.mesures ?? []}
+        onChange={(mesures) => setRpgEssai({ mesures })}
       />
 
       <PiedFormulaire
         loading={loading}
         onCalculer={handleCompute}
-        onReinitialiser={() => { setRpgEssai({ base_method: "dosage_cw", ajustements: [], slump_cible_mm: undefined }); setRpgEssaiResult(null); setError(null); }}
+        onReinitialiser={() => { setRpgEssai({ base_method: "dosage_cw", ajustements: [], slump_cible_mm: undefined, mesures: undefined }); setRpgEssaiResult(null); setError(null); }}
       />
       <ErrorBox message={error} />
     </div>

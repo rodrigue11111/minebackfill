@@ -63,6 +63,8 @@ export default function RpgWbForm() {
       }
       setRpgWbResult(data);
     } catch (err) {
+      // Une erreur ne laisse jamais l'ancien résultat à l'écran (ni sauvegardable).
+      setRpgWbResult(null);
       if (err instanceof TypeError) {
         setError(messageErreurReseau());
       } else {

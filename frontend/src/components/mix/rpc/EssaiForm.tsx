@@ -98,6 +98,8 @@ export default function EssaiForm() {
       }
       setEssaiResult(data);
     } catch (e) {
+      // Une erreur ne laisse jamais l'ancien résultat à l'écran (ni sauvegardable).
+      setEssaiResult(null);
       if (e instanceof TypeError) {
         setError(messageErreurReseau());
       } else {
@@ -151,12 +153,13 @@ export default function EssaiForm() {
         })}
       </CardSection>
 
-      <MesuresLabo numRecipes={numRecipes} recipes={essaiResult?.recipes} />
+      <MesuresLabo numRecipes={numRecipes} recipes={essaiResult?.recipes}
+        mesures={essai.mesures ?? []} onChange={(mesures) => setEssai({ mesures })} />
 
       <PiedFormulaire
         loading={loading}
         onCalculer={handleCompute}
-        onReinitialiser={() => { setEssai({ base_method: "dosage_cw", ajustements: [] }); setEssaiResult(null); setError(null); }}
+        onReinitialiser={() => { setEssai({ base_method: "dosage_cw", ajustements: [], mesures: undefined }); setEssaiResult(null); setError(null); }}
       />
       <ErrorBox message={error} />
     </div>

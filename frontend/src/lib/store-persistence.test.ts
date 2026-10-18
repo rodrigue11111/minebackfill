@@ -15,6 +15,7 @@ class MemStorage {
 import { ANNOTATIONS_KEY, loadAnnotationsFromStorage, persistAnnotations, useStore } from "./store";
 import { chargerEtatSync, sauverEtatSync } from "./sync-etat";
 import { etatInitial } from "./sync-moteur";
+import { resultatPerime } from "./resultat-perime";
 
 function resetTout() {
   (globalThis as unknown as { window: unknown }).window = globalThis;
@@ -402,5 +403,19 @@ describe("store — sauvegarde d'un essai-erreur : méthode de base comprise", (
     const inputs = r.inputs as { base_method: string; base_cw?: { residue_sg: number; residue_w_pct: number } };
     expect(inputs.base_method).toBe("dosage_cw");
     expect(inputs.base_cw).toMatchObject({ residue_sg: 3.05, residue_w_pct: 24.1 });
+  });
+});
+
+describe("store — résultats périmés", () => {
+  it("un résultat garde l'empreinte de ses entrées ; une entrée modifiée le rend périmé ; effacé, plus d'empreinte", () => {
+    const s = () => useStore.getState();
+    s().setCwResult({ category: "RPC", method: "dosage_cw", recipes: [{ bw_mass_pct: 4.5 }] } as never);
+    const e = s().empreintesCalcul.cwResult;
+    expect(e).toBeDefined();
+    expect(resultatPerime(s() as never, "cwResult", e)).toBe(false);
+    s().setCw({ residue_sg: 2.71 });
+    expect(resultatPerime(s() as never, "cwResult", s().empreintesCalcul.cwResult)).toBe(true);
+    s().setCwResult(null);
+    expect(s().empreintesCalcul.cwResult).toBeUndefined();
   });
 });

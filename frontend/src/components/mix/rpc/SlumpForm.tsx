@@ -59,6 +59,8 @@ export default function SlumpForm() {
       }
       setSlumpResult(data);
     } catch (err) {
+      // Une erreur ne laisse jamais l'ancien résultat à l'écran (ni sauvegardable).
+      setSlumpResult(null);
       if (err instanceof TypeError) {
         setError(messageErreurReseau());
       } else {

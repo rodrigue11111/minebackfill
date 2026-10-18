@@ -53,6 +53,8 @@ export default function RrcForm() {
       }
       setRrcResult(data);
     } catch (err) {
+      // Une erreur ne laisse jamais l'ancien résultat à l'écran (ni sauvegardable).
+      setRrcResult(null);
       if (err instanceof TypeError) {
         setError(messageErreurReseau());
       } else {

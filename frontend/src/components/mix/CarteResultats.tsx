@@ -73,8 +73,10 @@ function ChoixRecette({ n, choisie, onChoisir }: { n: number; choisie: number; o
   );
 }
 
-export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran = false, onFormulaClick }: {
+export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran = false, onFormulaClick, avis }: {
   sousTitre: React.ReactNode;
+  /** Avis affiché en tête de la carte (résultats périmés). */
+  avis?: React.ReactNode;
   actions: React.ReactNode;
   /** null : aucun résultat encore (tuiles vides). */
   donnees: DonneesResultats | null;
@@ -95,6 +97,7 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
       titre={<span className="mix-titre-resultats">Résultats<span className="mix-sous-titre-resultats">{sousTitre}</span></span>}
       actions={<div className="mix-actions-resultats">{actions}</div>}
     >
+      {avis}
       {!donnees || n === 0 ? (
         <>
           <TuilesChiffres chiffres={["Liant", "Eau totale", "Résidu sec", "Rapport E/L"].map((libelle) => ({ libelle, valeur: TIRET }))} />

@@ -59,6 +59,8 @@ export default function CwForm() {
       }
       setCwResult(data);
     } catch (err) {
+      // Une erreur ne laisse jamais l'ancien résultat à l'écran (ni sauvegardable).
+      setCwResult(null);
       if (err instanceof TypeError) {
         setError(messageErreurReseau());
       } else {

@@ -12,6 +12,7 @@ import { REPORT_SECTIONS, rowsForSection, type ReportCtx } from "./report-schema
 import { RECIPE_HEX } from "./recipe-theme";
 import { APP_NAME_VERSION, EXPORT_FOOTER } from "./branding";
 import type { Recipe } from "./types";
+import { lignesMesures, type MesureLabo } from "./mesures";
 
 /* ── Excel export (professional formatting with ExcelJS) ── */
 export async function exportToExcel(
@@ -21,6 +22,8 @@ export async function exportToExcel(
   category: string,
   method: string,
   units: UnitPreferences,
+  /** Mesures au laboratoire (essai-erreur), par recette. */
+  mesures?: MesureLabo[],
 ) {
   const ExcelJS = await import("exceljs");
   const { saveAs } = await import("file-saver");
@@ -193,6 +196,16 @@ export async function exportToExcel(
       addDataRow(row.label(ctx), row.unit(ctx), (r) => row.getter(r, ctx), row.digits, row.bold);
     }
   });
+
+  /* ── Mesures au laboratoire (essai-erreur), s'il y en a ── */
+  const lignesM = lignesMesures(recipes, mesures);
+  if (lignesM.length > 0) {
+    ws.addRow([]);
+    addSectionHeader("MESURES AU LABORATOIRE (APRÈS LA GÂCHÉE)", AMBER_HDR, AMBER_TXT);
+    addColumnHeaders();
+    rowIndex = 0;
+    for (const l of lignesM) addDataRow(l.libelle, l.unite, (r) => l.valeurs[recipes.indexOf(r)], l.decimales);
+  }
 
   /* ── Footer ── */
   ws.addRow([]);
