@@ -10,7 +10,7 @@ import { protocolesDefaut, type Protocole } from "./protocole";
 import { sessionActive, validerSessions, type Session } from "./sessions";
 import { migrerAnnotationV1, type Annotation } from "./annotations";
 import type { Revue } from "./revues";
-import { descriptorFor, type MethodResultKey } from "./method-registry";
+import { descriptorFor, type MethodResultKey, type MethodStateKey } from "./method-registry";
 import { EMPREINTE_INCONNUE, empreinteEntrees } from "./resultat-perime";
 import type { MesureLabo } from "./mesures";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
@@ -1740,6 +1740,8 @@ export const useStore = create<AppState>((set, get) => ({
     // d'elle. Une sauvegarde sans base (antérieure à 2026-10) ne peut pas la
     // rendre : le résultat restauré est dit périmé (recalcul demandé).
     let baseInconnue = false;
+    // État d'où viennent le Gs et le w₀ du résidu restaurés (partagés ensuite).
+    let etatResidu: MethodStateKey | undefined;
     if (d) {
       const p = patch as Record<string, unknown>;
       p[d.resultKey] = result;
@@ -1748,13 +1750,19 @@ export const useStore = create<AppState>((set, get) => ({
         if (entry.inputs) p[d.stateKey] = { ...essai, base_cw: undefined, base_wb: undefined };
         const dBase = essai.base_method ? descriptorFor(entry.category, essai.base_method) : undefined;
         const base = essai.base_method === "wb" ? base_wb : base_cw;
-        if (dBase && base) p[dBase.stateKey] = { ...(state[dBase.stateKey] as object), ...base };
-        else baseInconnue = true;
+        if (dBase && base) {
+          p[dBase.stateKey] = { ...(state[dBase.stateKey] as object), ...base };
+          etatResidu = dBase.stateKey;
+        } else baseInconnue = true;
       } else if (entry.inputs) {
         p[d.stateKey] = entry.inputs;
+        etatResidu = d.stateKey;
       }
     }
     set(patch);
+    // Gs et w₀ du résidu restaurés valent pour toutes les méthodes, comme une
+    // saisie (partagerResidu) : sinon « Selon E/L » garderait l'ancien Gs.
+    if (etatResidu) set((s) => partagerResidu(s, s[etatResidu] as { residue_sg?: number; residue_w_pct?: number }));
     // Le résultat restauré correspond aux entrées restaurées : nouvelle empreinte.
     if (d) set((s) => avecEmpreinte(s, d.resultKey, s[d.resultKey], baseInconnue ? EMPREINTE_INCONNUE : undefined));
     return true;

@@ -127,7 +127,8 @@ Guide (`QUAND_METHODE`) : une seule source. Les plages usuelles des champs
 vivent dans `lib/plages.ts` (tableau du Guide et rappel sous chaque champ,
 `<Field plage=… valeur=…>`) ; une valeur hors plage reçoit un avis doux,
 jamais un refus. Gs et w₀ du résidu sont partagés par les formulaires
-(`partagerResidu`, `store.tsx`).
+(`partagerResidu`, `store.tsx`), y compris après un rechargement depuis
+Mes calculs (`restoreSavedResult` les repartage).
 
 ### 4. Ajouter une ligne au rapport de résultats
 `frontend/src/lib/report-schema.ts` UNIQUEMENT (section, libellé, unité,

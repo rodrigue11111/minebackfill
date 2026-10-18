@@ -504,3 +504,19 @@ describe("store — résultats périmés : revue du 2026-10-18", () => {
     expect(perime("essaiResult")).toBe(true);
   });
 });
+
+describe("store — recharger un résultat : Gs et w₀ partagés", () => {
+  it("le Gs et le w₀ rechargés valent pour toutes les méthodes ; le résultat rechargé reste à jour", () => {
+    const s = () => useStore.getState();
+    s().setCw({ residue_sg: 3.05, residue_w_pct: 24 });
+    useStore.setState({ category: "RPC", method: "dosage_cw", cwResult: { category: "RPC", method: "dosage_cw", recipes: [{ bw_mass_pct: 4.5 }] } as never });
+    expect(s().saveCurrentResult("Gs 3,05")).toBe(true);
+    const id = s().savedResults.find((r) => r.label === "Gs 3,05")!.id;
+    s().setWb({ residue_sg: 2.8, residue_w_pct: 10 }); // partagé : cw passe aussi à 2,8
+    expect(s().restoreSavedResult(id)).toBe(true);
+    for (const k of ["cw", "wb", "slump", "rpgCw", "rpgWb"] as const) {
+      expect([k, s()[k].residue_sg, s()[k].residue_w_pct]).toEqual([k, 3.05, 24]);
+    }
+    expect(resultatPerime(s() as never, "cwResult", s().empreintesCalcul.cwResult)).toBe(false);
+  });
+});
