@@ -5,11 +5,11 @@
 // à la masse pesée), la saisie de la masse pesée et l'écart ; les notes de
 // l'enseignant ancrées sur la pesée s'affichent juste dessous.
 
-import type { Gachee } from "@/lib/gachee";
+import { cibleLisible, masseLisible, plageTolerance, type Gachee } from "@/lib/gachee";
 import type { Annotation } from "@/lib/annotations";
 import { geometrieBande, libelleEcart } from "@/lib/bande-tolerance";
 import { ancrePesee } from "@/lib/ancres";
-import { fmt, TIRET } from "@/lib/format";
+import { TIRET } from "@/lib/format";
 import { Carte } from "@/components/ui/Carte";
 import ChampNombre from "@/components/ui/ChampNombre";
 import { FilEtudiant } from "@/components/AnnotationsDoc";
@@ -66,11 +66,14 @@ export default function Pesees({ gachee: g, onPesee, onTolerance, notes, connect
                 <div className="labo-pesee-ligne">
                   <span className="labo-pesee-nom">
                     {c.label}
-                    <span className="labo-pesee-cible">cible {fmt(c.cibleKg, 1)} kg</span>
+                    <span className="labo-pesee-cible">
+                      cible {cibleLisible(c.cibleKg)}
+                      {tol ? <> ; tolérance {plageTolerance(c.cibleKg, tol)}</> : null}
+                    </span>
                   </span>
                   <BandeTolerance position={geo.position} bande={geo.bande} hors={geo.horsTolerance} />
                   {lectureSeule ? (
-                    <span className="labo-pesee-valeur">{c.peseeKg === undefined ? TIRET : `${fmt(c.peseeKg, 1)} kg`}</span>
+                    <span className="labo-pesee-valeur">{c.peseeKg === undefined ? TIRET : masseLisible(c.peseeKg)}</span>
                   ) : (
                     <span className="labo-pesee-saisie">
                       <ChampNombre ariaLabel={`Masse pesée : ${c.label} (kg)`} placeholder="kg" value={c.peseeKg} onChange={(n) => onPesee?.(c.cle, n)} />

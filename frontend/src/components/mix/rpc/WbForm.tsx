@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useStore } from "@/lib/store";
+import { empreinteAuDepart, useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
 import type { ResiduItem } from "@/lib/materials";
@@ -31,6 +31,9 @@ export default function WbForm() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleCompute() {
+    // Empreinte des entrées AVANT la requête : la réponse lui est associée, et
+    // une saisie faite pendant l'attente rend le résultat périmé.
+    const empreinte = empreinteAuDepart("wbResult");
     try {
       setLoading(true);
       setError(null);
@@ -57,8 +60,10 @@ export default function WbForm() {
         const detail = messageErreurApi(data, res.status);
         throw new Error(detail);
       }
-      setWbResult(data);
+      setWbResult(data, empreinte);
     } catch (err) {
+      // Une erreur ne laisse jamais l'ancien résultat à l'écran (ni sauvegardable).
+      setWbResult(null);
       if (err instanceof TypeError) {
         setError(messageErreurReseau());
       } else {

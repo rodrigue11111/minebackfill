@@ -7,6 +7,7 @@
 import { useId } from "react";
 import { bornes, chemin, decimalesTick, echelle, graduations } from "@/lib/courbe-utils";
 import type { PointCourbe } from "@/lib/presse-urstm";
+import { nombreAxe } from "@/lib/format";
 
 const W = 760;
 const H = 340;
@@ -32,8 +33,8 @@ export default function CourbeContrainteDeformation({ points, titre }: { points:
   const decY = decimalesTick(tY.length > 1 ? tY[1] - tY[0] : 1);
   const max = valides.reduce((a, p) => (p.contrainteKpa > a.contrainteKpa ? p : a), valides[0]);
   const d = chemin(valides.map((p) => ({ x: sx(p.deformationPct), y: sy(p.contrainteKpa) })), valides.map(() => false));
-  // « + 0 » : une graduation calculée à -0 s'afficherait « -0 ».
-  const fmt = (v: number, dec: number) => (v + 0).toLocaleString("fr-CA", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  // Arrondie avant d'être écrite : jamais « -0 » (nombreAxe).
+  const fmt = nombreAxe;
   const etiquette = `${titre} : contrainte en fonction de la déformation, ${valides.length} points mesurés, contrainte maximale ${fmt(max.contrainteKpa, 0)} kPa à ${fmt(max.deformationPct, 2)} %`;
 
   return (

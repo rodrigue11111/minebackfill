@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   ecart, horsTolerance, nbHorsTolerance, genererCode, composantsDepuisRecette, parametresDepuisRecette, groupeSansVide, materiauxSansVide,
+  cibleLisible, masseLisible, plageTolerance,
   type Gachee, type ComposantPese,
 } from "./gachee";
 import type { Recipe } from "./types";
@@ -128,5 +129,16 @@ describe("fiche d'essai : groupes sans valeur vide", () => {
     expect(materiauxSansVide({ adjuvant: { nom: " ", dosage: 2, dosageUnite: "% liant" } })).toEqual({ adjuvant: { nom: " " } });
     expect(materiauxSansVide({ adjuvant: { nom: "", dosage: 2, dosageUnite: "% liant" } })).toBeUndefined();
     expect(materiauxSansVide({ adjuvant: { nom: "SP-1", dosage: 2, dosageUnite: "% liant" } })).toEqual({ adjuvant: { nom: "SP-1", dosage: 2, dosageUnite: "% liant" } });
+  });
+});
+
+describe("pesées : masses lisibles", () => {
+  it("sous 1 kg en grammes (avec les kg du champ de saisie), sinon kg à trois décimales ; plage de tolérance", () => {
+    expect(masseLisible(0.05)).toBe("50,0 g");
+    expect(cibleLisible(0.05)).toBe("50,0 g (0,0500 kg)");
+    expect(cibleLisible(1.5)).toBe("1,500 kg");
+    expect(plageTolerance(0.05, 2)).toBe("49,0 à 51,0 g");
+    expect(plageTolerance(1.5, 2)).toBe("1,470 à 1,530 kg");
+    expect(masseLisible(0.047)).not.toBe("0,0 kg");
   });
 });

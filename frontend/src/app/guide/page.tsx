@@ -300,7 +300,7 @@ export default function GuidePage() {
               "Gs et w₀ du résidu",
               "Agent liant",
             ]}
-            formula="Cw calculé à partir de : Cw = (1 + Bw) / (1 + Bw + E/L × Bw)"
+            formula="Cw calculé à partir de : Cw = (1 + b) / (1 + b + E/L × b), avec b = Bw / 100 (Bw en fraction : 5 % donne b = 0,05)"
           />
 
           <Method

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculeMesures } from "./mesures";
+import { calculeMesures, lignesMesures } from "./mesures";
 
 describe("calculeMesures — exemple de tare du classeur Intra 2017", () => {
   // Cellules F12-F14 / K12-K14 : tare 2278.8 g, tare+m_h 2947.3 g, tare+m_s 2831.8 g
@@ -27,5 +27,20 @@ describe("calculeMesures — validation", () => {
   });
   it("pâte parfaitement sèche impossible (m_h = m_s) -> null", () => {
     expect(calculeMesures({ tare: 100, mh: 200, ms: 200 })).toEqual({ w: null, cw: null });
+  });
+});
+
+describe("lignesMesures — rapport", () => {
+  it("rien sans mesure ; sinon mesuré, calculé et écart par recette", () => {
+    const recettes = [{ w_mass_pct: 30, solids_mass_pct: 77 }, { w_mass_pct: 31, solids_mass_pct: 76 }];
+    expect(lignesMesures(recettes, undefined)).toEqual([]);
+    expect(lignesMesures(recettes, [{}, {}])).toEqual([]);
+    const l = lignesMesures(recettes, [{ slump: 180, tare: 2278.8, mh: 2947.3, ms: 2831.8 }]);
+    const par = new Map(l.map((x) => [x.libelle, x.valeurs]));
+    expect(par.get("Affaissement mesuré")).toEqual([180, null]);
+    const w = par.get("w mesuré")![0]!;
+    expect(w).toBeCloseTo(((2947.3 - 2831.8) / (2831.8 - 2278.8)) * 100, 9);
+    expect(par.get("Écart w (mesuré − calculé)")![0]).toBeCloseTo(w - 30, 9);
+    expect(par.get("Écart Cw (mesuré − calculé)")).toEqual([expect.any(Number), null]);
   });
 });

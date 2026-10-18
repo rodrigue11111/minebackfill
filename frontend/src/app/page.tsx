@@ -27,6 +27,13 @@ const CONTAINER_TYPES = [
   { value: "volume", label: "Volume direct", court: "Volume" },
 ] as const;
 
+/** Ce que l'exemple remplace, dit avant de le faire. */
+const CONFIRMATION_EXEMPLE =
+  "Charger l'exemple Intra 2017 ? Il remplace le projet (opérateur, nom, résidu), le contenant " +
+  "(55 × 20 × 10 m, soit un volume industriel de 11 000 m³, celui du classeur du professeur), " +
+  "le liant et les entrées des formulaires de calcul. Deux liants de l'exemple (GU et laitier GGBFS) " +
+  "sont ajoutés au catalogue s'ils n'y sont pas.";
+
 export default function GeneralInfoPage() {
   const router = useRouter();
   const { general, setGeneral, catalogue_liants, fillTestData, units, setUnits, loadUnits } = useStore();
@@ -49,6 +56,7 @@ export default function GeneralInfoPage() {
 
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
+    if (!fractionsOk) return;
     router.push("/mix");
   };
 
@@ -114,6 +122,9 @@ export default function GeneralInfoPage() {
   const fractionTotal = binders.reduce((s, b) => s + (b.fraction_pct ?? 0), 0);
 
   const fractionOk = Math.abs(fractionTotal - 100) < 0.01;
+  // Plusieurs composants : leurs fractions doivent faire 100 % (le calcul les
+  // refuse sinon, et le Labo afficherait « 60 %, 60 % »).
+  const fractionsOk = binders.length < 2 || fractionOk;
   const liantsValides = catalogue_liants.filter((l: LiantCatalogueItem) => String(l.code ?? "").trim() !== "");
 
   const setBinders = (next: BinderRef[]) => setGeneral(patchBinders(next));
@@ -303,12 +314,17 @@ export default function GeneralInfoPage() {
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => { try { fillTestData(); setTestLoaded(true); setTimeout(() => setTestLoaded(false), 2500); } catch (e) { console.error("[fillTestData] error:", e); } }}
-            title="Charge les valeurs du classeur de référence Intra 2017"
+            onClick={() => {
+              // L'exemple remplace le projet : jamais sans l'accord de l'étudiant.
+              if (!window.confirm(CONFIRMATION_EXEMPLE)) return;
+              try { fillTestData(); setTestLoaded(true); setTimeout(() => setTestLoaded(false), 4000); } catch (e) { console.error("[fillTestData] error:", e); }
+            }}
+            title="Charge les valeurs du classeur de référence Intra 2017 (après confirmation)"
           >
-            {testLoaded ? "Valeurs Intra 2017 chargées" : "Exemple Intra 2017"}
+            {testLoaded ? "Exemple Intra 2017 chargé" : "Exemple Intra 2017"}
           </button>
-          <button type="submit" className="btn-primary">
+          <button type="submit" className="btn-primary" disabled={!fractionsOk}
+            title={fractionsOk ? undefined : "La somme des fractions du liant doit être égale à 100 %"}>
             Enregistrer et continuer
           </button>
         </div>

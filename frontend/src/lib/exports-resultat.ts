@@ -7,6 +7,7 @@ import type { RpcMethod, SavedResult } from "./store";
 import { nomLiant } from "./liants";
 import { estVersionCourante } from "./conventions";
 import type { UnitPreferences } from "./units";
+import type { MesureLabo } from "./mesures";
 
 export type FormatExportResultat = "excel" | "pdf" | "feuille";
 
@@ -42,12 +43,14 @@ export async function exporterResultat(sr: SavedResult, format: FormatExportResu
     return;
   }
   const args = [sr.recipes, sr.general, binderNameFor(sr), sr.category, sr.method as RpcMethod, units] as const;
+  // Mesures au laboratoire d'un essai-erreur, rangées avec ses entrées.
+  const mesures = sr.method === "essai" ? (sr.inputs as { mesures?: MesureLabo[] } | undefined)?.mesures : undefined;
   if (format === "excel") {
     const { exportToExcel } = await import("./excel-report");
-    exportToExcel(...args);
+    exportToExcel(...args, mesures);
   } else if (format === "pdf") {
     const { exportToPdf } = await import("./pdf-report");
-    exportToPdf(...args);
+    exportToPdf(...args, mesures);
   } else {
     const { exportPreparationPdf } = await import("./preparation-sheet");
     exportPreparationPdf(...args);

@@ -1,4 +1,5 @@
 import type { UnitPreferences } from "@/lib/units";
+import { lignesMesures, type MesureLabo } from "./mesures";
 import type { Recipe } from "@/lib/types";
 import type { Category, GeneralInfo } from "@/lib/store";
 import { methodLabel } from "@/lib/method-registry";
@@ -33,6 +34,8 @@ export async function exportToPdf(
   category: string,
   method: string,
   units: UnitPreferences,
+  /** Mesures au laboratoire (essai-erreur), par recette. */
+  mesures?: MesureLabo[],
 ) {
   const { default: jsPDF } = await import("jspdf");
   const doc = assainirTextePdf(new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" }));
@@ -210,6 +213,16 @@ export async function exportToPdf(
       drawDataRow(row.label(ctx), row.unit(ctx), (r) => row.getter(r, ctx), row.digits, row.bold);
     }
   });
+
+  /* ── Mesures au laboratoire (essai-erreur), s'il y en a ── */
+  const lignesM = lignesMesures(recipes, mesures);
+  if (lignesM.length > 0) {
+    y += 4;
+    drawSectionHeader("MESURES AU LABORATOIRE (APRÈS LA GÂCHÉE)", AMBER_HDR, AMBER_TXT);
+    drawColumnHeaders();
+    rowIdx = 0;
+    for (const l of lignesM) drawDataRow(l.libelle, l.unite, (r) => l.valeurs[recipes.indexOf(r)], l.decimales);
+  }
 
   /* ── Footer ── */
   addFooter();

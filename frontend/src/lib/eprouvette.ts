@@ -253,6 +253,17 @@ export function ageReelJours(e: Eprouvette): number | null {
   return Math.round((jourLocal(d).getTime() - dateCoulee(e).getTime()) / MS_JOUR);
 }
 
+/**
+ * Écrasement avant l'échéance : âge réel inférieur d'au moins un jour à
+ * l'âge visé. Simple avis à l'étudiant (les moyennes suivent l'âge visé),
+ * jamais un blocage. null : rien à signaler.
+ */
+export function ecrasementPrecoce(e: Eprouvette): { ageReel: number; ageVise: number } | null {
+  if (e.statut !== "ecrase") return null;
+  const ageReel = ageReelJours(e);
+  return ageReel !== null && ageReel <= e.ageJours - 1 ? { ageReel, ageVise: e.ageJours } : null;
+}
+
 export type ClasseEcheance = "fait" | "retard" | "aujourdhui" | "proche" | "planifie";
 
 /**

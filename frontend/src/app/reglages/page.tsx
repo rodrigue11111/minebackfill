@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore, CATALOGUE_VERSION, CONSTANTES_VERSION, MATERIALS_VERSION } from "@/lib/store";
 import { UNIT_CATEGORIES, unitsForLength, type LengthUnit } from "@/lib/units";
 import type { LiantCatalogueItem } from "@/lib/store";
@@ -21,6 +21,39 @@ import { Carte } from "@/components/ui/Carte";
 import { Champ } from "@/components/ui/Champ";
 import { Pastille } from "@/components/ui/Pastille";
 import Segmente from "@/components/ui/Segmente";
+
+/**
+ * Une constante de calcul. Une saisie vide, illisible ou (pour une grandeur
+ * physique) nulle ou négative n'est PAS enregistrée : la valeur précédente
+ * reste, et le champ le dit. Avant, effacer le champ enregistrait 0 (ρw = 0
+ * fausse tous les calculs jusqu'au prochain rechargement).
+ */
+function ChampConstante({ libelle, unite, valeur, onChange, aide, positif }: {
+  libelle: string;
+  unite?: string;
+  valeur: number;
+  onChange: (n: number) => void;
+  aide?: string;
+  positif: boolean;
+}) {
+  const [brouillon, setBrouillon] = useState<string | null>(null);
+  const n = brouillon === null ? valeur : Number(brouillon.replace(",", "."));
+  const refusee = brouillon !== null && (brouillon.trim() === "" || !Number.isFinite(n) || (positif && n <= 0));
+  const precedente = valeur.toLocaleString("fr-CA", { maximumFractionDigits: 6 });
+  return (
+    <Champ libelle={libelle} unite={unite} aide={refusee ? undefined : aide}
+      erreur={refusee ? `${positif ? "Valeur strictement positive attendue" : "Nombre attendu"} : la valeur ${precedente} est conservée.` : undefined}>
+      <input type="text" inputMode="decimal" className="field-input" value={brouillon ?? String(valeur)}
+        onChange={(e) => {
+          const texte = e.target.value;
+          setBrouillon(texte);
+          const v = Number(texte.replace(",", "."));
+          if (texte.trim() !== "" && Number.isFinite(v) && (!positif || v > 0)) onChange(v);
+        }}
+        onBlur={() => setBrouillon(null)} />
+    </Champ>
+  );
+}
 
 export default function ReglagesPage() {
   const {
@@ -89,11 +122,8 @@ export default function ReglagesPage() {
     );
   }, [catalogue_liants]);
 
-  const champConstante = (libelle: string, unite: string | undefined, valeur: number, onChange: (n: number) => void, aide?: string) => (
-    <Champ libelle={libelle} unite={unite} aide={aide}>
-      <input type="number" step="any" className="field-input" value={valeur}
-        onChange={(e) => onChange(Number(e.target.value || 0))} />
-    </Champ>
+  const champConstante = (libelle: string, unite: string | undefined, valeur: number, onChange: (n: number) => void, aide?: string, positif = false) => (
+    <ChampConstante libelle={libelle} unite={unite} valeur={valeur} onChange={onChange} aide={aide} positif={positif} />
   );
 
   return (
@@ -109,10 +139,10 @@ export default function ReglagesPage() {
           Ces valeurs sont globales ; elles servent au dosage selon Cw, au dosage selon E/L, au modèle prédictif et à la méthode essai-erreur.
         </p>
         <div className="grille-2">
-          {champConstante("Masse volumique de l'eau ρw", "kg/m³", constantes.masse_volumique_eau_kg_m3, (n) => setConstantes({ masse_volumique_eau_kg_m3: n }))}
-          {champConstante("Accélération de la pesanteur g", "m/s²", constantes.gravite_m_s2, (n) => setConstantes({ gravite_m_s2: n }))}
+          {champConstante("Masse volumique de l'eau ρw", "kg/m³", constantes.masse_volumique_eau_kg_m3, (n) => setConstantes({ masse_volumique_eau_kg_m3: n }), undefined, true)}
+          {champConstante("Accélération de la pesanteur g", "m/s²", constantes.gravite_m_s2, (n) => setConstantes({ gravite_m_s2: n }), undefined, true)}
           {champConstante("Facteur petit cône vers cône d'Abrams", undefined, constantes.facteur_petit_cone_vers_grand_cone, (n) => setConstantes({ facteur_petit_cone_vers_grand_cone: n }),
-            "Convertit l'affaissement lu au petit cône (non normalisé) en affaissement au cône d'Abrams (ASTM C143/C143M).")}
+            "Convertit l'affaissement lu au petit cône (non normalisé) en affaissement au cône d'Abrams (ASTM C143/C143M).", true)}
           {champConstante("Coefficient du modèle prédictif (affaissement)", undefined, constantes.coefficient_modele_slump, (n) => setConstantes({ coefficient_modele_slump: n }))}
           {champConstante("Constante du modèle prédictif (affaissement)", undefined, constantes.constante_modele_slump, (n) => setConstantes({ constante_modele_slump: n }))}
         </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { calculeMesures, type MesureLabo } from "@/lib/mesures";
 import { fmt, TIRET } from "@/lib/format";
 import { CardSection, Field, GrilleChamps, PointRecette } from "@/components/mix/champs";
@@ -15,7 +14,9 @@ import { CardSection, Field, GrilleChamps, PointRecette } from "@/components/mix
  *   Cw mesuré = (m_s − tare) / (m_h − tare)   [cellule D77]
  *
  * Calcul purement local (aucun appel API). Les masses sont en grammes,
- * comme sur la feuille.
+ * comme sur la feuille. Les saisies vivent dans l'état de l'essai-erreur
+ * (magasin) : elles survivent à la navigation, partent avec le résultat
+ * sauvegardé et entrent dans les rapports PDF et Excel.
  */
 
 interface RecetteCalculee {
@@ -43,6 +44,8 @@ export default function MesuresLabo({
   numRecipes,
   recipes,
   slumpCibleMm,
+  mesures,
+  onChange,
 }: {
   numRecipes: number;
   recipes?: RecetteCalculee[] | null;
@@ -52,16 +55,16 @@ export default function MesuresLabo({
    * protocole de Belem et al. 2018, §2.3.
    */
   slumpCibleMm?: number;
+  /** Mesures par recette (état de l'essai-erreur). */
+  mesures: MesureLabo[];
+  onChange: (mesures: MesureLabo[]) => void;
 }) {
-  const [mesures, setMesures] = useState<MesureLabo[]>([]);
-
-  const setMesure = (i: number, patch: Partial<MesureLabo>) =>
-    setMesures((prev) => {
-      const next = [...prev];
-      while (next.length <= i) next.push({});
-      next[i] = { ...next[i], ...patch };
-      return next;
-    });
+  const setMesure = (i: number, patch: Partial<MesureLabo>) => {
+    const next = [...mesures];
+    while (next.length <= i) next.push({});
+    next[i] = { ...next[i], ...patch };
+    onChange(next);
+  };
 
   return (
     <CardSection

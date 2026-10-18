@@ -10,7 +10,9 @@ import { protocolesDefaut, type Protocole } from "./protocole";
 import { sessionActive, validerSessions, type Session } from "./sessions";
 import { migrerAnnotationV1, type Annotation } from "./annotations";
 import type { Revue } from "./revues";
-import { descriptorFor } from "./method-registry";
+import { descriptorFor, type MethodResultKey } from "./method-registry";
+import { EMPREINTE_INCONNUE, empreinteEntrees } from "./resultat-perime";
+import type { MesureLabo } from "./mesures";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
 import {
@@ -232,6 +234,9 @@ export interface EssaiInputsState {
     ajout_residu_humide?: number;
     ajout_eau?: number;
   }[];
+  /** Mesures au laboratoire après la gâchée, par recette (affaissement, essai
+   *  de teneur en eau). Sauvegardées avec le résultat ; jamais envoyées au calcul. */
+  mesures?: MesureLabo[];
 }
 
 export interface RpgEssaiAdjustment {
@@ -254,6 +259,8 @@ export interface RpgEssaiState {
   ajustements: RpgEssaiAdjustment[];
   /** Affaissement visé du protocole essai-erreur (mm) — défaut 178 (7 po). */
   slump_cible_mm?: number;
+  /** Mesures au laboratoire (voir EssaiInputsState.mesures). */
+  mesures?: MesureLabo[];
 }
 
 export interface RrcState {
@@ -586,7 +593,9 @@ interface AppState {
   setCw: (patch: Partial<CwState>) => void;
   setCwRecipe: (index: number, patch: { binder_pct?: number }) => void;
   cwResult: RpcCwResponse | null;
-  setCwResult: (res: RpcCwResponse | null) => void;
+  /** Empreinte des entrées de chaque résultat, prise au DÉPART du calcul (resultat-perime.ts). En mémoire seulement. */
+  empreintesCalcul: Partial<Record<MethodResultKey, string>>;
+  setCwResult: PoserResultat<RpcCwResponse>;
 
   wb: WbState;
   setWb: (patch: Partial<WbState>) => void;
@@ -595,13 +604,13 @@ interface AppState {
     patch: { binder_pct?: number; wc_ratio?: number }
   ) => void;
   wbResult: MixResult | null;
-  setWbResult: (res: MixResult | null) => void;
+  setWbResult: PoserResultat<MixResult>;
 
   slump: SlumpState;
   setSlump: (patch: Partial<SlumpState>) => void;
   setSlumpRecipe: (index: number, patch: { binder_pct?: number }) => void;
   slumpResult: MixResult | null;
-  setSlumpResult: (res: MixResult | null) => void;
+  setSlumpResult: PoserResultat<MixResult>;
 
   essai: EssaiInputsState;
   setEssai: (patch: Partial<EssaiInputsState>) => void;
@@ -614,31 +623,31 @@ interface AppState {
     }
   ) => void;
   essaiResult: MixResult | null;
-  setEssaiResult: (res: MixResult | null) => void;
+  setEssaiResult: PoserResultat<MixResult>;
 
   rpgCw: RpgCwState;
   setRpgCw: (patch: Partial<RpgCwState>) => void;
   setRpgCwRecipe: (index: number, patch: { binder_pct?: number }) => void;
   rpgCwResult: MixResult | null;
-  setRpgCwResult: (res: MixResult | null) => void;
+  setRpgCwResult: PoserResultat<MixResult>;
 
   rpgWb: RpgWbState;
   setRpgWb: (patch: Partial<RpgWbState>) => void;
   setRpgWbRecipe: (index: number, patch: { binder_pct?: number; wc_ratio?: number }) => void;
   rpgWbResult: MixResult | null;
-  setRpgWbResult: (res: MixResult | null) => void;
+  setRpgWbResult: PoserResultat<MixResult>;
 
   rpgEssai: RpgEssaiState;
   setRpgEssai: (patch: Partial<RpgEssaiState>) => void;
   setRpgEssaiAjustement: (index: number, patch: RpgEssaiAdjustment) => void;
   rpgEssaiResult: MixResult | null;
-  setRpgEssaiResult: (res: MixResult | null) => void;
+  setRpgEssaiResult: PoserResultat<MixResult>;
 
   rrc: RrcState;
   setRrc: (patch: Partial<RrcState>) => void;
   setRrcRecipe: (index: number, patch: { binder_pct?: number; wc_ratio?: number }) => void;
   rrcResult: RrcResultat | null;
-  setRrcResult: (res: RrcResultat | null) => void;
+  setRrcResult: PoserResultat<RrcResultat>;
 
   fillTestData: () => void;
 
@@ -899,6 +908,40 @@ export function migrerMateriauxCloud(env: { v: number; data: unknown } | null | 
   return data as MaterialItem[];
 }
 
+/**
+ * Poser un résultat avec l'empreinte des entrées prise AU DÉPART de la
+ * requête (`empreinteAuDepart`), ou l'effacer. Le type l'impose : un
+ * formulaire ne peut pas ranger une réponse sans dire de quelles entrées elle
+ * vient.
+ */
+export type PoserResultat<R> = {
+  (res: null): void;
+  (res: R, empreinteAuDepart: string): void;
+};
+
+/**
+ * Empreinte des entrées d'un calcul, à prendre AVANT d'appeler l'API et à
+ * rendre avec la réponse. Prise à l'arrivée, elle décrirait les entrées
+ * saisies PENDANT l'attente : une réponse calculée pour Cw = 75 % passerait
+ * pour à jour alors que le formulaire dit 80 %.
+ */
+export function empreinteAuDepart(cle: MethodResultKey): string {
+  return empreinteEntrees(useStore.getState() as unknown as Record<string, unknown>, cle);
+}
+
+/**
+ * Un résultat arrive (ou s'efface) : il est rangé avec l'empreinte des
+ * entrées dont il vient (resultat-perime.ts). Sans empreinte fournie (une
+ * restauration, qui vient de poser ses entrées), celle de l'état courant.
+ * Un résultat effacé n'en a plus.
+ */
+function avecEmpreinte(state: AppState, cle: MethodResultKey, res: unknown, empreinte?: string): Partial<AppState> {
+  const empreintesCalcul = { ...state.empreintesCalcul };
+  if (res) empreintesCalcul[cle] = empreinte ?? empreinteEntrees(state as unknown as Record<string, unknown>, cle);
+  else delete empreintesCalcul[cle];
+  return { [cle]: res, empreintesCalcul } as Partial<AppState>;
+}
+
 export const useStore = create<AppState>((set, get) => ({
   // Par défaut on appelle l'API en relatif (/rpc, /rpg) via le proxy Next.js
   API: process.env.NEXT_PUBLIC_API_URL?.trim() || "",
@@ -1144,8 +1187,9 @@ export const useStore = create<AppState>((set, get) => ({
         },
       };
     }),
+  empreintesCalcul: {},
   cwResult: null,
-  setCwResult: (res) => set({ cwResult: res }),
+  setCwResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "cwResult", res, empreinte)),
 
   wb: {
     saturation_pct: 0,
@@ -1179,7 +1223,7 @@ export const useStore = create<AppState>((set, get) => ({
       };
     }),
   wbResult: null,
-  setWbResult: (res) => set({ wbResult: res }),
+  setWbResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "wbResult", res, empreinte)),
 
   slump: {
     cone_type: "mini",
@@ -1211,7 +1255,7 @@ export const useStore = create<AppState>((set, get) => ({
       };
     }),
   slumpResult: null,
-  setSlumpResult: (res) => set({ slumpResult: res }),
+  setSlumpResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "slumpResult", res, empreinte)),
 
   essai: {
     base_method: "dosage_cw",
@@ -1239,7 +1283,7 @@ export const useStore = create<AppState>((set, get) => ({
       };
     }),
   essaiResult: null,
-  setEssaiResult: (res) => set({ essaiResult: res }),
+  setEssaiResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "essaiResult", res, empreinte)),
 
   rpgCw: {
     solid_mass_pct: 0,
@@ -1262,7 +1306,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rpgCw: { ...state.rpgCw, binder_pct } };
     }),
   rpgCwResult: null,
-  setRpgCwResult: (res) => set({ rpgCwResult: res }),
+  setRpgCwResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rpgCwResult", res, empreinte)),
 
   rpgWb: {
     saturation_pct: 0,
@@ -1287,7 +1331,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rpgWb: { ...state.rpgWb, binder_pct, wc_ratio } };
     }),
   rpgWbResult: null,
-  setRpgWbResult: (res) => set({ rpgWbResult: res }),
+  setRpgWbResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rpgWbResult", res, empreinte)),
 
   rpgEssai: {
     base_method: "dosage_cw",
@@ -1305,7 +1349,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rpgEssai: { ...state.rpgEssai, ajustements } };
     }),
   rpgEssaiResult: null,
-  setRpgEssaiResult: (res) => set({ rpgEssaiResult: res }),
+  setRpgEssaiResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rpgEssaiResult", res, empreinte)),
 
   // ── RRC ── valeurs par défaut prêtes pour la démo (Dias 66-70)
   rrc: {
@@ -1330,7 +1374,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rrc: { ...state.rrc, binder_pct, wc_ratio } };
     }),
   rrcResult: null,
-  setRrcResult: (res) => set({ rrcResult: res }),
+  setRrcResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rrcResult", res, empreinte)),
 
   fillTestData: () =>
     set((state) => {
@@ -1348,15 +1392,17 @@ export const useStore = create<AppState>((set, get) => ({
 
       // Liants de la feuille : 20 % GU (Gs 3.15) + 80 % Slag GGBFS (Gs 2.9).
       // On les AJOUTE au catalogue s'ils n'existent pas (sans toucher aux
-      // entrées existantes de l'utilisateur).
+      // entrées existantes de l'utilisateur). Pas les entrées officielles CP10
+      // et SLAG : leurs Gs (3,1543 et 2,8426) ne sont pas ceux de la feuille,
+      // et l'exemple ne la reproduirait plus. Le nom dit d'où ils viennent.
       const catalogue = [...state.catalogue_liants];
       const upsert = (code: string, nom: string, gsLiant: number) => {
         if (!catalogue.some((l) => l.code === code)) {
           catalogue.push({ id: `liant_${code.toLowerCase()}`, code, nom, gs: gsLiant });
         }
       };
-      upsert("GU", "Ciment GU (T10)", 3.15);
-      upsert("GGBFS", "Slag (GGBFS)", 2.9);
+      upsert("GU", "Ciment GU (exemple Intra 2017)", 3.15);
+      upsert("GGBFS", "Laitier GGBFS (exemple Intra 2017)", 2.9);
 
       const newGeneral: GeneralInfo = {
         operator_name: "Démo Intra 2017",
@@ -1656,6 +1702,8 @@ export const useStore = create<AppState>((set, get) => ({
         patch.rrcResult = entry.rrc.result;
       }
       set(patch);
+      // Le résultat restauré correspond aux entrées restaurées : nouvelle empreinte.
+      set((s) => avecEmpreinte(s, "rrcResult", s.rrcResult));
       return true;
     }
 
@@ -1669,12 +1717,30 @@ export const useStore = create<AppState>((set, get) => ({
     // Tranches de la méthode sauvegardée — via le registre (les vieilles
     // entrées à méthode inconnue restaurent au moins catégorie/contexte).
     const d = descriptorFor(entry.category, entry.method);
+    // Essai-erreur : il calcule sur l'état de sa méthode de base, rangé dans
+    // base_cw / base_wb (saveCurrentResult). Cet état est remis dans le
+    // formulaire de base AVANT l'empreinte ; sinon la base courante (un autre
+    // Cw) passerait pour celle du résultat, et le prochain calcul partirait
+    // d'elle. Une sauvegarde sans base (antérieure à 2026-10) ne peut pas la
+    // rendre : le résultat restauré est dit périmé (recalcul demandé).
+    let baseInconnue = false;
     if (d) {
       const p = patch as Record<string, unknown>;
       p[d.resultKey] = result;
-      if (entry.inputs) p[d.stateKey] = entry.inputs;
+      if (entry.method === "essai") {
+        const { base_cw, base_wb, ...essai } = (entry.inputs ?? {}) as { base_method?: string; base_cw?: object; base_wb?: object };
+        if (entry.inputs) p[d.stateKey] = { ...essai, base_cw: undefined, base_wb: undefined };
+        const dBase = essai.base_method ? descriptorFor(entry.category, essai.base_method) : undefined;
+        const base = essai.base_method === "wb" ? base_wb : base_cw;
+        if (dBase && base) p[dBase.stateKey] = { ...(state[dBase.stateKey] as object), ...base };
+        else baseInconnue = true;
+      } else if (entry.inputs) {
+        p[d.stateKey] = entry.inputs;
+      }
     }
     set(patch);
+    // Le résultat restauré correspond aux entrées restaurées : nouvelle empreinte.
+    if (d) set((s) => avecEmpreinte(s, d.resultKey, s[d.resultKey], baseInconnue ? EMPREINTE_INCONNUE : undefined));
     return true;
   },
   deleteSavedResult: (id) =>
