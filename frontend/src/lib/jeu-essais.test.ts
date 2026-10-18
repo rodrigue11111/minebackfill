@@ -150,11 +150,11 @@ describe("jeu d'essais pseudonymisé", () => {
 
   it("revue de l'enseignant : colonnes, et export limité aux gâchées acceptées non modifiées", async () => {
     const ps = await pseudonymes(etudiants.map((e) => e.id));
-    const revues: Record<string, { decision: "acceptee" | "refusee"; perimee: boolean; ecartees: string[] }> = {
+    const revues: Record<string, { decision: "acceptee" | "refusee"; perimee: boolean; aRafraichir?: boolean; ecartees: string[] }> = {
       gA: { decision: "acceptee", perimee: false, ecartees: ["a2"] },
       gB: { decision: "acceptee", perimee: true, ecartees: [] },
     };
-    const revueDe = (_o: string, id: string) => (revues[id] ? { ...revues[id], motif: null, maj: "m" } : undefined);
+    const revueDe = (_o: string, id: string) => (revues[id] ? { aRafraichir: false, ...revues[id], motif: null, maj: "m" } : undefined);
     const tout = construireJeuEssais({ etudiants, sessions, sessionLibelle: "x", pseudonymes: ps, catalogues, maintenant, revueDe });
     const a = tout.essais.find((l) => l.eprouvette_code === "G-20260910-01-E02")!;
     expect(a).toMatchObject({ revue: "acceptee", revue_perimee: false, eprouvette_ecartee: true });
@@ -231,3 +231,54 @@ describe("dictionnaire des données", () => {
     expect(lignesCsvDictionnaire()[0]).toEqual(["Table", "Clé", "Libellé", "Unité", "Type", "Description"]);
   });
 });
+
+describe("jeu d'essais : références, repli par groupe, revues (2026-10-18)", () => {
+  const C = "cccccccc-0000-4000-8000-000000000003";
+  const profilsC = [...profils, { id: C, email: "c@x.ca", display_name: "Carole", role: "etudiant" }];
+  // Carole : matériaux personnels (sans id ni code), fiche partielle (résidu seulement).
+  const rC = {
+    id: "sr_1758000000000_ab12", savedAt: jour(9, 9), label: "F", category: "RPC",
+    general: { binders: [{ id: "liant_slag", code: "SLAG", fraction_pct: 100 }] }, catalogue_liants: catalogues.liants,
+    recipes: [{ bw_mass_pct: 6, solids_mass_pct: 74, wc_ratio: 6.5, w_mass_pct: 35, components: {} }],
+  };
+  const eprouvette = (id: string) => ({ id, code: `G-C-${id}`, couleLe: jour(9, 13), ageJours: 7, statut: "ecrase", essai: { contrainteKpaSaisie: 300 } });
+  const gC1 = { id: "gC1", code: "G-20260913-01", creeLe: jour(9, 13), statut: "terminee", formulationId: rC.id, categorie: "RPC", recetteIndex: 0,
+    materiaux: { residu: { nom: "Résidu de Carole", gs: 2.9 }, eau: { type: "procede" } }, eprouvettes: [eprouvette("c1"), eprouvette("c2")] };
+  const gC2 = { id: "gC2", code: "G-20260913-02", creeLe: jour(9, 13), statut: "terminee", categorie: "RPC", recetteIndex: 0,
+    materiaux: { residu: { nom: "Résidu de Carole", gs: 3.0 }, liants: [{ nom: "Mon liant perso", fractionPct: 100 }] }, eprouvettes: [eprouvette("c3")] };
+  const etu = regrouper([ligne(C, "resultat", rC), ligne(C, "gachee", gC1), ligne(C, "gachee", gC2)], profilsC, sessions, "toutes");
+  const jeu = async (o: Partial<Parameters<typeof construireJeuEssais>[0]> = {}) => construireJeuEssais({
+    etudiants: etu, sessions, sessionLibelle: "x", pseudonymes: await pseudonymes([C]), catalogues, maintenant, ...o,
+  });
+
+  it("références d'instantané et de formulation : des empreintes, jamais un nom ni une date en clair", async () => {
+    const j = await jeu();
+    const g1 = j.gachees.find((l) => l.gachee_code === "G-20260913-01")!;
+    const g2 = j.gachees.find((l) => l.gachee_code === "G-20260913-02")!;
+    expect(g1.residu_ref).toMatch(/^instantane:residu:[0-9a-f]{14}$/);
+    expect(g1.residu_ref).not.toBe(g2.residu_ref); // homonymes de Gs différents : distincts
+    expect(g2.liant1_code).toMatch(/^instantane:liant:[0-9a-f]{14}$/);
+    expect(g2.liants).toMatch(/^instantane:liant:[0-9a-f]{14} 100 %$/);
+    expect(g1.formulation_ref).toMatch(/^f-[0-9a-f]{14}$/);
+    expect(String(g1.formulation_ref)).not.toContain("1758000000000");
+    expect(g2.formulation_ref).toBeNull();
+    const refs = JSON.stringify(j.materiaux.map((m) => m.ref));
+    expect(refs).not.toMatch(/Carole|perso/);
+    expect(j.manifeste.textes_libres).toEqual(expect.arrayContaining(["moule", "liants", "liant1_code", "residu_nom"]));
+  });
+
+  it("repli PAR GROUPE : la fiche d'abord, les groupes qu'elle n'a pas relus dans la formulation", async () => {
+    const g1 = (await jeu()).gachees.find((l) => l.gachee_code === "G-20260913-01")!;
+    expect(g1).toMatchObject({ materiaux_source: "fiche_et_formulation", residu_nom: "Résidu de Carole", residu_gs: 2.9, liant1_code: "SLAG", eau_type: "procede" });
+  });
+
+  it("acceptées : ni modifiée depuis, ni décision plus récente que la version lue ; retenus sans les éprouvettes écartées", async () => {
+    const info = (p: Partial<InfoRevueTest>): InfoRevueTest => ({ decision: "acceptee", motif: null, ecartees: [], maj: "m", perimee: false, aRafraichir: false, ...p });
+    const revues: Record<string, InfoRevueTest> = { gC1: info({ ecartees: ["c1"] }), gC2: info({ aRafraichir: true }) };
+    const j = await jeu({ revueDe: (_o, id) => revues[id], seulementAcceptees: true });
+    expect(j.gachees.map((l) => l.gachee_code)).toEqual(["G-20260913-01"]);
+    expect(j.manifeste.nb_essais_retenus).toBe(1); // c2 seulement : c1 écartée par l'enseignant
+  });
+});
+
+type InfoRevueTest = { decision: "acceptee" | "refusee"; motif: string | null; ecartees: string[]; maj: string; perimee: boolean; aRafraichir: boolean };

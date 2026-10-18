@@ -8,7 +8,7 @@ import { normaliserGachee, type EtudiantClasse } from "@/lib/classe";
 import type { DocComplet, LigneAnnotation } from "@/lib/classe-reseau";
 import GacheeLecture, { type CatalogueEnseignant } from "./GacheeLecture";
 import CarteRevue, { type ActionsRevue } from "./CarteRevue";
-import { revuePerimee, type RevueClasse } from "@/lib/revues";
+import { revueEnAvance, revuePerimee, type RevueClasse } from "@/lib/revues";
 import type { CourbeAffichee } from "@/lib/courbes";
 import type { Eprouvette } from "@/lib/eprouvette";
 import ResultatLecture from "./ResultatLecture";
@@ -47,6 +47,7 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
   const contenu = doc.etat === "pret" && !doc.doc.supprime ? doc.doc.contenu : null;
   const gachee = contenu && ref.kind === "gachee" ? normaliserGachee(contenu) : null;
   const resultat = contenu && ref.kind === "resultat" ? (contenu as SavedResult) : null;
+  const revOuverte = doc.etat === "pret" ? doc.doc.rev : null;
   const titre = gachee ? gachee.code : resultat ? resultat.label : ref.kind === "gachee" ? "Gâchée" : "Résultat";
   const conflit = gachee?.conflit ?? resultat?.conflit;
   const commentaires = annotations.filter((a) => a.owner_id === ref.etudiantId && a.target_kind === ref.kind && a.target_id === ref.id);
@@ -84,7 +85,7 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
       {gachee && actionsRevue && (
         // « Modifiée depuis la revue » : comparée à la révision du document ouvert.
         <CarteRevue key={gachee.id} gachee={gachee} actions={actionsRevue}
-          revue={revue ? { ...revue, perimee: revuePerimee(revue, doc.etat === "pret" ? doc.doc.rev : null) } : undefined} />
+          revue={revue ? { ...revue, perimee: revuePerimee(revue, revOuverte), aRafraichir: revueEnAvance(revue, revOuverte) } : undefined} />
       )}
       {resultat && <ResultatLecture resultat={resultat} units={units} />}
 

@@ -387,3 +387,20 @@ describe("persistance — fil de commentaires (minebackfill_annotations)", () =>
     expect(loadAnnotationsFromStorage()).toEqual({ curseur: null, annotations: [] });
   });
 });
+
+describe("store — sauvegarde d'un essai-erreur : méthode de base comprise", () => {
+  it("l'état de la méthode de base est rangé dans inputs.base_cw (Gs et w₀ du résidu retrouvables)", () => {
+    const cw = { ...useStore.getState().cw, residue_sg: 3.05, residue_w_pct: 24.1 };
+    useStore.setState({
+      category: "RPC", method: "essai", cw,
+      essai: { ...useStore.getState().essai, base_method: "dosage_cw" },
+      essaiResult: { category: "RPC", method: "essai", recipes: [{ bw_mass_pct: 4.5 }] } as never,
+    });
+    expect(useStore.getState().saveCurrentResult("Essai")).toBe(true);
+    useStore.getState().loadSavedResults();
+    const r = useStore.getState().savedResults.find((x) => x.label === "Essai")!;
+    const inputs = r.inputs as { base_method: string; base_cw?: { residue_sg: number; residue_w_pct: number } };
+    expect(inputs.base_method).toBe("dosage_cw");
+    expect(inputs.base_cw).toMatchObject({ residue_sg: 3.05, residue_w_pct: 24.1 });
+  });
+});

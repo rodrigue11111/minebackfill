@@ -111,14 +111,19 @@ dans son détail. Ouvrir la gâchée → carte **« Revue de l'enseignant »** :
 - **Retirer la revue** annule la décision.
 
 L'étudiant voit la décision dans son Labo (pastille « Revue : acceptée » ou
-« Revue : refusée », et le motif) à sa prochaine synchronisation, au plus
-5 minutes plus tard. S'il modifie ensuite la gâchée, elle repasse « À revoir »
-(« modifiée depuis la revue »). Le menu « Exporter » propose aussi le jeu
-d'essais limité aux **gâchées acceptées**.
+« Revue : refusée », et le motif) à sa prochaine synchronisation (quelques
+minutes, onglet ouvert). S'il modifie ensuite la gâchée, elle repasse « À
+revoir » (« modifiée depuis la revue ») et sa pastille précise « sur une
+version antérieure ». Le menu « Exporter » propose aussi le jeu d'essais
+limité aux **gâchées acceptées** (acceptées sur la version lue : ni modifiées
+depuis, ni plus récentes que la classe affichée, sinon « Actualiser »).
 
-Prérequis, une seule fois : `supabase/schema.sql` exécuté dans SQL Editor
-après la mise en ligne de cette fonction (table `revues`). Sans lui, la carte
-de revue l'indique et le reste de la page Classe fonctionne normalement.
+Prérequis : `supabase/schema.sql` exécuté dans SQL Editor après chaque mise
+à jour qui le modifie (la description de la PR le dit ; dernière en date :
+contrôles de `poser_revue` et vues de l'accès direct, octobre 2026). Sans
+lui, la carte de revue l'indique et le reste de la page Classe fonctionne
+normalement ; une erreur de lecture des revues affiche « Revues
+indisponibles » sans bloquer la classe.
 
 ### Publier des matériaux/constantes à la classe
 Connecté avec un compte enseignant : Réglages → modifier les entrées
@@ -144,10 +149,11 @@ est la seule copie en ligne. Deux gestes, à faire vous-même :
 
 1. **Chaque mois** : MineBackfill → **Classe** → session « Toutes » →
    « Exporter la classe (JSON) ». Le fichier contient le travail de tous les
-   étudiants (résultats et gâchées, documents complets).
+   étudiants (résultats et gâchées, documents complets), leurs courbes de
+   presse (clé `courbes`) et vos décisions de revue (clé `revues`).
 2. **En fin de session**, en plus : supabase.com → Table Editor →
-   `user_docs`, `annotations`, `profiles`, `official_catalogs` → « Export
-   CSV » pour chacune.
+   `user_docs`, `annotations`, `revues`, `profiles`, `official_catalogs`
+   → « Export CSV » pour chacune.
 
 3. **Chaque mois, aussi** : même menu « Exporter » → **« Jeu d'essais
    (JSON) »**, session « Toutes ». C'est la base des essais, pseudonymisée
@@ -158,10 +164,13 @@ est la seule copie en ligne. Deux gestes, à faire vous-même :
 **Où ranger ces fichiers : PAS sur GitHub** (le dépôt est public, ce sont des
 données d'étudiants). Un espace de stockage de l'établissement convient.
 Depuis octobre 2026, les courbes de presse sont envoyées en ligne par le site
-de l'étudiant (une fois sa gâchée en ligne) : « Classe (JSON) » les contient
-(clé `courbes`). Une courbe importée avant n'y est qu'une fois le site de
-l'étudiant rouvert ; d'ici là, elle reste dans son navigateur et dans SA
-sauvegarde locale (Réglages → Données locales → Exporter).
+de l'étudiant (une fois sa gâchée en ligne), une par import de presse :
+« Classe (JSON) » contient celle de l'import que chaque éprouvette désigne
+(clé `courbes`). Une courbe importée avant le 18 octobre 2026 n'est pas
+envoyée tant que l'étudiant n'a pas réimporté son fichier de presse ; d'ici
+là, elle reste dans son navigateur et dans SA sauvegarde locale (Réglages →
+Données locales → Exporter). Une courbe déjà en ligne de cette époque est
+exportée avec `origineNonVerifiee: true`.
 
 **Conservation des jeux d'essais.** Le but est un historique sur plusieurs
 années : garder chaque jeu daté, sans écraser le précédent (le nom du fichier

@@ -71,7 +71,9 @@ classe. Les entrées officielles publiées remplacent la couche officielle des
   `CARACTERISATION_RESIDU` ou `CARACTERISATION_GRANULAT`. Cela suffit pour la
   carte de Réglages (partie repliée « Caractérisation »), l'import et l'export
   CSV/JSON (`materials-io.ts` en déduit ses colonnes, ajoutées à la fin ; une
-  case vide reste absente, jamais 0) et la table `materiaux` du jeu d'essais
+  case vide reste absente, jamais 0 ; un nombre de caractérisation négatif et
+  une date hors du format AAAA-MM-JJ sont refusés avec le numéro de ligne)
+  et la table `materiaux` du jeu d'essais
   (à décrire dans `docs/DICTIONNAIRE_DONNEES.md`, le test l'exige). **Ne PAS
   incrémenter `MATERIALS_VERSION`** : `migrerMateriauxCloud` refuse un
   catalogue publié de version supérieure, si bien qu'un étudiant dont le site
@@ -530,7 +532,22 @@ rappelle sans le bloquer.
 - **Groupes imbriqués** : `modifierGachee` fusionne au premier niveau ; un
   groupe se modifie donc par une copie complète
   (`onMaj({ cure: { ...g.cure, mode } })`, voir `majCure` dans
-  `EditeurGachee.tsx`), sinon les autres champs du groupe disparaissent.
+  `EditeurGachee.tsx`), sinon les autres champs du groupe disparaissent. La
+  copie passe par `groupeSansVide` / `materiauxSansVide` (`gachee.ts`) :
+  une clé vide disparaît, un groupe vide aussi, et effacer un champ redonne
+  la gâchée d'avant (même empreinte, pas de « modifiée depuis la revue »).
+  Un adjuvant sans nom ne garde ni dosage ni unité.
+- **Saisie libre d'un matériau** : taper un nom efface l'identité de
+  bibliothèque (id, catalogue, provenance) ; un id périmé ne survit jamais
+  sous un autre nom.
+- **Import de presse** : `essaiDepuisPresse` (`presse-urstm.ts`) ne met dans
+  l'essai que les champs que le classeur porte (une masse ou une date déjà
+  saisies restent) ; seule la mesure de résistance (contrainte et charge)
+  est remplacée en bloc.
+- **Valeurs du calcul d'abord** : l'instantané prend Gs et w₀ entrés dans le
+  calcul (`inputs`, et `inputs.base_cw` / `base_wb` pour l'essai-erreur,
+  rangés à la sauvegarde), la bibliothèque en repli. Les formulaires RPG
+  n'ont pas d'humidité du granulat : elle vient de la bibliothèque.
 - **Jamais de valeur par défaut au chargement** (`migrerGachees`,
   normalisation) : l'empreinte de chaque gâchée changerait et toute la classe
   serait renvoyée en ligne (étape C de `sync-moteur.ts`). Un champ absent
@@ -567,6 +584,20 @@ version lisible.
 - **Aucune formule nouvelle** : les valeurs viennent de `contrainteKpa`,
   `parametresEffectifs`, `essaiValide`, `completudeGachee`. Les copies de
   conflit sont exclues (`gacheesRetenues`).
+- **Lecture** : l'export relit la classe EN ENTIER (`lireClasse` avec
+  `complet: true` ; la classe affichée est allégée, sans les entrées du
+  calcul), sur toutes les sessions pour les formulations d'origine
+  (`avecFormulationsDeToutesSessions`) ; les revues sont jugées sur cette
+  lecture fraîche.
+- **Matériaux par groupe** : résidu, granulat et liants de la fiche ; un
+  groupe que la fiche n'a pas est relu dans la formulation
+  (`materiaux_source` = `fiche_et_formulation`).
+- **Références** : jamais un nom en clair. Instantané :
+  `instantane:<type>:<empreinte du nom et du Gs>` (`refMateriau`) ;
+  formulation : `f-<empreinte du compte et de l'id>` (`refFormulation`).
+  Une colonne qui peut porter un texte saisi sans être « texte libre »
+  (moule, codes de liants personnels) porte `libre: true` et entre dans
+  `textes_libres`. Dictionnaire en version 2 depuis ces changements.
 
 ### 17. Revue des gâchées par l'enseignant
 
@@ -578,11 +609,19 @@ obligatoire) et peut écarter des éprouvettes. Le mot « valide » reste réser
   par document, clé (owner_id, target_kind, target_id). Lecture : RLS
   (propriétaire ou `is_prof()`). Écriture : AUCUN droit direct ; seulement
   `poser_revue` et `retirer_revue` (security definer, réservées à
-  l'enseignant, document existant exigé). L'étudiant lit par
+  l'enseignant, document existant exigé). `poser_revue` : `p_rev` null vaut
+  la révision courante, une révision plus récente que celle en ligne est
+  refusée (22023), les éprouvettes écartées sont réduites à celles du
+  document et dédoublonnées, le motif est débarrassé des blancs aux bouts. L'étudiant lit par
   `lire_mes_revues(p_attendu)` (garde de session 28000). Banc :
   `schema-sql.test.ts`, bloc « revues de l'enseignant » (comptes propres).
 - **Client** : `lib/revues.ts` (pur : types, « modifiée depuis la revue » par
-  comparaison des révisions, « à revoir ») ; `classe-reseau.ts`
+  comparaison des révisions, « à rafraîchir » quand la décision porte sur une
+  version plus récente que celle lue (`aRafraichir`, exclu de l'export
+  « acceptées »), « à revoir », motif d'un refus jamais renvoyé avec une
+  acceptation (`motifAEnvoyer`), écartées limitées aux éprouvettes écrasées
+  (`ecarteesAEnvoyer`)) ; la page Classe remplace la ligne d'un document
+  ouvert par sa version relue (`remplacerLigne`) ; `classe-reseau.ts`
   (`lireRevuesClasse`, `poserRevue`, `retirerRevue`, `lireMesRevues`). Base
   pas à jour : les lectures rendent `null` et la classe se charge sans revues
   (`schemaPasAJour` reconnaît aussi une table absente, PGRST205).
@@ -596,7 +635,9 @@ obligatoire) et peut écarter des éprouvettes. Le mot « valide » reste réser
 - **Exports** : colonnes « Revue », « Motif de la revue », « Modifiée depuis
   la revue », « Écartée par l'enseignant » à la fin des CSV de classe ; dans
   le jeu d'essais `revue`, `revue_perimee`, `eprouvette_ecartee` et l'export
-  « gâchées acceptées » (`seulementAcceptees`).
+  « gâchées acceptées » (`seulementAcceptees`, `accepteeTelleQuelle`) ;
+  `nb_essais_retenus` du manifeste sans les éprouvettes écartées ; clé
+  `revues` du JSON de la classe (sauvegarde mensuelle).
 - **Effacer un compte** : ses revues bloquent la suppression comme ses
   annotations (`docs/OPERATIONS.md`).
 
@@ -682,6 +723,22 @@ appareils se réécriraient la même gâchée à chaque cycle.
   dictionnaire si elle existe.
 - **Jamais** d'identifiant de compte dans une vue (le banc le vérifie), et
   jamais de vue sans `security_invoker` (elle contournerait la RLS).
+- **Retirer ou renommer une colonne** : `exporter_essais` rend
+  `setof vue_essais` ; il faut `drop function public.exporter_essais(text)`
+  avant de recréer la vue : ajouter ce `drop` dans `schema.sql`, juste avant
+  la vue (la fonction est recréée plus bas dans le script). Ajouter une
+  colonne à la fin n'exige rien de tel.
+- **Robustesse** : une valeur aberrante d'un document rend une case vide,
+  jamais une erreur de la vue entière : `jsonb_num` (nombre hors du double,
+  1e400), `jsonb_ts` (seulement AAAA-MM-JJ…, pas « now »), bornes du calcul
+  F / A (charge < 1e6 kN, diamètre entre 1e-3 et 1e5 mm), `recette_gachee`
+  (index entier, borné, calcul en double avant la conversion),
+  `parametre_gachee` (instantané seulement s'il est un objet). Les gâchées
+  des comptes enseignants sont exclues, comme dans la classe du site.
+- **SQL Editor** (rôle postgres, sans session) : les vues s'y lisent en
+  entier, mais `exporter_essais` refuse (42501, pas d'enseignant connecté) ;
+  le filtre de session porte sur `sessionId` seulement (une gâchée sans
+  session n'est pas rangée par date, contrairement au site).
 
 ## Pièges connus
 

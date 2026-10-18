@@ -59,20 +59,31 @@ function AjoutCatalogue({ kind, snap, catalogue }: {
   const nom = snap?.nom?.trim();
   if (!nom) return null;
   const quoi = kind === "residus" ? "Ce résidu" : "Ce granulat";
+  // Une humidité de granulat inconnue entre à 0 % : le dire, pour la corriger.
+  const humiditeInconnue = kind === "granulats" && typeof snap?.humiditePct !== "number";
   if (ajoute) {
-    return <p style={NOTE}>« {nom} » ajouté au catalogue officiel. Complétez sa caractérisation puis publiez-le depuis Réglages.</p>;
+    return (
+      <p style={NOTE}>
+        « {nom} » ajouté au catalogue officiel. Complétez sa caractérisation puis publiez-le depuis Réglages.
+        {humiditeInconnue ? " Humidité inconnue : mise à 0 %, à corriger dans Réglages." : ""}
+      </p>
+    );
   }
   const officiel = items.some((m) => m.origine === "officiel" && ((snap?.id && m.id === snap.id) || memeNom(m.nom, nom)));
   if (officiel) return null;
   const gsOk = typeof snap?.gs === "number" && snap.gs > 0;
+  // Jamais de w₀ inventé : un résidu sans w₀ connu s'ajoute à la main.
+  const w0Ok = kind === "granulats" || (typeof snap?.w0Pct === "number" && Number.isFinite(snap.w0Pct));
+  const possible = gsOk && w0Ok;
   return (
     <p style={NOTE}>
       {quoi} (« {nom} ») n&apos;est pas dans le catalogue officiel.{" "}
-      <button type="button" className="btn-discret" disabled={!gsOk}
-        title={gsOk ? "Ajoute une entrée officielle (nom, Gs, provenance), à caractériser et publier depuis Réglages" : "Gs inconnu : ajoutez-le à la main dans Réglages"}
+      <button type="button" className="btn-discret" disabled={!possible}
+        title={possible ? "Ajoute une entrée officielle (nom, Gs, provenance), à caractériser et publier depuis Réglages"
+          : !gsOk ? "Gs inconnu : ajoutez-le à la main dans Réglages" : "w₀ inconnu : ajoutez-le à la main dans Réglages"}
         onClick={() => {
           catalogue.onAjouter(kind, kind === "residus"
-            ? { nom, gs: snap!.gs, w0_pct: snap?.w0Pct ?? 0, provenance: snap?.provenance }
+            ? { nom, gs: snap!.gs, w0_pct: snap!.w0Pct, provenance: snap?.provenance }
             : { nom, gs: snap!.gs, humidite_pct: snap?.humiditePct ?? 0, provenance: snap?.provenance });
           setAjoute(true);
         }}>

@@ -62,17 +62,19 @@ export function revDe(lignes: LigneClasse[], proprietaire: string, kind: "result
   return lignes.find((l) => l.proprietaire === proprietaire && l.kind === kind && l.id === id)?.rev ?? null;
 }
 
-/** État de revue d'une gâchée dans la liste de l'enseignant. */
-function PastilleRevue({ gachee, info }: { gachee: EtudiantClasse["gachees"][number]; info: InfoRevue | undefined }) {
+/** État de revue d'une gâchée dans la liste de l'enseignant (même règle que la tuile « À revoir »). */
+export function PastilleRevue({ gachee, info }: { gachee: EtudiantClasse["gachees"][number]; info: InfoRevue | undefined }) {
+  const aRevoirIci = aRevoir(gachee, info);
   if (info) {
     return (
       <>
         {" "}<Pastille ton={info.decision === "acceptee" ? "vert" : "rouge"} title={info.motif ?? undefined}>Revue : {LIBELLE_DECISION[info.decision]}</Pastille>
         {info.perimee && <> <Pastille ton="ambre" title="Modifiée par l'étudiant depuis votre décision">modifiée depuis</Pastille></>}
+        {aRevoirIci && <> <Pastille ton="bleu">À revoir</Pastille></>}
       </>
     );
   }
-  return aRevoir(gachee, undefined) ? <> <Pastille ton="bleu">À revoir</Pastille></> : null;
+  return aRevoirIci ? <> <Pastille ton="bleu">À revoir</Pastille></> : null;
 }
 
 export default function DetailEtudiant({ etudiant, annotations, onAnnoter, ctx, lignes, onOuvrir, onRapport, revueDe }: {

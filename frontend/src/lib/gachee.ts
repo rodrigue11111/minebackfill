@@ -82,6 +82,36 @@ export interface CureGachee {
   note?: string;
 }
 
+/**
+ * Un groupe de la fiche d'essai sans valeur vide : les clés undefined ou ""
+ * disparaissent, un sous-groupe vide aussi, et un groupe vide devient
+ * undefined. Saisir puis effacer un champ redonne donc la gâchée d'avant
+ * (même empreinte : rien à envoyer, pas de « modifiée depuis la revue »).
+ */
+export function groupeSansVide<T extends object>(o: T | undefined): T | undefined {
+  if (!o) return undefined;
+  const r = Object.fromEntries(Object.entries(o).filter(([, v]) =>
+    v !== undefined && v !== "" && !(typeof v === "object" && v !== null && !Array.isArray(v) && Object.keys(v).length === 0)));
+  return Object.keys(r).length > 0 ? (r as T) : undefined;
+}
+
+/** Matériaux de la fiche nettoyés (groupeSansVide à chaque niveau) ; un
+ *  adjuvant sans nom ne garde ni dosage ni unité. */
+export function materiauxSansVide(m: MateriauxGachee | undefined): MateriauxGachee | undefined {
+  if (!m) return undefined;
+  let adjuvant = m.adjuvant;
+  if (adjuvant && !adjuvant.nom?.trim()) {
+    adjuvant = { ...adjuvant };
+    delete adjuvant.dosage;
+    delete adjuvant.dosageUnite;
+  }
+  return groupeSansVide({
+    ...m,
+    residu: groupeSansVide(m.residu), granulat: groupeSansVide(m.granulat),
+    eau: groupeSansVide(m.eau), adjuvant: groupeSansVide(adjuvant),
+  });
+}
+
 export interface Gachee {
   id: string;
   code: string; // auto « G-AAAAMMJJ-NN »

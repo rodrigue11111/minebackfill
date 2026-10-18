@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  ecart, horsTolerance, nbHorsTolerance, genererCode, composantsDepuisRecette, parametresDepuisRecette,
+  ecart, horsTolerance, nbHorsTolerance, genererCode, composantsDepuisRecette, parametresDepuisRecette, groupeSansVide, materiauxSansVide,
   type Gachee, type ComposantPese,
 } from "./gachee";
 import type { Recipe } from "./types";
@@ -111,5 +111,22 @@ describe("parametresDepuisRecette", () => {
     expect(p.cwPct).toBe(78);
     expect(p.wcRatio).toBeUndefined();
     expect(p.bwPct).toBeUndefined();
+  });
+});
+
+describe("fiche d'essai : groupes sans valeur vide", () => {
+  it("effacer un champ redonne le groupe d'avant ; un groupe vide disparaît", () => {
+    expect(groupeSansVide({ mode: "immersion" as const, temperatureC: undefined, note: "" })).toEqual({ mode: "immersion" });
+    expect(groupeSansVide({ temperatureC: undefined })).toBeUndefined();
+    expect(groupeSansVide(undefined)).toBeUndefined();
+    const avant = { residu: { nom: "R1" } };
+    expect(materiauxSansVide({ ...avant, eau: { type: undefined }, granulat: { nom: "" } })).toEqual(avant);
+    expect(materiauxSansVide({ residu: { nom: "" } })).toBeUndefined();
+  });
+
+  it("adjuvant sans nom : ni dosage ni unité", () => {
+    expect(materiauxSansVide({ adjuvant: { nom: " ", dosage: 2, dosageUnite: "% liant" } })).toEqual({ adjuvant: { nom: " " } });
+    expect(materiauxSansVide({ adjuvant: { nom: "", dosage: 2, dosageUnite: "% liant" } })).toBeUndefined();
+    expect(materiauxSansVide({ adjuvant: { nom: "SP-1", dosage: 2, dosageUnite: "% liant" } })).toEqual({ adjuvant: { nom: "SP-1", dosage: 2, dosageUnite: "% liant" } });
   });
 });

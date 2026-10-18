@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lireResultats, lireCourbe, reduireCourbe, type PointCourbe } from "./presse-urstm";
+import { essaiDepuisPresse, lireResultats, lireCourbe, reduireCourbe, type EssaiPresse, type PointCourbe } from "./presse-urstm";
 
 // En-têtes et valeurs RELEVÉS sur un export réel de la presse URSTM
 // (Results-Batch_URSTM(V1)-20260925-143132.xlsx), lu avec exceljs — la
@@ -204,5 +204,31 @@ describe("presse-urstm — réduction de la courbe", () => {
     for (let i = 1; i < r.length; i++) {
       expect(r[i].tempsS).toBeGreaterThan(r[i - 1].tempsS);
     }
+  });
+});
+
+describe("presse-urstm — ce que l'import apporte à l'essai", () => {
+  const essai = (p: Partial<EssaiPresse>): EssaiPresse => ({
+    echantillon: "3", contrainteKpa: 196.3, chargeN: 890, moduleYoungKpa: null, deformationMaxPct: null, deflexionMaxMm: null,
+    hauteurMm: null, masseG: null, tempsDeCureJours: null, commentaires: "", dateEssai: null, operateur: "", ...p,
+  });
+  const source = { fichier: "p.xlsx", importeLe: "2026-10-18T10:00:00.000Z" };
+
+  it("seulement les champs que le classeur porte : une masse ou une date saisies ne sont pas effacées", () => {
+    const patch = essaiDepuisPresse(essai({}), source);
+    expect(Object.keys(patch).sort()).toEqual(["chargeKn", "contrainteKpaSaisie", "sourcePresse"]);
+    const avant = { masseG: 410, date: "2026-10-01T12:00:00.000Z", hauteurMm: 152, contrainteKpaSaisie: 150 };
+    expect({ ...avant, ...patch }).toMatchObject({ masseG: 410, date: avant.date, hauteurMm: 152, contrainteKpaSaisie: 196.3, chargeKn: 0.89 });
+    expect(patch.sourcePresse).toEqual({ fichier: "p.xlsx", echantillon: "3", importeLe: source.importeLe });
+  });
+
+  it("la mesure de résistance est remplacée en bloc ; les champs présents passent ; la courbe si elle existe", () => {
+    const patch = essaiDepuisPresse(essai({ contrainteKpa: null, chargeN: null, masseG: 567, hauteurMm: 38, tempsDeCureJours: 29, operateur: "URSTM" }), source,
+      [{ tempsS: 0, chargeN: 0, deplacementMm: 0, contrainteKpa: 0, deformationPct: 0 }]);
+    expect("contrainteKpaSaisie" in patch && patch.contrainteKpaSaisie === undefined).toBe(true);
+    expect("chargeKn" in patch && patch.chargeKn === undefined).toBe(true);
+    expect(patch).toMatchObject({ masseG: 567, hauteurMm: 38, tempsDeCureReelJours: 29, sourcePresse: { operateur: "URSTM" } });
+    expect(patch.courbe).toHaveLength(1);
+    expect(essaiDepuisPresse(essai({}), source, [])).not.toHaveProperty("courbe");
   });
 });

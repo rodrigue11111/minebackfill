@@ -107,6 +107,18 @@ describe("materials-io : caractérisation (facultative)", () => {
     expect(r.d50_um).toBe(18.5);
   });
 
+  it("date d'échantillonnage : AAAA-MM-JJ seulement ; caractérisation négative refusée ; numéro de ligne", async () => {
+    for (const date of ["15/09/2026", "2026-9-15", "2026-02-30", "demain"]) {
+      await expect(materialsDepuisFichier("residus", fauxFichier("r.csv", `nom;gs;w0_pct;date_echantillonnage\nR;3;20;2026-09-15\nS;3;20;${date}`)))
+        .rejects.toThrow(/Ligne 2 : « date_echantillonnage » doit être une date au format AAAA-MM-JJ/);
+    }
+    const [r] = await materialsDepuisFichier("residus", fauxFichier("r.csv", "nom;gs;w0_pct;date_echantillonnage\nR;3;20; 2026-09-15 ")) as ResiduItem[];
+    expect(r.date_echantillonnage).toBe("2026-09-15");
+    await expect(materialsDepuisFichier("residus", fauxFichier("r.csv", "nom;gs;w0_pct;d50_um\nR;3;20;-4"))).rejects.toThrow(/Ligne 1 : « d50_um » ne peut pas être négatif/);
+    await expect(materialsDepuisFichier("granulats", fauxFichier("g.json", JSON.stringify([{ nom: "G", gs: 2.7, absorption_pct: -1 }]))))
+      .rejects.toThrow(/« absorption_pct » ne peut pas être négatif/);
+  });
+
   it("un ancien fichier sans colonnes de caractérisation s'importe comme avant", async () => {
     const [r] = await materialsDepuisFichier("residus", fauxFichier("r.csv", "nom;gs;w0_pct;provenance;notes\nR;3,1;20;A;x")) as ResiduItem[];
     expect(r).toMatchObject({ nom: "R", gs: 3.1, w0_pct: 20 });

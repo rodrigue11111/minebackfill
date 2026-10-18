@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  agesClasse, eprouvettesAvecCourbe, essaiValide, exportClasse, fusionnerLignes, gacheesRetenues, nomEtudiant, nuageClasse, regrouper,
+  agesClasse, avecFormulationsDeToutesSessions, eprouvettesAvecCourbe, essaiValide, exportClasse, fusionnerLignes, gacheesRetenues, nomEtudiant, nuageClasse,
+  regrouper, remplacerLigne,
   type LigneClasse, type ProfilClasse,
 } from "./classe";
 import { annotationsDe, fusionnerAnnotations, migrerAnnotationV1, nonLuesDeLEnseignant, type Annotation } from "./annotations";
@@ -401,5 +402,25 @@ describe("classe-reseau", () => {
     expect(confirmationAction("bloquer", "Alice")).toMatch(/Rien n'est effacé/);
     expect(confirmationAction("bloquer", "Alice")).toMatch(/dans l'heure/);
     expect(confirmationAction("retirer", "Alice")).toMatch(/redevient étudiant/);
+  });
+});
+
+describe("classe : export des décisions, formulations de toutes les sessions, ligne relue", () => {
+  const etu = [{ id: A, nom: "A", email: null, resultats: [], nbEssais: 0, derniereActivite: null,
+    gachees: [{ id: "g1", eprouvettes: [] }] }] as unknown as Parameters<typeof exportClasse>[0];
+
+  it("JSON de la classe : clé « revues » pour les gâchées exportées seulement", () => {
+    const r = (id: string, ownerId = A) => ({ ownerId, kind: "gachee" as const, id, rev: 3, decision: "refusee" as const, motif: "x", ecartees: ["e1"], maj: "m" });
+    const x = exportClasse(etu, "toutes", new Date(), undefined, [r("g1"), r("g9"), r("g1", B)]) as { revues: unknown[] };
+    expect(x.revues).toEqual([{ proprietaire: A, gacheeId: "g1", rev: 3, decision: "refusee", motif: "x", ecartees: ["e1"], maj: "m" }]);
+    expect(exportClasse(etu, "toutes", new Date())).not.toHaveProperty("revues");
+  });
+
+  it("formulations de toutes les sessions ; ligne remplacée par la version relue", () => {
+    const toutes = [{ ...etu[0], resultats: [{ id: "r-ancienne" }, { id: "r1" }] }] as unknown as Parameters<typeof exportClasse>[0];
+    expect(avecFormulationsDeToutesSessions(etu, toutes)[0].resultats.map((x) => x.id)).toEqual(["r-ancienne", "r1"]);
+    expect(avecFormulationsDeToutesSessions(etu, [])[0].resultats).toEqual([]);
+    const l = (id: string, rev: number): LigneClasse => ({ proprietaire: A, kind: "gachee", id, rev, maj: "m", cree: "c", supprime: false, contenu: { id } });
+    expect(remplacerLigne([l("g1", 1), l("g2", 1)], l("g1", 4)).map((x) => [x.id, x.rev])).toEqual([["g1", 4], ["g2", 1]]);
   });
 });

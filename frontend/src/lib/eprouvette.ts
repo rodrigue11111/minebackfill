@@ -88,7 +88,7 @@ export const TYPES_RUPTURE: { code: CodeRupture; libelle: string }[] = [
 /** Moules proposés (diamètre × hauteur, mm) ; « Autre » garde le texte libre. */
 export const MOULES_PROPOSES: { libelle: string; diametreMm: number; hauteurMm: number }[] = [
   { libelle: "Cylindre 50 × 100 mm", diametreMm: 50, hauteurMm: 100 },
-  { libelle: "Cylindre 76 × 152 mm", diametreMm: 76.2, hauteurMm: 152.4 },
+  { libelle: "Cylindre 76,2 × 152,4 mm", diametreMm: 76.2, hauteurMm: 152.4 },
   { libelle: "Cylindre 100 × 200 mm", diametreMm: 100, hauteurMm: 200 },
 ];
 

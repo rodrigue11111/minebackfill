@@ -681,24 +681,40 @@ describe("schema.sql — revues de l'enseignant", () => {
   const ligne = async (owner: string, id: string) => (await db.query<{ decision: string; motif: string | null; deleted: boolean; target_rev: string; ecartees: string[]; created_at: string; updated_at: string }>(
     "select decision, motif, deleted, target_rev::text, ecartees, created_at::text, updated_at::text from public.revues where owner_id = $1 and target_id = $2", [owner, id])).rows;
 
+  const revDe = async (owner: string, id: string) => (await lire(owner, null)).find((x) => x.doc_id === id)!.doc_rev;
+  let rev1 = 0;
+  let rev2 = 0;
+
   beforeAll(async () => {
     await creerCompte(R1, "r1@exemple.ca");
     await creerCompte(R2, "r2@exemple.ca");
-    await ecrire(R1, "gachee", "rg1", { id: "rg1" }, null);
+    await ecrire(R1, "gachee", "rg1", { id: "rg1", eprouvettes: [{ id: "e1" }, { id: "e2" }] }, null);
     await ecrire(R1, "gachee", "rg2", { id: "rg2" }, null);
     await ecrire(R2, "gachee", "rg9", { id: "rg9" }, null);
+    rev1 = await revDe(R1, "rg1");
   });
 
-  it("l'enseignant accepte puis refuse : une seule ligne, motif nettoyé, éprouvettes écartées", async () => {
-    await poser(PROF, R1, "rg1", "acceptee", null, [], 3);
+  it("l'enseignant accepte puis refuse : une seule ligne, motif nettoyé, éprouvettes écartées réduites au document", async () => {
+    await poser(PROF, R1, "rg1", "acceptee", null, [], rev1);
     const [a] = await ligne(R1, "rg1");
-    expect(a).toMatchObject({ decision: "acceptee", motif: null, deleted: false, target_rev: "3", ecartees: [] });
-    await poser(PROF, R1, "rg1", "refusee", "  Pesées incomplètes.  ", ["e1", "e2"], 4);
+    expect(a).toMatchObject({ decision: "acceptee", motif: null, deleted: false, target_rev: String(rev1), ecartees: [] });
+    // L'étudiant modifie la gâchée ; l'enseignant refuse la nouvelle version.
+    await ecrire(R1, "gachee", "rg1", { id: "rg1", observations: "x", eprouvettes: [{ id: "e1" }, { id: "e2" }] }, rev1);
+    rev2 = await revDe(R1, "rg1");
+    await poser(PROF, R1, "rg1", "refusee", " \n Pesées incomplètes.\t ", ["e2", "e1", "e2", "fantome"], rev2);
     const lignes = await ligne(R1, "rg1");
     expect(lignes).toHaveLength(1);
-    expect(lignes[0]).toMatchObject({ decision: "refusee", motif: "Pesées incomplètes.", target_rev: "4", ecartees: ["e1", "e2"] });
+    expect(lignes[0]).toMatchObject({ decision: "refusee", motif: "Pesées incomplètes.", target_rev: String(rev2), ecartees: ["e1", "e2"] });
     expect(lignes[0].updated_at > a.updated_at).toBe(true);
     expect(lignes[0].created_at).toBe(a.created_at);
+  });
+
+  it("révision : absente, celle en ligne ; plus récente que celle en ligne, refusée", async () => {
+    const rg2 = await revDe(R1, "rg2");
+    await poser(PROF, R1, "rg2", "acceptee", null, [], null);
+    expect((await ligne(R1, "rg2"))[0].target_rev).toBe(String(rg2));
+    await expect(poser(PROF, R1, "rg2", "acceptee", null, [], rg2 + 1)).rejects.toMatchObject({ code: "22023" });
+    await retirer(PROF, R1, "rg2");
   });
 
   it("contrôles : refus sans motif, décision inconnue, document absent ou supprimé, bornes", async () => {
@@ -712,7 +728,7 @@ describe("schema.sql — revues de l'enseignant", () => {
     await ecrire(R1, "gachee", "rg3", { id: "rg3" }, null);
     await db.query("update public.user_docs set deleted = true where user_id = $1 and id = 'rg3'", [R1]);
     await expect(poser(PROF, R1, "rg3", "acceptee", null)).rejects.toMatchObject({ code: "P0002" });
-    expect(await ligne(R1, "rg2")).toEqual([]);
+    expect((await ligne(R1, "rg2")).every((l) => l.deleted)).toBe(true); // retirée au test précédent, rien de neuf
   });
 
   it("seul l'enseignant décide ; personne n'écrit dans la table directement", async () => {
@@ -731,12 +747,12 @@ describe("schema.sql — revues de l'enseignant", () => {
   it("lecture : l'étudiant les siennes seulement, l'enseignant toutes ; session vérifiée", async () => {
     await poser(PROF, R2, "rg9", "acceptee", "Très bien documentée.");
     const r1 = (await mes(R1)).rows;
-    expect(r1).toEqual([{ cible_id: "rg1", cible_rev: "4", decision_revue: "refusee", motif_revue: "Pesées incomplètes.", ecartees_revue: ["e1", "e2"] }]);
+    expect(r1).toEqual([{ cible_id: "rg1", cible_rev: String(rev2), decision_revue: "refusee", motif_revue: "Pesées incomplètes.", ecartees_revue: ["e1", "e2"] }]);
     expect((await mes(R2)).rows.map((x) => x.cible_id)).toEqual(["rg9"]);
     await expect(mes(R1, R2)).rejects.toMatchObject({ code: "28000" });
     await expect(comme(null, "select * from public.lire_mes_revues($1)", [R1])).rejects.toMatchObject({ code: "42501" });
-    // Lecture directe : la RLS ne montre à l'étudiant que les siennes.
-    expect((await comme<{ target_id: string }>(R1, "select target_id from public.revues")).rows.map((x) => x.target_id)).toEqual(["rg1"]);
+    // Lecture directe : la RLS ne montre à l'étudiant que les siennes (rg2 : retirée, ligne gardée).
+    expect((await comme<{ target_id: string }>(R1, "select target_id from public.revues order by target_id")).rows.map((x) => x.target_id)).toEqual(["rg1", "rg2"]);
     const prof = (await comme<{ target_id: string }>(PROF, "select target_id from public.revues order by target_id")).rows.map((x) => x.target_id);
     expect(prof).toEqual(expect.arrayContaining(["rg1", "rg9"]));
   });
@@ -747,7 +763,7 @@ describe("schema.sql — revues de l'enseignant", () => {
     expect((await retirer(PROF, R1, "rg1")).rows[0].r).toBe(false); // déjà retirée
     expect((await ligne(R1, "rg1"))[0].deleted).toBe(true);
     expect((await mes(R1)).rows).toEqual([]);
-    await poser(PROF, R1, "rg1", "acceptee", null, [], 5);
+    await poser(PROF, R1, "rg1", "acceptee", null, [], null);
     expect((await mes(R1)).rows).toMatchObject([{ cible_id: "rg1", decision_revue: "acceptee", motif_revue: null }]);
   });
 
@@ -988,5 +1004,28 @@ describe("schema.sql — accès direct : vues pseudonymisées des essais", () =>
     await expect(comme(PROF, "insert into public.vue_gachees (gachee_code) values ('x')")).rejects.toThrow(/cannot insert into view|permission denied/);
     expect((await comme<{ v: number | null }>(V1, "select public.jsonb_num('\"12\"'::jsonb) as v")).rows[0].v).toBeNull();
     expect((await comme<{ v: string | null }>(V1, "select public.jsonb_ts('\"demain\"'::jsonb) as v")).rows[0].v).toBeNull();
+  });
+
+  it("robustesse : valeurs aberrantes, gâchée d'un enseignant, instantané nul, index de recette", async () => {
+    await ecrire(V1, "gachee", "vg3", { id: "vg3", code: "G-3", statut: "terminee", categorie: "RPC", formulationId: "vr1",
+      recetteIndex: 1e20, parametres: null, eprouvettes: [
+        { id: "v-x1", code: "G-3-E01", couleLe: "now", ageJours: 7, statut: "ecrase", essai: { chargeKn: 1e306, diametreMm: 50, date: "today" } },
+        { id: "v-x2", code: "G-3-E02", couleLe: "2026-09-10", ageJours: 7, statut: "ecrase", essai: { chargeKn: 1, diametreMm: 1e-200 } },
+      ] }, null);
+    await ecrire(V1, "gachee", "vg4", { id: "vg4", code: "G-4", statut: "terminee", categorie: "RPC", formulationId: "vr1", recetteIndex: 0.5, eprouvettes: [] }, null);
+    await ecrire(PROF, "gachee", "vgp", { id: "vgp", code: "G-P", statut: "terminee", categorie: "RPC", parametres: { cwPct: 70 }, eprouvettes: [] }, null);
+    const l = new Map((await essais(V1)).rows.map((x) => [x.eprouvette_ref as string, x]));
+    expect(l.get("v-x1")).toMatchObject({ ucs_kpa: null, coulee_le: null }); // 1e306 kN, « now »
+    expect(l.get("v-x2")).toMatchObject({ ucs_kpa: null }); // 1e-200 mm
+    const g = new Map((await gachees(V1)).rows.map((x) => [x.gachee_ref, x.cw_pct]));
+    expect(g.get("vg3")).toBe(76); // instantané nul : recette ; index énorme borné à la dernière recette
+    expect(g.get("vg4")).toBeNull(); // index non entier : aucune recette devinée
+    const prof = (await gachees(PROF)).rows.map((x) => x.gachee_ref);
+    expect(prof).toContain("vg3");
+    expect(prof).not.toContain("vgp"); // jamais les gâchées d'un compte enseignant
+    const v = await comme<{ a: number | null; b: string | null; c: string | null }>(V1,
+      "select public.jsonb_num('1e400'::jsonb) as a, public.jsonb_ts('\"now\"'::jsonb)::text as b, public.jsonb_ts('\"2026-09-10\"'::jsonb)::text as c");
+    expect(v.rows[0]).toMatchObject({ a: null, b: null });
+    expect(v.rows[0].c).not.toBeNull();
   });
 });

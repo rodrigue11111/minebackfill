@@ -31,6 +31,20 @@ const CHAMPS_NUM_FACULTATIFS: Record<MaterialKind, Set<string>> = {
   retardateurs: new Set(),
 };
 
+/** Champs de date (caractérisation) : AAAA-MM-JJ seulement. */
+const CHAMPS_DATE: Record<MaterialKind, Set<string>> = {
+  residus: new Set(CARACTERISATION_RESIDU.filter((c) => c.type === "date").map((c) => c.cle)),
+  granulats: new Set(CARACTERISATION_GRANULAT.filter((c) => c.type === "date").map((c) => c.cle)),
+  retardateurs: new Set(),
+};
+
+/** Une vraie date AAAA-MM-JJ (le 2026-02-30 n'en est pas une). */
+function estDateIso(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
+
 const LIBELLE: Record<MaterialKind, string> = {
   residus: "residus",
   granulats: "granulats",
@@ -136,6 +150,8 @@ function construireItem(kind: MaterialKind, source: Record<string, unknown>, i: 
         if (texte === "") continue;
         const n = Number(texte.replace(",", "."));
         if (!Number.isFinite(n)) throw new Error(`Ligne ${i + 1} : « ${champ} » n'est pas un nombre (« ${texte} »).`);
+        // Granulométrie, teneurs, absorption : jamais négatives.
+        if (n < 0) throw new Error(`Ligne ${i + 1} : « ${champ} » ne peut pas être négatif (« ${texte} »).`);
         out[champ] = n;
         continue;
       }
@@ -143,7 +159,11 @@ function construireItem(kind: MaterialKind, source: Record<string, unknown>, i: 
       const n = Number(texte.replace(",", "."));
       out[champ] = Number.isFinite(n) ? n : 0;
     } else if (brut !== undefined && brut !== null && brut !== "") {
-      out[champ] = String(brut);
+      const texte = String(brut).trim();
+      if (CHAMPS_DATE[kind].has(champ) && !estDateIso(texte)) {
+        throw new Error(`Ligne ${i + 1} : « ${champ} » doit être une date au format AAAA-MM-JJ (« ${texte} »).`);
+      }
+      out[champ] = CHAMPS_DATE[kind].has(champ) ? texte : String(brut);
     }
   }
   // Validation minimale : un nom et le champ physique principal > 0, sinon le

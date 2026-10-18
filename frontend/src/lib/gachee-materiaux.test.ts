@@ -58,6 +58,16 @@ describe("materiauxDepuisFormulation", () => {
     expect(rpg2.granulat).toEqual({ gs: 2.65 });
   });
 
+  it("priorité aux valeurs entrées dans le calcul ; la bibliothèque (qui a pu changer) en repli", () => {
+    const m = materiauxDepuisFormulation(form({
+      selectedMaterials: { residueId: "res_laronde" },
+      inputs: { base_method: "dosage_cw", base_cw: { residue_sg: 3.05, residue_w_pct: 24.1 } },
+    }), BIB);
+    expect(m.residu).toMatchObject({ id: "res_laronde", gs: 3.05, w0Pct: 24.1 });
+    const rpg = materiauxDepuisFormulation(form({ category: "RPG", selectedMaterials: { aggregateId: "gra_laronde" }, inputs: { aggregate_sg: 2.71 } }), BIB);
+    expect(rpg.granulat).toMatchObject({ id: "gra_laronde", gs: 2.71, humiditePct: 0 }); // humidité : bibliothèque seulement
+  });
+
   it("formulation sans information : instantané vide, sans clé undefined", () => {
     const general = { binders: [] } as unknown as GeneralInfo;
     const m = materiauxDepuisFormulation({ category: "RPC", general }, BIB);

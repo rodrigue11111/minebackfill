@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  aRevoir, cleRevue, indexerRevues, infoRevue, libelleRevue, revueClasseDepuisLigne, revueDepuisLigne, revuePerimee, type RevueClasse,
+  aRevoir, accepteeTelleQuelle, cleRevue, ecarteesAEnvoyer, indexerRevues, infoRevue, libelleRevue, motifAEnvoyer, revueClasseDepuisLigne,
+  revueDepuisLigne, revueEnAvance, revuePerimee, type RevueClasse,
 } from "./revues";
 import { lireMesRevues, lireRevuesClasse, messageErreurClasse, ErreurClasse, poserRevue, retirerRevue } from "./classe-reseau";
 
@@ -27,7 +28,9 @@ describe("revues : règles", () => {
     expect(aRevoir({ statut: "brouillon" }, undefined)).toBe(false);
     expect(aRevoir({ statut: "terminee", conflit: { de: "g1", le: "x" } }, undefined)).toBe(false);
     expect(infoRevue(indexerRevues([revue()]), () => 5, A, "autre")).toBeUndefined();
-    expect(libelleRevue({ decision: "refusee" })).toBe("Revue : refusée");
+    expect(libelleRevue({ decision: "refusee", rev: 5 })).toBe("Revue : refusée");
+    expect(libelleRevue({ decision: "refusee", rev: 5 }, 5)).toBe("Revue : refusée");
+    expect(libelleRevue({ decision: "refusee", rev: 5 }, 7)).toBe("Revue : refusée (sur une version antérieure)");
   });
 
   it("lignes lues : décision ou type inconnus ignorés, révision convertie", () => {
@@ -87,5 +90,34 @@ describe("revues : réseau (faux client)", () => {
     expect(await lireMesRevues(absente, A)).toBeNull();
     const session = { rpc: () => Promise.resolve({ data: null, error: { code: "28000", message: "session inattendue" } }) } as unknown as SupabaseClient;
     await expect(lireMesRevues(session, A)).rejects.toMatchObject({ code: "28000" });
+  });
+});
+
+describe("revues : envoi d'une décision, lecture en retard", () => {
+  it("accepter une gâchée refusée ne renvoie pas le motif du refus, sauf s'il a été réécrit", () => {
+    const refus = { decision: "refusee" as const, motif: "Pesées incomplètes." };
+    expect(motifAEnvoyer("acceptee", "Pesées incomplètes.", refus)).toBeNull();
+    expect(motifAEnvoyer("acceptee", "  Pesées incomplètes. ", refus)).toBeNull();
+    expect(motifAEnvoyer("acceptee", "Corrigé, merci.", refus)).toBe("Corrigé, merci.");
+    expect(motifAEnvoyer("refusee", " Toujours incomplet ", refus)).toBe("Toujours incomplet");
+    expect(motifAEnvoyer("acceptee", "Bien.", { decision: "acceptee", motif: "Bien." })).toBe("Bien.");
+    expect(motifAEnvoyer("acceptee", "   ", undefined)).toBeNull();
+  });
+
+  it("éprouvettes écartées : seulement celles encore écrasées, sans doublon", () => {
+    const g = { eprouvettes: [{ id: "e1", statut: "ecrase" }, { id: "e2", statut: "en_cure" }, { id: "e3", statut: "ecrase" }] } as never;
+    expect(ecarteesAEnvoyer(["e3", "e2", "e1", "e3", "fantome"], g)).toEqual(["e3", "e1"]);
+  });
+
+  it("décision plus récente que la version lue : « à rafraîchir », jamais exportée comme acceptée telle quelle", () => {
+    const info = infoRevue(indexerRevues([revue({ rev: 5 })]), () => 4, A, "g1")!;
+    expect(info).toMatchObject({ perimee: false, aRafraichir: true });
+    expect(revueEnAvance({ rev: 5 }, 4)).toBe(true);
+    expect(revueEnAvance({ rev: 5 }, 5)).toBe(false);
+    expect(revueEnAvance({ rev: null }, 4)).toBe(false);
+    expect(accepteeTelleQuelle(info)).toBe(false);
+    expect(accepteeTelleQuelle({ ...info, aRafraichir: false })).toBe(true);
+    expect(accepteeTelleQuelle({ ...info, aRafraichir: false, perimee: true })).toBe(false);
+    expect(accepteeTelleQuelle(undefined)).toBe(false);
   });
 });

@@ -15,6 +15,8 @@
 // mesurés — jamais de moyenne, qui inventerait des valeurs que la presse n'a
 // jamais enregistrées.
 
+import type { EssaiUCS } from "./eprouvette";
+
 /** Une ligne du récapitulatif : un essai, donc une éprouvette. */
 export interface EssaiPresse {
   /** Numéro d'échantillon tel que la presse le nomme (« 14 »). */
@@ -221,4 +223,41 @@ export function reduireCourbe(points: PointCourbe[], max = 200): PointCourbe[] {
 
   return [...garder].sort((a, b) => a - b).filter((i) => i >= 0 && i < points.length)
     .map((i) => points[i]);
+}
+
+/**
+ * Ce qu'un essai de presse apporte à l'essai d'une éprouvette (à fusionner
+ * par-dessus l'essai existant). Seuls les champs que le classeur PORTE y
+ * figurent : une masse, une hauteur ou une date déjà saisies ne sont jamais
+ * effacées par un classeur qui ne les a pas. Exception voulue : la mesure de
+ * résistance (contrainte et charge) est remplacée EN BLOC, clés présentes
+ * même vides, pour qu'un ancien couple saisi à la main ne survive pas à
+ * côté de la nouvelle mesure.
+ */
+export function essaiDepuisPresse(
+  e: EssaiPresse,
+  source: { fichier: string; importeLe: string },
+  courbe?: PointCourbe[],
+): Partial<EssaiUCS> {
+  const r: Partial<EssaiUCS> = {
+    // La contrainte de la presse va dans le champ SAISI : contrainteKpa()
+    // le préfère déjà au calcul F/A, donc rien à changer en aval.
+    contrainteKpaSaisie: e.contrainteKpa ?? undefined,
+    // La charge est convertie en kN, l'unité du formulaire.
+    chargeKn: e.chargeN !== null ? e.chargeN / 1000 : undefined,
+  };
+  if (e.hauteurMm !== null) r.hauteurMm = e.hauteurMm;
+  if (e.dateEssai !== null) r.date = e.dateEssai;
+  if (e.moduleYoungKpa !== null) r.moduleYoungKpa = e.moduleYoungKpa;
+  if (e.deformationMaxPct !== null) r.deformationMaxPct = e.deformationMaxPct;
+  if (e.deflexionMaxMm !== null) r.deflexionMaxMm = e.deflexionMaxMm;
+  if (e.masseG !== null) r.masseG = e.masseG;
+  if (e.tempsDeCureJours !== null) r.tempsDeCureReelJours = e.tempsDeCureJours;
+  r.sourcePresse = {
+    fichier: source.fichier, echantillon: e.echantillon, importeLe: source.importeLe,
+    ...(e.operateur ? { operateur: e.operateur } : {}),
+    ...(e.commentaires ? { commentaires: e.commentaires } : {}),
+  };
+  if (courbe && courbe.length > 0) r.courbe = courbe;
+  return r;
 }

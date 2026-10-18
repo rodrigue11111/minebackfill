@@ -33,7 +33,7 @@ describe("résumé de la classe", () => {
 describe("résumé : gâchées à revoir", () => {
   const e = (gachees: { id: string; statut: string; conflit?: unknown }[]) =>
     ({ id: "e1", nom: "e1", email: null, resultats: [], gachees, nbEssais: 0, derniereActivite: null }) as unknown as EtudiantClasse;
-  const info = (perimee: boolean): InfoRevue => ({ decision: "acceptee", motif: null, ecartees: [], maj: "m", perimee });
+  const info = (perimee: boolean): InfoRevue => ({ decision: "acceptee", motif: null, ecartees: [], maj: "m", perimee, aRafraichir: false });
 
   it("terminées sans décision ou modifiées depuis ; null quand les revues sont indisponibles", () => {
     const etu = e([

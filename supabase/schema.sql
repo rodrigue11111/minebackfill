@@ -899,6 +899,10 @@ revoke insert, update, delete, truncate on public.revues from authenticated;
 grant select on public.revues to authenticated;
 
 -- L'enseignant pose (ou remplace) sa décision sur un document qui existe.
+-- p_rev : révision du document lue par l'enseignant (null : la révision
+-- courante) ; une révision plus récente que celle en ligne est refusée. Les
+-- éprouvettes écartées sont réduites à celles du document, sans doublon. Le
+-- motif est débarrassé des blancs (espaces, retours à la ligne) aux bouts.
 create or replace function public.poser_revue(
   p_owner uuid, p_kind text, p_id text, p_rev bigint,
   p_decision text, p_motif text, p_ecartees text[] default '{}'
@@ -906,14 +910,16 @@ create or replace function public.poser_revue(
 language plpgsql security definer set search_path = '' as $$
 declare
   v_uid uuid := (select auth.uid());
-  v_motif text := nullif(btrim(coalesce(p_motif, '')), '');
+  v_motif text := nullif(regexp_replace(coalesce(p_motif, ''), '^\s+|\s+$', '', 'g'), '');
   v_ecartees text[] := coalesce(p_ecartees, '{}'::text[]);
+  v_rev bigint;
+  v_payload jsonb;
 begin
   if v_uid is null or not public.is_prof() then
     raise exception 'réservé à l''enseignant' using errcode = '42501';
   end if;
   if p_kind is distinct from 'gachee' or p_decision is null or p_decision not in ('acceptee', 'refusee') then
-    raise exception 'décision invalide' using errcode = '22023';
+    raise exception 'décision attendue : acceptee ou refusee, sur une gâchée' using errcode = '22023';
   end if;
   if p_decision = 'refusee' and v_motif is null then
     raise exception 'un refus doit être motivé' using errcode = '22023';
@@ -923,15 +929,25 @@ begin
   end if;
   if cardinality(v_ecartees) > 200
      or exists (select 1 from unnest(v_ecartees) e where e is null or char_length(e) not between 1 and 100) then
-    raise exception 'éprouvettes écartées invalides' using errcode = '22023';
+    raise exception 'éprouvettes écartées : 200 au plus, chacune identifiée par 1 à 100 caractères' using errcode = '22023';
   end if;
-  if not exists (select 1 from public.user_docs d
-                  where d.user_id = p_owner and d.kind = p_kind and d.id = p_id and not d.deleted) then
+  select d.rev, d.payload into v_rev, v_payload from public.user_docs d
+   where d.user_id = p_owner and d.kind = p_kind and d.id = p_id and not d.deleted;
+  if not found then
     raise exception 'document introuvable en ligne' using errcode = 'P0002';
   end if;
+  if p_rev is not null and p_rev > v_rev then
+    raise exception 'révision du document plus récente que celle en ligne' using errcode = '22023';
+  end if;
+  select coalesce(array_agg(distinct x order by x), '{}'::text[]) into v_ecartees
+    from unnest(v_ecartees) x
+   where exists (select 1 from jsonb_array_elements(
+                   case when jsonb_typeof(v_payload -> 'eprouvettes') = 'array'
+                        then v_payload -> 'eprouvettes' else '[]'::jsonb end) e
+                  where e ->> 'id' = x);
   return query
     insert into public.revues as r (owner_id, target_kind, target_id, target_rev, decision, motif, ecartees, reviewer_id)
-    values (p_owner, p_kind, p_id, p_rev, p_decision, v_motif, v_ecartees, v_uid)
+    values (p_owner, p_kind, p_id, coalesce(p_rev, v_rev), p_decision, v_motif, v_ecartees, v_uid)
     on conflict on constraint revues_pkey do update
       set target_rev = excluded.target_rev, decision = excluded.decision, motif = excluded.motif,
           ecartees = excluded.ecartees, reviewer_id = excluded.reviewer_id,
@@ -992,15 +1008,23 @@ grant execute on function public.lire_mes_revues(uuid) to authenticated;
 -- ======================================================================
 
 -- Lecture sûre d'une valeur JSON : null si ce n'est pas le type attendu (un
--- document d'étudiant n'est pas validé par le serveur).
+-- document d'étudiant n'est pas validé par le serveur), ou si le nombre ne
+-- tient pas dans un double (1e400) : une valeur aberrante ne fait jamais
+-- échouer la vue entière.
 create or replace function public.jsonb_num(p jsonb) returns double precision
-language sql immutable set search_path = '' as $$
-  select case when jsonb_typeof(p) = 'number' then (p #>> '{}')::double precision end
-$$;
+language plpgsql immutable set search_path = '' as $$
+begin
+  if jsonb_typeof(p) is distinct from 'number' then return null; end if;
+  return (p #>> '{}')::double precision;
+exception when others then
+  return null;
+end $$;
+-- Horodatage : seulement une date ISO (AAAA-MM-JJ…). Les mots que PostgreSQL
+-- comprend (« now », « today », « epoch ») ne sont pas des dates de l'étudiant.
 create or replace function public.jsonb_ts(p jsonb) returns timestamptz
 language plpgsql stable set search_path = '' as $$
 begin
-  if jsonb_typeof(p) is distinct from 'string' then return null; end if;
+  if jsonb_typeof(p) is distinct from 'string' or (p #>> '{}') !~ '^\d{4}-\d{2}-\d{2}' then return null; end if;
   return (p #>> '{}')::timestamptz;
 exception when others then
   return null;
@@ -1015,12 +1039,29 @@ language sql immutable security definer set search_path = '' as $$
   select 'op-' || left(encode(extensions.digest(p_id::text, 'sha256'), 'hex'), 12)
 $$;
 
--- Paramètre de formulation d'une gâchée : son instantané s'il existe, sinon la
--- recette de sa formulation d'origine (parametresEffectifs).
+-- Paramètre de formulation d'une gâchée : son instantané s'il existe (un
+-- objet), sinon la recette de sa formulation d'origine (parametresEffectifs).
 create or replace function public.parametre_gachee(p_gachee jsonb, p_recette jsonb, p_cle text, p_cle_recette text)
 returns double precision language sql immutable set search_path = '' as $$
-  select case when p_gachee ? 'parametres' then public.jsonb_num(p_gachee -> 'parametres' -> p_cle)
+  select case when jsonb_typeof(p_gachee -> 'parametres') = 'object' then public.jsonb_num(p_gachee -> 'parametres' -> p_cle)
               else public.jsonb_num(p_recette -> p_cle_recette) end
+$$;
+
+-- Recette d'origine d'une gâchée : la recette `recetteIndex` (absent : 0,
+-- borné comme parametresEffectifs) de sa formulation. Un index qui n'est pas
+-- un entier : aucune recette (rien n'est deviné). Calcul en double avant la
+-- conversion : un index énorme ne fait pas déborder l'entier.
+create or replace function public.recette_gachee(p_gachee jsonb, p_recipes jsonb)
+returns jsonb language sql immutable set search_path = '' as $$
+  select case
+    when jsonb_typeof(p_recipes) is distinct from 'array' then null
+    when jsonb_array_length(p_recipes) = 0 then null
+    when jsonb_typeof(p_gachee -> 'recetteIndex') not in ('number', 'null') then null
+    when public.jsonb_num(p_gachee -> 'recetteIndex') is not null
+         and public.jsonb_num(p_gachee -> 'recetteIndex') <> floor(public.jsonb_num(p_gachee -> 'recetteIndex')) then null
+    else p_recipes -> (greatest(0::double precision, least(coalesce(public.jsonb_num(p_gachee -> 'recetteIndex'), 0),
+                                                         (jsonb_array_length(p_recipes) - 1)::double precision)))::integer
+  end
 $$;
 
 create or replace view public.vue_gachees with (security_invoker = true) as
@@ -1055,17 +1096,16 @@ select
   d.updated_at                                                   as maj
 from public.user_docs d
 left join lateral (
-  select x.payload -> 'recipes' -> greatest(0, least(
-           coalesce(public.jsonb_num(d.payload -> 'recetteIndex')::integer, 0),
-           jsonb_array_length(x.payload -> 'recipes') - 1)) as recette
+  select public.recette_gachee(d.payload, x.payload -> 'recipes') as recette
     from public.user_docs x
    where x.user_id = d.user_id and x.kind = 'resultat' and x.id = d.payload ->> 'formulationId'
-     and not x.deleted and jsonb_typeof(x.payload -> 'recipes') = 'array'
-     and jsonb_array_length(x.payload -> 'recipes') > 0
+     and not x.deleted
 ) f on true
 left join public.revues r
   on r.owner_id = d.user_id and r.target_kind = 'gachee' and r.target_id = d.id and not r.deleted
-where d.kind = 'gachee' and not d.deleted and not (d.payload ? 'conflit');
+where d.kind = 'gachee' and not d.deleted and not (d.payload ? 'conflit')
+  -- Comme la classe du site : jamais les gâchées d'un compte enseignant.
+  and not exists (select 1 from public.profiles p where p.id = d.user_id and p.role = 'prof');
 
 create or replace view public.vue_essais with (security_invoker = true) as
 select
@@ -1118,13 +1158,10 @@ select
                   or c.id = (e.value ->> 'id') || ':' || (e.value #>> '{essai,sourcePresse,importeLe}'))) as courbe_en_ligne
 from public.user_docs d
 left join lateral (
-  select x.payload -> 'recipes' -> greatest(0, least(
-           coalesce(public.jsonb_num(d.payload -> 'recetteIndex')::integer, 0),
-           jsonb_array_length(x.payload -> 'recipes') - 1)) as recette
+  select public.recette_gachee(d.payload, x.payload -> 'recipes') as recette
     from public.user_docs x
    where x.user_id = d.user_id and x.kind = 'resultat' and x.id = d.payload ->> 'formulationId'
-     and not x.deleted and jsonb_typeof(x.payload -> 'recipes') = 'array'
-     and jsonb_array_length(x.payload -> 'recipes') > 0
+     and not x.deleted
 ) f on true
 left join public.revues r
   on r.owner_id = d.user_id and r.target_kind = 'gachee' and r.target_id = d.id and not r.deleted
@@ -1136,14 +1173,18 @@ cross join lateral (
   select v.saisie, v.charge, v.diametre,
          case when e.value ->> 'statut' is distinct from 'ecrase' then null
               when v.saisie > 0 then v.saisie
-              when v.charge > 0 and v.diametre > 0
+              -- Bornes : une valeur aberrante (1e306 kN, 1e-200 mm) rend vide,
+              -- au lieu de faire échouer la vue par un dépassement.
+              when v.charge > 0 and v.charge < 1e6 and v.diametre between 1e-3 and 1e5
                 then ((v.charge * 1000) / ((pi() * v.diametre * v.diametre) / 4)) * 1000
          end as ucs
     from (select public.jsonb_num(e.value #> '{essai,contrainteKpaSaisie}') as saisie,
                  public.jsonb_num(e.value #> '{essai,chargeKn}')            as charge,
                  public.jsonb_num(e.value #> '{essai,diametreMm}')          as diametre) v
 ) u
-where d.kind = 'gachee' and not d.deleted and not (d.payload ? 'conflit');
+where d.kind = 'gachee' and not d.deleted and not (d.payload ? 'conflit')
+  -- Comme la classe du site : jamais les gâchées d'un compte enseignant.
+  and not exists (select 1 from public.profiles p where p.id = d.user_id and p.role = 'prof');
 
 -- Enseignant : tous les essais d'une session (null : toutes). Les vues
 -- suffisent à la lecture ; cette fonction est le point d'entrée d'un export
@@ -1168,11 +1209,13 @@ revoke execute on function public.jsonb_num(jsonb) from public, anon;
 revoke execute on function public.jsonb_ts(jsonb) from public, anon;
 revoke execute on function public.pseudonyme(uuid) from public, anon;
 revoke execute on function public.parametre_gachee(jsonb, jsonb, text, text) from public, anon;
+revoke execute on function public.recette_gachee(jsonb, jsonb) from public, anon;
 revoke execute on function public.exporter_essais(text) from public, anon;
 grant execute on function public.jsonb_num(jsonb) to authenticated;
 grant execute on function public.jsonb_ts(jsonb) to authenticated;
 grant execute on function public.pseudonyme(uuid) to authenticated;
 grant execute on function public.parametre_gachee(jsonb, jsonb, text, text) to authenticated;
+grant execute on function public.recette_gachee(jsonb, jsonb) to authenticated;
 grant execute on function public.exporter_essais(text) to authenticated;
 
 -- ======================================================================
