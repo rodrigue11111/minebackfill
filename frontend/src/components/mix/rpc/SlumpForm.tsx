@@ -13,6 +13,7 @@ import {
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
 import { fromStoreSlump, toStoreSlump, SLUMP_LABELS } from "@/lib/units";
+import { slumpGrandConeMm } from "@/lib/conventions";
 import { num } from "@/lib/format";
 import { Field, CardSection, GrilleChamps, ChoixNombreRecettes, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
 
@@ -78,6 +79,13 @@ export default function SlumpForm() {
 
   const numRecipes = slump.num_recipes || 1;
   const coneType = slump.cone_type ?? "mini";
+  // Petit cône : la lecture est convertie en grand cône par le calcul ; la plage
+  // usuelle (150 à 250 mm) s'applique à cet équivalent.
+  const facteurCone = constantes.facteur_petit_cone_vers_grand_cone;
+  const slumpGrandCone = slumpGrandConeMm(slump.slump_mm, coneType, facteurCone);
+  const aideSlump = coneType === "mini" && slumpGrandCone !== undefined
+    ? `Équivalent grand cône : ${(fromStoreSlump(slumpGrandCone, units.slump) ?? 0).toLocaleString("fr-CA", { maximumFractionDigits: 1 })} ${slumpLabel} (petit cône × ${facteurCone.toLocaleString("fr-CA")}, constante modifiable dans Réglages).`
+    : undefined;
 
   return (
     <div className="mix-formulaire">
@@ -92,7 +100,7 @@ export default function SlumpForm() {
           ]}
         />
         <GrilleChamps>
-          <Field label="Affaissement visé S" unit={slumpLabel}>
+          <Field label="Affaissement visé S" unit={slumpLabel} hint={aideSlump} plage="slump" valeur={slumpGrandCone}>
             <ChampNombre placeholder="ex : 180" value={fromStoreSlump(slump.slump_mm, units.slump)} onChange={(n) => setSlump({ slump_mm: toStoreSlump(n, units.slump) ?? undefined })} />
           </Field>
           <Field plage="sr" valeur={slump.saturation_pct} label="Degré de saturation Sr" unit="%" hint="100 % = pâte saturée">

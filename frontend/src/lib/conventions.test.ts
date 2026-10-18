@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONVENTION_PACKS, packById, solverVersionActive, estVersionCourante } from "./conventions";
+import { CONVENTION_PACKS, packById, solverVersionActive, estVersionCourante, slumpGrandConeMm } from "./conventions";
 import type { ConstantesCalcul } from "./store";
 
 // Épingle le contenu des packs. Une dérive (côté frontend ou backend) doit
@@ -64,5 +64,13 @@ describe("conventions — packs", () => {
 
   it("les deux packs sont exposés", () => {
     expect(CONVENTION_PACKS.map((p) => p.id)).toEqual(["intra2017", "gramme"]);
+  });
+});
+
+describe("affaissement équivalent au grand cône", () => {
+  it("petit cône : × facteur des constantes ; grand cône : tel quel ; vide : rien", () => {
+    expect(slumpGrandConeMm(50, "mini", 2.335)).toBeCloseTo(116.75, 10);
+    expect(slumpGrandConeMm(180, "grand", 2.335)).toBe(180);
+    expect(slumpGrandConeMm(undefined, "mini", 2.335)).toBeUndefined();
   });
 });

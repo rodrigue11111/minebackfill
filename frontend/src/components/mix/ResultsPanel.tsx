@@ -19,7 +19,8 @@ import { descriptorFor, methodLabel } from "@/lib/method-registry";
 import type { ReportCtx } from "@/lib/report-schema";
 import type { MixResult, Recipe } from "@/lib/types";
 import { resultatPerime } from "@/lib/resultat-perime";
-import { eauARetirer } from "@/lib/avis-recette";
+import { cwHorsPlageUsuelle, eauARetirer } from "@/lib/avis-recette";
+import { PLAGES } from "@/lib/plages";
 import { Bandeau } from "@/components/ui/Bandeau";
 
 const UNITES_DEFAUT: UnitPreferences = { length: "cm", area: "cm2", mass: "kg", volume: "L", density: "g/cm3", slump: "mm" };
@@ -132,6 +133,14 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
       {" "}Le résidu apporte déjà plus d&apos;eau que la recette n&apos;en contient : visez un Cw plus bas, ou séchez le résidu.
     </Bandeau>
   ) : null;
+  // Modèle prédictif : le Cw est calculé ; hors de la plage usuelle, on le dit.
+  const cwHors = method === "slump" ? cwHorsPlageUsuelle(recipes) : [];
+  const avisCw = cwHors.length > 0 ? (
+    <Bandeau ton="alerte" titre="Cw prédit hors de la plage usuelle.">
+      {cwHors.map((x) => `Recette ${x.recette} : ${x.cw.toLocaleString("fr-CA", { maximumFractionDigits: 1 })} %`).join(" ; ")}
+      {" "}(plage usuelle d&apos;un RPC : {PLAGES.cw.texte}). Le résultat reste affiché : vérifiez l&apos;affaissement visé, le type de cône et Bw.
+    </Bandeau>
+  ) : null;
   const libelleMethode = methodLabel(category as Category, method, "long");
   const sousTitre = vide
     ? `${category} · ${libelleMethode}`
@@ -149,7 +158,7 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
         donnees={donnees}
         pleinEcran={pleinEcran}
         onFormulaClick={handleFormulaClick}
-        avis={avisPerime || avisEau ? <>{avisPerime}{avisEau}</> : undefined}
+        avis={avisPerime || avisEau || avisCw ? <>{avisPerime}{avisCw}{avisEau}</> : undefined}
         actions={
           <>
             <button type="button" className="btn-contour" disabled={vide || perime}

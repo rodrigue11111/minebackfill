@@ -260,7 +260,7 @@ export default function GeneralInfoPage() {
               {volumeTotal !== null && paramVolume && (
                 <>
                   {" "}Volume total à préparer par recette : VT = {vol(volumeMoule)} × {paramVolume.moules} moule{paramVolume.moules! > 1 ? "s" : ""} × κ {paramVolume.kappa!.toLocaleString("fr-CA")} = <strong>{vol(volumeTotal)} {VOLUME_LABELS[volumeUnit]}</strong>
-                  {" "}(moules par recette et facteur de perte κ : page Calculs, {paramVolume.methode}).
+                  {" "}(moules par recette et facteur de perte κ : page Calculs).
                 </>
               )}
               {store.category === "RRC" && " En RRC, la quantité vient de la page Calculs (volume du chantier ou masse totale), pas du moule."}

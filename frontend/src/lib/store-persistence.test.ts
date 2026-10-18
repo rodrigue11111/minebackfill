@@ -571,3 +571,16 @@ describe("store — champ vide distinct de zéro (2026-10)", () => {
     expect(s().cw.binder_pct).toEqual([4.5, 0, 0, 0]);
   });
 });
+
+describe("store — moules par recette et κ partagés par les méthodes (2026-10)", () => {
+  it("saisis dans une méthode, ils valent pour les autres ; changer κ rend périmé le résultat d'une autre méthode", () => {
+    const s = () => useStore.getState();
+    s().setWb({ desired_qty: 1, safety_factor: 1 });
+    s().setCwResult({ category: "RPC", method: "dosage_cw", recipes: [{ bw_mass_pct: 4.5 }] } as never, empreinteAuDepart("cwResult"));
+    s().setWb({ desired_qty: 3, safety_factor: 1.1 });
+    for (const k of ["cw", "wb", "slump", "rpgCw", "rpgWb"] as const) {
+      expect([k, s()[k].desired_qty, s()[k].safety_factor]).toEqual([k, 3, 1.1]);
+    }
+    expect(resultatPerime(s() as never, "cwResult", s().empreintesCalcul.cwResult)).toBe(true);
+  });
+});
