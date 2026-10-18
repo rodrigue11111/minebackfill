@@ -11,6 +11,8 @@
 // vivant : celui-ci peut avoir dérivé depuis le tracé, et c'est déjà ce que
 // signale le bandeau « Paramètres modifiés ».
 
+import { libelleContenant } from "./contenant";
+import { nombreFr } from "./format";
 import type { InstantaneAnalyse } from "./analyse-instantane";
 import { libelle } from "./glossaire";
 
@@ -61,7 +63,7 @@ export interface LigneFixe {
 }
 
 function f(n: number, dec = 3): string {
-  return n.toLocaleString("fr-CA", { maximumFractionDigits: dec });
+  return nombreFr(n, dec);
 }
 
 /**
@@ -90,7 +92,7 @@ export function tenuFixe(inst: InstantaneAnalyse, param: ParamCle): LigneFixe[] 
       : "aucun",
   });
 
-  if (inst.contenant) l.push({ label: "Contenant", valeur: inst.contenant.type });
+  if (inst.contenant) l.push({ label: "Contenant", valeur: libelleContenant(inst.contenant.type) });
   if (inst.contenants !== undefined) l.push({ label: "Nombre de contenants", valeur: f(inst.contenants, 0) });
   if (inst.facteurSecurite !== undefined) l.push({ label: "Facteur de perte κ", valeur: f(inst.facteurSecurite) });
 

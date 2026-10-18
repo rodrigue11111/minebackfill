@@ -302,7 +302,20 @@ Aucune recette ne couvrait ce module ; voici ses points d'accroche.
    triée, l'ordre y est libre).
 Si l'unité est nouvelle, la brancher dans `fmtStat` (page Analyse) **et**
 `fmtVal` (`CourbeSvg.tsx`) : ces deux fonctions choisissent leurs décimales
-par une chaîne d'unités, et le défaut donne « 1 234,5678 kg ».
+par une chaîne d'unités, et le défaut donne « 1 234,5678 kg ». Elles écrivent
+par `nombreFr` (`lib/format.ts`), qui arrondit avant d'écrire : jamais
+« -0 » ; ne pas revenir à `toLocaleString` direct.
+
+**Courbe périmée** (2026-10). Les requêtes du balayage sont construites par
+`corpsBalayage` (`lib/analyse-corps.ts`, module pur) ; `tracer()` prend leur
+empreinte et la provenance AU DÉPART, et la courbe est périmée dès que
+l'empreinte des entrées courantes diffère (bandeau, figures estompées,
+exports CSV, JSON et PNG désactivés). Un nouveau champ envoyé au balayage
+se met donc dans `payloadBase` ou `corpsBalayage`, jamais directement dans
+la page : sinon il échapperait à l'empreinte. Une erreur de tracé retire la
+courbe. Une courbe rechargée d'un fichier n'a pas d'empreinte (provenance du
+fichier, exportable telle quelle). La courbe est un état local de la page :
+quitter Analyse la retire.
 
 **Ajouter un paramètre balayable (axe X)** — trois garde-fous, tous
 indispensables :
@@ -410,6 +423,16 @@ connexion enseignant). Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
   `PROF`.
 
 ### 13. Système de design (refonte « épurée », 2026-09-30)
+
+**Accessibilité (2026-10).** `Champ` pose `aria-invalid` et
+`aria-describedby` sur son enfant direct quand `erreur` est fournie (input,
+select, textarea ou `ChampNombre`, qui les transmet à l'`<input>`) et
+annonce le message (`role="alert"`) : passer la saisie en enfant direct, sans
+enveloppe. Une valeur cliquable d'un tableau est un `<button>` dans la
+cellule (`mix-valeur-bouton`), jamais un `<td onClick>`. Les fenêtres
+(`FormulaPopover`) ont `role="dialog"`, un nom, un bouton « Fermer », et
+rendent le focus à leur déclencheur. `Menu` gère flèches, Début, Fin et
+Échap.
 
 L'interface suit un seul langage visuel, inspiré des réglages d'Apple : fond
 gris très clair, cartes blanches sans bordure (rayon 22, ombre douce), titres

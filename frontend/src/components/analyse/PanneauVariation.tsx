@@ -74,7 +74,7 @@ export default function PanneauVariation({
             {fixe.map((l) => (
               <tr key={l.label}>
                 <td style={{ padding: "4px 6px", color: "var(--texte-2)", borderTop: "1px solid var(--filet)" }}>{l.label}</td>
-                <td style={{ ...td, fontVariantNumeric: "tabular-nums", color: "var(--texte)" }}>{l.valeur}</td>
+                <td style={{ ...td, whiteSpace: "normal", overflowWrap: "anywhere", fontVariantNumeric: "tabular-nums", color: "var(--texte)" }}>{l.valeur}</td>
               </tr>
             ))}
           </tbody>

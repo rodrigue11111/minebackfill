@@ -63,18 +63,19 @@ export function DataRow({
           <span className="mix-fx" title="Cliquez sur une valeur pour voir la formule">fx</span>
         )}
       </td>
-      {recipes.map((r, i) => (
-        <td
-          key={i}
-          className={[hasFormula ? "mix-valeur-formule" : "", i === choisie ? "mix-col-choisie" : ""].filter(Boolean).join(" ") || undefined}
-          onClick={hasFormula ? (e) => {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            onFormulaClick!(formulaIds!, r, rect);
-          } : undefined}
-        >
-          {fmtGroupe(getter(r), digits)}
-        </td>
-      ))}
+      {recipes.map((r, i) => {
+        const valeur = fmtGroupe(getter(r), digits);
+        return (
+          <td key={i} className={[hasFormula ? "mix-valeur-formule" : "", i === choisie ? "mix-col-choisie" : ""].filter(Boolean).join(" ") || undefined}>
+            {hasFormula ? (
+              <button type="button" className="mix-valeur-bouton" aria-label={`${label}, recette ${i + 1} : ${valeur}. Voir la formule`}
+                onClick={(e) => onFormulaClick!(formulaIds!, r, e.currentTarget.getBoundingClientRect())}>
+                {valeur}
+              </button>
+            ) : valeur}
+          </td>
+        );
+      })}
     </tr>
   );
 }
@@ -158,13 +159,19 @@ export function TableauRrc({ recipes, massLabel, toMass, choisie, onFormulaClick
                     {row.label(massLabel)}
                     {formule && <span className="mix-fx" title="Cliquez sur une valeur pour voir la formule">fx</span>}
                   </td>
-                  {recipes.map((r, ci) => (
-                    <td key={ci}
-                      className={[formule ? "mix-valeur-formule" : "", ci === choisie ? "mix-col-choisie" : ""].filter(Boolean).join(" ") || undefined}
-                      onClick={formule ? (e) => onFormulaClick!(formule, undefined, (e.currentTarget as HTMLElement).getBoundingClientRect()) : undefined}>
-                      {fmtGroupe(row.getter(r, toMass), row.digits)}
-                    </td>
-                  ))}
+                  {recipes.map((r, ci) => {
+                    const valeur = fmtGroupe(row.getter(r, toMass), row.digits);
+                    return (
+                      <td key={ci} className={[formule ? "mix-valeur-formule" : "", ci === choisie ? "mix-col-choisie" : ""].filter(Boolean).join(" ") || undefined}>
+                        {formule ? (
+                          <button type="button" className="mix-valeur-bouton" aria-label={`${row.label(massLabel)}, recette ${ci + 1} : ${valeur}. Voir la formule`}
+                            onClick={(e) => onFormulaClick!(formule, undefined, e.currentTarget.getBoundingClientRect())}>
+                            {valeur}
+                          </button>
+                        ) : valeur}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { confirmerExemple, LIBELLE_EXEMPLE } from "@/lib/exemple";
-import { equivalentM3, parametresVolume, volumeMouleM3, volumeTotalM3 } from "@/lib/contenant";
+import { equivalentM3, parametresVolume, volumeMouleM3, volumeTotalM3, LIBELLES_CONTENANT } from "@/lib/contenant";
 import { chiffresSignificatifs } from "@/lib/format";
 import Parcours from "@/components/ui/Parcours";
 import { useRouter } from "next/navigation";
@@ -27,9 +27,9 @@ import { lireNombre } from "@/components/ui/ChampNombre";
 import { fractionsCompletes } from "@/lib/liants";
 
 const CONTAINER_TYPES = [
-  { value: "section_hauteur", label: "Section et hauteur", court: "Section" },
-  { value: "rayon_hauteur", label: "Rayon et hauteur", court: "Rayon" },
-  { value: "longueur_largeur_hauteur", label: "Longueur × largeur × hauteur", court: "L × l × h" },
+  { value: "section_hauteur", label: LIBELLES_CONTENANT.section_hauteur, court: "Section" },
+  { value: "rayon_hauteur", label: LIBELLES_CONTENANT.rayon_hauteur, court: "Rayon" },
+  { value: "longueur_largeur_hauteur", label: LIBELLES_CONTENANT.longueur_largeur_hauteur, court: "L × l × h" },
   { value: "volume", label: "Volume direct", court: "Volume" },
 ] as const;
 

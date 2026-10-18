@@ -70,3 +70,16 @@ export function equivalentM3(m3: number, unite: string): string {
   if (unite === "m3" || !Number.isFinite(m3) || Math.abs(m3) < 1) return "";
   return ` (${m3.toLocaleString("fr-CA", { maximumSignificantDigits: 6 })} m³)`;
 }
+
+/** Libellé d'un type de contenant (Informations, Analyse, feuille de préparation) : une seule source. */
+export const LIBELLES_CONTENANT: Record<string, string> = {
+  section_hauteur: "Section et hauteur",
+  rayon_hauteur: "Rayon et hauteur",
+  longueur_largeur_hauteur: "Longueur × largeur × hauteur",
+  volume: "Volume direct",
+};
+
+export function libelleContenant(type: string | null | undefined): string {
+  if (!type) return "";
+  return LIBELLES_CONTENANT[type] ?? type;
+}

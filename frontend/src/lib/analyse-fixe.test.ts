@@ -94,7 +94,7 @@ describe("analyse-fixe — tenuFixe", () => {
       inst({ contenant: { type: "rayon_hauteur" }, contenants: 3, facteurSecurite: 1.1 }),
       "binder_mass_pct",
     );
-    expect(t.find((x) => x.label === "Contenant")?.valeur).toBe("rayon_hauteur");
+    expect(t.find((x) => x.label === "Contenant")?.valeur).toBe("Rayon et hauteur");
     expect(t.find((x) => x.label === "Nombre de contenants")?.valeur).toBe("3");
   });
 

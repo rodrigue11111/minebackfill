@@ -4,6 +4,9 @@
 // version du solveur, date). Formatage PUR ; la collecte des valeurs depuis le
 // store se fait dans la page.
 
+import { libelleContenant } from "./contenant";
+import { nombreFr } from "./format";
+
 export interface InstantaneAnalyse {
   date: string; // ISO
   categorie: string; // "RPC" | "RPG"
@@ -38,7 +41,15 @@ export interface InstantaneAnalyse {
 }
 
 function f(n: number, dec = 3): string {
-  return n.toLocaleString("fr-CA", { maximumFractionDigits: dec });
+  return nombreFr(n, dec);
+}
+
+/**
+ * Instantané d'un export : les grandeurs nommées sont celles des colonnes
+ * réellement exportées (le reste de la provenance, figé au tracé, ne change pas).
+ */
+export function instantanePourExport(inst: InstantaneAnalyse, sorties: string[]): InstantaneAnalyse {
+  return { ...inst, sorties };
 }
 
 /** Lignes lisibles décrivant l'instantané (réutilisées pour l'UI et le CSV). */
@@ -69,7 +80,7 @@ export function lignesResume(inst: InstantaneAnalyse): string[] {
   lignes.push(`Pack de conventions : ${c.packLabel} · convention Gs « ${c.conventionGs} » · règle liant « ${c.regleLiant} »`);
   lignes.push(`Constantes : ρ_eau ${f(c.masseVolEau, 0)} · g ${f(c.gravite)} · facteur cône ${f(c.facteurCone)} · coeff. du modèle prédictif ${f(c.coeffSlump, 0)} · constante du modèle prédictif ${f(c.constSlump)}`);
   if (inst.contenant) {
-    const geo = [`type ${inst.contenant.type}`];
+    const geo = [libelleContenant(inst.contenant.type)];
     if (inst.contenant.description) geo.push(inst.contenant.description);
     if (inst.contenants !== undefined) geo.push(`${f(inst.contenants, 0)} contenant(s)`);
     if (inst.facteurSecurite !== undefined) geo.push(`facteur de perte κ ${f(inst.facteurSecurite)}`);

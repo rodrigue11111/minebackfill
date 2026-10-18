@@ -9,7 +9,7 @@
 
 import React, { useId, useState } from "react";
 import { bornes, echelle, graduations, decimalesTick, chemin } from "@/lib/courbe-utils";
-import { TIRET, valeurAvecUnite } from "@/lib/format";
+import { TIRET, valeurAvecUnite, nombreFr } from "@/lib/format";
 
 export interface SerieTrace {
   cle: string;
@@ -31,7 +31,7 @@ function fmtVal(v: number | null, unite: string): string {
   if (v === null || !Number.isFinite(v)) return TIRET;
   // « kg » : voir fmtStat dans la page Analyse, même piège.
   const d = unite === "kg/m³" ? 0 : unite === "kg" ? 1 : unite === "%" ? 2 : 3;
-  return v.toLocaleString("fr-CA", { maximumFractionDigits: d });
+  return nombreFr(v, d);
 }
 
 export default function CourbeSvg({
@@ -137,7 +137,7 @@ export default function CourbeSvg({
           <g key={`y${i}`}>
             <line x1={PX[0]} y1={y} x2={PX[1]} y2={y} stroke="#eef2f7" strokeWidth={1} />
             <text x={PX[0] - 7} y={y + 3.5} textAnchor="end" fontSize={10.5} fill="#64748b">
-              {t.toLocaleString("fr-CA", { maximumFractionDigits: decimalesTick(pasY) })}
+              {nombreFr(t, decimalesTick(pasY))}
             </text>
           </g>
         );
@@ -149,7 +149,7 @@ export default function CourbeSvg({
           <g key={`x${i}`}>
             <line x1={xp} y1={PY[1]} x2={xp} y2={PY[0]} stroke="#f1f5f9" strokeWidth={1} />
             <text x={xp} y={PY[0] + 16} textAnchor="middle" fontSize={10.5} fill="#64748b">
-              {t.toLocaleString("fr-CA", { maximumFractionDigits: decimalesTick(pasX) })}
+              {nombreFr(t, decimalesTick(pasX))}
             </text>
           </g>
         );

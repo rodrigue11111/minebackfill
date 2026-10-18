@@ -27,21 +27,23 @@ import {
 } from "@/lib/analyse-series";
 import PanneauVariation from "@/components/analyse/PanneauVariation";
 import { estParamCle, valeurReference } from "@/lib/analyse-fixe";
-import { lireArtefact } from "@/lib/analyse-artefact";
+import { bornerPoints, lireArtefact } from "@/lib/analyse-artefact";
+import { corpsBalayage, empreinteBalayage, payloadBase, type BaseAnalyse, type EntreesBalayage } from "@/lib/analyse-corps";
+import { empreinte } from "@/lib/sync-empreinte";
 import {
   variantesDepuisBase, comparaisonPossible, construireTracesVariantes,
 } from "@/lib/analyse-variantes";
 import {
-  construireConstantesPayload, construireGeneralPayload, construireSystemeLiant,
+  construireSystemeLiant,
 } from "@/lib/rpc_payload";
 import { solverVersionActive, packById } from "@/lib/conventions";
 import {
-  lignesResume, lignesMetaCsv, type InstantaneAnalyse,
+  instantanePourExport, lignesResume, lignesMetaCsv, type InstantaneAnalyse,
 } from "@/lib/analyse-instantane";
 import { telechargerTexte, versCsv, nomFichier } from "@/lib/export-fig";
 import { phases, fractions } from "@/lib/composition";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
-import { num, fmt, libelleAvecUnite, valeurAvecUnite } from "@/lib/format";
+import { num, fmt, libelleAvecUnite, valeurAvecUnite, nombreFr } from "@/lib/format";
 import ChampNombre from "@/components/ui/ChampNombre";
 
 interface Balayage {
@@ -59,7 +61,7 @@ function fmtStat(v: number, unite: string): string {
   // « kg » doit être branché ici : sans lui, une masse tombe dans la branche
   // par défaut et s'affiche avec 4 décimales (« 1 234,5678 kg »).
   const d = unite === "kg/m³" ? 1 : unite === "kg" ? 1 : unite === "%" ? 2 : 4;
-  const s = v.toLocaleString("fr-CA", { maximumFractionDigits: d });
+  const s = nombreFr(v, d);
   return valeurAvecUnite(s, unite);
 }
 
@@ -118,7 +120,8 @@ export default function AnalysePage() {
   // Anti-course : deux clics rapides pouvaient afficher la réponse la plus
   // lente. Le défaut existait déjà avec un seul setRes.
   const seq = useRef(0);
-  const [resProtocole, setResProtocole] = useState<string>("");
+  // Empreinte des requêtes de la figure affichée (null : figure rechargée d'un fichier).
+  const [resEmpreinte, setResEmpreinte] = useState<string | null>(null);
 
   // Composition
   const [recettes, setRecettes] = useState<Recipe[] | null>(null);
@@ -193,28 +196,8 @@ export default function AnalysePage() {
     return null;
   }
 
-  function payloadCommun(nbRecettes: number) {
-    const commun = {
-      category: categorie,
-      general: construireGeneralPayload(general),
-      constants: construireConstantesPayload(constantes),
-      residue: { specific_gravity: base.residue_sg || 0, moisture_mass_pct: base.residue_w_pct || 0 },
-      binder_system: construireSystemeLiant(general, catalogue_liants),
-      num_recipes: nbRecettes,
-      containers_per_recipe: base.desired_qty || 1,
-      safety_factor: base.safety_factor || 1,
-      solids_mass_pct: base.solid_mass_pct,
-      saturation_pct: base.saturation_pct,
-      binder_mass_pct_recipes:
-        nbRecettes === 1
-          ? [(base.binder_pct || [])[0] ?? 0]
-          : (base.binder_pct || []).slice(0, nbRecettes),
-    };
-    if (categorie === "RPG") {
-      return { ...commun, aggregate_fraction_pct: rpgCw.aggregate_fraction_pct, aggregate_specific_gravity: rpgCw.aggregate_sg };
-    }
-    return commun;
-  }
+  // Recette de base et requêtes : lib/analyse-corps.ts (fonctions pures).
+  const baseAnalyse = (): BaseAnalyse => ({ categorie, general, constantes, catalogueLiants: catalogue_liants, base, rpgCw });
 
   /** Instantané de provenance de l'analyse (reproductibilité). */
   function construireInstantane(avecParametre: boolean): InstantaneAnalyse {
@@ -289,39 +272,36 @@ export default function AnalysePage() {
     setCategorie(b.category === "RPC" ? "RPC" : "RPG");
     setParam(b.param);
     const p = a.instantane.parametre;
-    if (p) { setXMin(p.min); setXMax(p.max); setSteps(p.points); }
+    if (p) { setXMin(p.min); setXMax(p.max); setSteps(bornerPoints(p.points)); }
     setResultats([b as Balayage]);
     setResMeta(a.instantane);
     setRecharge(true);
-    // Le bandeau « Paramètres modifiés » n'aurait aucun sens ici : les
-    // contrôles viennent d'être alignés sur le fichier.
-    setResProtocole(JSON.stringify({
-      categorie: b.category === "RPC" ? "RPC" : "RPG", param: b.param,
-      xMin: p?.min ?? xMin, xMax: p?.max ?? xMax, steps: p?.points ?? steps,
-    }));
+    // Figure d'un fichier : sans empreinte, jamais dite périmée ; elle reste
+    // exportable telle quelle, avec sa provenance d'origine.
+    setResEmpreinte(null);
   }
 
   async function tracer() {
     setRecharge(false);
+    // Une erreur ne laisse jamais l'ancienne figure à l'écran (ni exportable),
+    // comme dans Calculs.
+    const echec = (message: string) => { setError(message); setResultats(null); setResMeta(null); setResEmpreinte(null); };
     const err = verifierBase();
-    if (err) { setError(err); return; }
-    if (!(xMax > xMin)) { setError("La borne « à » doit être supérieure à la borne « de »."); return; }
+    if (err) { echec(err); return; }
+    if (!(xMax > xMin)) { echec("La borne « à » doit être supérieure à la borne « de »."); return; }
     setError(null);
     const mien = ++seq.current;
+    // Corps, empreinte et provenance AU DÉPART : une saisie faite pendant
+    // l'attente rend la figure périmée au lieu de passer pour la sienne.
+    const corps = corpsBalayage(entreesBalayage());
+    const empreinteDepart = empreinte(corps);
+    const metaDepart = construireInstantane(true);
     try {
       setLoading(true);
       // Une requête par variante, en parallèle. Aucun changement backend : le
       // payload porte déjà binder_mass_pct_recipes et _override en reprend le
       // premier élément. 4 requêtes sur un backend local sont imperceptibles.
-      const bws = comparaisonActive ? variantes.map((v) => v.bwPct) : [null];
-      const reponses = await Promise.all(bws.map(async (bw) => {
-        const payload = payloadCommun(1);
-        if (bw !== null) payload.binder_mass_pct_recipes = [bw];
-        const body = {
-          category: categorie,
-          [categorie === "RPC" ? "base_inputs_rpc" : "base_inputs_rpg"]: payload,
-          param, x_min: xMin, x_max: xMax, steps,
-        };
+      const reponses = await Promise.all(corps.map(async (body) => {
         const r = await fetch(`${API}/analyse/balayage`, {
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
         });
@@ -333,11 +313,11 @@ export default function AnalysePage() {
       // récente.
       if (mien !== seq.current) return;
       setResultats(reponses);
-      setResProtocole(protocoleActuel);
-      setResMeta(construireInstantane(true));
+      setResEmpreinte(empreinteDepart);
+      setResMeta(metaDepart);
     } catch (e) {
       if (mien !== seq.current) return;
-      setError(e instanceof TypeError ? messageErreurReseau() : e instanceof Error ? e.message : "Erreur inconnue");
+      echec(e instanceof TypeError ? messageErreurReseau() : e instanceof Error ? e.message : "Erreur inconnue");
     } finally {
       setLoading(false);
     }
@@ -352,7 +332,7 @@ export default function AnalysePage() {
       const endpoint = categorie === "RPC" ? "/rpc/cw" : "/rpg/cw";
       const r = await fetch(`${API}${endpoint}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadCommun(base.num_recipes || 1)),
+        body: JSON.stringify(payloadBase(baseAnalyse(), base.num_recipes || 1)),
       });
       const data = await r.json().catch(() => null);
       if (!r.ok) throw new Error(messageErreurApi(data, r.status));
@@ -370,7 +350,10 @@ export default function AnalysePage() {
 
   function exporterCsvCourbes() {
     if (!res || !resMeta || !resultats) return;
-    const meta = lignesMetaCsv(resMeta).map((l) => [l] as (string | number | null)[]);
+    // L'en-tête de provenance nomme les grandeurs RÉELLEMENT exportées : une
+    // grandeur cochée après le tracé est exportée (le balayage les calcule
+    // toutes), le reste de la provenance reste celui du tracé.
+    const meta = lignesMetaCsv(instantanePourExport(resMeta, traces.map((t) => t.label))).map((l) => [l] as (string | number | null)[]);
 
     // En comparaison : un GROUPE de colonnes par variante, l'en-tête portant
     // la recette (« Bw 3 % — E/L ») pour que le fichier reste lisible seul.
@@ -451,14 +434,15 @@ export default function AnalysePage() {
   const garde = comparaisonPossible(param, variantes);
   const comparaisonActive = comparer && garde.ok;
 
-  // « Périmé » : la courbe affichée a été calculée avec d'autres paramètres.
-  // Les variantes DOIVENT y figurer, sinon changer de recette dans Calculs
-  // n'afficherait pas le bandeau.
-  const protocoleActuel = JSON.stringify({
-    categorie, param, xMin, xMax, steps,
-    variantes: comparaisonActive ? variantes.map((v) => v.bwPct) : null,
-  });
-  const perime = res !== null && resProtocole !== protocoleActuel;
+  // « Périmée » : la figure affichée a été calculée avec d'autres entrées.
+  // L'empreinte couvre TOUT ce que le balayage envoie (paramètre, plage,
+  // variantes, mais aussi Cw, Gs, w₀, Sr, Bw, moules, κ, contenant, liants et
+  // constantes) : modifier la recette dans Calculs la rend périmée.
+  function entreesBalayage(): EntreesBalayage {
+    return { ...baseAnalyse(), param, xMin, xMax, steps, bws: comparaisonActive ? variantes.map((v) => v.bwPct) : [null] };
+  }
+  const perime = res !== null && resEmpreinte !== null && empreinteBalayage(entreesBalayage()) !== resEmpreinte;
+  const motifPerime = "Entrées modifiées : relancez « Tracer la courbe » avant d'exporter.";
 
   // Valeur du paramètre balayé POUR la recette de base = point de référence.
   // Lue dans l'INSTANTANÉ figé au calcul, et non plus dans le store vivant :
@@ -561,7 +545,7 @@ export default function AnalysePage() {
                     <ChampNombre value={xMax} onChange={(n) => { if (n !== undefined) setXMax(n); }} />
                   </Champ>
                   <Champ libelle="Points">
-                    <input type="number" min={2} max={200} className="field-input" value={steps} onChange={(e) => setSteps(Math.max(2, Math.min(200, Math.round(num(e.target.value)) || 2)))} />
+                    <input type="number" min={2} max={200} className="field-input" value={steps} onChange={(e) => setSteps(bornerPoints(num(e.target.value)))} />
                   </Champ>
                 </div>
 
@@ -619,8 +603,9 @@ export default function AnalysePage() {
                   </Bandeau>
                 )}
                 {perime && !recharge && (
-                  <Bandeau ton="alerte">
-                    Paramètres modifiés : relance « Tracer la courbe » pour mettre à jour cette courbe.
+                  <Bandeau ton="alerte" role="status" titre="Courbe périmée.">
+                    Les entrées ont changé depuis ce tracé (paramètre, plage ou recette de Calculs) :
+                    relancez « Tracer la courbe ». Les exports sont désactivés en attendant.
                   </Bandeau>
                 )}
                 {toutNul ? (
@@ -674,7 +659,7 @@ export default function AnalysePage() {
                                   </span>
                                 ))}
                               </div>
-                              <FigurePng nom={`analyse-${categorie}-${cle}-variantes`}>
+                              <FigurePng nom={`analyse-${categorie}-${cle}-variantes`} desactive={perime} motif={motifPerime}>
                                 <CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={tv}
                                   reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
                               </FigurePng>
@@ -691,7 +676,7 @@ export default function AnalysePage() {
                               <div style={{ fontSize: 14, fontWeight: 600, color: t.couleur, marginBottom: 2 }}>
                                 {libelleAvecUnite(t.label, t.unite)}
                               </div>
-                              <FigurePng nom={`analyse-${categorie}-${t.cle}`}>
+                              <FigurePng nom={`analyse-${categorie}-${t.cle}`} desactive={perime} motif={motifPerime}>
                                 <CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={[t]} reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
                               </FigurePng>
                               {s && (
@@ -720,7 +705,7 @@ export default function AnalysePage() {
                             </span>
                           ))}
                         </div>
-                        <FigurePng nom={`analyse-${categorie}-ecart`}>
+                        <FigurePng nom={`analyse-${categorie}-ecart`} desactive={perime} motif={motifPerime}>
                           <CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} />
                         </FigurePng>
                         <p className="ui-liste-pied" style={{ marginTop: 6 }}>
@@ -753,8 +738,8 @@ export default function AnalysePage() {
                         onToggle={() => setDetailsProv((v) => !v)}
                         boutons={
                           <>
-                            <button type="button" onClick={exporterCsvCourbes} className="btn-contour">Export CSV</button>
-                            <button type="button" onClick={exporterJsonCourbes} className="btn-contour">Export JSON</button>
+                            <button type="button" onClick={exporterCsvCourbes} className="btn-contour" disabled={perime} title={perime ? motifPerime : undefined}>Export CSV</button>
+                            <button type="button" onClick={exporterJsonCourbes} className="btn-contour" disabled={perime} title={perime ? motifPerime : undefined}>Export JSON</button>
                           </>
                         }
                       />
