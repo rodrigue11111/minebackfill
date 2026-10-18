@@ -9,12 +9,13 @@ import { completudeGachee, listeManquants } from "@/lib/completude";
 import Pesees from "@/components/labo/Pesees";
 import {
   agregerParAge, ageReelJours, contrainteKpa, dateCoulee, dateEcheance, libelleMoule, libelleRupture, libelleVitesse,
+  type Eprouvette,
 } from "@/lib/eprouvette";
 import { badgeEcheance, fmtDate } from "@/lib/echeance-affichage";
 import { fmt, TIRET } from "@/lib/format";
 import type { Recipe } from "@/lib/types";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
-import type { PointCourbe } from "@/lib/presse-urstm";
+import type { CourbeAffichee } from "@/lib/courbes";
 import CourbeEprouvette from "@/components/labo/CourbeEprouvette";
 import { nombre, Pastille, td, tdNum, th } from "./commun";
 
@@ -88,8 +89,8 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
   maintenant: Date;
   /** Catalogue de l'enseignant (page Classe) : « Ajouter au catalogue officiel ». */
   catalogue?: CatalogueEnseignant;
-  /** Courbe de presse d'une éprouvette, lue en ligne à la demande. */
-  chargerCourbe?: (eprouvetteId: string) => Promise<PointCourbe[] | null>;
+  /** Courbe de presse d'une éprouvette (celle de son import), lue en ligne à la demande. */
+  chargerCourbe?: (e: Eprouvette) => Promise<CourbeAffichee | null>;
 }) {
   const p = parametresEffectifs(g, formulations);
   const parAge = agregerParAge(g.eprouvettes);
@@ -243,7 +244,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
                       {src.commentaires ? ` · « ${src.commentaires} »` : ""}
                       {chargerCourbe && (
                         <div style={{ marginTop: 4 }}>
-                          <CourbeEprouvette code={e.code} nbPoints={0} enLigne charger={() => chargerCourbe(e.id)} />
+                          <CourbeEprouvette code={e.code} nbPoints={0} enLigne charger={() => chargerCourbe(e)} />
                         </div>
                       )}
                     </li>

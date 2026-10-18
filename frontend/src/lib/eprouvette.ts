@@ -47,10 +47,14 @@ export interface EssaiUCS {
    *  local plafonne vers 5 Mo. Seuls des points RÉELLEMENT MESURÉS sont
    *  gardés, jamais de moyenne. */
   courbe?: { tempsS: number; chargeN: number; deplacementMm: number; contrainteKpa: number; deformationPct: number }[];
-  /** La courbe est rangée HORS de la gâchée (IndexedDB, courbes.ts), sous
-   *  l'id de l'éprouvette ; ne reste ici que sa taille. Présent à la place de
-   *  `courbe`, jamais avec. Information locale : jamais synchronisée. */
-  courbeInfo?: { nbPoints: number };
+  /** La courbe est rangée HORS de la gâchée (IndexedDB, courbes.ts) ; ne
+   *  reste ici que sa taille, et l'import dont elle vient (`importeLe`, égal à
+   *  `sourcePresse.importeLe` de cet import). Sans `importeLe` : courbe rangée
+   *  avant le 2026-10-18, d'origine inconnue (voir courbes.ts, cleCourbe).
+   *  Présent à la place de `courbe`, jamais avec. Information locale, jamais
+   *  dans la gâchée synchronisée : la courbe part en ligne À PART, comme
+   *  document « courbe » (sync-courbes.ts). */
+  courbeInfo?: { nbPoints: number; importeLe?: string };
 
   // ── Fiche d'essai : conditions de l'essai. Tous FACULTATIFS. ──
   /** Masse de l'éprouvette (g), donnée par la presse ou pesée. */

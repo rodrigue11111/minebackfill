@@ -12,7 +12,7 @@ import { APP_NAME, PORTAIL_LABEL, PORTAIL_URL } from "@/lib/branding";
 import { useStore } from "@/lib/store";
 import { cloudConfigure } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
-import { abonnerSync, instantaneSync, instantaneSyncServeur, type InstantaneSync } from "@/lib/sync-client";
+import { abonnerSync, instantaneSync, instantaneSyncServeur, libelleEnAttente, type InstantaneSync } from "@/lib/sync-client";
 import { estActif, initiales, LIEN_COMPTE, liensNavigation, prenom } from "@/lib/navigation";
 import { Icone, Marque } from "./Icones";
 import Menu from "./Menu";
@@ -27,7 +27,7 @@ export function pastilleSynchro(s: InstantaneSync): { ton: TonPastille; libelle:
   switch (s.statut) {
     case "a_jour": return { ton: "succes", libelle: "Sauvegarde en ligne : à jour" };
     case "en_cours": return { ton: "accent", libelle: "Sauvegarde en ligne : en cours" };
-    case "en_attente": return { ton: "alerte", libelle: `Sauvegarde en ligne : ${s.enAttente} modification(s) en attente` };
+    case "en_attente": return { ton: "alerte", libelle: `Sauvegarde en ligne : ${libelleEnAttente(s)} en attente` };
     case "hors_ligne": return { ton: "neutre", libelle: "Hors ligne : vos modifications partiront au retour du réseau" };
     case "pause": return { ton: "danger", libelle: "Sauvegarde en ligne en pause (activité anormale), reprise automatique" };
     case "erreur": return { ton: "danger", libelle: "Sauvegarde en ligne : erreur, voir la page Compte" };

@@ -818,6 +818,72 @@ describe("schema.sql — courbes en ligne et leur nettoyage", () => {
     expect((await purger(PROF, PROF)).rows[0].n).toBe(0);
     expect(await etat(C2, "ep-autre")).toEqual({ deleted: false, vide: false });
   });
+
+  describe("un document par import (`<éprouvette>:<importeLe>`)", () => {
+    const C3 = "00000000-0000-4000-8000-0000000000b3";
+    const X = "2026-10-01T10:00:00.000Z";
+    const Y = "2026-10-02T15:30:00.000Z";
+    const presse = (importeLe: string) => ({ sourcePresse: { fichier: "p.xlsx", echantillon: "1", importeLe } });
+    const parImport = (ep: string, g: string, importeLe: string) => ({ ...courbe(ep, g), importeLe });
+    const purgerIds = (uid: string | null, attendu: string) =>
+      comme<{ id: string }>(uid, "select id from public.purger_mes_courbes_ids($1) as id order by id", [attendu]);
+
+    beforeAll(async () => {
+      await creerCompte(C3, "c3@exemple.ca");
+      // Original : ep-a importée Y, ep-b importée X. Copie de conflit : ep-a importée X.
+      await ecrire(C3, "gachee", "cg3", { id: "cg3", eprouvettes: [{ id: "ep-a", essai: presse(Y) }, { id: "ep-b", essai: presse(X) }] }, null);
+      await ecrire(C3, "gachee", "cg3c", { id: "cg3c", conflit: { de: "cg3" }, eprouvettes: [{ id: "ep-a", essai: presse(X) }] }, null);
+      const docs: [string, unknown][] = [
+        [`ep-a:${Y}`, parImport("ep-a", "cg3", Y)], // désigné par l'original
+        [`ep-a:${X}`, parImport("ep-a", "cg3c", X)], // désigné par la copie
+        [`ep-b:${X}`, parImport("ep-b", "cg3", X)], // désigné
+        [`ep-b:${Y}`, parImport("ep-b", "cg3", Y)], // import révolu
+        [`ep-z:${X}`, parImport("ep-z", "cg3", X)], // éprouvette disparue
+        ["ep-b", courbe("ep-b", "cg3")], // ancien document, éprouvette encore là
+      ];
+      for (const [id, c] of docs) expect((await ecrire(C3, "courbe", id, c, null))[0].ok).toBe(true);
+      await vieillir(C3, docs.map(([id]) => id));
+    });
+
+    it("l'ANCIENNE fonction (sites en cache) applique la même règle : un document par import encore désigné survit", async () => {
+      expect((await purger(C3, C3)).rows[0].n).toBe(2);
+      for (const id of [`ep-a:${Y}`, `ep-a:${X}`, `ep-b:${X}`, "ep-b"]) expect([id, (await etat(C3, id)).deleted]).toEqual([id, false]);
+      for (const id of [`ep-b:${Y}`, `ep-z:${X}`]) expect([id, (await etat(C3, id)).deleted]).toEqual([id, true]);
+    });
+
+    it("purger_mes_courbes_ids rend les ids purgés ; même règle ; gardes", async () => {
+      // A réimporte ep-b (Z) : son document X devient révolu ; l'ancien document reste (éprouvette présente).
+      const Z = "2026-10-03T08:00:00.000Z";
+      const [g] = (await lire(C3, null)).filter((x) => x.doc_id === "cg3");
+      await ecrire(C3, "gachee", "cg3", { id: "cg3", eprouvettes: [{ id: "ep-a", essai: presse(Y) }, { id: "ep-b", essai: presse(Z) }] }, g.doc_rev);
+      expect((await purgerIds(C3, C3)).rows.map((x) => x.id)).toEqual([`ep-b:${X}`]);
+      expect((await etat(C3, "ep-b")).deleted).toBe(false);
+      expect((await etat(C3, `ep-a:${X}`)).deleted).toBe(false); // la copie de conflit le désigne
+      expect((await purgerIds(C3, C3)).rows).toEqual([]);
+      await expect(purgerIds(C3, C1)).rejects.toMatchObject({ code: "28000" });
+      await expect(purgerIds(null, C3)).rejects.toMatchObject({ code: "42501" });
+    });
+
+    it("vue_essais : courbe_en_ligne reconnaît le document de l'import, et l'ancien", async () => {
+      const r = await comme<{ eprouvette_ref: string; gachee_ref: string; courbe_en_ligne: boolean }>(C3,
+        "select eprouvette_ref, gachee_ref, courbe_en_ligne from public.vue_essais where gachee_ref in ('cg3', 'cg3c') order by gachee_ref, eprouvette_ref");
+      // ep-a : document de l'import Y ; ep-b : réimportée (Z, sans document), l'ancien document compte.
+      // La copie de conflit n'est pas dans la vue.
+      expect(r.rows.map((x) => [x.gachee_ref, x.eprouvette_ref, x.courbe_en_ligne]))
+        .toEqual([["cg3", "ep-a", true], ["cg3", "ep-b", true]]);
+      await ecrire(C3, "gachee", "cg4", { id: "cg4", eprouvettes: [{ id: "ep-n", essai: presse(Y) }] }, null);
+      await ecrire(C3, "courbe", `ep-n:${X}`, parImport("ep-n", "cg4", X), null); // un autre import que celui désigné
+      const n = await comme<{ courbe_en_ligne: boolean }>(C3, "select courbe_en_ligne from public.vue_essais where gachee_ref = 'cg4'");
+      expect(n.rows.map((x) => x.courbe_en_ligne)).toEqual([false]);
+    });
+
+    it("lire_docs_classe, même complète, ne rend jamais de courbe", async () => {
+      const q = "select doc_kind from public.lire_docs_classe(null, null, null, null, 0, 500, $1, null)";
+      for (const complet of [true, false]) {
+        expect((await comme<{ doc_kind: string }>(PROF, q, [complet])).rows.map((x) => x.doc_kind)).not.toContain("courbe");
+      }
+    });
+  });
 });
 
 describe("schema.sql — accès direct : vues pseudonymisées des essais", () => {

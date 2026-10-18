@@ -7,7 +7,7 @@ import { getSupabase, cloudConfigure } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
 import { messageErreurAuth } from "@/lib/auth-messages";
 import {
-  abonnerSync, instantaneSync, instantaneSyncServeur, type InstantaneSync,
+  abonnerSync, instantaneSync, instantaneSyncServeur, libelleEnAttente, type InstantaneSync,
 } from "@/lib/sync-client";
 import { Page, EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
@@ -162,9 +162,12 @@ function EtatSynchro() {
       accent={<Pastille point ton={ton} />}
       detail={<>
         {LIBELLES_STATUT[s.statut]}
-        {s.statut === "en_attente" && s.enAttente > 0 ? ` (${s.enAttente} modification${s.enAttente > 1 ? "s" : ""})` : ""}
+        {s.statut === "en_attente" && s.enAttente + s.courbesEnAttente > 0 ? ` (${libelleEnAttente(s)})` : ""}
         {s.derniereReussite ? ` · dernière sauvegarde à ${new Date(s.derniereReussite).toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}` : ""}
         {s.erreur && s.statut === "erreur" ? ` · code ${s.erreur.code}` : ""}
+        {s.courbesBaseAJour === false && (
+          <> · envoi des courbes de presse en attente de la mise à jour de la base (elles restent sur cet appareil)</>
+        )}
       </>}
     />
   );
@@ -292,9 +295,10 @@ export default function ComptePage() {
             </ListeGroupee>
             <p className="classe-intro">
               Vos résultats sauvegardés et vos gâchées sont sauvegardés en ligne et
-              visibles par l&apos;enseignant ; les courbes de presse restent sur cet
-              appareil. Les catalogues officiels publiés par l&apos;enseignant sont
-              appliqués automatiquement (vos matériaux personnels sont conservés).
+              visibles par l&apos;enseignant ; les courbes de presse sont envoyées en
+              ligne après chaque synchronisation. Les catalogues officiels publiés par
+              l&apos;enseignant sont appliqués automatiquement (vos matériaux personnels
+              sont conservés).
             </p>
           </Carte>
           <Carte titre="Sécurité">

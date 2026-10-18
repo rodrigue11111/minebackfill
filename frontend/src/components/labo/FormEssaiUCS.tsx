@@ -7,25 +7,35 @@
 import { useState } from "react";
 import type { Eprouvette, EssaiUCS, UniteVitesse } from "@/lib/eprouvette";
 import { TYPES_RUPTURE, UNITES_VITESSE, contrainteKpa } from "@/lib/eprouvette";
-import { nbPointsCourbe } from "@/lib/courbes";
+import { nbPointsCourbe, origineNonVerifiee, type CourbeAffichee } from "@/lib/courbes";
 import { Champ } from "@/components/ui/Champ";
 import { Bandeau } from "@/components/ui/Bandeau";
 import ChampNombre from "@/components/ui/ChampNombre";
 import { isoVersDateInput } from "./outils";
 import CourbeEprouvette from "./CourbeEprouvette";
-import type { PointCourbe } from "@/lib/presse-urstm";
 
-export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes, chargerCourbe, chercherCourbeEnLigne }: {
+export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes, chargerCourbe, chercherCourbeEnLigne, idImport }: {
   eprouvette: Eprouvette;
   onChange: (patch: Partial<EssaiUCS>) => void;
   /** Courbe rangée sur cet appareil (magasin, ou encore dans la gâchée). */
-  chargerCourbe?: () => Promise<PointCourbe[] | null>;
+  chargerCourbe?: () => Promise<CourbeAffichee | null>;
   /** Courbe envoyée en ligne depuis un autre appareil (rangée ici une fois lue). */
-  chercherCourbeEnLigne?: () => Promise<PointCourbe[] | null>;
+  chercherCourbeEnLigne?: () => Promise<CourbeAffichee | null>;
   /** Recopie la vitesse de chargement sur toutes les éprouvettes écrasées de la gâchée. */
   onVitessePourToutes?: (v: EssaiUCS["vitesseChargement"]) => void;
+  /** Id du champ fichier de l'import de presse : courbe d'origine non vérifiée, proposer le réimport. */
+  idImport?: string;
 }) {
   const es = eprouvette.essai ?? {};
+  // Courbe : sur cet appareil d'abord, puis en ligne (autre appareil) si elle
+  // manque ici ou si l'éprouvette n'en garde pas.
+  const pointsLocaux = nbPointsCourbe(es);
+  const lireLocale = pointsLocaux > 0 ? chargerCourbe : undefined;
+  const lireEnLigne = es.sourcePresse ? chercherCourbeEnLigne : undefined;
+  const chargerCourbeAffichee = lireLocale || lireEnLigne
+    ? async () => (lireLocale ? await lireLocale() : null) ?? (lireEnLigne ? await lireEnLigne() : null)
+    : undefined;
+  const reimporter = !!idImport && !!chercherCourbeEnLigne && origineNonVerifiee(es);
   // Unité choisie avant de saisir la valeur (la vitesse n'est enregistrée
   // qu'avec une valeur).
   const [uniteVitesse, setUniteVitesse] = useState<UniteVitesse>(es.vitesseChargement?.unite ?? "mm/min");
@@ -135,7 +145,14 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
         // perdu avant l'import : module de Young, déformation maximale, et
         // le temps de cure RÉEL (à distinguer de l'âge cible, sur lequel les
         // moyennes sont faites).
-        <Bandeau ton="info">
+        <Bandeau ton="info" actions={reimporter ? (
+          // Une courbe d'origine non vérifiée n'est jamais envoyée : seul un
+          // nouvel import établit à quel import elle appartient.
+          <label htmlFor={idImport} className="btn-secondary" role="button" tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); document.getElementById(idImport!)?.click(); } }}>
+            Réimporter le fichier de presse pour envoyer la courbe en ligne
+          </label>
+        ) : undefined}>
           <strong>Importé de la presse</strong> : fichier « {es.sourcePresse.fichier} », échantillon {es.sourcePresse.echantillon}
           {es.sourcePresse.operateur ? `, opérateur ${es.sourcePresse.operateur}` : ""}
           {es.sourcePresse.commentaires ? `, commentaire « ${es.sourcePresse.commentaires} »` : ""}.
@@ -160,11 +177,10 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
           </div>
         </Bandeau>
       )}
-      {nbPointsCourbe(es) > 0 && chargerCourbe && (
-        <CourbeEprouvette code={eprouvette.code} nbPoints={nbPointsCourbe(es)} charger={chargerCourbe} />
-      )}
-      {nbPointsCourbe(es) === 0 && es.sourcePresse && chercherCourbeEnLigne && (
-        <CourbeEprouvette code={eprouvette.code} nbPoints={0} charger={chercherCourbeEnLigne} enLigne />
+      {chargerCourbeAffichee && (
+        // UNE seule instance : lire la courbe en ligne la range ici (le nombre
+        // de points change), sans refermer la figure ouverte.
+        <CourbeEprouvette code={eprouvette.code} nbPoints={pointsLocaux} charger={chargerCourbeAffichee} enLigne={pointsLocaux === 0} />
       )}
 
       <label className="mix-case">

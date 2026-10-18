@@ -540,8 +540,13 @@ export default function GuidePage() {
                 est refusée, mais le travail enregistré dans votre navigateur y reste.
               </p>
               <p>
-                <strong>Les courbes de presse restent sur l&apos;appareil</strong> (elles sont volumineuses) :
-                exportez régulièrement une sauvegarde locale (Réglages → Données locales).
+                <strong>Courbes de presse en ligne</strong> : les courbes importées de la presse sont
+                envoyées en ligne après chaque synchronisation, à part de la gâchée (elles sont
+                volumineuses). Sur un autre appareil, ou chez l&apos;enseignant, le bouton « Courbe en
+                ligne : afficher » de l&apos;éprouvette les lit à la demande. Une courbe importée avant
+                le 18 octobre 2026 porte la mention « origine non vérifiée » et reste sur l&apos;appareil :
+                réimportez le fichier de presse pour l&apos;envoyer. Une sauvegarde locale (Réglages →
+                Données locales) emporte aussi les courbes.
               </p>
               <p>
                 <strong>Mot de passe oublié ?</strong> Page Compte → « Mot de passe oublié ? » : un lien

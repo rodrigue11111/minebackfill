@@ -241,6 +241,28 @@ describe("backup — courbes de presse hors des gâchées (schéma 6)", () => {
     expect(g.eprouvettes[0].essai.courbeInfo).toBeUndefined();
     expect(g.eprouvettes[0].essai.courbe).toBeUndefined();
   });
+
+  it("courbe d'import connu : exportée puis réimportée sous sa clé par import (`<éprouvette>:<import>`)", async () => {
+    const X = "2026-10-01T10:00:00.000Z";
+    const gImport = () => {
+      const g = gAvecRef();
+      g.eprouvettes[0].essai = { ...g.eprouvettes[0].essai, sourcePresse: { fichier: "p.xlsx", echantillon: "1", importeLe: X }, courbeInfo: { nbPoints: 2, importeLe: X } };
+      return g;
+    };
+    const source = creerMagasinMemoire();
+    await source.ecrire([[`e-gc:${X}`, encoderCourbe(pts)], ["e-gc", encoderCourbe([pts[0]])]]); // l'ancienne clé n'est pas exportée
+    localStorage.setItem("minebackfill_gachees", JSON.stringify({ v: 2, data: [gImport()] }));
+    const b = await exporte(source);
+    expect(b.data.courbes).toEqual({ [`e-gc:${X}`]: encoderCourbe(pts) });
+
+    localStorage.removeItem("minebackfill_gachees");
+    const cible = creerMagasinMemoire();
+    const res = await importerDonnees(fichier({ application: "MineBackfill", schema: 6, exportedAt: "x", data: { gachees: [gImport()], courbes: b.data.courbes } }), cible);
+    expect(res.ok).toBe(true);
+    expect([...cible.contenu.keys()]).toEqual([`e-gc:${X}`]);
+    const g = JSON.parse(localStorage.getItem("minebackfill_gachees")!).data[0];
+    expect(g.eprouvettes[0].essai.courbeInfo).toEqual({ nbPoints: 2, importeLe: X });
+  });
 });
 
 describe("backup — revues de l'enseignant", () => {

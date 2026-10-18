@@ -470,6 +470,8 @@ end $$;
 -- tolérance) ; p_complet = document intégral (export de la classe).
 -- p_session : documents de cette session, plus ceux qui n'en portent pas
 -- (antérieurs aux sessions : le client les classe d'après leurs dates).
+-- Jamais les courbes, même en lecture complète : lourdes, elles sont lues à
+-- part (le site ne garde que celles des comptes exportés).
 create or replace function public.lire_docs_classe(
   p_apres_maj timestamptz, p_apres_user uuid, p_apres_kind text, p_apres_id text,
   p_recul_s integer default 0, p_limite integer default 100,
@@ -489,7 +491,7 @@ begin
              when d.kind = 'resultat' then d.payload - 'catalogue_liants' - 'constantes' - 'inputs'
            end
       from public.user_docs d
-     where (p_complet or d.kind in ('gachee', 'resultat'))
+     where d.kind in ('gachee', 'resultat')
        and (p_session is null or d.payload ->> 'sessionId' is null
             or d.payload ->> 'sessionId' = p_session)
        and (d.updated_at, d.user_id, d.kind, d.id) >
@@ -793,37 +795,65 @@ grant execute on function public.bloquer_compte(uuid, boolean) to authenticated;
 
 -- ======================================================================
 --  courbes en ligne : nettoyage (2026-10). Les courbes de presse sont
---  envoyées par le site comme documents « courbe » (id = id de l'éprouvette),
---  à part de la synchronisation. Quand une gâchée ou une éprouvette
---  disparaît, sa courbe devient orpheline : purger_mes_courbes la met à la
---  corbeille (contenu effacé, trace « supprimé » gardée). Une heure de grâce :
---  une courbe envoyée juste avant sa gâchée n'est jamais prise pour une
---  orpheline. Security INVOKER : la RLS du compte s'applique, il ne touche
---  que ses propres lignes. Une copie de conflit garde les ids d'éprouvette de
---  l'original : sa courbe reste tant que l'une des deux existe.
+--  envoyées par le site comme documents « courbe », à part de la
+--  synchronisation. Deux formats coexistent :
+--    - depuis le 2026-10-18, un document PAR IMPORT : id
+--      `<idEprouvette>:<importeLe>`, contenu { eprouvetteId, gacheeId,
+--      importeLe, colonnes } ;
+--    - avant, id = id de l'éprouvette, sans importeLe (origine non vérifiée).
+--  Règle d'orphelin, UNIQUE (les deux fonctions la partagent) : l'éprouvette
+--  d'un document est coalesce(eprouvetteId, id) ; il est orphelin si aucune
+--  gâchée vivante du compte (copies de conflit comprises) n'a cette
+--  éprouvette, ou, pour un document qui porte un importeLe, si aucune ne l'a
+--  avec ce même sourcePresse.importeLe (import révolu). Un ancien document,
+--  sans importeLe, n'est purgé que dans le premier cas. L'orphelin est mis à
+--  la corbeille (contenu effacé, trace « supprimé » gardée). Une heure de
+--  grâce : une courbe envoyée juste avant sa gâchée n'est jamais prise pour
+--  une orpheline. Security INVOKER : la RLS du compte s'applique, on ne
+--  touche que ses propres lignes.
+--
+--  purger_mes_courbes_ids rend les ids purgés (le site retire ces courbes de
+--  son état d'envoi) ; le site ne l'appelle qu'après un cycle propre, et
+--  n'envoie AUCUNE courbe par import tant qu'elle manque. purger_mes_courbes
+--  (signature et retour entier inchangés) reste pour les sites encore en
+--  cache : elle applique la même règle, donc ne retire jamais un document
+--  par import encore désigné. Ce SQL doit être en place AVANT que le site
+--  n'envoie des documents par import.
 -- ======================================================================
-create or replace function public.purger_mes_courbes(p_attendu uuid)
-returns integer language plpgsql security invoker set search_path = '' as $$
+create or replace function public.purger_mes_courbes_ids(p_attendu uuid)
+returns setof text language plpgsql security invoker set search_path = '' as $$
 declare
   v_uid uuid := (select auth.uid());
-  v_n integer;
 begin
   if v_uid is null or p_attendu is distinct from v_uid then
     raise exception 'session inattendue' using errcode = '28000';
   end if;
-  update public.user_docs c set deleted = true, payload = null
-   where c.user_id = v_uid and c.kind = 'courbe' and not c.deleted
-     and c.updated_at < clock_timestamp() - interval '1 hour'
-     and not exists (
-       select 1
-         from public.user_docs g
-        cross join lateral jsonb_array_elements(
-                case when jsonb_typeof(g.payload -> 'eprouvettes') = 'array'
-                     then g.payload -> 'eprouvettes' else '[]'::jsonb end) e
-        where g.user_id = v_uid and g.kind = 'gachee' and not g.deleted
-          and e ->> 'id' = c.id);
-  get diagnostics v_n = row_count;
-  return v_n;
+  return query
+    with purgees as (
+      update public.user_docs c set deleted = true, payload = null
+       where c.user_id = v_uid and c.kind = 'courbe' and not c.deleted
+         and c.updated_at < clock_timestamp() - interval '1 hour'
+         and not exists (
+           select 1
+             from public.user_docs g
+            cross join lateral jsonb_array_elements(
+                    case when jsonb_typeof(g.payload -> 'eprouvettes') = 'array'
+                         then g.payload -> 'eprouvettes' else '[]'::jsonb end) e
+            where g.user_id = v_uid and g.kind = 'gachee' and not g.deleted
+              and e ->> 'id' = coalesce(c.payload ->> 'eprouvetteId', c.id)
+              and (c.payload ->> 'importeLe' is null
+                   or e -> 'essai' -> 'sourcePresse' ->> 'importeLe' = c.payload ->> 'importeLe'))
+      returning c.id
+    )
+    select p.id from purgees p;
+end $$;
+revoke execute on function public.purger_mes_courbes_ids(uuid) from public, anon;
+grant execute on function public.purger_mes_courbes_ids(uuid) to authenticated;
+
+create or replace function public.purger_mes_courbes(p_attendu uuid)
+returns integer language plpgsql security invoker set search_path = '' as $$
+begin
+  return (select count(*)::integer from public.purger_mes_courbes_ids(p_attendu));
 end $$;
 revoke execute on function public.purger_mes_courbes(uuid) from public, anon;
 grant execute on function public.purger_mes_courbes(uuid) to authenticated;
@@ -1080,8 +1110,12 @@ select
        else r.target_rev is not null and d.rev > r.target_rev end as revue_perimee,
   case when r.decision is null then null
        else (e.value ->> 'id') = any (r.ecartees) end            as eprouvette_ecartee,
+  -- Courbe de l'import que l'éprouvette désigne, ou ancien document sans
+  -- import (même règle que le site, courbes.ts courbesRetenues).
   exists (select 1 from public.user_docs c
-           where c.user_id = d.user_id and c.kind = 'courbe' and c.id = e.value ->> 'id' and not c.deleted) as courbe_en_ligne
+           where c.user_id = d.user_id and c.kind = 'courbe' and not c.deleted
+             and (c.id = e.value ->> 'id'
+                  or c.id = (e.value ->> 'id') || ':' || (e.value #>> '{essai,sourcePresse,importeLe}'))) as courbe_en_ligne
 from public.user_docs d
 left join lateral (
   select x.payload -> 'recipes' -> greatest(0, least(

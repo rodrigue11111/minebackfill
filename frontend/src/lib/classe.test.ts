@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  agesClasse, essaiValide, exportClasse, fusionnerLignes, gacheesRetenues, nomEtudiant, nuageClasse, regrouper,
+  agesClasse, eprouvettesAvecCourbe, essaiValide, exportClasse, fusionnerLignes, gacheesRetenues, nomEtudiant, nuageClasse, regrouper,
   type LigneClasse, type ProfilClasse,
 } from "./classe";
 import { annotationsDe, fusionnerAnnotations, migrerAnnotationV1, nonLuesDeLEnseignant, type Annotation } from "./annotations";
@@ -172,17 +172,32 @@ function clientRpc(pages: Record<string, unknown[][]>, erreur?: { code: string; 
 }
 
 describe("export JSON de la classe : courbes", () => {
-  it("seulement celles des éprouvettes exportées, sous une clé à part ; version inchangée", () => {
-    const etu = [{ id: A, nom: "A", email: null, resultats: [], gachees: [{ id: "g1", eprouvettes: [{ id: "e1" }] }], nbEssais: 0, derniereActivite: null }] as unknown as Parameters<typeof exportClasse>[0];
-    const courbes = [
-      { proprietaire: A, eprouvetteId: "e1", gacheeId: "g1", contenu: { v: 1 } },
-      { proprietaire: A, eprouvetteId: "e9", gacheeId: "g9", contenu: { v: 1 } },
-      { proprietaire: "autre", eprouvetteId: "e1", gacheeId: "g1", contenu: { v: 1 } },
-    ];
-    const x = exportClasse(etu, "toutes", new Date("2026-10-01T00:00:00Z"), courbes) as { version: number; courbes: { eprouvetteId: string; proprietaire: string }[] };
+  const X = "2026-10-01T10:00:00.000Z";
+  const Y = "2026-10-02T15:30:00.000Z";
+  const presse = (importeLe: string) => ({ essai: { sourcePresse: { fichier: "p.xlsx", echantillon: "1", importeLe } } });
+  const etu = [{ id: A, nom: "A", email: null, resultats: [], nbEssais: 0, derniereActivite: null,
+    gachees: [{ id: "g1", eprouvettes: [{ id: "e1", ...presse(Y) }, { id: "e2", ...presse(X) }] }] }] as unknown as Parameters<typeof exportClasse>[0];
+  const courbes = [
+    { proprietaire: A, eprouvetteId: "e1", gacheeId: "g1", importeLe: Y, contenu: { v: 1 } },
+    { proprietaire: A, eprouvetteId: "e1", gacheeId: "g1", importeLe: X, contenu: { v: 1 } }, // import révolu
+    { proprietaire: A, eprouvetteId: "e2", gacheeId: "g1", importeLe: null, contenu: { v: 1 } }, // ancien document
+    { proprietaire: A, eprouvetteId: "e9", gacheeId: "g9", importeLe: X, contenu: { v: 1 } },
+    { proprietaire: "autre", eprouvetteId: "e1", gacheeId: "g1", importeLe: Y, contenu: { v: 1 } },
+  ];
+
+  it("celle de l'import désigné (ou l'ancien document, marqué), sous une clé à part ; version inchangée", () => {
+    const x = exportClasse(etu, "toutes", new Date("2026-10-01T00:00:00Z"), courbes) as {
+      version: number; courbes: { eprouvetteId: string; proprietaire: string; importeLe: string | null; origineNonVerifiee?: boolean }[];
+    };
     expect(x.version).toBe(1);
-    expect(x.courbes.map((c) => `${c.proprietaire}|${c.eprouvetteId}`)).toEqual([`${A}|e1`]);
+    expect(x.courbes.map((c) => [c.proprietaire, c.eprouvetteId, c.importeLe, c.origineNonVerifiee ?? false]))
+      .toEqual([[A, "e1", Y, false], [A, "e2", null, true]]);
     expect(exportClasse(etu, "toutes", new Date())).not.toHaveProperty("courbes");
+  });
+
+  it("colonne courbe_en_ligne : mêmes courbes retenues", () => {
+    expect([...eprouvettesAvecCourbe(etu, courbes)].sort()).toEqual([`${A}|e1`, `${A}|e2`]);
+    expect([...eprouvettesAvecCourbe(etu, courbes.filter((c) => c.importeLe === X))]).toEqual([]);
   });
 });
 
@@ -302,31 +317,71 @@ describe("classe-reseau", () => {
     expect(messageErreurClasse(new ErreurClasse("42501", "refusé"))).toBe("refusé");
   });
 
-  it("courbe d'une éprouvette : lue en ligne ; retirée ou absente : null", async () => {
-    const client = (data: unknown) => {
-      const chaine = { select: () => chaine, eq: () => chaine, maybeSingle: () => Promise.resolve({ data, error: null }) };
+  it("courbe d'une éprouvette : celle de son import ; à défaut l'ancien document, non vérifié ; retirée ou absente : null", async () => {
+    const X = "2026-10-01T10:00:00.000Z";
+    const client = (docs: Record<string, unknown>) => {
+      let id = "";
+      const chaine = {
+        select: () => chaine,
+        eq: (col: string, v: string) => { if (col === "id") id = v; return chaine; },
+        maybeSingle: () => Promise.resolve({ data: docs[id] ?? null, error: null }),
+      };
       return { from: () => chaine } as unknown as SupabaseClient;
     };
-    const c = { v: 1, eprouvetteId: "e1", gacheeId: "g1", t: [0, 1], f: [0, 2], d: [0, 3], s: [0, 4], e: [0, 5] };
-    expect(await lireCourbe(client({ payload: c, rev: 3, updated_at: "m", deleted: false }), A, "e1")).toEqual({ v: 1, t: [0, 1], f: [0, 2], d: [0, 3], s: [0, 4], e: [0, 5] });
-    expect(await lireCourbe(client({ payload: null, rev: 4, updated_at: "m", deleted: true }), A, "e1")).toBeNull();
-    expect(await lireCourbe(client(null), A, "e1")).toBeNull();
+    const col = { t: [0, 1], f: [0, 2], d: [0, 3], s: [0, 4], e: [0, 5] };
+    const doc = (payload: unknown, rev = 3) => ({ payload, rev, updated_at: "m", deleted: payload === null });
+    const parImport = { [`e1:${X}`]: doc({ v: 1, eprouvetteId: "e1", gacheeId: "g1", importeLe: X, ...col }, 7) };
+    const ancien = { e1: doc({ v: 1, eprouvetteId: "e1", gacheeId: "g1", ...col }) };
+    expect(await lireCourbe(client({ ...parImport, ...ancien }), A, "e1", X))
+      .toEqual({ courbe: { v: 1, ...col }, cle: `e1:${X}`, rev: 7, origineNonVerifiee: false });
+    expect(await lireCourbe(client(ancien), A, "e1", X)).toMatchObject({ cle: "e1", rev: 3, origineNonVerifiee: true });
+    expect(await lireCourbe(client(ancien), A, "e1", undefined)).toMatchObject({ cle: "e1", origineNonVerifiee: true });
+    expect(await lireCourbe(client({ e1: doc(null, 4) }), A, "e1", X)).toBeNull();
+    expect(await lireCourbe(client({}), A, "e1", X)).toBeNull();
   });
 
-  it("courbes de la classe : paginées, avec ou sans contenu", async () => {
-    const lignes = [
-      { user_id: A, id: "e1", payload: { v: 1, gacheeId: "g1", t: [], f: [], d: [], s: [], e: [] } },
-      { user_id: A, id: "e2", payload: { pas: "une courbe" } },
-    ];
-    const colonnes: string[] = [];
-    const chaine = {
-      select: (c: string) => { colonnes.push(c); return chaine; }, eq: () => chaine, order: () => chaine,
-      range: (de: number) => Promise.resolve({ data: de === 0 ? lignes : [], error: null }),
+  it("courbes de la classe : par compte exporté, paginées par identifiant (même si le serveur tronque), avec ou sans contenu", async () => {
+    const X = "2026-10-01T10:00:00.000Z";
+    const col = { v: 1, t: [], f: [], d: [], s: [], e: [] };
+    const lignes: Record<string, { id: string; payload: Record<string, unknown> }[]> = {
+      [A]: [
+        { id: "e1", payload: { ...col, eprouvetteId: "e1", gacheeId: "g1" } },
+        { id: `e2:${X}`, payload: { ...col, eprouvetteId: "e2", gacheeId: "g1", importeLe: X } },
+        { id: "e3", payload: { pas: "une courbe" } },
+      ],
+      [B]: [{ id: "b1", payload: { ...col, eprouvetteId: "b1" } }],
     };
-    const sb = { from: () => chaine } as unknown as SupabaseClient;
-    expect((await lireCourbesClasse(sb, true)).map((c) => [c.eprouvetteId, c.gacheeId])).toEqual([["e1", "g1"]]);
-    expect((await lireCourbesClasse(sb, false)).map((c) => c.eprouvetteId)).toEqual(["e1", "e2"]);
-    expect(colonnes).toEqual(["user_id,id,payload", "user_id,id,payload", "user_id,id", "user_id,id"]);
+    const requetes: { colonnes: string; filtres: [string, unknown][]; apres: string | null }[] = [];
+    const sb = {
+      from: () => {
+        const r = { colonnes: "", filtres: [] as [string, unknown][], apres: null as string | null };
+        requetes.push(r);
+        const chaine = {
+          select: (c: string) => { r.colonnes = c; return chaine; },
+          eq: (c: string, v: unknown) => { r.filtres.push([c, v]); return chaine; },
+          gt: (_c: string, v: string) => { r.apres = v; return chaine; },
+          order: () => chaine,
+          limit: () => {
+            const uid = r.filtres.find(([c]) => c === "user_id")![1] as string;
+            const page = (lignes[uid] ?? []).filter((l) => r.apres === null || l.id > r.apres).slice(0, 2); // max_rows = 2
+            const avecContenu = r.colonnes === "id,payload";
+            return Promise.resolve({ data: page.map((l) => (avecContenu ? l : {
+              id: l.id, eprouvetteId: l.payload.eprouvetteId ?? null, gacheeId: l.payload.gacheeId ?? null, importeLe: l.payload.importeLe ?? null,
+            })), error: null });
+          },
+        };
+        return chaine;
+      },
+    } as unknown as SupabaseClient;
+    expect((await lireCourbesClasse(sb, true, [A])).map((c) => [c.id, c.eprouvetteId, c.gacheeId, c.importeLe]))
+      .toEqual([["e1", "e1", "g1", null], [`e2:${X}`, "e2", "g1", X]]);
+    expect(requetes.map((r) => r.apres)).toEqual([null, `e2:${X}`, "e3"]); // page tronquée : on continue jusqu'à la page vide
+    expect(requetes[0].filtres).toEqual([["user_id", A], ["kind", "courbe"], ["deleted", false]]);
+    requetes.length = 0;
+    expect((await lireCourbesClasse(sb, false, [A, B, A])).map((c) => [c.proprietaire, c.eprouvetteId, c.importeLe]))
+      .toEqual([[A, "e1", null], [A, "e2", X], [A, "e3", null], [B, "b1", null]]);
+    expect(requetes[0].colonnes).toBe("id,eprouvetteId:payload->>eprouvetteId,gacheeId:payload->>gacheeId,importeLe:payload->>importeLe");
+    expect(await lireCourbesClasse(sb, false, [])).toEqual([]);
   });
 
   it("comptes : lecture convertie ; droit refusé sur auth → marche à suivre dans Studio", async () => {

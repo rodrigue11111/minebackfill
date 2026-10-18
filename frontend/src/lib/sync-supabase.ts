@@ -12,6 +12,7 @@ import {
   type Curseur, type Envoi, type Kind, type LigneServeur, type ReponseEcriture, type Transport,
 } from "./sync-moteur";
 import type { EcrireCourbe } from "./sync-courbes";
+import { schemaPasAJour } from "./classe-reseau";
 
 /** Délai au-delà duquel un appel est abandonné (réessayé plus tard). */
 const DELAI_APPEL_MS = 20000;
@@ -142,15 +143,22 @@ export function ecrivainCourbes(sb: SupabaseClient, attendu: () => string): Ecri
 }
 
 /**
- * Nettoyage serveur : met à la corbeille les courbes de CE compte dont
- * l'éprouvette n'existe plus dans aucune gâchée en ligne (purger_mes_courbes).
- * Base pas encore à jour, ou échec : sans conséquence (rend 0).
+ * Nettoyage serveur : met à la corbeille les courbes de CE compte qu'aucune
+ * gâchée en ligne ne désigne plus (purger_mes_courbes_ids), et rend leurs
+ * identifiants. Sert aussi de SONDE : tant que cette fonction manque (base
+ * pas encore à jour), le site n'envoie aucune courbe à identifiant par
+ * import, car l'ancienne purge les aurait prises pour des orphelines.
+ *   - { ids } : nettoyage fait ;
+ *   - "absente" : base pas à jour (schema.sql à relancer) ;
+ *   - null : échec passager, on réessaiera.
  */
-export async function purgerMesCourbes(sb: SupabaseClient, attendu: string): Promise<number> {
+export async function purgerMesCourbesIds(sb: SupabaseClient, attendu: string): Promise<{ ids: string[] } | "absente" | null> {
   try {
-    const { data, error } = await sb.rpc("purger_mes_courbes", { p_attendu: attendu });
-    return error ? 0 : Number(data) || 0;
+    const { data, error } = await sb.rpc("purger_mes_courbes_ids", { p_attendu: attendu });
+    if (error) return schemaPasAJour(error.code) ? "absente" : null;
+    const lignes = Array.isArray(data) ? data : [];
+    return { ids: lignes.map((x) => (typeof x === "string" ? x : String((x as Record<string, unknown>)?.purger_mes_courbes_ids ?? ""))).filter(Boolean) };
   } catch {
-    return 0;
+    return null;
   }
 }

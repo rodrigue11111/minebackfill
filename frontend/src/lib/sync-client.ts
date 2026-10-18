@@ -26,8 +26,8 @@ import {
 } from "./sync-etat";
 import { basculerCompte } from "./sync-bascule";
 import { creerDepotLocal } from "./sync-local";
-import { ecrivainCourbes, purgerMesCourbes, transportSupabase } from "./sync-supabase";
-import { cycleCourbes } from "./sync-courbes";
+import { ecrivainCourbes, purgerMesCourbesIds, transportSupabase } from "./sync-supabase";
+import { cycleCourbes, oublierPurgees, planifierCourbes } from "./sync-courbes";
 import { chargerEtatCourbes, magasinCourbes, sauverEtatCourbes } from "./courbes-client";
 import { creerPlanificateur, type Planificateur, type StatutSync } from "./sync-planificateur";
 
@@ -48,6 +48,10 @@ export interface InstantaneSync {
   reporte: boolean;
   statut: StatutSync;
   enAttente: number;
+  /** Courbes de presse de cet appareil pas encore envoyées en ligne. */
+  courbesEnAttente: number;
+  /** La base accepte-t-elle les courbes par import ? null : pas encore vérifié. */
+  courbesBaseAJour: boolean | null;
   derniereReussite: number | null;
   erreur: { nature: string; code: string } | null;
   /** Avis des derniers cycles, à afficher puis à fermer. */
@@ -61,7 +65,7 @@ export interface InstantaneSync {
 }
 
 const INITIAL: InstantaneSync = {
-  liaison: null, reporte: false, statut: "inactif", enAttente: 0,
+  liaison: null, reporte: false, statut: "inactif", enAttente: 0, courbesEnAttente: 0, courbesBaseAJour: null,
   derniereReussite: null, erreur: null, avis: [], anonymes: { resultats: 0, gachees: 0 },
   commentairesFermes: [], reponsesNonLues: null,
 };
@@ -83,6 +87,16 @@ export function instantaneSync(): InstantaneSync {
 }
 export function instantaneSyncServeur(): InstantaneSync {
   return INITIAL;
+}
+
+/** « 2 modifications et 3 courbes de presse » : ce qui attend d'être envoyé. */
+export function libelleEnAttente(s: Pick<InstantaneSync, "enAttente" | "courbesEnAttente">): string {
+  const p = (n: number, un: string, plusieurs: string) => `${n} ${n > 1 ? plusieurs : un}`;
+  const parts = [
+    ...(s.enAttente > 0 ? [p(s.enAttente, "modification", "modifications")] : []),
+    ...(s.courbesEnAttente > 0 ? [p(s.courbesEnAttente, "courbe de presse", "courbes de presse")] : []),
+  ];
+  return parts.length > 0 ? parts.join(" et ") : "des modifications";
 }
 
 /* ── Session courante ────────────────────────────────────────────────────── */
@@ -167,30 +181,65 @@ async function rafraichirRevues(c: Courant): Promise<void> {
   }
 }
 
-/** Le nettoyage serveur des courbes n'a lieu qu'une fois par connexion. */
-let courbesPurgees = false;
+/**
+ * Courbes de presse, pour cette connexion :
+ *   - « inconnue » : le nettoyage serveur (purger_mes_courbes_ids) n'a pas
+ *     encore tourné. Il ne tourne qu'après un cycle PROPRE (rien en attente,
+ *     aucun conflit) : sinon une gâchée pas encore envoyée (copie de conflit
+ *     comprise) ferait prendre ses courbes pour des orphelines. Il sert aussi
+ *     de sonde : aucune courbe ne part avant qu'il ait réussi ;
+ *   - « active » : nettoyage fait, les courbes partent ;
+ *   - « absente » : la base n'a pas la fonction (schema.sql pas relancé) :
+ *     aucune courbe ne part (l'ancienne purge, sur une base pas à jour,
+ *     retirerait les documents par import), la lecture reste possible.
+ */
+let courbesConnexion: "inconnue" | "active" | "absente" = "inconnue";
+/** Courbes encore à envoyer (indicateur et statut « en attente »). */
+let courbesEnAttente = 0;
+
+function compterEnAttente(c: Courant): number {
+  return nombreEnAttente(chargerEtatSync(), c.depot.lister()) + (courbesConnexion === "active" ? courbesEnAttente : 0);
+}
 
 /**
  * Courbes de presse : envoyées en ligne après chaque cycle réussi, au plus 10
- * à la fois (sync-courbes.ts). Puis, une fois par connexion, nettoyage des
- * courbes dont l'éprouvette n'existe plus en ligne. Échec : on reprendra.
+ * à la fois (sync-courbes.ts). Le premier cycle propre de la connexion lance
+ * d'abord le nettoyage serveur et retente les courbes bloquées. Échec : on
+ * reprendra.
  */
-async function envoyerCourbes(c: Courant): Promise<void> {
+async function envoyerCourbes(c: Courant, propre: boolean): Promise<{ envoyees: number; budgetEpuise: boolean }> {
+  const rien = { envoyees: 0, budgetEpuise: false };
   const m = magasinCourbes();
   const etatSync = chargerEtatSync();
-  if (!m || etatSync.uid !== c.uid) return;
+  if (!m || etatSync.uid !== c.uid) return rien;
   try {
-    const r = await cycleCourbes({
-      gachees: loadGacheesFromStorage(), etatSync, etat: chargerEtatCourbes(c.uid),
-      lire: (id) => m.lire(id), ecrire: ecrivainCourbes(c.sb, () => c.uid),
-    });
-    if (courant === c) sauverEtatCourbes(r.etat);
-    if (!courbesPurgees && courant === c) {
-      courbesPurgees = true;
-      await purgerMesCourbes(c.sb, c.uid);
+    let etat = chargerEtatCourbes(c.uid);
+    if (courbesConnexion === "inconnue") {
+      if (!propre) return rien;
+      const p = await purgerMesCourbesIds(c.sb, c.uid);
+      if (courant !== c || p === null) return rien;
+      if (p === "absente") {
+        courbesConnexion = "absente";
+        publier({ courbesBaseAJour: false, courbesEnAttente: planifierCourbes(loadGacheesFromStorage(), etatSync, etat).length });
+        return rien;
+      }
+      courbesConnexion = "active";
+      etat = { ...oublierPurgees(etat, p.ids), bloquees: {} };
+      sauverEtatCourbes(c.uid, etat);
+      publier({ courbesBaseAJour: true });
     }
+    if (courbesConnexion !== "active") return rien;
+    const r = await cycleCourbes({
+      gachees: loadGacheesFromStorage(), etatSync, etat,
+      lire: (cle) => m.lire(cle), ecrire: ecrivainCourbes(c.sb, () => c.uid),
+    });
+    if (courant !== c) return rien;
+    sauverEtatCourbes(c.uid, r.etat);
+    courbesEnAttente = r.reste;
+    publier({ courbesEnAttente: r.reste });
+    return { envoyees: r.envoyees, budgetEpuise: r.budgetEpuise };
   } catch {
-    /* magasin indisponible : on reprendra au prochain cycle */
+    return rien; // magasin indisponible : on reprendra au prochain cycle
   }
 }
 
@@ -295,16 +344,20 @@ async function executerCycle(c: Courant, budget: number): Promise<ResultatCycle>
     });
     const fin = reporterSuppressions(depart, chargerEtatSync(), r.etat);
     sauverEtatSync(fin); // un échec (stockage plein) est signalé par le bandeau de stockage
-    if (!r.erreur) await envoyerCourbes(c);
+    const enAttente = nombreEnAttente(fin, c.depot.lister());
+    const propre = !r.erreur && !r.aRelancer && enAttente === 0 && !r.avis.some((a) => a.type === "conflit");
+    const courbes = r.erreur ? { envoyees: 0, budgetEpuise: false } : await envoyerCourbes(c, propre);
     publier({
-      enAttente: nombreEnAttente(fin, c.depot.lister()),
+      enAttente,
       ...(r.avis.length > 0 ? { avis: [...instantane.avis, ...r.avis].slice(-20) } : {}),
     });
     if (!r.erreur && Date.now() - derniereLectureAnnotations >= PERIODE_ANNOTATIONS_MS) {
       await rafraichirAnnotations(c);
       await rafraichirRevues(c);
     }
-    return { ...r, etat: fin };
+    // Les envois de courbes comptent pour le coupe-circuit du planificateur ;
+    // budget épuisé : un nouveau cycle bientôt.
+    return { ...r, etat: fin, envoyes: r.envoyes + courbes.envoyees, aRelancer: r.aRelancer || courbes.budgetEpuise };
   };
   // Un seul onglet synchronise à la fois. Simple économie : la justesse
   // repose sur le contrôle de version du serveur, pas sur ce verrou.
@@ -319,7 +372,7 @@ async function executerCycle(c: Courant, budget: number): Promise<ResultatCycle>
 function demarrer(c: Courant): void {
   const planif = creerPlanificateur({
     executer: (budget) => executerCycle(c, budget),
-    compterEnAttente: () => nombreEnAttente(chargerEtatSync(), c.depot.lister()),
+    compterEnAttente: () => compterEnAttente(c),
     maintenant: () => Date.now(),
     programmer: (f, ms) => window.setTimeout(f, ms),
     annuler: (id) => window.clearTimeout(id as number),
@@ -420,7 +473,8 @@ export function deconnecterSynchro(): void {
   courant?.arreterCompteur();
   courant = null;
   derniereLectureAnnotations = -Infinity;
-  courbesPurgees = false;
+  courbesConnexion = "inconnue";
+  courbesEnAttente = 0;
   publier({ ...INITIAL });
 }
 

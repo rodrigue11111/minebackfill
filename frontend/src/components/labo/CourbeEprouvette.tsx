@@ -5,20 +5,22 @@
 // n'est lu tant qu'on ne demande pas la courbe.
 
 import { useState } from "react";
-import type { PointCourbe } from "@/lib/presse-urstm";
-import { lignesCsvCourbe } from "@/lib/courbes";
+import { lignesCsvCourbe, type CourbeAffichee } from "@/lib/courbes";
 import { nomFichier, telechargerTexte, versCsv } from "@/lib/export-fig";
 import FigurePng from "@/components/analyse/FigurePng";
 import CourbeContrainteDeformation from "./CourbeContrainteDeformation";
 
-type Etat = { quoi: "ferme" } | { quoi: "lecture" } | { quoi: "absente" } | { quoi: "erreur" } | { quoi: "ouverte"; points: PointCourbe[] };
+type Etat = { quoi: "ferme" } | { quoi: "lecture" } | { quoi: "absente" } | { quoi: "erreur" } | ({ quoi: "ouverte" } & CourbeAffichee);
+
+/** Note affichée sous une courbe dont rien ne prouve qu'elle vient de l'import affiché. */
+export const NOTE_ORIGINE_NON_VERIFIEE = "Courbe d'un import antérieur : origine non vérifiée.";
 
 export default function CourbeEprouvette({ code, nbPoints, charger, enLigne = false }: {
   /** Code de l'éprouvette (titre, nom des fichiers). */
   code: string;
   /** Points rangés sur cet appareil (0 : la courbe est à chercher en ligne). */
   nbPoints: number;
-  charger: () => Promise<PointCourbe[] | null>;
+  charger: () => Promise<CourbeAffichee | null>;
   /** La courbe est cherchée en ligne (libellés adaptés). */
   enLigne?: boolean;
 }) {
@@ -26,8 +28,8 @@ export default function CourbeEprouvette({ code, nbPoints, charger, enLigne = fa
   const ouvrir = async () => {
     setEtat({ quoi: "lecture" });
     try {
-      const points = await charger();
-      setEtat(points && points.length > 0 ? { quoi: "ouverte", points } : { quoi: "absente" });
+      const c = await charger();
+      setEtat(c && c.points.length > 0 ? { quoi: "ouverte", ...c } : { quoi: "absente" });
     } catch {
       setEtat({ quoi: "erreur" });
     }
@@ -41,6 +43,7 @@ export default function CourbeEprouvette({ code, nbPoints, charger, enLigne = fa
         <FigurePng nom={nom}>
           <CourbeContrainteDeformation points={etat.points} titre={`Éprouvette ${code}`} />
         </FigurePng>
+        {etat.origineNonVerifiee && <p style={{ ...note, color: "var(--alerte-texte)" }}>{NOTE_ORIGINE_NON_VERIFIEE}</p>}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span style={note}>{etat.points.length} points mesurés</span>
           <button type="button" className="btn-discret"

@@ -19,7 +19,7 @@ import { snapshotProtocoles } from "@/lib/protocole";
 import { useAujourdhui } from "@/lib/use-aujourdhui";
 import { annotationsDe, docsAvecNonLus } from "@/lib/annotations";
 import { libelleRevue } from "@/lib/revues";
-import { courbesAOublier, idsCourbes } from "@/lib/courbes";
+import { clesCourbes, courbesAOublier } from "@/lib/courbes";
 import { oublierCourbes } from "@/lib/courbes-client";
 import { Page, EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
@@ -112,7 +112,7 @@ export default function LaboPage() {
           onRetour={() => setSelId(null)}
           onSupprimer={() => {
             if (window.confirm(`Supprimer la gâchée ${g.code} ?`)) {
-              oublierCourbes(courbesAOublier(idsCourbes(g), gachees.filter((x) => x.id !== g.id)));
+              oublierCourbes(courbesAOublier(clesCourbes(g), gachees.filter((x) => x.id !== g.id)));
               supprimerGachee(g.id);
               setSelId(null);
             }
