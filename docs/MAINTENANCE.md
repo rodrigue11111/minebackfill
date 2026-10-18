@@ -126,9 +126,16 @@ l'utiliser, une phrase), affichée sous le choix de méthode et lue par le
 Guide (`QUAND_METHODE`) : une seule source. Les plages usuelles des champs
 vivent dans `lib/plages.ts` (tableau du Guide et rappel sous chaque champ,
 `<Field plage=… valeur=…>`) ; une valeur hors plage reçoit un avis doux,
-jamais un refus. Gs et w₀ du résidu sont partagés par les formulaires
-(`partagerResidu`, `store.tsx`), y compris après un rechargement depuis
-Mes calculs (`restoreSavedResult` les repartage).
+jamais un refus. Gs et w₀ du résidu, le nombre de moules par recette et le
+facteur de perte κ sont partagés par les formulaires (`partagerEntreMethodes`,
+`CHAMPS_PARTAGES` dans `store.tsx`), y compris après un rechargement depuis
+Mes calculs (`restoreSavedResult` les repartage) : le VT de la page
+Informations ne dépend donc pas de la méthode active. Un avis tiré d'un
+résultat (eau à retirer, Cw prédit hors plage) vit dans `lib/avis-recette.ts`
+et s'affiche en tête de la carte des résultats (`ResultsPanel`). Les tableaux
+de résultats groupent les milliers à l'écran (`fmtGroupe`) ; les exports PDF
+et Excel gardent `fmt` (police sans espace fine). Les lignes RRC portent leurs
+formules (`RrcReportRow.formulaIds`) ; la fiche s'ouvre alors sans valeurs.
 
 **Saisie des nombres** (2026-10) : tout champ numérique passe par
 `ChampNombre` (`components/ui/ChampNombre.tsx`), champ texte qui accepte la
