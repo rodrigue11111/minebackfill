@@ -152,6 +152,14 @@ interface FormulaPopoverProps {
 export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose }: FormulaPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
 
+  // Clavier et lecteur d'écran : le focus entre dans la fiche à l'ouverture et
+  // revient sur la valeur (ou la pastille) cliquée à la fermeture.
+  useEffect(() => {
+    const precedent = document.activeElement as HTMLElement | null;
+    popoverRef.current?.focus();
+    return () => { precedent?.focus?.(); };
+  }, []);
+
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
@@ -183,6 +191,10 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
   return (
     <div
       ref={popoverRef}
+      role="dialog"
+      aria-modal="false"
+      aria-label={`Formule ${formulas.map((x) => x.id).join(", ")} : ${formulas[0].title}`}
+      tabIndex={-1}
       style={{
         position: "fixed",
         left,
@@ -198,6 +210,9 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
         padding: 0,
       }}
     >
+      <div style={{ display: "flex", justifyContent: "flex-end", padding: "6px 8px 0" }}>
+        <button type="button" className="btn-discret" onClick={onClose} aria-label="Fermer la fiche de formule">Fermer</button>
+      </div>
       {formulas.map((formula, fi) => {
         const values = getFormulaValues(formula, recipe);
         const related = [

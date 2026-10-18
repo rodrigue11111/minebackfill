@@ -12,6 +12,7 @@ import { EnTetePage, Page } from "./Page";
 import { Carte } from "./Carte";
 import { Pastille } from "./Pastille";
 import { Bandeau } from "./Bandeau";
+import Menu from "./Menu";
 import ChampNombre, { lireNombre, refusNombre } from "./ChampNombre";
 
 const rendu = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
@@ -121,5 +122,36 @@ describe("kit — saisie numérique commune (ChampNombre)", () => {
     expect(zero).toContain('value="0"');
     expect(zero).toContain('aria-invalid="true"');
     expect(zero).toContain('aria-describedby="msg-1"');
+  });
+});
+
+describe("kit — champ en erreur : message annoncé et relié à la saisie (accessibilité)", () => {
+  const idDe = (html: string, motif: RegExp) => html.match(motif)?.[1];
+
+  it("ChampNombre : aria-invalid et aria-describedby arrivent jusqu'à l'<input>, égal à l'id du message role=alert", () => {
+    const html = renderToStaticMarkup(createElement(Champ, { libelle: "Diamètre", erreur: "Le diamètre doit être strictement positif." },
+      createElement(ChampNombre, { value: 0, onChange: () => {} })));
+    const decrit = idDe(html, /<input[^>]*aria-describedby="([^"]+)"/);
+    expect(html).toMatch(/<input[^>]*aria-invalid="true"/);
+    expect(decrit).toBeTruthy();
+    expect(html).toContain(`id="${decrit}" class="ui-champ-erreur" role="alert"`);
+  });
+
+  it("input natif (Réglages) : mêmes attributs ; sans erreur : aucun", () => {
+    const enErreur = renderToStaticMarkup(createElement(Champ, { libelle: "ρw", erreur: "Valeur strictement positive attendue" },
+      createElement("input", { className: "field-input", defaultValue: "0" })));
+    expect(enErreur).toMatch(/<input[^>]*aria-invalid="true"[^>]*aria-describedby="[^"]+"/);
+    const correct = renderToStaticMarkup(createElement(Champ, { libelle: "ρw" }, createElement("input", { className: "field-input", defaultValue: "998" })));
+    expect(correct).not.toContain("aria-invalid");
+    expect(correct).not.toContain('role="alert"');
+  });
+});
+
+describe("kit — menu : rôles pour les lecteurs d'écran", () => {
+  it("menu et éléments de menu", () => {
+    const html = renderToStaticMarkup(createElement(Menu, { declencheur: "Plus", ariaLabel: "Autres actions", elements: [{ libelle: "Feuille labo" }, { libelle: "Plein écran" }] }));
+    expect(html).toContain('aria-haspopup="menu"');
+    expect(html).toContain('role="menu"');
+    expect(html.match(/role="menuitem"/g)).toHaveLength(2);
   });
 });

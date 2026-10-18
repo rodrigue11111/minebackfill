@@ -131,3 +131,10 @@ describe("chiffres : \u00E0 pr\u00E9parer et caract\u00E9ristiques", () => {
     expect(c[0]).toMatchObject({ valeur: "75.00", unite: "%" });
   });
 });
+
+describe("valeurs « fx » au clavier", () => {
+  it("chaque valeur liée à une formule est un bouton nommé (grandeur, recette, valeur)", () => {
+    const html = rendu({ sousTitre: "", actions: null, onFormulaClick: () => {}, donnees: { genre: "rpc", recipes: [recette(5)], ctx } });
+    expect(html).toMatch(/<button type="button" class="mix-valeur-bouton" aria-label="Rapport eau\/liant E\/L, recette 1 : [^"]+\. Voir la formule">/);
+  });
+});
