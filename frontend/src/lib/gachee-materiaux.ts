@@ -21,9 +21,11 @@ function nombre(v: unknown): number | undefined {
 /**
  * Gs et w₀ du résidu (et Gs du granulat) réellement entrés dans le calcul,
  * d'après l'instantané du formulaire. La méthode essai-erreur range la méthode
- * de base dans `base_cw` / `base_wb` : on y regarde aussi.
+ * de base dans `base_cw` / `base_wb` : on y regarde aussi. Les formulaires
+ * RPG n'ont pas de champ d'humidité du granulat (RpgCwState, RpgWbState) :
+ * elle ne peut venir que de la bibliothèque.
  */
-function valeursFormulaire(inputs: unknown): { residuGs?: number; residuW0?: number; granulatGs?: number; granulatW?: number } {
+function valeursFormulaire(inputs: unknown): { residuGs?: number; residuW0?: number; granulatGs?: number } {
   if (!inputs || typeof inputs !== "object") return {};
   const sources = [inputs, (inputs as Record<string, unknown>).base_cw, (inputs as Record<string, unknown>).base_wb]
     .filter((s): s is Record<string, unknown> => !!s && typeof s === "object");
@@ -38,7 +40,6 @@ function valeursFormulaire(inputs: unknown): { residuGs?: number; residuW0?: num
     residuGs: premier("residue_sg"),
     residuW0: premier("residue_w_pct"),
     granulatGs: premier("aggregate_sg"),
-    granulatW: premier("aggregate_w_pct"),
   };
 }
 
@@ -71,8 +72,10 @@ export function materiauxDepuisFormulation(
   const res = form.selectedMaterials?.residueId
     ? bibliotheque.residus.find((r) => r.id === form.selectedMaterials?.residueId)
     : undefined;
+  // Les valeurs ENTRÉES DANS LE CALCUL d'abord : ce sont elles qui ont
+  // produit la recette ; la bibliothèque (qui a pu changer depuis) en repli.
   const residu = res
-    ? sansVides({ id: res.id, nom: res.nom, provenance: res.provenance, gs: res.gs, w0Pct: res.w0_pct, catalogue: res.origine })
+    ? sansVides({ id: res.id, nom: res.nom, provenance: res.provenance, gs: vals.residuGs ?? res.gs, w0Pct: vals.residuW0 ?? res.w0_pct, catalogue: res.origine })
     : sansVides({ nom: form.general.residue_id?.trim() || undefined, gs: vals.residuGs, w0Pct: vals.residuW0 });
 
   let granulat: MateriauxGachee["granulat"];
@@ -81,8 +84,8 @@ export function materiauxDepuisFormulation(
       ? bibliotheque.granulats.find((a) => a.id === form.selectedMaterials?.aggregateId)
       : undefined;
     granulat = agg
-      ? sansVides({ id: agg.id, nom: agg.nom, provenance: agg.provenance, gs: agg.gs, humiditePct: agg.humidite_pct })
-      : sansVides({ gs: vals.granulatGs, humiditePct: vals.granulatW });
+      ? sansVides({ id: agg.id, nom: agg.nom, provenance: agg.provenance, gs: vals.granulatGs ?? agg.gs, humiditePct: agg.humidite_pct })
+      : sansVides({ gs: vals.granulatGs });
   }
 
   return sansVides({ residu, granulat, liants: liants.length > 0 ? liants : undefined }) ?? {};

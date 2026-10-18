@@ -1587,8 +1587,16 @@ export const useStore = create<AppState>((set, get) => ({
       if (!d) return false;
       const result = state[d.resultKey] as MixResult | null;
       if (!result?.recipes?.length) return false;
-      // Instantané des entrées du formulaire actif (pour « Recharger »)
-      const inputs = state[d.stateKey];
+      // Instantané des entrées du formulaire actif (pour « Recharger »).
+      // L'essai-erreur calcule sur l'état de sa méthode de base (Cw ou E/L) :
+      // il est rangé dans base_cw / base_wb, sans quoi ni Gs ni w₀ du résidu
+      // ne seraient retrouvables (fiche d'essai, jeu d'essais).
+      let inputs: unknown = state[d.stateKey];
+      if (state.method === "essai") {
+        const essai = (state.category === "RPG" ? state.rpgEssai : state.essai) as { base_method: "dosage_cw" | "wb" };
+        const dBase = descriptorFor(state.category, essai.base_method);
+        if (dBase) inputs = { ...essai, [essai.base_method === "wb" ? "base_wb" : "base_cw"]: state[dBase.stateKey] };
+      }
       entry = {
         ...commun,
         category: state.category,

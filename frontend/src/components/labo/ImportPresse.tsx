@@ -2,7 +2,7 @@
 
 import React from "react";
 import { lireClasseurPresse } from "@/lib/presse-fichier";
-import type { EssaiPresse, PointCourbe } from "@/lib/presse-urstm";
+import { essaiDepuisPresse, type EssaiPresse, type PointCourbe } from "@/lib/presse-urstm";
 import type { Eprouvette, EssaiUCS } from "@/lib/eprouvette";
 import { TIRET } from "@/lib/format";
 
@@ -65,30 +65,9 @@ export default function ImportPresse({ eprouvettes, onAppliquer, idEntree, sansB
       if (!id || vus.has(id)) continue;
       vus.add(id);
       const courbe = garderCourbe ? courbes.get(e.echantillon) : undefined;
-      aff.push({
-        eprouvetteId: id,
-        essai: {
-          // La contrainte de la presse va dans le champ SAISI : contrainteKpa()
-          // le préfère déjà au calcul F/A, donc rien à changer en aval.
-          contrainteKpaSaisie: e.contrainteKpa ?? undefined,
-          // La charge est convertie en kN, l'unité du formulaire.
-          chargeKn: e.chargeN !== null ? e.chargeN / 1000 : undefined,
-          hauteurMm: e.hauteurMm ?? undefined,
-          date: e.dateEssai ?? undefined,
-          moduleYoungKpa: e.moduleYoungKpa ?? undefined,
-          deformationMaxPct: e.deformationMaxPct ?? undefined,
-          deflexionMaxMm: e.deflexionMaxMm ?? undefined,
-          masseG: e.masseG ?? undefined,
-          tempsDeCureReelJours: e.tempsDeCureJours ?? undefined,
-          sourcePresse: {
-            fichier: nomFichier, echantillon: e.echantillon,
-            importeLe: new Date().toISOString(),
-            operateur: e.operateur || undefined,
-            commentaires: e.commentaires || undefined,
-          },
-          ...(courbe && courbe.length > 0 ? { courbe } : {}),
-        },
-      });
+      // Seuls les champs que le classeur porte : une masse ou une date déjà
+      // saisies ne sont pas effacées (voir essaiDepuisPresse).
+      aff.push({ eprouvetteId: id, essai: essaiDepuisPresse(e, { fichier: nomFichier, importeLe: new Date().toISOString() }, courbe) });
     }
     onAppliquer(aff);
     setEssais(null); setCible({}); setNomFichier("");
