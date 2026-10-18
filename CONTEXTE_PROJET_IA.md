@@ -103,6 +103,15 @@ Principe impose par l'utilisateur:
   - logique PURE du tableau de bord (regle de comptage `essaiValide`,
     comparaison, alertes et `SEUILS_ALERTES`, echeancier, CSV, rapport) ;
     `classe-reseau.ts` = seul module reseau (Supabase injecte)
+- Base de données des essais (2026-10), modules PURS :
+  - `lib/completude.ts` (fiche d'essai : points renseignés, jamais bloquant) ;
+    `lib/gachee-materiaux.ts` (instantané des matériaux à la création) ;
+  - `lib/jeu-essais.ts` + `lib/pseudonyme.ts` (jeu d'essais pseudonymisé,
+    dictionnaire `docs/DICTIONNAIRE_DONNEES.md`) ;
+  - `lib/revues.ts` (revue des gâchées par l'enseignant, table `revues`) ;
+  - `lib/sync-courbes.ts` (courbes de presse en ligne, un document par import)
+    et `lib/courbes.ts` ; `lib/courbes-client.ts` les raccorde au navigateur
+    (IndexedDB, état d'envoi par compte).
 - `frontend/src/lib/glossaire.ts`
   - vocabulaire UNIQUE (libellés `T`, glossaire sourcé, normes d'essai) ;
     garde `lib/terminologie.test.ts` contre le retour des anciens libellés

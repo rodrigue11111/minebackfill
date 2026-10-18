@@ -169,6 +169,21 @@ jointures), et une valeur mal typée dans un document (un nombre saisi comme
 texte) donne `null` au lieu d'être convertie. Pas de `age_reel_j` ni de
 colonnes de matériaux détaillées : prendre le jeu d'essais pour cela.
 
+À savoir :
+- **Dans SQL Editor** (rôle `postgres`, sans session d'utilisateur), les vues
+  se lisent en entier, mais `exporter_essais` refuse (42501 : aucun
+  enseignant connecté). Depuis un outil connecté avec le compte de
+  l'enseignant, les deux marchent.
+- Le filtre de session de `exporter_essais` porte sur `sessionId` seulement :
+  une gâchée créée avant les sessions (sans `sessionId`) n'y entre pas,
+  alors que le site la range d'après sa date.
+- Une valeur aberrante dans un document (nombre démesuré, date « now »,
+  index de recette non entier) donne une case vide, jamais une erreur de la
+  vue. Les gâchées d'un compte enseignant ne sont pas dans les vues.
+- `formulation_ref` et `residu_ref` y sont les identifiants internes (vide
+  pour un résidu personnel), alors que le jeu d'essais exporté les remplace
+  par des empreintes.
+
 ## Passage à la v2 (une fois par projet)
 
 1. **D'abord sur un projet de préproduction** (second projet gratuit) :

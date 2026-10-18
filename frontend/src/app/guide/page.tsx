@@ -217,7 +217,10 @@ export default function GuidePage() {
             (moyenne, écart-type, CV) et trace la courbe <strong>UCS mesurée en fonction de
             l&apos;âge</strong>. Aucune valeur n&apos;est prédite : seules vos mesures sont tracées. Les
             protocoles sont éditables et chaque gâchée en fige un instantané, de sorte qu&apos;une
-            mesure reste interprétable même si la procédure change ensuite.
+            mesure reste interprétable même si la procédure change ensuite. La <strong>fiche
+            d&apos;essai</strong> (indicateur « Fiche : x/y ») décrit la gâchée : résidu choisi dans la
+            bibliothèque ou saisi librement, eau, adjuvant, cure, moules et conditions d&apos;essai.
+            Rien n&apos;y est obligatoire ; plus elle est complète, plus vos mesures sont exploitables.
           </Step>
 
           <InfoBox type="tip">
@@ -534,6 +537,13 @@ export default function GuidePage() {
                 résultat (Historique) ou la gâchée (Labo) concernés, visibles de vous seul, avec une
                 pastille « commentaire non lu » dans la liste. Vous pouvez y <strong>répondre</strong> ;
                 chacun voit si l&apos;autre a lu (« vu le … »).
+              </p>
+              <p>
+                <strong>Revue de l&apos;enseignant</strong> : marquer une gâchée « terminée » la soumet.
+                L&apos;enseignant l&apos;accepte ou la refuse (avec un motif), et peut écarter des
+                éprouvettes ; sa décision s&apos;affiche dans le Labo (pastille « Revue : acceptée » ou
+                « refusée », motif dans la gâchée). Si vous modifiez la gâchée ensuite, la pastille
+                précise « sur une version antérieure » et l&apos;enseignant la voit « modifiée depuis ».
               </p>
               <p>
                 <strong>Compte suspendu ?</strong> L&apos;enseignant peut bloquer un compte : la connexion

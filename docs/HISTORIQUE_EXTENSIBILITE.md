@@ -254,6 +254,35 @@ Décisions :
   enseignant ; en mode test, tout le monde avait la vue enseignant, donc les
   étudiants le voyaient.
 
+## Base de données des essais (2026-10)
+Demande : que chaque essai serve plus tard (recherche, modèles), avec la
+revue de l'enseignant et les courbes de presse en ligne. Livré en phases
+(PR #45 et #46), puis corrigé après relecture (octobre 2026). Décisions :
+- **Rien d'obligatoire** dans la fiche d'essai : un indicateur de
+  complétude (`completude.ts`) rappelle ce qui manque, sans jamais bloquer
+  un étudiant qui n'a pas l'information.
+- **Instantané des matériaux** sans la caractérisation : l'identité et les
+  valeurs du calcul sont figées dans la gâchée, la caractérisation vit une
+  fois dans le catalogue et se joint par `id` (le professeur la corrige sans
+  réécrire chaque gâchée).
+- **Pas de version de catalogue incrémentée** pour des champs facultatifs :
+  `migrerMateriauxCloud` refuse une version supérieure, et un site en cache
+  perdrait le catalogue officiel.
+- **Pseudonyme SHA-256** du compte (`op-` + 12 caractères), même règle en SQL
+  et dans le site ; références de matériaux et de formulation en empreintes
+  (dictionnaire version 2) : ni nom ni date en clair. Pseudonymisation, pas
+  anonymisation, et c'est écrit dans le manifeste.
+- **Revue hors du document de l'étudiant** : table `revues`, sans aucun
+  droit d'écriture directe (fonctions security definer) ; l'enseignant
+  n'écrit jamais chez l'étudiant. « Valide » reste réservé à `essaiValide`.
+- **Courbes envoyées à part du moteur**, `courbeInfo` local ; un document
+  PAR IMPORT (`<éprouvette>:<importeLe>`), jamais réécrit par un autre
+  import : un appareil en retard ne peut plus écraser la bonne courbe. Une
+  courbe d'origine inconnue n'est jamais « réconciliée » (même maximum ne
+  prouve rien) : seul un réimport l'envoie.
+- **Vues `security_invoker`** pour l'accès SQL direct : la RLS s'applique à
+  qui lit ; une valeur aberrante rend une case vide, jamais une erreur.
+
 ## Ce que ça implique pour la suite
 - Les golden tests + oracles sont le filet : toute évolution des formules
   passe par eux (recette 6 de `docs/MAINTENANCE.md`).
