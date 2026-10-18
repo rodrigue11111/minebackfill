@@ -3,6 +3,7 @@
 // Intra 2017 : les masses à peser dans l'ordre, des cases pour cocher,
 // et des champs vides pour noter les mesures après la gâchée.
 
+import { libelleContenant } from "@/lib/contenant";
 import type { UnitPreferences } from "@/lib/units";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { Recipe, RecipeComponents } from "@/lib/types";
@@ -36,12 +37,6 @@ const BG_ROW: [number, number, number] = [248, 250, 252];
 const val = (x: number | null | undefined) =>
   x === undefined || x === null || Number.isNaN(x) ? 0 : x;
 
-const CONTENANT_LABELS: Record<string, string> = {
-  section_hauteur: "Section + hauteur",
-  rayon_hauteur: "Rayon + hauteur",
-  longueur_largeur_hauteur: "Longueur x largeur x hauteur",
-  volume: "Volume direct",
-};
 
 export async function exportPreparationPdf(
   recipes: Recipe[],
@@ -85,7 +80,7 @@ export async function exportPreparationPdf(
   const contenant = () => {
     const t = general.container_type as string | null;
     if (!t) return TIRET;
-    const label = CONTENANT_LABELS[t] ?? t;
+    const label = libelleContenant(t);
     if (t === "section_hauteur")
       return `${label} : ${fmtNum(general.container_section, 1)} cm² x ${fmtNum(general.container_height, 1)} cm`;
     if (t === "rayon_hauteur")

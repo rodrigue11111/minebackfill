@@ -43,7 +43,7 @@ import {
 import { telechargerTexte, versCsv, nomFichier } from "@/lib/export-fig";
 import { phases, fractions } from "@/lib/composition";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
-import { num, fmt, libelleAvecUnite, valeurAvecUnite } from "@/lib/format";
+import { num, fmt, libelleAvecUnite, valeurAvecUnite, nombreFr } from "@/lib/format";
 import ChampNombre from "@/components/ui/ChampNombre";
 
 interface Balayage {
@@ -61,7 +61,7 @@ function fmtStat(v: number, unite: string): string {
   // « kg » doit être branché ici : sans lui, une masse tombe dans la branche
   // par défaut et s'affiche avec 4 décimales (« 1 234,5678 kg »).
   const d = unite === "kg/m³" ? 1 : unite === "kg" ? 1 : unite === "%" ? 2 : 4;
-  const s = v.toLocaleString("fr-CA", { maximumFractionDigits: d });
+  const s = nombreFr(v, d);
   return valeurAvecUnite(s, unite);
 }
 

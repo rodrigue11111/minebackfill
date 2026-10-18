@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SANS_UNITE, TIRET, fmt, libelleAvecUnite, nombreAxe, valeurAvecUnite, fmtGroupe, chiffresSignificatifs } from "./format";
+import { SANS_UNITE, TIRET, fmt, libelleAvecUnite, nombreAxe, valeurAvecUnite, fmtGroupe, chiffresSignificatifs, nombreFr } from "./format";
 
 describe("format : valeur absente et unités", () => {
   it("fmt rend TIRET pour une valeur absente", () => {
@@ -54,5 +54,14 @@ describe("nombres lisibles (campagnes de test du 18 octobre 2026)", () => {
     expect(chiffresSignificatifs(5 / 2.54)).toBe("1.9685");
     expect(chiffresSignificatifs(5500 / 2.54)).toBe("2165.35");
     expect(chiffresSignificatifs(20.5)).toBe("20.5");
+  });
+});
+
+describe("nombreFr : valeurs d'Analyse sans « -0 »", () => {
+  it("arrondi avant l'écriture ; vrais négatifs gardés", () => {
+    expect(nombreFr(-0.0000001, 1)).toBe("0");
+    expect(nombreFr(-0.04, 1)).toBe("0");
+    expect(nombreFr(-0.06, 1)).toBe("-0,1");
+    expect(nombreFr(1234.5678, 2).replace(/\s/g, " ")).toBe("1 234,57");
   });
 });

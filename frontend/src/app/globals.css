@@ -1212,7 +1212,7 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .analyse-duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
 .analyse-figure-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .analyse-figure-titre { font-size: 14px; font-weight: 600; color: var(--texte); }
-.analyse-variation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 20px; }
+.analyse-variation { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 20px; }
 @media (max-width: 900px) { .analyse-variation { grid-template-columns: minmax(0, 1fr); } }
 .analyse-figure { border: 1px solid var(--filet-fort); border-radius: var(--rayon-bloc); padding: 12px 14px; min-width: 0; }
 @media (max-width: 780px) { .analyse-figures { grid-template-columns: minmax(0, 1fr); } }

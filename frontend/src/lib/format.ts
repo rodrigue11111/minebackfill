@@ -63,6 +63,17 @@ export const fmtGroupe = (v: number | null | undefined, digits = 3): string => {
 export const chiffresSignificatifs = (v: number, n = 6): string => String(Number(v.toPrecision(n)));
 
 /**
+ * Nombre à la française, au plus `maxDecimales` décimales, arrondi AVANT
+ * d'être écrit : un écart de -0,0000001 (bruit de calcul) s'écrit « 0 », jamais
+ * « -0 ». Pour les valeurs d'Analyse (min, max, Δ, pente, axes).
+ */
+export function nombreFr(v: number, maxDecimales: number): string {
+  const p = 10 ** maxDecimales;
+  const r = Math.round(v * p) / p;
+  return (r === 0 ? 0 : r).toLocaleString("fr-CA", { maximumFractionDigits: maxDecimales });
+}
+
+/**
  * Graduation ou valeur d'axe à la française : arrondie AVANT d'être écrite,
  * pour qu'une graduation calculée à -0,0000001 (bruit de calcul) ou à -0 ne
  * s'affiche jamais « -0 ».

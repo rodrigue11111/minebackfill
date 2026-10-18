@@ -67,7 +67,7 @@ describe("analyse-instantane — champs ajoutés (contenant, sorties)", () => {
     const t = lignesResume({
       ...base(), contenant: { type: "rayon_hauteur" }, contenants: 3, facteurSecurite: 1.1,
     }).join("\n");
-    expect(t).toContain("rayon_hauteur");
+    expect(t).toContain("Rayon et hauteur"); // libellé lisible, plus le code brut
     expect(t).toContain("3 contenant(s)");
     expect(t).toContain("facteur de perte κ");
   });
