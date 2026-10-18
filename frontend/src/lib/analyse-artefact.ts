@@ -92,3 +92,10 @@ export function lireArtefact(texte: string): LectureArtefact {
     artefact: { instantane, resultats: resultats as BalayageArtefact[], variantes },
   };
 }
+
+/** Nombre de points d'un balayage : 2 à 200 (borne de l'API), au champ comme au rechargement d'un fichier. */
+export const POINTS_MIN = 2;
+export const POINTS_MAX = 200;
+export function bornerPoints(n: number): number {
+  return Math.max(POINTS_MIN, Math.min(POINTS_MAX, Math.round(n) || POINTS_MIN));
+}

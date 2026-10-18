@@ -9,17 +9,24 @@
 import React, { useRef } from "react";
 import { svgVersPng, nomFichier } from "@/lib/export-fig";
 
-export default function FigurePng({ nom, children }: { nom: string; children: React.ReactNode }) {
+export default function FigurePng({ nom, children, desactive = false, motif }: {
+  nom: string;
+  children?: React.ReactNode;
+  /** Figure périmée : estompée, export PNG désactivé (avec le motif en info-bulle). */
+  desactive?: boolean;
+  motif?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
 
   // Le bouton apparaît au survol ou au focus clavier (CSS .ui-figure), et
   // reste visible sur les écrans tactiles, qui n'ont pas de survol.
   return (
-    <div ref={ref} className="ui-figure">
+    <div ref={ref} className={desactive ? "ui-figure ui-figure-perime" : "ui-figure"}>
       {children}
       <button
         type="button"
-        title="Exporter cette figure en PNG"
+        disabled={desactive}
+        title={desactive ? motif ?? "Figure périmée" : "Exporter cette figure en PNG"}
         onClick={() => {
           const svg = ref.current?.querySelector("svg");
           if (!svg) {

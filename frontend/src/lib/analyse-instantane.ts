@@ -41,6 +41,14 @@ function f(n: number, dec = 3): string {
   return n.toLocaleString("fr-CA", { maximumFractionDigits: dec });
 }
 
+/**
+ * Instantané d'un export : les grandeurs nommées sont celles des colonnes
+ * réellement exportées (le reste de la provenance, figé au tracé, ne change pas).
+ */
+export function instantanePourExport(inst: InstantaneAnalyse, sorties: string[]): InstantaneAnalyse {
+  return { ...inst, sorties };
+}
+
 /** Lignes lisibles décrivant l'instantané (réutilisées pour l'UI et le CSV). */
 export function lignesResume(inst: InstantaneAnalyse): string[] {
   const r = inst.recette;

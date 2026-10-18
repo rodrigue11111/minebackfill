@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lireArtefact } from "./analyse-artefact";
+import { bornerPoints, lireArtefact } from "./analyse-artefact";
 import type { InstantaneAnalyse } from "./analyse-instantane";
 
 const instantane: InstantaneAnalyse = {
@@ -77,5 +77,15 @@ describe("analyse-artefact — lireArtefact", () => {
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.erreur).toContain("séries");
+  });
+});
+
+describe("analyse-artefact — nombre de points borné (champ et rechargement)", () => {
+  it("2 à 200, arrondi ; illisible ou nul : 2", () => {
+    expect(bornerPoints(1)).toBe(2);
+    expect(bornerPoints(999)).toBe(200);
+    expect(bornerPoints(40.4)).toBe(40);
+    expect(bornerPoints(Number.NaN)).toBe(2);
+    expect(bornerPoints(0)).toBe(2);
   });
 });

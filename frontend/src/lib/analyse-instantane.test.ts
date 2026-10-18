@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lignesResume, lignesMetaCsv, type InstantaneAnalyse } from "./analyse-instantane";
+import { instantanePourExport, lignesResume, lignesMetaCsv, type InstantaneAnalyse } from "./analyse-instantane";
 
 const INST: InstantaneAnalyse = {
   date: "2026-07-24T12:00:00.000Z",
@@ -86,5 +86,15 @@ describe("analyse-instantane — champs ajoutés (contenant, sorties)", () => {
     expect(avec).toContain("valeurs absolues");
     // En composition (pas de paramètre), la mention n'a aucun sens.
     expect(lignesResume(base()).join("\n")).not.toContain("valeurs absolues");
+  });
+});
+
+describe("analyse-instantane — export : les grandeurs nommées sont celles des colonnes exportées", () => {
+  it("seules les sorties changent ; le reste de la provenance est celui du tracé", () => {
+    const inst = { sorties: ["Rapport E/L"], versionSolveur: "v1" } as unknown as InstantaneAnalyse;
+    const exp = instantanePourExport(inst, ["Rapport E/L", "Indice des vides e"]);
+    expect(exp.sorties).toEqual(["Rapport E/L", "Indice des vides e"]);
+    expect(exp.versionSolveur).toBe("v1");
+    expect(inst.sorties).toEqual(["Rapport E/L"]); // l'instantané du tracé n'est pas modifié
   });
 });

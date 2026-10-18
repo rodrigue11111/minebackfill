@@ -606,6 +606,9 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 
 /* ── Figure exportable en PNG (bouton révélé au survol ou au focus) ── */
 .ui-figure { position: relative; }
+/* Figure périmée (Analyse) : estompée, cadre d'alerte, export désactivé. */
+.ui-figure-perime > svg { opacity: 0.45; }
+.ui-figure-perime { outline: 2px dashed var(--alerte-texte); outline-offset: 4px; border-radius: 8px; }
 .ui-figure-png {
   position: absolute;
   top: 6px;
