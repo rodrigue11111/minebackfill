@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SANS_UNITE, TIRET, fmt, libelleAvecUnite, valeurAvecUnite } from "./format";
+import { SANS_UNITE, TIRET, fmt, libelleAvecUnite, nombreAxe, valeurAvecUnite } from "./format";
 
 describe("format : valeur absente et unités", () => {
   it("fmt rend TIRET pour une valeur absente", () => {
@@ -22,5 +22,15 @@ describe("format : valeur absente et unités", () => {
 
   it("les deux marques restent distinctes", () => {
     expect(SANS_UNITE).not.toBe(TIRET);
+  });
+});
+
+describe("format : graduations d'axe", () => {
+  it("jamais « -0 » : -0, bruit de calcul et petites valeurs négatives arrondies à zéro", () => {
+    expect(nombreAxe(-0, 0)).toBe("0");
+    expect(nombreAxe(-1e-12, 1)).toBe("0,0");
+    expect(nombreAxe(-0.3, 0)).toBe("0");
+    expect(nombreAxe(-0.6, 0)).toBe("-1");
+    expect(nombreAxe(1234.5, 1)).toMatch(/^1\s234,5$/);
   });
 });

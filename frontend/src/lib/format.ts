@@ -43,3 +43,14 @@ export const fmt = (v: number | null | undefined, digits = 3): string => {
   if (v === null || v === undefined || Number.isNaN(v)) return TIRET;
   return v.toFixed(digits);
 };
+
+/**
+ * Graduation ou valeur d'axe à la française : arrondie AVANT d'être écrite,
+ * pour qu'une graduation calculée à -0,0000001 (bruit de calcul) ou à -0 ne
+ * s'affiche jamais « -0 ».
+ */
+export function nombreAxe(v: number, decimales: number): string {
+  const p = 10 ** decimales;
+  const r = Math.round(v * p) / p;
+  return (r === 0 ? 0 : r).toLocaleString("fr-CA", { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
+}

@@ -3,7 +3,7 @@ import {
   dateEcheance, joursRestants, classeEcheance, genererCodeEprouvette,
   construireIcs, etiquettesHtml,
   contrainteKpa, moyenne, ecartTypeEch, agregerParAge, ageReelJours,
-  libelleMoule, libelleRupture, libelleVitesse,
+  libelleMoule, libelleRupture, libelleVitesse, ecrasementPrecoce,
   type Eprouvette, type EssaiUCS,
 } from "./eprouvette";
 
@@ -240,5 +240,17 @@ describe("libellés de la fiche d'essai", () => {
   it("vitesse : valeur à la française et unité", () => {
     expect(libelleVitesse({ valeur: 0.5, unite: "mm/min" })).toBe("0,5 mm/min");
     expect(libelleVitesse(undefined)).toBe("");
+  });
+});
+
+describe("écrasement avant l'échéance (avis)", () => {
+  const ep = (ageJours: number, essai: Record<string, unknown> | undefined, statut: "ecrase" | "en_cure" = "ecrase") =>
+    ({ id: "e", code: "E", couleLe: new Date(2026, 8, 1, 12).toISOString(), ageJours, statut, essai }) as Parameters<typeof ecrasementPrecoce>[0];
+  it("âge réel d'au moins un jour sous l'âge visé ; sinon rien", () => {
+    expect(ecrasementPrecoce(ep(28, { date: new Date(2026, 8, 20, 12).toISOString() }))).toEqual({ ageReel: 19, ageVise: 28 });
+    expect(ecrasementPrecoce(ep(28, { date: new Date(2026, 8, 29, 12).toISOString() }))).toBeNull();
+    expect(ecrasementPrecoce(ep(28, { tempsDeCureReelJours: 27 }))).toEqual({ ageReel: 27, ageVise: 28 });
+    expect(ecrasementPrecoce(ep(28, { date: new Date(2026, 8, 20, 12).toISOString() }, "en_cure"))).toBeNull();
+    expect(ecrasementPrecoce(ep(28, undefined))).toBeNull();
   });
 });

@@ -191,6 +191,34 @@ export function horsTolerance(c: ComposantPese, tolerancePct: number): boolean {
   return e !== null && Math.abs(e.pct) > tolerancePct;
 }
 
+const nombreFr = (v: number, d: number) => v.toLocaleString("fr-CA", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/**
+ * Masse lisible d'une pesée : sous 1 kg en grammes (« 47,5 g »), sinon en
+ * kilogrammes à trois décimales (« 1,234 kg »). Arrondir 0,047 kg à 0,1 kg
+ * affichait « 0,0 kg » pour le ciment d'une petite gâchée.
+ */
+export function masseLisible(kg: number): string {
+  return Math.abs(kg) < 1 ? `${nombreFr(kg * 1000, 1)} g` : `${nombreFr(kg, 3)} kg`;
+}
+
+/**
+ * Cible d'une pesée : sous 1 kg, en grammes ET en kilogrammes (le champ de
+ * saisie est en kg : « 47,5 g (0,0475 kg) »), sinon en kilogrammes.
+ */
+export function cibleLisible(kg: number): string {
+  return Math.abs(kg) < 1 ? `${masseLisible(kg)} (${nombreFr(kg, 4)} kg)` : masseLisible(kg);
+}
+
+/** Plage acceptée par la tolérance, dans l'unité de la cible (« 46,6 à 48,4 g »). */
+export function plageTolerance(cibleKg: number, tolerancePct: number): string {
+  const bas = cibleKg * (1 - tolerancePct / 100);
+  const haut = cibleKg * (1 + tolerancePct / 100);
+  return Math.abs(cibleKg) < 1
+    ? `${nombreFr(bas * 1000, 1)} à ${nombreFr(haut * 1000, 1)} g`
+    : `${nombreFr(bas, 3)} à ${nombreFr(haut, 3)} kg`;
+}
+
 /** Nombre de composants pesés hors tolérance. */
 export function nbHorsTolerance(g: Gachee): number {
   return g.composants.filter((c) => horsTolerance(c, g.tolerancePct)).length;

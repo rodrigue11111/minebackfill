@@ -8,7 +8,7 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import {
-  AGES_CURE_DEFAUT, MOULES_PROPOSES, contrainteKpa, dateCoulee, dateEcheance, etiquettesHtml, genererCodeEprouvette,
+  AGES_CURE_DEFAUT, MOULES_PROPOSES, contrainteKpa, dateCoulee, dateEcheance, ecrasementPrecoce, etiquettesHtml, genererCodeEprouvette,
   libelleMoule, type Eprouvette, type EssaiUCS, type EtiquetteEprouvette,
 } from "@/lib/eprouvette";
 import type { Gachee } from "@/lib/gachee";
@@ -225,6 +225,13 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                 )}
                 {ouvert && (
                   <div className="labo-eprouvette-ouverte">
+                    {ecrasementPrecoce(e) && (
+                      // Avis, jamais un blocage : la date d'essai peut être juste.
+                      <Bandeau ton="alerte" titre="Écrasée avant l'échéance.">
+                        Âge réel : {ecrasementPrecoce(e)!.ageReel} j pour un âge visé de {ecrasementPrecoce(e)!.ageVise} j. Les moyennes suivent l&apos;âge visé :
+                        vérifiez la date d&apos;essai, ou notez la raison dans les observations.
+                      </Bandeau>
+                    )}
                     {e.statut === "ecrase" && (
                       <FormEssaiUCS eprouvette={e} onChange={(patch) => majEssai(e.id, patch)}
                         chargerCourbe={chargerCourbe(e)} chercherCourbeEnLigne={connecte && uid ? chercherEnLigne(e) : undefined}

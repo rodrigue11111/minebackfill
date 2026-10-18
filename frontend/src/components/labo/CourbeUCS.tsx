@@ -17,6 +17,7 @@
 
 import React, { useId } from "react";
 import { echelle, graduations, decimalesTick, chemin } from "@/lib/courbe-utils";
+import { nombreAxe } from "@/lib/format";
 
 export interface SerieUCS {
   cle: string;
@@ -30,7 +31,7 @@ const W = 760;
 const M = { gauche: 64, droite: 16, haut: 14, bas: 52 };
 
 function fmtKpa(v: number): string {
-  return Math.round(v).toLocaleString("fr-CA");
+  return nombreAxe(v, 0);
 }
 
 export default function CourbeUCS({
@@ -109,7 +110,7 @@ export default function CourbeUCS({
             <g key={`y${t}`}>
               <line x1={PX[0]} y1={y} x2={PX[1]} y2={y} stroke="#eef2f7" strokeWidth={1} />
               <text x={PX[0] - 8} y={y + 3.5} textAnchor="end" fontSize={10.5} fill="#64748b">
-                {t.toLocaleString("fr-CA", { minimumFractionDigits: decY, maximumFractionDigits: decY })}
+                {nombreAxe(t, decY)}
               </text>
             </g>
           );
@@ -123,7 +124,7 @@ export default function CourbeUCS({
             <g key={`x${a}`}>
               <line x1={x} y1={PY[0]} x2={x} y2={PY[0] + 4} stroke="#94a3b8" strokeWidth={1} />
               <text x={x} y={PY[0] + 17} textAnchor="middle" fontSize={10.5} fill="#64748b">
-                {a.toLocaleString("fr-CA", { minimumFractionDigits: decX, maximumFractionDigits: decX })}
+                {nombreAxe(a, decX)}
               </text>
             </g>
           );
