@@ -962,16 +962,21 @@ export function migrerMateriauxCloud(env: { v: number; data: unknown } | null | 
 }
 
 /**
- * Gs et w₀ du résidu, PARTAGÉS par les méthodes : le même résidu ne se
- * ressaisit pas d'une méthode à l'autre (Cw, E/L, prédictif, RPG).
+ * Champs PARTAGÉS par les méthodes : Gs et w₀ du résidu, nombre de moules par
+ * recette et facteur de perte κ. Le même résidu et le même moule ne se
+ * ressaisissent pas d'une méthode à l'autre (Cw, E/L, prédictif, RPG), et le
+ * volume total VT de la page Informations ne dépend plus de la méthode active.
+ * Changer κ rend donc périmés les résultats des autres méthodes : exact,
+ * puisque leur VT change.
  */
-const ETATS_RESIDU = ["cw", "wb", "slump", "rpgCw", "rpgWb"] as const;
-function partagerResidu(state: AppState, patch: { residue_sg?: Saisie; residue_w_pct?: Saisie }): Partial<AppState> {
-  const commun: { residue_sg?: Saisie; residue_w_pct?: Saisie } = {};
-  if ("residue_sg" in patch) commun.residue_sg = patch.residue_sg;
-  if ("residue_w_pct" in patch) commun.residue_w_pct = patch.residue_w_pct;
+const ETATS_PARTAGES = ["cw", "wb", "slump", "rpgCw", "rpgWb"] as const;
+const CHAMPS_PARTAGES = ["residue_sg", "residue_w_pct", "desired_qty", "safety_factor"] as const;
+type ChampsPartages = { residue_sg?: Saisie; residue_w_pct?: Saisie; desired_qty?: number; safety_factor?: Saisie };
+function partagerEntreMethodes(state: AppState, patch: ChampsPartages): Partial<AppState> {
+  const commun: ChampsPartages = {};
+  for (const k of CHAMPS_PARTAGES) if (k in patch) (commun as Record<string, unknown>)[k] = patch[k];
   if (Object.keys(commun).length === 0) return {};
-  return Object.fromEntries(ETATS_RESIDU.map((k) => [k, { ...state[k], ...commun }])) as Partial<AppState>;
+  return Object.fromEntries(ETATS_PARTAGES.map((k) => [k, { ...state[k], ...commun }])) as Partial<AppState>;
 }
 
 /**
@@ -1226,7 +1231,7 @@ export const useStore = create<AppState>((set, get) => ({
   cw: defautsCw(),
   setCw: (patch) =>
     set((state) => ({
-      ...partagerResidu(state, patch),
+      ...partagerEntreMethodes(state, patch),
       cw: {
         ...state.cw,
         ...patch,
@@ -1250,7 +1255,7 @@ export const useStore = create<AppState>((set, get) => ({
   wb: defautsWb(),
   setWb: (patch) =>
     set((state) => ({
-      ...partagerResidu(state, patch),
+      ...partagerEntreMethodes(state, patch),
       wb: {
         ...state.wb,
         ...patch,
@@ -1276,7 +1281,7 @@ export const useStore = create<AppState>((set, get) => ({
   slump: defautsSlump(),
   setSlump: (patch) =>
     set((state) => ({
-      ...partagerResidu(state, patch),
+      ...partagerEntreMethodes(state, patch),
       slump: {
         ...state.slump,
         ...patch,
@@ -1321,7 +1326,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   rpgCw: defautsRpgCw(),
   setRpgCw: (patch) =>
-    set((state) => ({ ...partagerResidu(state, patch), rpgCw: { ...state.rpgCw, ...patch } })),
+    set((state) => ({ ...partagerEntreMethodes(state, patch), rpgCw: { ...state.rpgCw, ...patch } })),
   setRpgCwRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.rpgCw.binder_pct];
@@ -1333,7 +1338,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   rpgWb: defautsRpgWb(),
   setRpgWb: (patch) =>
-    set((state) => ({ ...partagerResidu(state, patch), rpgWb: { ...state.rpgWb, ...patch } })),
+    set((state) => ({ ...partagerEntreMethodes(state, patch), rpgWb: { ...state.rpgWb, ...patch } })),
   setRpgWbRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.rpgWb.binder_pct];
@@ -1742,9 +1747,9 @@ export const useStore = create<AppState>((set, get) => ({
       }
     }
     set(patch);
-    // Gs et w₀ du résidu restaurés valent pour toutes les méthodes, comme une
-    // saisie (partagerResidu) : sinon « Selon E/L » garderait l'ancien Gs.
-    if (etatResidu) set((s) => partagerResidu(s, s[etatResidu] as { residue_sg?: number; residue_w_pct?: number }));
+    // Gs, w₀, moules et κ restaurés valent pour toutes les méthodes, comme une
+    // saisie (partagerEntreMethodes) : sinon « Selon E/L » garderait l'ancien Gs.
+    if (etatResidu) set((s) => partagerEntreMethodes(s, s[etatResidu] as ChampsPartages));
     // Le résultat restauré correspond aux entrées restaurées : nouvelle empreinte.
     if (d) set((s) => avecEmpreinte(s, d.resultKey, s[d.resultKey], baseInconnue ? EMPREINTE_INCONNUE : undefined));
     return true;

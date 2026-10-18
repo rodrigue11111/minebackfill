@@ -107,10 +107,10 @@ export const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
   },
 };
 
-function getFormulaValues(formula: Formula, recipe: Recipe): { symbol: string; description: string; unit: string | null; value: number | null }[] {
+function getFormulaValues(formula: Formula, recipe: Recipe | undefined): { symbol: string; description: string; unit: string | null; value: number | null }[] {
   return formula.variables.map((v) => {
-    const getter = SYMBOL_TO_RECIPE[v.symbol];
-    const value = getter ? getter(recipe) : null;
+    // Sans recette RPC/RPG (RRC), pas de valeur : des getters « ?? 0 » afficheraient des zéros.
+    const value = recipe ? (SYMBOL_TO_RECIPE[v.symbol]?.(recipe) ?? null) : null;
     return { symbol: v.symbol, description: v.description, unit: v.unit, value };
   });
 }
@@ -143,7 +143,8 @@ function KaTeXBlock({ latex }: { latex: string }) {
 /* ── Main component ── */
 interface FormulaPopoverProps {
   formulaIds: string[];
-  recipe: Recipe;
+  /** Recette dont on lit les valeurs ; absente pour le RRC (fiche sans valeurs). */
+  recipe?: Recipe;
   anchorRect: DOMRect;
   onClose: () => void;
 }

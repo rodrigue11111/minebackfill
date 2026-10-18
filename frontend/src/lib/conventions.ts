@@ -83,3 +83,14 @@ export function estVersionCourante(version: string | undefined): boolean {
     : version;
   return CONVENTION_PACKS.some((p) => p.solverVersion === base);
 }
+
+/**
+ * Affaissement équivalent au cône d'Abrams (grand cône) : une lecture au petit
+ * cône est multipliée par le facteur de conversion des constantes (Réglages),
+ * comme le fait le calcul (backend/app/core/rpc_solver.py, modèle prédictif).
+ * Aucune formule nouvelle : le même produit, montré à l'étudiant.
+ */
+export function slumpGrandConeMm(slumpMm: number | undefined, coneType: "mini" | "grand", facteur: number): number | undefined {
+  if (slumpMm === undefined || !Number.isFinite(slumpMm)) return undefined;
+  return coneType === "mini" ? slumpMm * facteur : slumpMm;
+}

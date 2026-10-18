@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  REPORT_ROWS, REPORT_SECTIONS, rowsForSection, RRC_ROWS, MAX_BINDER_ROWS,
-  type ReportCtx,
-} from "./report-schema";
+import { FORMULA_MAP } from "./formulas-data";
+import { REPORT_ROWS, REPORT_SECTIONS, rowsForSection, RRC_ROWS, MAX_BINDER_ROWS, type ReportCtx, formulesDuRapportRrc } from "./report-schema";
 import type { RrcRecipe } from "./types";
 
 // Contexte de base : RPC, méthode non-essai, 1 liant. Les variantes (RPG,
@@ -167,5 +165,17 @@ describe("report-schema — vocabulaire du cours", () => {
     const libelles = RRC_ROWS.map((r) => r.label("kg"));
     expect(libelles).toContain("Rapport E/L du coulis (W/C)");
     expect(libelles.some((l) => l.includes("CRF"))).toBe(false);
+  });
+});
+
+describe("RRC : chaque ligne liée à une formule existante du RRC", () => {
+  it("ids connus du catalogue, tous des formules du RRC ; liste sans doublon dans l'ordre du rapport", () => {
+    const ids = RRC_ROWS.flatMap((r) => r.formulaIds ?? []);
+    expect(ids.length).toBeGreaterThan(10);
+    for (const id of ids) {
+      expect([id, FORMULA_MAP.has(id)]).toEqual([id, true]);
+      expect([id, FORMULA_MAP.get(id)!.title]).toEqual([id, expect.stringMatching(/^CRF : /)]);
+    }
+    expect(formulesDuRapportRrc()).toEqual(["F056", "F057", "F058", "F059", "F060", "F090", "F091", "F055", "F092"]);
   });
 });

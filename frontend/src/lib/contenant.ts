@@ -35,11 +35,12 @@ export function volumeMouleM3(g: Pick<GeneralInfo,
 /**
  * Moules par recette N_c et facteur de perte κ du calcul qui sera lancé :
  * ceux de la méthode active de Calculs (l'essai-erreur prend ceux de sa
- * méthode de base, comme sa requête). null pour le RRC, qui travaille sur le
- * volume du chantier et non sur le moule.
+ * méthode de base, comme sa requête ; depuis 2026-10 ils sont partagés par
+ * toutes les méthodes). κ vide vaut 1, comme dans le calcul. null pour le RRC,
+ * qui travaille sur le volume du chantier et non sur le moule.
  */
 export function parametresVolume(s: { category: Category; method: string } & Record<string, unknown>):
-  { moules: number | undefined; kappa: number | undefined; methode: string } | null {
+  { moules: number | undefined; kappa: number | undefined } | null {
   if (s.category === "RRC") return null;
   const d = descriptorFor(s.category, s.method);
   if (!d) return null;
@@ -47,7 +48,7 @@ export function parametresVolume(s: { category: Category; method: string } & Rec
   const dCalcul = essai?.base_method ? descriptorFor(s.category, essai.base_method) : d;
   if (!dCalcul) return null;
   const etat = s[dCalcul.stateKey] as { desired_qty?: number; safety_factor?: number } | undefined;
-  return { moules: etat?.desired_qty, kappa: etat?.safety_factor, methode: dCalcul.labels.long };
+  return { moules: etat?.desired_qty, kappa: etat?.safety_factor ?? 1 };
 }
 
 /**
@@ -58,4 +59,14 @@ export function parametresVolume(s: { category: Category; method: string } & Rec
  */
 export function volumeTotalM3(volumeMoule: number | null, moules: number | undefined, kappa: number | undefined): number | null {
   return volumeMoule !== null && positif(moules) && positif(kappa) ? volumeMoule * moules * kappa : null;
+}
+
+/**
+ * Équivalent en m³ d'un volume affiché dans une autre unité, dès 1 m³ :
+ * « (11 000 m³) » à côté de « 11 000 000 000 cm³ » (l'unité de volume suit
+ * celle des longueurs). Chaîne vide sinon.
+ */
+export function equivalentM3(m3: number, unite: string): string {
+  if (unite === "m3" || !Number.isFinite(m3) || Math.abs(m3) < 1) return "";
+  return ` (${m3.toLocaleString("fr-CA", { maximumSignificantDigits: 6 })} m³)`;
 }

@@ -5,7 +5,7 @@
 // Présentation « à filets » : titres de section, tableaux sans cadre.
 
 import { REPORT_SECTIONS, rowsForSection, RRC_ROWS, type ReportCtx, type ReportRow } from "@/lib/report-schema";
-import { fmt } from "@/lib/format";
+import { fmtGroupe } from "@/lib/format";
 import type { Recipe, RrcRecipe } from "@/lib/types";
 
 export function SectionHeader({ title, sub }: { title: string; sub?: string }) {
@@ -49,7 +49,7 @@ export function DataRow({
   digits?: number;
   bold?: boolean;
   formulaIds?: string[];
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
   /** Colonne de la recette choisie (mise en valeur). */
   choisie?: number;
 }) {
@@ -72,7 +72,7 @@ export function DataRow({
             onFormulaClick!(formulaIds!, r, rect);
           } : undefined}
         >
-          {fmt(getter(r), digits)}
+          {fmtGroupe(getter(r), digits)}
         </td>
       ))}
     </tr>
@@ -85,7 +85,7 @@ export function TableauLignes({ lignes, recipes, ctx, choisie, onFormulaClick }:
   recipes: Recipe[];
   ctx: ReportCtx;
   choisie?: number;
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
 }) {
   return (
     <div className="mix-tableau-defilant">
@@ -117,7 +117,7 @@ export function SectionsRapport({ recipes, ctx, grille = false, onFormulaClick, 
   recipes: Recipe[];
   ctx: ReportCtx;
   grille?: boolean;
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
   choisie?: number;
 }) {
   return (
@@ -133,11 +133,13 @@ export function SectionsRapport({ recipes, ctx, grille = false, onFormulaClick, 
 }
 
 /** Tableau des résultats RRC (lignes du schéma unique RRC_ROWS). */
-export function TableauRrc({ recipes, massLabel, toMass, choisie }: {
+export function TableauRrc({ recipes, massLabel, toMass, choisie, onFormulaClick }: {
   recipes: RrcRecipe[];
   massLabel: string;
   toMass: (kg: number | null | undefined) => number | null;
   choisie?: number;
+  /** Fiche de la formule d'une ligne (sans valeurs : la fiche lit les recettes RPC/RPG). */
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
 }) {
   return (
     <section className="mix-rapport-section">
@@ -148,16 +150,24 @@ export function TableauRrc({ recipes, massLabel, toMass, choisie }: {
             <tr><RecipeHeaders activeCount={recipes.length} choisie={choisie} /></tr>
           </thead>
           <tbody>
-            {RRC_ROWS.map((row, ri) => (
-              <tr key={ri} className={row.bold ? "mix-ligne-forte" : undefined}>
-                <td>{row.label(massLabel)}</td>
-                {recipes.map((r, ci) => (
-                  <td key={ci} className={ci === choisie ? "mix-col-choisie" : undefined}>
-                    {fmt(row.getter(r, toMass), row.digits)}
+            {RRC_ROWS.map((row, ri) => {
+              const formule = row.formulaIds && row.formulaIds.length > 0 && onFormulaClick ? row.formulaIds : null;
+              return (
+                <tr key={ri} className={row.bold ? "mix-ligne-forte" : undefined}>
+                  <td>
+                    {row.label(massLabel)}
+                    {formule && <span className="mix-fx" title="Cliquez sur une valeur pour voir la formule">fx</span>}
                   </td>
-                ))}
-              </tr>
-            ))}
+                  {recipes.map((r, ci) => (
+                    <td key={ci}
+                      className={[formule ? "mix-valeur-formule" : "", ci === choisie ? "mix-col-choisie" : ""].filter(Boolean).join(" ") || undefined}
+                      onClick={formule ? (e) => onFormulaClick!(formule, undefined, (e.currentTarget as HTMLElement).getBoundingClientRect()) : undefined}>
+                      {fmtGroupe(row.getter(r, toMass), row.digits)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parametresVolume, volumeMouleM3, volumeTotalM3 } from "./contenant";
+import { parametresVolume, volumeMouleM3, volumeTotalM3, equivalentM3 } from "./contenant";
 
 describe("volume d'un moule (même géométrie que le calcul)", () => {
   it("cylindre, section × hauteur, pavé, volume saisi ; dimensions incomplètes : null", () => {
@@ -28,9 +28,18 @@ describe("volume total VT par recette (même formule que le calcul)", () => {
       cw: { desired_qty: 3, safety_factor: 1.05 }, wb: { desired_qty: 2, safety_factor: 1.1 },
       essai: { base_method: "wb" }, rpgCw: { desired_qty: 4, safety_factor: 1 },
     };
-    expect(parametresVolume({ ...etat, category: "RPC", method: "dosage_cw" })).toEqual({ moules: 3, kappa: 1.05, methode: "Dosage selon Cw" });
-    expect(parametresVolume({ ...etat, category: "RPC", method: "essai" })).toMatchObject({ moules: 2, kappa: 1.1, methode: "Dosage selon E/L" });
+    expect(parametresVolume({ ...etat, category: "RPC", method: "dosage_cw" })).toEqual({ moules: 3, kappa: 1.05 });
+    expect(parametresVolume({ ...etat, category: "RPC", method: "essai" })).toMatchObject({ moules: 2, kappa: 1.1 });
+    expect(parametresVolume({ ...etat, cw: { desired_qty: 3 }, category: "RPC", method: "dosage_cw" })).toEqual({ moules: 3, kappa: 1 }); // κ vide = 1
     expect(parametresVolume({ ...etat, category: "RPG", method: "dosage_cw" })).toMatchObject({ moules: 4, kappa: 1 });
     expect(parametresVolume({ ...etat, category: "RRC", method: "rrc" })).toBeNull();
+  });
+});
+
+describe("volume : équivalent en m³ dès 1 m³", () => {
+  it("à côté d'une autre unité, jamais en m³ ni sous 1 m³", () => {
+    expect(equivalentM3(11000, "cm3").replace(/\s/g, " ")).toBe(" (11 000 m³)");
+    expect(equivalentM3(11000, "m3")).toBe("");
+    expect(equivalentM3(0.0016, "cm3")).toBe("");
   });
 });

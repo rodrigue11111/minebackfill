@@ -34,7 +34,7 @@ import { cleDoc } from "@/lib/sync-moteur";
 import Echeancier from "@/components/labo/Echeancier";
 import ResultatsUCS from "@/components/labo/ResultatsUCS";
 import ProtocolesEditeur from "@/components/labo/ProtocolesEditeur";
-import { dateLongue, nouvelId } from "@/components/labo/outils";
+import { dateHeureSauvegarde, dateLongue, nouvelId } from "@/components/labo/outils";
 
 type Vue = "gachees" | "resultats" | "protocoles";
 
@@ -195,7 +195,7 @@ export default function LaboPage() {
                   <div className="grille-2">
                     <Champ libelle="Formulation">
                       <select className="field-input" value={formChoisie.id} onChange={(e) => { setFormId(e.target.value); setRecIndex(0); }}>
-                        {formulations.map((s) => <option key={s.id} value={s.id}>{s.label} ({s.category})</option>)}
+                        {formulations.map((s) => <option key={s.id} value={s.id}>{s.label} ({s.category}, {dateHeureSauvegarde(s.savedAt)})</option>)}
                       </select>
                     </Champ>
                     {formChoisie.recipes.length > 1 && (

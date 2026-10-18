@@ -6,7 +6,8 @@
 // écran). La présentation est dans CarteResultats.
 
 import { useCallback, useState } from "react";
-import { useStore, lireBinders } from "@/lib/store";
+import { useStore, lireBinders, loadSavedFromStorage } from "@/lib/store";
+import { nomParDefautAvecHeure } from "@/lib/nom-sauvegarde";
 import type { Category, LiantCatalogueItem } from "@/lib/store";
 import { fromStoreMass, MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS, type UnitPreferences } from "@/lib/units";
 import FormulaPopover from "@/components/mix/FormulaPopover";
@@ -19,7 +20,8 @@ import { descriptorFor, methodLabel } from "@/lib/method-registry";
 import type { ReportCtx } from "@/lib/report-schema";
 import type { MixResult, Recipe } from "@/lib/types";
 import { resultatPerime } from "@/lib/resultat-perime";
-import { eauARetirer } from "@/lib/avis-recette";
+import { cwHorsPlageUsuelle, eauARetirer } from "@/lib/avis-recette";
+import { PLAGES } from "@/lib/plages";
 import { Bandeau } from "@/components/ui/Bandeau";
 
 const UNITES_DEFAUT: UnitPreferences = { length: "cm", area: "cm2", mass: "kg", volume: "L", density: "g/cm3", slump: "mm" };
@@ -31,10 +33,10 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
   /* ── Fenêtre des formules (clic sur une valeur « fx ») ── */
   const [formulaPopover, setFormulaPopover] = useState<{
     formulaIds: string[];
-    recipe: Recipe;
+    recipe: Recipe | undefined;
     anchorRect: DOMRect;
   } | null>(null);
-  const handleFormulaClick = useCallback((formulaIds: string[], recipe: Recipe, rect: DOMRect) => {
+  const handleFormulaClick = useCallback((formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => {
     setFormulaPopover({ formulaIds, recipe, anchorRect: rect });
   }, []);
 
@@ -46,7 +48,8 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
   const volLabel = VOLUME_LABELS[units.volume] ?? "L";
   const densLabel = DENSITY_LABELS[units.density] ?? "g/cm3";
   const toMass = (kg: number | null | undefined) => fromStoreMass(kg, units.mass);
-  const dateDuJour = new Date().toLocaleDateString("fr-CA");
+  // Noms déjà pris, relus du stockage (le magasin peut ne pas être hydraté).
+  const nomsSauvegardes = () => loadSavedFromStorage().map((s) => s.label);
 
   // Nom du composant n (1-indexé), pour un nombre N quelconque : lit la liste
   // N-aire des liants (repli legacy binder1/2/3 via lireBinders).
@@ -96,8 +99,10 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
     const vide = rrcRecipes.length === 0 || perime;
     const donnees: DonneesResultats | null = rrcRecipes.length === 0 ? null : { genre: "rrc", recipes: rrcRecipes, massLabel, toMass };
     return (
+      <>
       <CarteResultats
         avis={avisPerime}
+        onFormulaClick={handleFormulaClick}
         sousTitre={rrcRecipes.length === 0 ? "Remblai rocheux cimenté" : `${rrcRecipes.length} recette${rrcRecipes.length > 1 ? "s" : ""} · ${methodLabel("RRC", "rrc", "long")} · masses en ${massLabel}`}
         donnees={donnees}
         pleinEcran={pleinEcran}
@@ -111,13 +116,17 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
               onClick={async () => { const { exportRrcPdf } = await import("@/lib/rrc-export"); exportRrcPdf(rrcRecipes, general, units); }}>
               Feuille labo
             </button>
-            <Sauvegarder desactive={vide} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={`RRC du ${dateDuJour}`} />
+            <Sauvegarder desactive={vide} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={nomParDefautAvecHeure("RRC", new Date())} nomsExistants={nomsSauvegardes} />
             {pleinEcranMenu && (
               <Menu className="ui-bouton-icone" ariaLabel="Autres actions" declencheur={<Icone nom="plus" taille={18} epaisseur={2} />} elements={[pleinEcranMenu]} />
             )}
           </>
         }
       />
+      {formulaPopover && (
+        <FormulaPopover formulaIds={formulaPopover.formulaIds} recipe={formulaPopover.recipe} anchorRect={formulaPopover.anchorRect} onClose={() => setFormulaPopover(null)} />
+      )}
+      </>
     );
   }
 
@@ -130,6 +139,14 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
     <Bandeau ton="alerte" titre="Eau à retirer.">
       {retraits.map((x) => `Recette ${x.recette} : il faudrait RETIRER ${(toMass(x.kg) ?? 0).toLocaleString("fr-CA", { maximumFractionDigits: 3 })} ${massLabel} d'eau`).join(" ; ")}.
       {" "}Le résidu apporte déjà plus d&apos;eau que la recette n&apos;en contient : visez un Cw plus bas, ou séchez le résidu.
+    </Bandeau>
+  ) : null;
+  // Modèle prédictif : le Cw est calculé ; hors de la plage usuelle, on le dit.
+  const cwHors = method === "slump" ? cwHorsPlageUsuelle(recipes) : [];
+  const avisCw = cwHors.length > 0 ? (
+    <Bandeau ton="alerte" titre="Cw prédit hors de la plage usuelle.">
+      {cwHors.map((x) => `Recette ${x.recette} : ${x.cw.toLocaleString("fr-CA", { maximumFractionDigits: 1 })} %`).join(" ; ")}
+      {" "}(plage usuelle d&apos;un RPC : {PLAGES.cw.texte}). Le résultat reste affiché : vérifiez l&apos;affaissement visé, le type de cône et Bw.
     </Bandeau>
   ) : null;
   const libelleMethode = methodLabel(category as Category, method, "long");
@@ -149,7 +166,7 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
         donnees={donnees}
         pleinEcran={pleinEcran}
         onFormulaClick={handleFormulaClick}
-        avis={avisPerime || avisEau ? <>{avisPerime}{avisEau}</> : undefined}
+        avis={avisPerime || avisEau || avisCw ? <>{avisPerime}{avisCw}{avisEau}</> : undefined}
         actions={
           <>
             <button type="button" className="btn-contour" disabled={vide || perime}
@@ -160,7 +177,7 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
               onClick={async () => { const { exportToPdf } = await import("@/lib/pdf-report"); exportToPdf(recipes, general, binderName, category, method, units, mesuresEssai); }}>
               PDF
             </button>
-            <Sauvegarder desactive={vide || perime} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={`${category} ${methodLabel(category, method)} du ${dateDuJour}`} />
+            <Sauvegarder desactive={vide || perime} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={nomParDefautAvecHeure(`${category} ${methodLabel(category, method)}`, new Date())} nomsExistants={nomsSauvegardes} />
             <Menu
               className="ui-bouton-icone"
               ariaLabel="Autres actions"
