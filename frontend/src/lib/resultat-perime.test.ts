@@ -61,3 +61,12 @@ describe("résultats périmés : empreinte prise au départ du calcul", () => {
     expect(source).not.toMatch(/set\w+Result\(data\);/);
   });
 });
+
+describe("résultats périmés : champ vide", () => {
+  it("une clé valant undefined et une clé absente donnent la même empreinte ; 0 en donne une autre", () => {
+    const a = etat();
+    const avecVide = { ...a, cw: { residue_sg: 3.4, solid_mass_pct: 78, residue_w_pct: undefined } };
+    expect(empreinteEntrees(avecVide, "cwResult")).toBe(empreinteEntrees(a, "cwResult"));
+    expect(empreinteEntrees({ ...a, cw: { residue_sg: 3.4, solid_mass_pct: 78, residue_w_pct: 0 } }, "cwResult")).not.toBe(empreinteEntrees(a, "cwResult"));
+  });
+});

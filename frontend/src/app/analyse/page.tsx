@@ -42,6 +42,7 @@ import { telechargerTexte, versCsv, nomFichier } from "@/lib/export-fig";
 import { phases, fractions } from "@/lib/composition";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import { num, fmt, libelleAvecUnite, valeurAvecUnite } from "@/lib/format";
+import ChampNombre from "@/components/ui/ChampNombre";
 
 interface Balayage {
   category: string;
@@ -185,9 +186,9 @@ export default function AnalysePage() {
   function verifierBase(): string | null {
     if (!general.container_type)
       return "Choisis d'abord un type de contenant dans Informations : il est nécessaire au calcul des volumes.";
-    if (!(base.residue_sg > 0) || !(base.solid_mass_pct > 0) || !(base.saturation_pct > 0))
+    if (!((base.residue_sg ?? 0) > 0) || !((base.solid_mass_pct ?? 0) > 0) || !((base.saturation_pct ?? 0) > 0))
       return `Renseigne d'abord une recette dans Calculs → ${categorie} (dosage selon Cw) : Gs du résidu, Cw et Sr (> 0).`;
-    if (categorie === "RPG" && !(rpgCw.aggregate_sg > 0))
+    if (categorie === "RPG" && !((rpgCw.aggregate_sg ?? 0) > 0))
       return "Renseigne le Gs du granulat dans Calculs → RPG (dosage selon Cw).";
     return null;
   }
@@ -554,10 +555,10 @@ export default function AnalysePage() {
                     </Champ>
                   </div>
                   <Champ libelle="De">
-                    <input type="number" step="any" className="field-input" value={xMin} onChange={(e) => setXMin(num(e.target.value))} />
+                    <ChampNombre value={xMin} onChange={(n) => { if (n !== undefined) setXMin(n); }} />
                   </Champ>
                   <Champ libelle="À">
-                    <input type="number" step="any" className="field-input" value={xMax} onChange={(e) => setXMax(num(e.target.value))} />
+                    <ChampNombre value={xMax} onChange={(n) => { if (n !== undefined) setXMax(n); }} />
                   </Champ>
                   <Champ libelle="Points">
                     <input type="number" min={2} max={200} className="field-input" value={steps} onChange={(e) => setSteps(Math.max(2, Math.min(200, Math.round(num(e.target.value)) || 2)))} />

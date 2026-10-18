@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { empreinteAuDepart, useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
+import ChampNombre from "@/components/ui/ChampNombre";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import MesuresLabo from "@/components/mix/MesuresLabo";
 import {
@@ -11,7 +12,6 @@ import {
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
 import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
-import { num } from "@/lib/format";
 import { Field, CardSection, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
 import { Bandeau } from "@/components/ui/Bandeau";
 
@@ -27,6 +27,7 @@ export default function EssaiForm() {
     setEssai,
     setEssaiAjustement,
     setEssaiResult,
+    reinitialiserMethode,
     essaiResult,
     units,
   } = useStore();
@@ -51,7 +52,7 @@ export default function EssaiForm() {
               category: "RPC",
               general: general_payload,
               constants: constantes_payload,
-              residue: { specific_gravity: cw.residue_sg || 0, moisture_mass_pct: cw.residue_w_pct || 0 },
+              residue: { specific_gravity: cw.residue_sg, moisture_mass_pct: cw.residue_w_pct },
               binder_system,
               num_recipes: cw.num_recipes,
               containers_per_recipe: cw.desired_qty,
@@ -64,7 +65,7 @@ export default function EssaiForm() {
               category: "RPC",
               general: general_payload,
               constants: constantes_payload,
-              residue: { specific_gravity: wb.residue_sg || 0, moisture_mass_pct: wb.residue_w_pct || 0 },
+              residue: { specific_gravity: wb.residue_sg, moisture_mass_pct: wb.residue_w_pct },
               binder_system,
               num_recipes: wb.num_recipes,
               containers_per_recipe: wb.desired_qty,
@@ -78,7 +79,7 @@ export default function EssaiForm() {
         category: "RPC",
         general: general_payload,
         constants: constantes_payload,
-        residue: { specific_gravity: (base_method === "dosage_cw" ? cw.residue_sg : wb.residue_sg) || 0, moisture_mass_pct: (base_method === "dosage_cw" ? cw.residue_w_pct : wb.residue_w_pct) || 0 },
+        residue: { specific_gravity: base_method === "dosage_cw" ? cw.residue_sg : wb.residue_sg, moisture_mass_pct: base_method === "dosage_cw" ? cw.residue_w_pct : wb.residue_w_pct },
         binder_system,
         num_recipes: base_method === "dosage_cw" ? cw.num_recipes : wb.num_recipes,
         containers_per_recipe: base_method === "dosage_cw" ? cw.desired_qty : wb.desired_qty,
@@ -142,13 +143,13 @@ export default function EssaiForm() {
               <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
               <div className="mix-grille-3">
                 <Field label="Résidu sec" unit={massLabel}>
-                  <input type="number" step="any" className="field-input" placeholder="0" value={fromStoreMass(aj.ajout_residu_sec, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_sec: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
+                  <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_residu_sec, units.mass)} onChange={(n) => setEssaiAjustement(i, { ajout_residu_sec: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
                 <Field label="Résidu humide" unit={massLabel}>
-                  <input type="number" step="any" className="field-input" placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
+                  <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass)} onChange={(n) => setEssaiAjustement(i, { ajout_residu_humide: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
                 <Field label="Eau" unit={massLabel}>
-                  <input type="number" step="any" className="field-input" placeholder="0" value={fromStoreMass(aj.ajout_eau, units.mass) ?? ""} onChange={(e) => setEssaiAjustement(i, { ajout_eau: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
+                  <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_eau, units.mass)} onChange={(n) => setEssaiAjustement(i, { ajout_eau: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
               </div>
             </div>
@@ -162,7 +163,7 @@ export default function EssaiForm() {
       <PiedFormulaire
         loading={loading}
         onCalculer={handleCompute}
-        onReinitialiser={() => { setEssai({ base_method: "dosage_cw", ajustements: [], mesures: undefined }); setEssaiResult(null); setError(null); }}
+        onReinitialiser={() => { reinitialiserMethode("essai"); setEssaiResult(null); setError(null); }}
       />
       <ErrorBox message={error} />
     </div>

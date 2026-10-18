@@ -130,6 +130,21 @@ jamais un refus. Gs et w₀ du résidu sont partagés par les formulaires
 (`partagerResidu`, `store.tsx`), y compris après un rechargement depuis
 Mes calculs (`restoreSavedResult` les repartage).
 
+**Saisie des nombres** (2026-10) : tout champ numérique passe par
+`ChampNombre` (`components/ui/ChampNombre.tsx`), champ texte qui accepte la
+virgule ; jamais `<input type="number">` pour une valeur décimale (sur un
+navigateur non français, « 75,5 » y devenait vide, puis 0). Sans `min`, la
+valeur tapée est écrite telle quelle, même impossible : `Field` affiche alors
+« Valeur impossible » (`messageHorsBornes`, bornes physiques de
+`lib/plages.ts`, miroir des contraintes de `backend/app/core/models.py`),
+qui remplace l'avis de plage usuelle. Avec `min` (Labo), une valeur sous la
+borne n'est pas écrite et la précédente revient en quittant le champ.
+Dans le magasin, un champ saisi vide vaut `undefined` (type `Saisie`), un
+zéro tapé vaut 0 ; un nouveau champ part donc de `undefined`, prend sa place
+dans la fabrique de défauts de sa méthode (`defautsCw()`…, aussi utilisée par
+« Réinitialiser » via `reinitialiserMethode`), et la requête l'envoie sans
+`|| 0` : vide, l'API répond « valeur obligatoire ».
+
 ### 4. Ajouter une ligne au rapport de résultats
 `frontend/src/lib/report-schema.ts` UNIQUEMENT (section, libellé, unité,
 getter, décimales, garde `when`). L'écran, l'export Excel et le PDF itèrent la
@@ -195,7 +210,7 @@ optionnel+nullable pour les vieux localStorage).
 | Clé | Format | Version | Migration |
 |---|---|---|---|
 | `minebackfill_saved_results` | brut (tableau) | — | additif seulement |
-| `minebackfill_unit_prefs`, `_binder_prices`, `_production_log` | brut | — | additif |
+| `minebackfill_unit_prefs`, `_binder_prices`, `_production_log` | brut | — | additif (préférences d'unités relues sur `DEFAULT_UNITS` : `masseLabo`, unité de saisie des pesées, ajoutée en 2026-10 avec « g » par défaut) |
 | `minebackfill_catalogue_liants` | `{v,data}` | 3 | `migrationCatalogueLiants(d, versionLue)` : v1 → v2 champ `origine` ; v2 → v3 noms normalisés des liants par défaut (« Ciment Portland GU (anc. type 10) »…), **seulement si le nom est encore celui d'origine** (`NOMS_LIANTS_V2`) : un nom modifié par l'enseignant reste. Le catalogue publié en ligne passe par la même migration à la lecture (`migrerCatalogueLiantsCloud`). |
 | `minebackfill_constantes` | `{v,data}` | 2 | `completerConstantes` (drapeaux + détection de pack) |
 | `minebackfill_general` | `{v,data}` | 1 | identité |
@@ -209,7 +224,7 @@ optionnel+nullable pour les vieux localStorage).
 | IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par clé de courbe (`cleCourbe` : `<idEprouvette>:<importeLe>`, ou l'id d'éprouvette pour une courbe d'origine inconnue) | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` (avec `importeLe` depuis le 2026-10-18) ; orphelines balayées au démarrage (`balayerCourbesOrphelines`, prudent) |
 | `minebackfill_sync_courbes` | `{v,data}` | 2 | envoi des courbes en ligne (`sync-courbes.ts`) : `{ comptes: { [uid]: { envoyees, bloquees } } }`, par id de document ; v1 → v2 : compte repris, entrées abandonnées (`migrerEtatCourbes`) — **hors sauvegarde** |
 | `minebackfill_revues` | `{v,data}` | 1 | revues de l'enseignant sur mes gâchées, relues en entier (`revues.ts`) — **hors sauvegarde** |
-| `minebackfill_brouillon_calculs` | `{v,data}` | 1 | brouillon des formulaires de Calculs (catégorie, méthode, état de chaque formulaire), relu au démarrage et rangé à chaque modification (`brouillon-calculs.ts`, `StoreHydrator`) ; fusionné sur les défauts au chargement. Les résultats ne sont pas rangés ; **hors sauvegarde** |
+| `minebackfill_brouillon_calculs` | `{v,data}` | 2 | brouillon des formulaires de Calculs (catégorie, méthode, état de chaque formulaire), relu au démarrage et rangé à chaque modification (`brouillon-calculs.ts`, `StoreHydrator`) ; fusionné sur les défauts au chargement. Les résultats ne sont pas rangés ; **hors sauvegarde**. v1 → v2 (`migrerBrouillon`) : les 0 des champs saisis deviennent vides (en v1, 0 voulait dire « non saisi ») |
 | Sauvegarde (fichier) | `backup.ts` | schéma 6 | fusion par id, le local gagne ; courbes dans `data.courbes` |
 
 Toute évolution de schéma : incrémenter la version de LA clé concernée

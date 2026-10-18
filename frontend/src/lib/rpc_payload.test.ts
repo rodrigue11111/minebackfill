@@ -89,7 +89,8 @@ describe("messageErreurApi", () => {
     expect(msg).toContain("pourcentage solide massique Cw");
   });
   it("réponse vide -> repli générique avec le code HTTP", () => {
-    expect(messageErreurApi(null, 500)).toBe("Erreur API (500)");
+    expect(messageErreurApi(null, 500)).toBe("Le serveur de calcul a rencontré une erreur interne (500). Réessayez ; vos entrées sont conservées.");
+    expect(messageErreurApi(null, 404)).toBe("Erreur API (404)");
   });
 });
 

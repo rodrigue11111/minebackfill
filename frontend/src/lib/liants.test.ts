@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nomLiant } from "./liants";
+import { fractionsCompletes, nomLiant } from "./liants";
 import type { GeneralInfo, LiantCatalogueItem } from "./store";
 
 const CATALOGUE: LiantCatalogueItem[] = [
@@ -33,5 +33,16 @@ describe("nomLiant", () => {
   it("sans catalogue (ancien résultat), le code suffit", () => {
     const g = { binders: [{ id: "liant_cp10", code: "CP10" }] } as GeneralInfo;
     expect(nomLiant(g)(1)).toBe("CP10");
+  });
+});
+
+describe("fractions d'un agent liant composé", () => {
+  it("la tolérance suit l'affichage à une décimale", () => {
+    expect(fractionsCompletes(100)).toBe(true);
+    expect(fractionsCompletes(33.33 + 66.66)).toBe(true); // s'affiche 100,0
+    expect(fractionsCompletes(60 + 39.99)).toBe(true);
+    expect(fractionsCompletes(60 + 39.9)).toBe(false); // s'affiche 99,9
+    expect(fractionsCompletes(90)).toBe(false);
+    expect(fractionsCompletes(120)).toBe(false);
   });
 });

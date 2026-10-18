@@ -12,7 +12,7 @@ import { EnTetePage, Page } from "./Page";
 import { Carte } from "./Carte";
 import { Pastille } from "./Pastille";
 import { Bandeau } from "./Bandeau";
-import { lireNombre } from "./ChampNombre";
+import ChampNombre, { lireNombre, refusNombre } from "./ChampNombre";
 
 const rendu = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
 
@@ -90,5 +90,36 @@ describe("kit — lireNombre", () => {
     expect(lireNombre(" 1 234,5 ")).toBe(1234.5);
     expect(lireNombre("")).toBeUndefined();
     expect(lireNombre("abc")).toBeUndefined();
+  });
+});
+
+describe("kit — saisie numérique commune (ChampNombre)", () => {
+  it("lecture : 0 reste 0, vide et illisible = undefined, « 1, » lu 1, virgule, signe moins typographique", () => {
+    expect(lireNombre("0")).toBe(0);
+    expect(lireNombre("1,")).toBe(1);
+    expect(lireNombre("75,5")).toBe(75.5);
+    expect(lireNombre("-5")).toBe(-5);
+    expect(lireNombre("−5")).toBe(-5);
+    expect(lireNombre(" ")).toBeUndefined();
+  });
+
+  it("refus sous la borne : min inclus ou exclu ; sans borne, rien n'est refusé", () => {
+    expect(refusNombre(-5, {})).toBeNull();
+    expect(refusNombre(0, { min: 0 })).toBeNull();
+    expect(refusNombre(-5, { min: 0 })).toBe("Une valeur négative est impossible.");
+    expect(refusNombre(0, { min: 0, minExclusif: true })).toBe("La valeur doit être strictement positive.");
+    expect(refusNombre(0.1, { min: 0, minExclusif: true })).toBeNull();
+  });
+
+  it("rendu : champ texte décimal ; vide affiché vide, 0 affiché « 0 » ; attributs d'accessibilité transmis à l'input", () => {
+    const vide = renderToStaticMarkup(createElement(ChampNombre, { value: undefined, onChange: () => {} }));
+    expect(vide).toContain('type="text"');
+    expect(vide).toContain('inputMode="decimal"');
+    expect(vide).toContain('value=""');
+    expect(vide).not.toContain("aria-invalid");
+    const zero = renderToStaticMarkup(createElement(ChampNombre, { value: 0, onChange: () => {}, ariaInvalid: true, ariaDescribedby: "msg-1" }));
+    expect(zero).toContain('value="0"');
+    expect(zero).toContain('aria-invalid="true"');
+    expect(zero).toContain('aria-describedby="msg-1"');
   });
 });

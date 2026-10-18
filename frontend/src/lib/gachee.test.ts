@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   ecart, horsTolerance, nbHorsTolerance, genererCode, composantsDepuisRecette, parametresDepuisRecette, groupeSansVide, materiauxSansVide,
-  cibleLisible, masseLisible, plageTolerance, etapesGachee,
+  cibleLisible, masseLisible, plageTolerance, etapesGachee, peseeVersSaisie, saisieVersPesee,
   type Gachee, type ComposantPese,
 } from "./gachee";
 import type { Recipe } from "./types";
@@ -133,13 +133,28 @@ describe("fiche d'essai : groupes sans valeur vide", () => {
 });
 
 describe("pesées : masses lisibles", () => {
-  it("sous 1 kg en grammes (avec les kg du champ de saisie), sinon kg à trois décimales ; plage de tolérance", () => {
+  it("lecture : sous 1 kg en grammes, sinon kg à trois décimales", () => {
     expect(masseLisible(0.05)).toBe("50,0 g");
-    expect(cibleLisible(0.05)).toBe("50,0 g (0,0500 kg)");
-    expect(cibleLisible(1.5)).toBe("1,500 kg");
-    expect(plageTolerance(0.05, 2)).toBe("49,0 à 51,0 g");
-    expect(plageTolerance(1.5, 2)).toBe("1,470 à 1,530 kg");
     expect(masseLisible(0.047)).not.toBe("0,0 kg");
+  });
+
+  it("cible et tolérance dans l'unité de saisie choisie (g ou kg)", () => {
+    expect(cibleLisible(0.0543, "g")).toBe("54,3 g");
+    expect(cibleLisible(0.05, "kg")).toBe("0,0500 kg (50,0 g)");
+    expect(cibleLisible(1.5, "kg")).toBe("1,500 kg");
+    expect(cibleLisible(1.5, "g").replace(/\s/g, " ")).toBe("1 500,0 g");
+    expect(plageTolerance(0.05, 2, "g")).toBe("49,0 à 51,0 g");
+    expect(plageTolerance(0.05, 2, "kg")).toBe("0,0490 à 0,0510 kg");
+    expect(plageTolerance(1.5, 2, "kg")).toBe("1,470 à 1,530 kg");
+  });
+
+  it("saisie : la gâchée garde des kg ; « 54,3 » en g = 0,0543 kg, sans bruit d'arrondi à l'affichage", () => {
+    expect(saisieVersPesee(54.3, "g")).toBeCloseTo(0.0543, 12);
+    expect(saisieVersPesee(0.0543, "kg")).toBe(0.0543);
+    expect(peseeVersSaisie(0.0543, "g")).toBe(54.3);
+    expect(peseeVersSaisie(saisieVersPesee(54.3, "g"), "g")).toBe(54.3);
+    expect(peseeVersSaisie(0.0543, "kg")).toBe(0.0543);
+    expect(peseeVersSaisie(undefined, "g")).toBeUndefined();
   });
 });
 

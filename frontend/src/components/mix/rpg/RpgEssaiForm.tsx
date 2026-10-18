@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { empreinteAuDepart, useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
+import ChampNombre from "@/components/ui/ChampNombre";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import MesuresLabo from "@/components/mix/MesuresLabo";
 import {
@@ -11,7 +12,6 @@ import {
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
 import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
-import { num } from "@/lib/format";
 import { Field, CardSection, GrilleChamps, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
 import { Bandeau } from "@/components/ui/Bandeau";
 
@@ -27,6 +27,7 @@ export default function RpgEssaiForm() {
     setRpgEssai,
     setRpgEssaiAjustement,
     setRpgEssaiResult,
+    reinitialiserMethode,
     rpgEssaiResult,
     units,
   } = useStore();
@@ -52,7 +53,7 @@ export default function RpgEssaiForm() {
               category: "RPG",
               general: general_payload,
               constants: constantes_payload,
-              residue: { specific_gravity: rpgCw.residue_sg || 0, moisture_mass_pct: rpgCw.residue_w_pct || 0 },
+              residue: { specific_gravity: rpgCw.residue_sg, moisture_mass_pct: rpgCw.residue_w_pct },
               binder_system,
               num_recipes: rpgCw.num_recipes,
               containers_per_recipe: rpgCw.desired_qty,
@@ -71,7 +72,7 @@ export default function RpgEssaiForm() {
               category: "RPG",
               general: general_payload,
               constants: constantes_payload,
-              residue: { specific_gravity: rpgWb.residue_sg || 0, moisture_mass_pct: rpgWb.residue_w_pct || 0 },
+              residue: { specific_gravity: rpgWb.residue_sg, moisture_mass_pct: rpgWb.residue_w_pct },
               binder_system,
               num_recipes: rpgWb.num_recipes,
               containers_per_recipe: rpgWb.desired_qty,
@@ -91,8 +92,8 @@ export default function RpgEssaiForm() {
         general: general_payload,
         constants: constantes_payload,
         residue: {
-          specific_gravity: activeBase.residue_sg || 0,
-          moisture_mass_pct: activeBase.residue_w_pct || 0,
+          specific_gravity: activeBase.residue_sg,
+          moisture_mass_pct: activeBase.residue_w_pct,
         },
         binder_system,
         num_recipes: activeBase.num_recipes,
@@ -172,29 +173,19 @@ export default function RpgEssaiForm() {
               <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
               <GrilleChamps>
                 <Field label="Résidu sec" unit={massLabel}>
-                  <input type="number" step="any" className="field-input" placeholder="0"
-                    value={fromStoreMass(aj.ajout_residu_sec, units.mass) ?? ""}
-                    onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_sec: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
+                  <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_residu_sec, units.mass)} onChange={(n) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_sec: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
                 <Field label="Résidu humide" unit={massLabel}>
-                  <input type="number" step="any" className="field-input" placeholder="0"
-                    value={fromStoreMass(aj.ajout_residu_humide, units.mass) ?? ""}
-                    onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_humide: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
+                  <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass)} onChange={(n) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_humide: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
                 <Field label="Granulat sec" unit={massLabel} hint="Modifie Am et recalcule le Gs du remblai">
-                  <input type="number" step="any" className="field-input" placeholder="0"
-                    value={fromStoreMass(aj.ajout_agregat, units.mass) ?? ""}
-                    onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_agregat: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
+                  <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_agregat, units.mass)} onChange={(n) => setRpgEssaiAjustement(i, { ...aj, ajout_agregat: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
                 <Field label="Teneur en eau du granulat ajouté" unit="%" hint="Teneur en eau massique du granulat, tel qu'ajouté">
-                  <input type="number" step="any" className="field-input" placeholder="0"
-                    value={aj.w0_agregat ?? ""}
-                    onChange={(e) => setRpgEssaiAjustement(i, { ...aj, w0_agregat: num(e.target.value) })} />
+                  <ChampNombre placeholder="0" value={aj.w0_agregat} onChange={(n) => setRpgEssaiAjustement(i, { ...aj, w0_agregat: n })} />
                 </Field>
                 <Field label="Eau" unit={massLabel}>
-                  <input type="number" step="any" className="field-input" placeholder="0"
-                    value={fromStoreMass(aj.ajout_eau, units.mass) ?? ""}
-                    onChange={(e) => setRpgEssaiAjustement(i, { ...aj, ajout_eau: toStoreMass(num(e.target.value), units.mass) ?? undefined })} />
+                  <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_eau, units.mass)} onChange={(n) => setRpgEssaiAjustement(i, { ...aj, ajout_eau: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
               </GrilleChamps>
               <label className="mix-case">
@@ -219,12 +210,8 @@ export default function RpgEssaiForm() {
       <CardSection title="Affaissement visé" subtitle="Cône d'Abrams normalisé (300 mm, ASTM C143/C143M) ; cible usuelle 178 mm (7 po)">
         <GrilleChamps>
           <Field label="Affaissement visé S" unit="mm" hint="La comparaison s'affiche sous « Affaissement mesuré » ci-dessous ; vider le champ rétablit 178">
-            <input type="number" step="any" className="field-input" placeholder="178"
-              value={rpgEssai.slump_cible_mm ?? 178}
-              onChange={(e) => {
-                const v = num(e.target.value);
-                setRpgEssai({ slump_cible_mm: v > 0 ? v : undefined });
-              }} />
+            <ChampNombre placeholder="178" value={rpgEssai.slump_cible_mm ?? 178}
+              onChange={(n) => setRpgEssai({ slump_cible_mm: n !== undefined && n > 0 ? n : undefined })} />
           </Field>
           <p className="mix-note" style={{ alignSelf: "end" }}>
             Affaissement mesuré <strong>sous</strong> la cible : ajouter de l&apos;eau.
@@ -244,7 +231,7 @@ export default function RpgEssaiForm() {
       <PiedFormulaire
         loading={loading}
         onCalculer={handleCompute}
-        onReinitialiser={() => { setRpgEssai({ base_method: "dosage_cw", ajustements: [], slump_cible_mm: undefined, mesures: undefined }); setRpgEssaiResult(null); setError(null); }}
+        onReinitialiser={() => { reinitialiserMethode("rpgEssai"); setRpgEssaiResult(null); setError(null); }}
       />
       <ErrorBox message={error} />
     </div>

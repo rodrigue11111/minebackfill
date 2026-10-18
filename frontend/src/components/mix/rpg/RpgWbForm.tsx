@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { empreinteAuDepart, useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
+import ChampNombre from "@/components/ui/ChampNombre";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
 import type { ResiduItem, GranulatItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
@@ -28,6 +29,7 @@ export default function RpgWbForm() {
     setRpgWb,
     setRpgWbRecipe,
     setRpgWbResult,
+    reinitialiserMethode,
   } = useStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export default function RpgWbForm() {
         category: "RPG",
         general: construireGeneralPayload(general),
         constants: construireConstantesPayload(constantes),
-        residue: { specific_gravity: rpgWb.residue_sg || 0, moisture_mass_pct: rpgWb.residue_w_pct || 0 },
+        residue: { specific_gravity: rpgWb.residue_sg, moisture_mass_pct: rpgWb.residue_w_pct },
         binder_system: construireSystemeLiant(general, catalogue_liants),
         num_recipes: rpgWb.num_recipes,
         containers_per_recipe: rpgWb.desired_qty,
@@ -94,12 +96,10 @@ export default function RpgWbForm() {
               matches={(m) => (m as GranulatItem).gs === rpgWb.aggregate_sg} />
           </div>
           <Field plage="gsGranulat" valeur={rpgWb.aggregate_sg} label="Densité relative du granulat Gs" hint="Sans unité : Gs = ρs/ρw">
-            <input type="number" step="any" className="field-input" placeholder="ex : 2.65"
-              value={rpgWb.aggregate_sg || ""}
-              onChange={(e) => setRpgWb({ aggregate_sg: num(e.target.value) })} />
+            <ChampNombre placeholder="ex : 2.65" value={rpgWb.aggregate_sg} onChange={(n) => setRpgWb({ aggregate_sg: n })} />
           </Field>
           <ChampFractionGranulat
-            amPct={rpgWb.aggregate_fraction_pct || 0}
+            amPct={rpgWb.aggregate_fraction_pct}
             gsResidu={rpgWb.residue_sg || 0}
             gsGranulat={rpgWb.aggregate_sg || 0}
             onChangeAm={(am) => setRpgWb({ aggregate_fraction_pct: am })}
@@ -115,16 +115,13 @@ export default function RpgWbForm() {
               matches={(m) => { const r = m as ResiduItem; return r.gs === rpgWb.residue_sg && r.w0_pct === rpgWb.residue_w_pct; }} />
           </div>
           <Field plage="gs" valeur={rpgWb.residue_sg} label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
-            <input type="number" step="any" className="field-input" placeholder="ex : 3.4"
-              value={rpgWb.residue_sg || ""} onChange={(e) => setRpgWb({ residue_sg: num(e.target.value) })} />
+            <ChampNombre placeholder="ex : 3.4" value={rpgWb.residue_sg} onChange={(n) => setRpgWb({ residue_sg: n })} />
           </Field>
           <Field plage="w0" valeur={rpgWb.residue_w_pct} label="Teneur en eau massique du résidu w₀" unit="%">
-            <input type="number" step="any" className="field-input" placeholder="ex : 23.8"
-              value={rpgWb.residue_w_pct ?? ""} onChange={(e) => setRpgWb({ residue_w_pct: num(e.target.value) })} />
+            <ChampNombre placeholder="ex : 23.8" value={rpgWb.residue_w_pct} onChange={(n) => setRpgWb({ residue_w_pct: n })} />
           </Field>
           <Field plage="sr" valeur={rpgWb.saturation_pct} label="Degré de saturation Sr" unit="%">
-            <input type="number" step="any" className="field-input" placeholder="ex : 100"
-              value={rpgWb.saturation_pct || ""} onChange={(e) => setRpgWb({ saturation_pct: num(e.target.value) })} />
+            <ChampNombre placeholder="ex : 100" value={rpgWb.saturation_pct} onChange={(n) => setRpgWb({ saturation_pct: n })} />
           </Field>
         </GrilleChamps>
       </CardSection>
@@ -136,10 +133,8 @@ export default function RpgWbForm() {
               value={rpgWb.desired_qty ?? 1}
               onChange={(e) => setRpgWb({ desired_qty: num(e.target.value) })} />
           </Field>
-          <Field plage="kappa" valeur={rpgWb.safety_factor ?? 1} label="Facteur de perte κ" hint={KAPPA_AIDE}>
-            <input type="number" step="any" className="field-input" min={1}
-              value={rpgWb.safety_factor ?? 1}
-              onChange={(e) => setRpgWb({ safety_factor: num(e.target.value) })} />
+          <Field plage="kappa" valeur={rpgWb.safety_factor} label="Facteur de perte κ" hint={KAPPA_AIDE}>
+            <ChampNombre placeholder="1" value={rpgWb.safety_factor} onChange={(n) => setRpgWb({ safety_factor: n })} />
           </Field>
         </GrilleChamps>
         <ChoixNombreRecettes valeur={numRecipes} onChange={(n) => setRpgWb({ num_recipes: n })} />
@@ -151,12 +146,10 @@ export default function RpgWbForm() {
             <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
             <GrilleChamps>
               <Field plage="bw" valeur={rpgWb.binder_pct?.[i]} label="Taux massique de liant Bw" unit="%" hint="Masse de liant / masse sèche de résidu et de granulat">
-                <input type="number" step="any" className="field-input" placeholder="ex : 5"
-                  value={rpgWb.binder_pct?.[i] ?? ""} onChange={(e) => setRpgWbRecipe(i, { binder_pct: num(e.target.value) })} />
+                <ChampNombre placeholder="ex : 5" value={rpgWb.binder_pct?.[i]} onChange={(n) => setRpgWbRecipe(i, { binder_pct: n })} />
               </Field>
               <Field plage="el" valeur={rpgWb.wc_ratio?.[i]} label="Rapport eau/liant E/L" hint="Ex. : 4 à 8">
-                <input type="number" step="any" className="field-input" placeholder="ex : 6.0"
-                  value={rpgWb.wc_ratio?.[i] ?? ""} onChange={(e) => setRpgWbRecipe(i, { wc_ratio: num(e.target.value) })} />
+                <ChampNombre placeholder="ex : 6.0" value={rpgWb.wc_ratio?.[i]} onChange={(n) => setRpgWbRecipe(i, { wc_ratio: n })} />
               </Field>
             </GrilleChamps>
           </div>
@@ -166,7 +159,7 @@ export default function RpgWbForm() {
       <PiedFormulaire
         loading={loading}
         onCalculer={handleCompute}
-        onReinitialiser={() => { setRpgWb({ saturation_pct: 0, residue_sg: 0, residue_w_pct: 0, aggregate_fraction_pct: 0, aggregate_sg: 0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [0, 0, 0, 0], wc_ratio: [0, 0, 0, 0] }); setRpgWbResult(null); setError(null); }}
+        onReinitialiser={() => { reinitialiserMethode("rpgWb"); setRpgWbResult(null); setError(null); }}
       />
       <ErrorBox message={error} />
     </div>

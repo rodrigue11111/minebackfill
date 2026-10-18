@@ -19,7 +19,38 @@ const NOMS_CHAMPS: Record<string, string> = {
   aggregate_specific_gravity: "Gs du granulat",
   specific_gravity: "Gs",
   moisture_mass_pct: "teneur en eau",
+  container_volume_m3: "volume du contenant",
+  containers_per_recipe: "nombre de moules par recette",
+  safety_factor: "facteur de perte κ",
+  num_recipes: "nombre de recettes",
+  slump_mm: "affaissement visé",
+  cone_type: "type de cône",
+  components: "composants du liant",
+  mass_fraction: "fraction massique",
+  volume_m3: "volume du chantier",
+  wet_density_kg_m3: "masse volumique humide",
+  total_mass_kg: "masse totale de RRC",
+  cement_specific_gravity: "Gs du ciment",
+  retarder_dosage_ml_per_100kg: "dosage en retardateur D0",
+  retarder_density_g_ml: "masse volumique du retardateur",
+  adjustments: "ajouts",
+  added_dry_residue_mass: "résidu sec ajouté",
+  added_wet_residue_mass: "résidu humide ajouté",
+  added_water_mass: "eau ajoutée",
+  added_aggregate_mass: "granulat ajouté",
+  aggregate_moisture_mass_pct: "teneur en eau du granulat ajouté",
+  x_min: "borne « de »",
+  x_max: "borne « à »",
+  steps: "nombre de points",
 };
+
+/** Le même champ, précisé par son parent (« Gs » du résidu ou d'un composant du liant). */
+const NOMS_SOUS: Record<string, Record<string, string>> = {
+  residue: { specific_gravity: "Gs du résidu", moisture_mass_pct: "teneur en eau du résidu w₀" },
+};
+
+/** Listes dont l'indice est une recette ; derrière `components`, c'est un composant du liant. */
+const LISTES_RECETTES = new Set(["binder_mass_pct_recipes", "wc_ratio_recipes", "adjustments"]);
 
 /**
  * Messages de validation Pydantic courants, en français. Un message inconnu
@@ -54,13 +85,26 @@ export function traduireMessagePydantic(msg: string): string {
   return msg;
 }
 
-/** Nom lisible d'un champ : « taux massique de liant Bw des recettes (recette 2) ». */
+/**
+ * Nom lisible d'un champ : « taux massique de liant Bw des recettes (recette 2) »,
+ * « Gs (composant 1 du liant) ». Un indice ne devient « recette n » que derrière
+ * une liste de recettes (avant : tout nombre du chemin était une recette).
+ */
 function nomDuChamp(loc: unknown[]): string {
-  const idx = [...loc].reverse().find((p) => typeof p === "number");
-  const nom = [...loc].reverse().find((p) => typeof p === "string");
-  if (nom === undefined) return loc.join(".");
-  const lisible = NOMS_CHAMPS[nom as string] ?? String(nom);
-  return typeof idx === "number" ? `${lisible} (recette ${idx + 1})` : lisible;
+  const iNom = loc.map((p) => typeof p === "string").lastIndexOf(true);
+  if (iNom < 0) return loc.join(".");
+  const nom = loc[iNom] as string;
+  const parent = loc.slice(0, iNom).reverse().find((p) => typeof p === "string") as string | undefined;
+  const lisible = (parent && NOMS_SOUS[parent]?.[nom]) ?? NOMS_CHAMPS[nom] ?? nom;
+  let precision = "";
+  for (let i = 1; i < loc.length; i++) {
+    const p = loc[i];
+    const avant = loc[i - 1];
+    if (typeof p !== "number" || typeof avant !== "string") continue;
+    if (LISTES_RECETTES.has(avant)) precision = ` (recette ${p + 1})`;
+    else if (avant === "components") precision = ` (composant ${p + 1} du liant)`;
+  }
+  return lisible + precision;
 }
 
 export function messageErreurApi(data: unknown, status: number): string {
@@ -70,11 +114,16 @@ export function messageErreurApi(data: unknown, status: number): string {
     const items = detail.slice(0, 3).map((e) => {
       const loc = Array.isArray(e?.loc) ? e.loc.filter((p: unknown) => p !== "body") : [];
       const champ = loc.length ? nomDuChamp(loc) : "";
-      const msg = typeof e?.msg === "string" ? traduireMessagePydantic(e.msg) : "valeur refusée";
+      // Une case vide d'une liste part en null : « valeur obligatoire », pas « doit être un nombre ».
+      const vide = e?.input === null && typeof e?.msg === "string" && /^Input should be a valid (number|integer)/.test(e.msg);
+      const msg = vide ? "valeur obligatoire" : typeof e?.msg === "string" ? traduireMessagePydantic(e.msg) : "valeur refusée";
       return champ ? `${champ} : ${msg}` : msg;
     });
     const suite = detail.length > 3 ? ` (et ${detail.length - 3} autre(s))` : "";
     return `Entrée invalide : ${items.join(" ; ")}${suite}`;
+  }
+  if (status >= 500) {
+    return `Le serveur de calcul a rencontré une erreur interne (${status}). Réessayez ; vos entrées sont conservées.`;
   }
   return `Erreur API (${status})`;
 }

@@ -66,7 +66,16 @@ export async function exportPreparationPdf(
   const massLabel = MASS_LABELS[units.mass] ?? "kg";
   const libelleMethode = methodLabel(category as Category, method);
 
-  const masse = (kg: number | null | undefined) => fmtNum(fromStoreMass(val(kg), units.mass));
+  // Masses en kg : sous 1 kg, la feuille écrit des grammes, comme les pesées du
+  // Labo (« 47.5 g » et non « 0.048 »), l'unité dans la cellule. Autres unités :
+  // la valeur seule, l'unité dans le libellé.
+  const enKg = units.mass === "kg";
+  const uniteLibelle = enKg ? "" : ` (${massLabel})`;
+  const masse = (kg: number | null | undefined) => {
+    if (!enKg) return fmtNum(fromStoreMass(val(kg), units.mass));
+    const v = val(kg);
+    return Math.abs(v) < 1 ? `${fmtNum(v * 1000, 1)} g` : `${fmtNum(v, 3)} kg`;
+  };
   // Variante pour les masses PAR COMPOSANT : une donnée absente (vieux résultat
   // restauré avec moins de composants qu'aujourd'hui) s'affiche « — », pas un
   // « 0 » qui ressemblerait à une masse à peser.
@@ -131,12 +140,12 @@ export async function exportPreparationPdf(
 
     // ── Tableau des masses à peser ──
     const rows: [string, string][] = [];
-    rows.push([`Résidu humide Mr-hum (${massLabel})`, masse(r.components?.residue_wet_mass_kg)]);
+    rows.push([`Résidu humide Mr-hum${uniteLibelle}`, masse(r.components?.residue_wet_mass_kg)]);
     if (isRpg || val(r.components?.aggregate_dry_mass_kg) > 0)
-      rows.push([`Granulat sec Ma (${massLabel})`, masse(r.components?.aggregate_dry_mass_kg)]);
+      rows.push([`Granulat sec Ma${uniteLibelle}`, masse(r.components?.aggregate_dry_mass_kg)]);
     for (let i = 0; i < bcount; i++)
-      rows.push([`${binderName(i + 1)} (${massLabel})`, masseOuTiret(masseComposantN(r.components, i))]);
-    rows.push([`Eau à ajouter/retirer Mw-aj (${massLabel})`, masse(r.components?.water_to_add_mass_kg)]);
+      rows.push([`${binderName(i + 1)}${uniteLibelle}`, masseOuTiret(masseComposantN(r.components, i))]);
+    rows.push([`Eau à ajouter/retirer Mw-aj${uniteLibelle}`, masse(r.components?.water_to_add_mass_kg)]);
 
     const drawTable = (title: string, tableRows: [string, string][]) => {
       doc.setFillColor(...NAVY);
@@ -185,9 +194,9 @@ export async function exportPreparationPdf(
     // ── Ajustements (essai-erreur) ──
     if (isEssai) {
       const adj: [string, string][] = [];
-      adj.push([`Liant à ajouter/retirer Mb-ad (${massLabel})`, masse(r.components?.binder_to_add_mass_kg)]);
+      adj.push([`Liant à ajouter/retirer Mb-ad${uniteLibelle}`, masse(r.components?.binder_to_add_mass_kg)]);
       for (let i = 0; i < bcount; i++)
-        adj.push([`${binderName(i + 1)} à ajouter/retirer (${massLabel})`, masseOuTiret(masseAjoutComposantN(r.components, i))]);
+        adj.push([`${binderName(i + 1)} à ajouter/retirer${uniteLibelle}`, masseOuTiret(masseAjoutComposantN(r.components, i))]);
       drawTable("AJUSTEMENTS EN COURS DE MÉLANGE (valeur négative = à retirer)", adj);
     }
 

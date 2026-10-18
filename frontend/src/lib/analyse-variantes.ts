@@ -42,7 +42,7 @@ export const MAX_VARIANTES = 4;
  * champ de saisie, et cohérent avec la carte « Recette de base (reprise de
  * Calculs) ». Plafonné à 4, comme RECIPE_COLORS.
  */
-export function variantesDepuisBase(binderPct: number[], numRecipes: number): Variante[] {
+export function variantesDepuisBase(binderPct: (number | undefined)[], numRecipes: number): Variante[] {
   const n = Math.max(1, Math.min(numRecipes || 1, MAX_VARIANTES));
   const out: Variante[] = [];
   for (let i = 0; i < n; i++) {

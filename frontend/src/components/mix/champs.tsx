@@ -5,12 +5,12 @@
 // Présentation seulement : la logique de calcul reste dans chaque formulaire.
 
 import { Champ } from "@/components/ui/Champ";
-import { avisHorsPlage, rappelPlage, type ClePlage } from "@/lib/plages";
+import { avisHorsPlage, messageHorsBornes, rappelPlage, type ClePlage } from "@/lib/plages";
 import Segmente from "@/components/ui/Segmente";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
 
 /** Champ à libellé au-dessus ; `unit` s'affiche à droite dans la saisie. */
-export function Field({ label, hint, unit, children, plage, valeur }: {
+export function Field({ label, hint, unit, children, plage, valeur, erreur }: {
   label: React.ReactNode;
   hint?: React.ReactNode;
   unit?: React.ReactNode;
@@ -19,9 +19,19 @@ export function Field({ label, hint, unit, children, plage, valeur }: {
   plage?: ClePlage;
   /** Valeur saisie, pour l'avis hors plage. */
   valeur?: number | null;
+  /** Erreur propre au champ (saisie refusée) ; prime sur les bornes de la plage. */
+  erreur?: string | null;
 }) {
   const aide = plage ? <>{hint}{hint ? " " : null}{rappelPlage(plage)}</> : hint;
-  return <Champ libelle={label} aide={aide} unite={unit} avis={plage ? avisHorsPlage(plage, valeur) : undefined}>{children}</Champ>;
+  // Une valeur impossible (le calcul la refusera) remplace l'avis de plage
+  // usuelle : Champ n'affiche pas l'avis quand une erreur est posée.
+  return (
+    <Champ libelle={label} aide={aide} unite={unit}
+      erreur={erreur ?? (plage ? messageHorsBornes(plage, valeur) : null) ?? undefined}
+      avis={plage ? avisHorsPlage(plage, valeur) : undefined}>
+      {children}
+    </Champ>
+  );
 }
 
 /** Sous-partie du formulaire (dans la carte « Paramètres »), séparée par un filet. */

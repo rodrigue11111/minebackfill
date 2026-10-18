@@ -68,6 +68,19 @@ describe("éditeur d'une gâchée", () => {
     expect(html).toContain("−0,1 %");
   });
 
+  it("pesées : unité de saisie en g par défaut, visible à côté du champ ; choix g ou kg", () => {
+    const html = renderToStaticMarkup(createElement(EditeurGachee, {
+      gachee: { ...gachee, composants: [{ cle: "liant", label: "Liant", cibleKg: 0.0543, peseeKg: 0.0543 }] },
+      maintenant: new Date(2026, 9, 7, 9), annotations: [], connecte: true, onMaj: () => {}, onRetour: () => {}, onSupprimer: () => {},
+    }));
+    expect(html).toContain("cible 54,3 g");
+    expect(html).not.toContain("(0,0543 kg)");
+    expect(html).toContain('value="54.3"');
+    expect(html).toContain('aria-label="Masse pesée : Liant (g)"');
+    expect(html).toContain('class="labo-pesee-unite" aria-hidden="true">g<');
+    expect(html).toContain('aria-label="Unité des pesées"');
+  });
+
   it("la note de l'enseignant sur une pesée s'affiche sous cette pesée, pas dans les échanges", () => {
     const html = rendu([note("n1", { ancre: "Pesée : Liant", texte: "Le liant est pesé à +8 % : refais la pesée." })]);
     const posNote = html.indexOf("Le liant est pesé à +8 %");

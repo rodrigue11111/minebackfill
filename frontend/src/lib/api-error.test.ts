@@ -18,7 +18,8 @@ describe("messageErreurApi", () => {
   });
 
   it("sans détail exploitable, donne le code HTTP", () => {
-    expect(messageErreurApi(null, 500)).toBe("Erreur API (500)");
+    expect(messageErreurApi(null, 500)).toBe("Le serveur de calcul a rencontré une erreur interne (500). Réessayez ; vos entrées sont conservées.");
+    expect(messageErreurApi(null, 404)).toBe("Erreur API (404)");
   });
 });
 
@@ -39,5 +40,27 @@ describe("messages Pydantic traduits", () => {
   it("le champ d'une liste dit sa recette ; le message est en français de bout en bout", () => {
     const m = messageErreurApi({ detail: [{ loc: ["body", "binder_mass_pct_recipes", 1], msg: "Input should be greater than 0" }] }, 422);
     expect(m).toBe("Entrée invalide : taux massique de liant Bw des recettes (recette 2) : doit être supérieur à 0");
+  });
+});
+
+describe("noms de champs (campagnes de test du 18 octobre 2026)", () => {
+  const msg = (loc: unknown[], m = "Input should be greater than 0", input: unknown = -1) =>
+    messageErreurApi({ detail: [{ loc: ["body", ...loc], msg: m, input }] }, 422);
+
+  it("moules, κ, affaissement, cône, Gs du résidu : plus de nom anglais brut", () => {
+    expect(msg(["containers_per_recipe"], "Input should be greater than or equal to 1")).toBe("Entrée invalide : nombre de moules par recette : doit être supérieur ou égal à 1");
+    expect(msg(["safety_factor"])).toBe("Entrée invalide : facteur de perte κ : doit être supérieur à 0");
+    expect(msg(["slump_mm"])).toBe("Entrée invalide : affaissement visé : doit être supérieur à 0");
+    expect(msg(["cone_type"], "Input should be 'mini' or 'grand'")).toBe("Entrée invalide : type de cône : doit valoir 'mini' ou 'grand'");
+    expect(msg(["residue", "specific_gravity"], "Field required", undefined)).toBe("Entrée invalide : Gs du résidu : valeur obligatoire");
+  });
+
+  it("l'indice n'est une recette que derrière une liste de recettes ; un composant du liant est nommé comme tel", () => {
+    expect(msg(["binder_system", "components", 0, "specific_gravity"])).toBe("Entrée invalide : Gs (composant 1 du liant) : doit être supérieur à 0");
+    expect(msg(["adjustments", 1, "added_water_mass"], "Input should be greater than or equal to 0")).toBe("Entrée invalide : eau ajoutée (recette 2) : doit être supérieur ou égal à 0");
+  });
+
+  it("une case vide d'une liste (null) : « valeur obligatoire »", () => {
+    expect(msg(["binder_mass_pct_recipes", 0], "Input should be a valid number", null)).toBe("Entrée invalide : taux massique de liant Bw des recettes (recette 1) : valeur obligatoire");
   });
 });
