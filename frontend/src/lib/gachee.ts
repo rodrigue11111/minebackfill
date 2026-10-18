@@ -202,21 +202,45 @@ export function masseLisible(kg: number): string {
   return Math.abs(kg) < 1 ? `${nombreFr(kg * 1000, 1)} g` : `${nombreFr(kg, 3)} kg`;
 }
 
+/** Unité de saisie des pesées, choisie par l'étudiant (Réglages ou en tête des pesées). */
+export type UnitePesee = "g" | "kg";
+
+/** Décimales affichées d'une masse dans l'unité de saisie (kg : 4 sous 1 kg, sinon 3). */
+const decimalesPesee = (kg: number, unite: UnitePesee) => (unite === "g" ? 1 : Math.abs(kg) < 1 ? 4 : 3);
+
 /**
- * Cible d'une pesée : sous 1 kg, en grammes ET en kilogrammes (le champ de
- * saisie est en kg : « 47,5 g (0,0475 kg) »), sinon en kilogrammes.
+ * Valeur d'une pesée dans le champ de saisie (la gâchée garde des kg).
+ * Arrondie au milligramme : 0,0543 kg s'affiche 54,3 et non 54,300000000000004.
  */
-export function cibleLisible(kg: number): string {
-  return Math.abs(kg) < 1 ? `${masseLisible(kg)} (${nombreFr(kg, 4)} kg)` : masseLisible(kg);
+export function peseeVersSaisie(kg: number | undefined, unite: UnitePesee): number | undefined {
+  if (kg === undefined || !Number.isFinite(kg)) return undefined;
+  return unite === "g" ? Math.round(kg * 1e6) / 1e3 : Math.round(kg * 1e6) / 1e6;
 }
 
-/** Plage acceptée par la tolérance, dans l'unité de la cible (« 46,6 à 48,4 g »). */
-export function plageTolerance(cibleKg: number, tolerancePct: number): string {
+/** Masse saisie, rangée en kg. */
+export function saisieVersPesee(n: number, unite: UnitePesee): number {
+  return unite === "g" ? n / 1000 : n;
+}
+
+/**
+ * Cible d'une pesée dans l'unité de saisie : « 54,3 g », « 1 234,5 g » ;
+ * en kg, « 0,0543 kg (54,3 g) » sous 1 kg, sinon « 1,235 kg ». Avant, le champ
+ * était toujours en kg alors que la cible s'affichait en grammes : taper « 54 »
+ * pour 54,3 g donnait un écart de +99 000 %.
+ */
+export function cibleLisible(kg: number, unite: UnitePesee): string {
+  if (unite === "g") return `${nombreFr(kg * 1000, 1)} g`;
+  return Math.abs(kg) < 1 ? `${nombreFr(kg, 4)} kg (${masseLisible(kg)})` : `${nombreFr(kg, 3)} kg`;
+}
+
+/** Plage acceptée par la tolérance, dans l'unité de saisie (« 53,3 à 55,4 g »). */
+export function plageTolerance(cibleKg: number, tolerancePct: number, unite: UnitePesee): string {
   const bas = cibleKg * (1 - tolerancePct / 100);
   const haut = cibleKg * (1 + tolerancePct / 100);
-  return Math.abs(cibleKg) < 1
-    ? `${nombreFr(bas * 1000, 1)} à ${nombreFr(haut * 1000, 1)} g`
-    : `${nombreFr(bas, 3)} à ${nombreFr(haut, 3)} kg`;
+  const d = decimalesPesee(cibleKg, unite);
+  return unite === "g"
+    ? `${nombreFr(bas * 1000, d)} à ${nombreFr(haut * 1000, d)} g`
+    : `${nombreFr(bas, d)} à ${nombreFr(haut, d)} kg`;
 }
 
 /** Nombre de composants pesés hors tolérance. */

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useStore, CATALOGUE_VERSION, CONSTANTES_VERSION, MATERIALS_VERSION } from "@/lib/store";
-import { UNIT_CATEGORIES, unitsForLength, type LengthUnit } from "@/lib/units";
+import { DEFAULT_UNITS, UNIT_CATEGORIES, unitsForLength, type LengthUnit } from "@/lib/units";
 import type { LiantCatalogueItem } from "@/lib/store";
 import type { MaterialKind } from "@/lib/materials";
 import { getSupabase } from "@/lib/supabase";
@@ -261,7 +261,7 @@ export default function ReglagesPage() {
               <Segmente
                 ariaLabel={cat.label}
                 taille="compact"
-                valeur={String(units[cat.key])}
+                valeur={String(units[cat.key] ?? DEFAULT_UNITS[cat.key])}
                 onChange={(opt) => (cat.key === "length"
                   ? setUnits(unitsForLength(opt as LengthUnit))
                   : setUnits({ [cat.key]: opt }))}

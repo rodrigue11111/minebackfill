@@ -41,6 +41,9 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
   const [uniteVitesse, setUniteVitesse] = useState<UniteVitesse>(es.vitesseChargement?.unite ?? "mm/min");
   const unite = es.vitesseChargement?.unite ?? uniteVitesse;
   const idVitesse = `vitesse-${eprouvette.id}`;
+  // Saisie refusée en cours (valeur négative, diamètre nul) : message sous le champ.
+  const [refus, setRefus] = useState<Record<string, string | null>>({});
+  const surRefus = (cle: string) => (msg: string | null) => setRefus((r) => ({ ...r, [cle]: msg }));
   const calculee = contrainteKpa({ chargeKn: es.chargeKn, diametreMm: es.diametreMm });
   const retenue = contrainteKpa(es);
   // Une contrainte directe renseignée l'emporte sur F/A (voir contrainteKpa).
@@ -57,15 +60,25 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
           <input type="date" className="field-input" value={es.date ? isoVersDateInput(es.date) : ""}
             onChange={(e) => onChange({ date: e.target.value ? new Date(`${e.target.value}T12:00:00`).toISOString() : undefined })} />
         </Champ>
-        <Champ libelle="Charge à la rupture" unite="kN"><ChampNombre value={es.chargeKn} onChange={(n) => onChange({ chargeKn: n })} /></Champ>
-        <Champ libelle="Diamètre" unite="mm"><ChampNombre value={es.diametreMm} onChange={(n) => onChange({ diametreMm: n })} /></Champ>
+        <Champ libelle="Charge à la rupture" unite="kN" erreur={refus.charge ?? undefined}>
+          <ChampNombre min={0} messageRefus="Une charge ne peut pas être négative." onRefus={surRefus("charge")}
+            value={es.chargeKn} onChange={(n) => onChange({ chargeKn: n })} />
+        </Champ>
+        <Champ libelle="Diamètre" unite="mm" erreur={refus.diametre ?? undefined}>
+          <ChampNombre min={0} minExclusif messageRefus="Le diamètre doit être strictement positif." onRefus={surRefus("diametre")}
+            value={es.diametreMm} onChange={(n) => onChange({ diametreMm: n })} />
+        </Champ>
       </div>
 
       <div className="labo-grille-essai">
-        <Champ libelle="Masse de l'éprouvette" unite="g"><ChampNombre value={es.masseG} onChange={(n) => onChange({ masseG: n })} /></Champ>
-        <Champ libelle="Vitesse de chargement" htmlFor={idVitesse}>
+        <Champ libelle="Masse de l'éprouvette" unite="g" erreur={refus.masse ?? undefined}>
+          <ChampNombre min={0} messageRefus="Une masse ne peut pas être négative." onRefus={surRefus("masse")}
+            value={es.masseG} onChange={(n) => onChange({ masseG: n })} />
+        </Champ>
+        <Champ libelle="Vitesse de chargement" htmlFor={idVitesse} erreur={refus.vitesse ?? undefined}>
           <span className="labo-champ-unite-libre">
-            <ChampNombre id={idVitesse} value={es.vitesseChargement?.valeur}
+            <ChampNombre id={idVitesse} min={0} messageRefus="Une vitesse ne peut pas être négative." onRefus={surRefus("vitesse")}
+              value={es.vitesseChargement?.valeur}
               onChange={(n) => onChange({ vitesseChargement: n === undefined ? undefined : { valeur: n, unite } })} />
             <select className="field-input" aria-label="Unité de la vitesse" value={unite}
               onChange={(e) => {
@@ -103,8 +116,9 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
 
       <div className="labo-ligne-contrainte">
         <div style={{ maxWidth: 240 }}>
-          <Champ libelle="ou contrainte mesurée directe" unite="kPa" aide="Si la presse donne directement la contrainte (prioritaire sur le calcul).">
-            <ChampNombre value={es.contrainteKpaSaisie} onChange={(n) => onChange({ contrainteKpaSaisie: n })} />
+          <Champ libelle="ou contrainte mesurée directe" unite="kPa" aide="Si la presse donne directement la contrainte (prioritaire sur le calcul)." erreur={refus.contrainte ?? undefined}>
+            <ChampNombre min={0} messageRefus="Une contrainte ne peut pas être négative." onRefus={surRefus("contrainte")}
+              value={es.contrainteKpaSaisie} onChange={(n) => onChange({ contrainteKpaSaisie: n })} />
           </Champ>
         </div>
         <div className="labo-ucs-retenue">

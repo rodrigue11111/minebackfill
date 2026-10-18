@@ -8,6 +8,8 @@ export type MassUnit    = "kg" | "g" | "t" | "lb";
 export type VolumeUnit  = "L" | "mL" | "m3" | "cm3" | "mm3" | "in3";
 export type DensityUnit = "g/cm3" | "kg/m3" | "t/m3";
 export type SlumpUnit   = "mm" | "cm" | "in";
+/** Unité de saisie des pesées au Labo (la gâchée garde ses masses en kg). */
+export type MasseLaboUnit = "g" | "kg";
 
 export interface UnitPreferences {
   length: LengthUnit;
@@ -16,6 +18,8 @@ export interface UnitPreferences {
   volume: VolumeUnit;
   density: DensityUnit;
   slump: SlumpUnit;
+  /** Pesées au Labo ; absente des préférences enregistrées avant 2026-10 (défaut « g »). */
+  masseLabo?: MasseLaboUnit;
 }
 
 export const DEFAULT_UNITS: UnitPreferences = {
@@ -25,6 +29,7 @@ export const DEFAULT_UNITS: UnitPreferences = {
   volume: "cm3", // cube de l'unité de longueur par défaut (cm -> cm³)
   density: "g/cm3",
   slump: "mm",
+  masseLabo: "g", // une balance de laboratoire affiche des grammes
 };
 
 /* ── Dérivation à partir d'une seule unité de longueur ──
@@ -141,6 +146,7 @@ export const MASS_LABELS: Record<MassUnit, string>     = { kg: "kg", g: "g", t: 
 export const VOLUME_LABELS: Record<VolumeUnit, string> = { L: "L", mL: "mL", m3: "m\u00B3", cm3: "cm\u00B3", mm3: "mm\u00B3", in3: "po\u00B3" };
 export const DENSITY_LABELS: Record<DensityUnit, string> = { "g/cm3": "g/cm\u00B3", "kg/m3": "kg/m\u00B3", "t/m3": "t/m\u00B3" };
 export const SLUMP_LABELS: Record<SlumpUnit, string>   = { mm: "mm", cm: "cm", in: "po" };
+export const MASSE_LABO_LABELS: Record<MasseLaboUnit, string> = { g: "g", kg: "kg" };
 
 /* ── Settings UI metadata ── */
 
@@ -156,4 +162,5 @@ export const UNIT_CATEGORIES: {
   { key: "volume",  label: "Volume",          options: ["mm3", "cm3", "m3", "in3"],        labels: VOLUME_LABELS },
   { key: "density", label: "Masse volumique", options: ["g/cm3", "kg/m3", "t/m3"],         labels: DENSITY_LABELS },
   { key: "slump",   label: "Affaissement",    options: ["mm", "cm", "in"],                 labels: SLUMP_LABELS },
+  { key: "masseLabo", label: "Masse pesée au laboratoire", options: ["g", "kg"],             labels: MASSE_LABO_LABELS },
 ];
