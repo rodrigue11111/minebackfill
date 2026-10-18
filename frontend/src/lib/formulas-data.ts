@@ -623,8 +623,8 @@ export const FORMULAS: Formula[] = [
     chapter: CHAPITRE,
     pageNumber: 23,
     equationLatex:
-      "\\rho_h = \\frac{\\rho_w \\, G_s \\, C_w \\, S_r}{S_r \\, C_w + G_s(1 - C_w)}",
-    equationPlainText: "rho_h = rho_w*Gs*Cw*Sr / (Sr*Cw + Gs*(1-Cw))",
+      "\\rho_h = \\frac{\\rho_w \\cdot G_s \\cdot S_r}{S_r \\cdot C_w + G_s \\cdot (1 - C_w)}",
+    equationPlainText: "rho_h = rho_w*Gs*Sr / (Sr*Cw + Gs*(1-Cw))",
     variables: [
       { symbol: "\\rho_h", description: "Masse volumique humide du remblai", unit: "kg/m³" },
       { symbol: "\\rho_w", description: "Masse volumique de l'eau (1000 kg/m³)", unit: "kg/m³" },
@@ -633,7 +633,7 @@ export const FORMULAS: Formula[] = [
       { symbol: "S_r", description: "Degré de saturation (décimal)", unit: null },
     ],
     keywords: ["wet density", "masse volumique", "rho_h", "Gs", "Cw", "Sr", "humide"],
-    contextSnippet: "Formule générale pour tout degré de saturation Sr.",
+    contextSnippet: "Formule générale pour tout degré de saturation Sr. La masse volumique sèche en découle : ρd = Cw · ρh.",
     derivationLinks: {
       derivedFrom: ["F003", "F006", "F008", "F009", "F012"],
       derivesInto: ["F006", "F008", "F024", "F027", "F039", "F040", "F065"],
@@ -649,8 +649,8 @@ export const FORMULAS: Formula[] = [
     chapter: CHAPITRE,
     pageNumber: 24,
     equationLatex:
-      "\\rho_h = \\frac{\\rho_w \\, G_s \\, C_w}{C_w + G_s(1 - C_w)} = \\frac{\\rho_w \\, G_s}{C_w(1 - G_s) + G_s}",
-    equationPlainText: "rho_h = rho_w*Gs*Cw / (Cw + Gs*(1-Cw))  [for Sr=1]",
+      "\\rho_h = \\frac{\\rho_w \\cdot G_s}{C_w + G_s \\cdot (1 - C_w)} = \\frac{\\rho_w \\cdot G_s}{C_w \\cdot (1 - G_s) + G_s}",
+    equationPlainText: "rho_h = rho_w*Gs / (Cw + Gs*(1-Cw))  [Sr = 1]",
     variables: [
       { symbol: "\\rho_h", description: "Masse volumique humide (saturé)", unit: "kg/m³" },
       { symbol: "\\rho_w", description: "Masse volumique de l'eau", unit: "kg/m³" },
@@ -659,7 +659,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["wet density", "Sr=1", "saturé", "rho_h", "Cw", "Gs"],
     contextSnippet:
-      "Cas courant pour les remblais en pâte circulant dans les tuyaux (Sr = 100 %).",
+      "Cas courant pour les remblais en pâte circulant dans les tuyaux (Sr = 100 %). La masse volumique sèche en découle : ρd = Cw · ρh.",
     derivationLinks: {
       derivedFrom: ["F006", "F023", "F026"],
       derivesInto: ["F006", "F025", "F026", "F034", "F037"],
@@ -726,19 +726,19 @@ export const FORMULAS: Formula[] = [
     chapter: CHAPITRE,
     pageNumber: 28,
     equationLatex:
-      "\\gamma_h = g \\cdot \\rho_h = 9.81 \\cdot \\frac{\\rho_w G_s S_r C_w}{S_r C_w + G_s(1-C_w)} \\quad [\\text{kN/m}^3]",
-    equationPlainText: "gamma_h = 9.81 * rho_h  [kN/m3]",
+      "\\gamma_h = \\frac{g \\cdot \\rho_h}{1000} \\quad [\\text{kN/m}^3,\\ \\rho_h \\text{ en kg/m}^3]",
+    equationPlainText: "gamma_h = g * rho_h / 1000  [kN/m3, rho_h en kg/m3]",
     variables: [
       { symbol: "\\gamma_h", description: "Poids volumique humide", unit: "kN/m³" },
       { symbol: "g", description: "Accélération gravitationnelle (9,81 m/s²)", unit: "m/s²" },
       { symbol: "\\rho_h", description: "Masse volumique humide", unit: "kg/m³" },
     ],
     keywords: ["unit weight", "poids volumique", "gamma", "kN/m3", "gravity"],
-    contextSnippet: "Poids volumique en kN/m³ obtenu en multipliant ρh par g = 9,81 m/s².",
+    contextSnippet: "Poids volumique en kN/m³ : ρh (kg/m³) multiplié par g = 9,81 m/s² donne des N/m³, divisés par 1000. Avec ρh en g/cm³ (ou t/m³), γh = 9,81 × ρh directement.",
     derivationLinks: {
       derivedFrom: ["F005", "F023"],
       derivesInto: ["F094"],
-      derivationNote: "γh = ρh · g",
+      derivationNote: "γh = ρh · g / 1000 (ρh en kg/m³)",
     },
   },
 
@@ -2518,8 +2518,8 @@ export const FORMULAS: Formula[] = [
     chapter: CHAPITRE,
     pageNumber: 33,
     equationLatex:
-      "\\gamma_d = \\rho_d \\cdot g = 9.81\\,\\rho_d",
-    equationPlainText: "gamma_d = rho_d * g = 9.81 * rho_d",
+      "\\gamma_d = \\frac{g \\cdot \\rho_d}{1000} \\quad [\\text{kN/m}^3,\\ \\rho_d \\text{ en kg/m}^3]",
+    equationPlainText: "gamma_d = g * rho_d / 1000  [kN/m3, rho_d en kg/m3]",
     variables: [
       { symbol: "\\gamma_d", description: "Poids volumique sec", unit: "kN/m³" },
       { symbol: "\\rho_d", description: "Masse volumique sèche", unit: "kg/m³" },
@@ -2527,7 +2527,7 @@ export const FORMULAS: Formula[] = [
     ],
     keywords: ["gamma_d", "poids volumique sec", "Dia 33", "kN/m3"],
     contextSnippet:
-      "Dia. 33: conversion de la masse volumique sèche en poids volumique sec.",
+      "Dia. 33 : conversion de la masse volumique sèche en poids volumique sec ; ρd en kg/m³, d'où la division par 1000 pour des kN/m³.",
     derivationLinks: {
       derivedFrom: ["F027", "F093"],
       derivesInto: [],
