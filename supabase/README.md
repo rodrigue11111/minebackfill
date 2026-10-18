@@ -126,7 +126,8 @@ incrémentale par curseur), `lire_docs_classe` (enseignant), `lire_annotations`
 `poser_revue` et `retirer_revue` (enseignant ; la table `revues` n'a aucun
 droit d'écriture directe), `lire_mes_revues` (étudiant). Courbes de presse :
 documents « courbe » écrits par `ecrire_doc`, nettoyés par
-`purger_mes_courbes` (security invoker). Comptes (enseignant) :
+`purger_mes_courbes_ids` (et `purger_mes_courbes`, gardée pour les sites en
+cache ; security invoker). Comptes (enseignant) :
 `lister_comptes`, `definir_role`, `bloquer_compte`.
 
 Les fonctions `security definer` exécutables par `authenticated`
@@ -207,8 +208,20 @@ colonnes de matériaux détaillées : prendre le jeu d'essais pour cela.
 - **Conflits** : modifié sur deux appareils en même temps → les **deux
   versions** sont gardées ; la copie porte une marque « copie de conflit » et
   est **exclue des figures** du Labo.
-- **Courbes de presse** : restent sur l'appareil (lourdes). Une version venue
-  d'un autre appareil ne les efface pas.
+- **Courbes de presse** : envoyées à part de la synchronisation, après chaque
+  cycle, comme documents `courbe` : **un document par import**, id
+  `<idEprouvette>:<importeLe>`, contenu `{ eprouvetteId, gacheeId, importeLe,
+  colonnes }` (avant le 2026-10-18 : id = id de l'éprouvette, sans
+  `importeLe`, toujours lisibles, marqués « origine non vérifiée »). Jamais
+  lues par `lire_docs` ni par `lire_docs_classe` : lues à la demande. Une
+  version venue d'un autre appareil ne les efface pas, sauf si elle désigne
+  un autre import. Nettoyage : `purger_mes_courbes_ids` (rend les ids
+  purgés ; le site n'envoie aucune courbe tant qu'elle manque) ;
+  `purger_mes_courbes` (retour entier) est **gardée** pour les sites encore
+  en cache et applique la même règle. **Ordre de déploiement** : relancer
+  `schema.sql` (ces deux fonctions) avant ou juste après la mise en ligne du
+  site ; tant que ce n'est pas fait, les courbes restent sur les appareils
+  (la page Compte le dit).
 - **Déconnexion** : les données locales restent ; les modifications en
   attente partiront à la prochaine connexion sur cet appareil.
 - **Interrupteur de secours** : `NEXT_PUBLIC_SYNCHRO_V2=false` (Vercel, puis
