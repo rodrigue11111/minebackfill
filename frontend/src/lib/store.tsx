@@ -165,64 +165,72 @@ export interface LiantCatalogueItem {
   origine?: MaterialOrigine;
 }
 
+/**
+ * Valeur saisie d'un formulaire de Calculs : `undefined` = champ vide, 0 =
+ * zéro tapé (depuis 2026-10 ; avant, le vide était stocké comme 0 et un w₀ ou
+ * un Bw nuls étaient indiscernables d'un champ laissé vide). Les compteurs
+ * (nombre de recettes, de moules) restent des entiers.
+ */
+export type Saisie = number | undefined;
+
 export interface CwState {
-  solid_mass_pct: number;
-  saturation_pct: number;
-  residue_sg: number;
-  residue_w_pct: number;
+  solid_mass_pct: Saisie;
+  saturation_pct: Saisie;
+  residue_sg: Saisie;
+  residue_w_pct: Saisie;
   num_recipes: 1 | 2 | 3 | 4;
   desired_qty: number;
-  safety_factor: number;
-  binder_pct: number[];
+  safety_factor: Saisie;
+  binder_pct: Saisie[];
 }
 
 export interface WbState {
-  saturation_pct: number;
-  residue_sg: number;
-  residue_w_pct: number;
+  saturation_pct: Saisie;
+  residue_sg: Saisie;
+  residue_w_pct: Saisie;
   num_recipes: 1 | 2 | 3 | 4;
   desired_qty: number;
-  safety_factor: number;
-  binder_pct: number[];
-  wc_ratio: number[];
+  safety_factor: Saisie;
+  binder_pct: Saisie[];
+  wc_ratio: Saisie[];
 }
 
 export interface SlumpState {
   cone_type: "mini" | "grand";
-  slump_mm: number;
-  saturation_pct: number;
-  residue_sg: number;
-  residue_w_pct: number;
+  slump_mm: Saisie;
+  saturation_pct: Saisie;
+  residue_sg: Saisie;
+  residue_w_pct: Saisie;
   num_recipes: 1 | 2 | 3 | 4;
   desired_qty: number;
-  safety_factor: number;
-  binder_pct: number[];
+  safety_factor: Saisie;
+  binder_pct: Saisie[];
 }
 
 export interface RpgCwState {
-  solid_mass_pct: number;
-  saturation_pct: number;
-  residue_sg: number;
-  residue_w_pct: number;
-  aggregate_fraction_pct: number;  // A_m%
-  aggregate_sg: number;            // Gs du granulat
+  solid_mass_pct: Saisie;
+  saturation_pct: Saisie;
+  residue_sg: Saisie;
+  residue_w_pct: Saisie;
+  aggregate_fraction_pct: Saisie;  // A_m%
+  aggregate_sg: Saisie;            // Gs du granulat
   num_recipes: 1 | 2 | 3 | 4;
   desired_qty: number;
-  safety_factor: number;
-  binder_pct: number[];
+  safety_factor: Saisie;
+  binder_pct: Saisie[];
 }
 
 export interface RpgWbState {
-  saturation_pct: number;
-  residue_sg: number;
-  residue_w_pct: number;
-  aggregate_fraction_pct: number;
-  aggregate_sg: number;
+  saturation_pct: Saisie;
+  residue_sg: Saisie;
+  residue_w_pct: Saisie;
+  aggregate_fraction_pct: Saisie;
+  aggregate_sg: Saisie;
   num_recipes: 1 | 2 | 3 | 4;
   desired_qty: number;
-  safety_factor: number;
-  binder_pct: number[];
-  wc_ratio: number[];
+  safety_factor: Saisie;
+  binder_pct: Saisie[];
+  wc_ratio: Saisie[];
 }
 
 export interface EssaiInputsState {
@@ -265,15 +273,15 @@ export interface RpgEssaiState {
 
 export interface RrcState {
   quantity_mode: "volume" | "masse";
-  volume_m3: number;
-  wet_density_kg_m3: number;
-  total_mass_kg: number;
+  volume_m3: Saisie;
+  wet_density_kg_m3: Saisie;
+  total_mass_kg: Saisie;
   num_recipes: 1 | 2 | 3 | 4;
-  binder_pct: number[];   // Bw (%) par recette
-  wc_ratio: number[];     // W/C par recette
-  cement_sg: number;
-  retarder_d0: number;    // ml/100 kg de ciment
-  retarder_density: number; // g/ml
+  binder_pct: Saisie[];   // Bw (%) par recette
+  wc_ratio: Saisie[];     // W/C par recette
+  cement_sg: Saisie;
+  retarder_d0: Saisie;    // ml/100 kg de ciment
+  retarder_density: Saisie; // g/ml
 }
 
 export type RpcCwResponse = MixResult;
@@ -591,7 +599,7 @@ interface AppState {
 
   cw: CwState;
   setCw: (patch: Partial<CwState>) => void;
-  setCwRecipe: (index: number, patch: { binder_pct?: number }) => void;
+  setCwRecipe: (index: number, patch: { binder_pct?: Saisie }) => void;
   cwResult: RpcCwResponse | null;
   /** Empreinte des entrées de chaque résultat, prise au DÉPART du calcul (resultat-perime.ts). En mémoire seulement. */
   empreintesCalcul: Partial<Record<MethodResultKey, string>>;
@@ -601,14 +609,14 @@ interface AppState {
   setWb: (patch: Partial<WbState>) => void;
   setWbRecipe: (
     index: number,
-    patch: { binder_pct?: number; wc_ratio?: number }
+    patch: { binder_pct?: Saisie; wc_ratio?: Saisie }
   ) => void;
   wbResult: MixResult | null;
   setWbResult: PoserResultat<MixResult>;
 
   slump: SlumpState;
   setSlump: (patch: Partial<SlumpState>) => void;
-  setSlumpRecipe: (index: number, patch: { binder_pct?: number }) => void;
+  setSlumpRecipe: (index: number, patch: { binder_pct?: Saisie }) => void;
   slumpResult: MixResult | null;
   setSlumpResult: PoserResultat<MixResult>;
 
@@ -627,13 +635,13 @@ interface AppState {
 
   rpgCw: RpgCwState;
   setRpgCw: (patch: Partial<RpgCwState>) => void;
-  setRpgCwRecipe: (index: number, patch: { binder_pct?: number }) => void;
+  setRpgCwRecipe: (index: number, patch: { binder_pct?: Saisie }) => void;
   rpgCwResult: MixResult | null;
   setRpgCwResult: PoserResultat<MixResult>;
 
   rpgWb: RpgWbState;
   setRpgWb: (patch: Partial<RpgWbState>) => void;
-  setRpgWbRecipe: (index: number, patch: { binder_pct?: number; wc_ratio?: number }) => void;
+  setRpgWbRecipe: (index: number, patch: { binder_pct?: Saisie; wc_ratio?: Saisie }) => void;
   rpgWbResult: MixResult | null;
   setRpgWbResult: PoserResultat<MixResult>;
 
@@ -645,10 +653,12 @@ interface AppState {
 
   rrc: RrcState;
   setRrc: (patch: Partial<RrcState>) => void;
-  setRrcRecipe: (index: number, patch: { binder_pct?: number; wc_ratio?: number }) => void;
+  setRrcRecipe: (index: number, patch: { binder_pct?: Saisie; wc_ratio?: Saisie }) => void;
   rrcResult: RrcResultat | null;
   setRrcResult: PoserResultat<RrcResultat>;
 
+  /** Remet un formulaire de Calculs à ses valeurs par défaut (champs vides). */
+  reinitialiserMethode: (cle: CleEtatMethode) => void;
   fillTestData: () => void;
 
   units: UnitPreferences;
@@ -711,7 +721,50 @@ interface AppState {
   loadProductionLog: () => void;
 }
 
-const zeros4 = () => [0, 0, 0, 0];
+const vides4 = (): Saisie[] => [undefined, undefined, undefined, undefined];
+
+/**
+ * Valeurs par défaut des formulaires de Calculs : champs VIDES (undefined),
+ * un moule par recette, κ = 1. Source unique : état initial du magasin et
+ * bouton « Réinitialiser » (reinitialiserMethode).
+ */
+export const defautsCw = (): CwState => ({
+  solid_mass_pct: undefined, saturation_pct: undefined, residue_sg: undefined, residue_w_pct: undefined,
+  num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: vides4(),
+});
+export const defautsWb = (): WbState => ({
+  saturation_pct: undefined, residue_sg: undefined, residue_w_pct: undefined,
+  num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: vides4(), wc_ratio: vides4(),
+});
+export const defautsSlump = (): SlumpState => ({
+  cone_type: "mini", slump_mm: undefined, saturation_pct: undefined, residue_sg: undefined, residue_w_pct: undefined,
+  num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: vides4(),
+});
+export const defautsEssai = (): EssaiInputsState => ({ base_method: "dosage_cw", base_cw: undefined, base_wb: undefined, ajustements: [] });
+export const defautsRpgCw = (): RpgCwState => ({
+  solid_mass_pct: undefined, saturation_pct: undefined, residue_sg: undefined, residue_w_pct: undefined,
+  aggregate_fraction_pct: undefined, aggregate_sg: undefined,
+  num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: vides4(),
+});
+export const defautsRpgWb = (): RpgWbState => ({
+  saturation_pct: undefined, residue_sg: undefined, residue_w_pct: undefined,
+  aggregate_fraction_pct: undefined, aggregate_sg: undefined,
+  num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: vides4(), wc_ratio: vides4(),
+});
+export const defautsRpgEssai = (): RpgEssaiState => ({ base_method: "dosage_cw", base_cw: undefined, base_wb: undefined, ajustements: [] });
+/** RRC : valeurs prêtes pour la démonstration du cours (Dias 66-70). */
+export const defautsRrc = (): RrcState => ({
+  quantity_mode: "volume", volume_m3: 1000, wet_density_kg_m3: 2200, total_mass_kg: undefined,
+  num_recipes: 1, binder_pct: [5, 5, 6, 7], wc_ratio: [1, 1, 1, 1],
+  cement_sg: 3.15, retarder_d0: 100, retarder_density: 1.2,
+});
+
+/** Défauts par tranche d'état de méthode. */
+const DEFAUTS_METHODE = {
+  cw: defautsCw, wb: defautsWb, slump: defautsSlump, essai: defautsEssai,
+  rpgCw: defautsRpgCw, rpgWb: defautsRpgWb, rpgEssai: defautsRpgEssai, rrc: defautsRrc,
+} as const;
+export type CleEtatMethode = keyof typeof DEFAUTS_METHODE;
 const makeLiantId = () =>
   `liant_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -913,10 +966,10 @@ export function migrerMateriauxCloud(env: { v: number; data: unknown } | null | 
  * ressaisit pas d'une méthode à l'autre (Cw, E/L, prédictif, RPG).
  */
 const ETATS_RESIDU = ["cw", "wb", "slump", "rpgCw", "rpgWb"] as const;
-function partagerResidu(state: AppState, patch: { residue_sg?: number; residue_w_pct?: number }): Partial<AppState> {
-  const commun: { residue_sg?: number; residue_w_pct?: number } = {};
-  if (patch.residue_sg !== undefined) commun.residue_sg = patch.residue_sg;
-  if (patch.residue_w_pct !== undefined) commun.residue_w_pct = patch.residue_w_pct;
+function partagerResidu(state: AppState, patch: { residue_sg?: Saisie; residue_w_pct?: Saisie }): Partial<AppState> {
+  const commun: { residue_sg?: Saisie; residue_w_pct?: Saisie } = {};
+  if ("residue_sg" in patch) commun.residue_sg = patch.residue_sg;
+  if ("residue_w_pct" in patch) commun.residue_w_pct = patch.residue_w_pct;
   if (Object.keys(commun).length === 0) return {};
   return Object.fromEntries(ETATS_RESIDU.map((k) => [k, { ...state[k], ...commun }])) as Partial<AppState>;
 }
@@ -1170,16 +1223,7 @@ export const useStore = create<AppState>((set, get) => ({
   setSelectedMaterial: (role, id) =>
     set((state) => ({ selectedMaterials: { ...state.selectedMaterials, [role]: id } })),
 
-  cw: {
-    solid_mass_pct: 0,
-    saturation_pct: 0,
-    residue_sg: 0,
-    residue_w_pct: 0,
-    num_recipes: 1,
-    desired_qty: 1,
-    safety_factor: 1,
-    binder_pct: zeros4(),
-  },
+  cw: defautsCw(),
   setCw: (patch) =>
     set((state) => ({
       ...partagerResidu(state, patch),
@@ -1191,9 +1235,7 @@ export const useStore = create<AppState>((set, get) => ({
   setCwRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.cw.binder_pct];
-      if (patch.binder_pct !== undefined) {
-        binder_pct[index] = patch.binder_pct;
-      }
+      if ("binder_pct" in patch) binder_pct[index] = patch.binder_pct;
       return {
         cw: {
           ...state.cw,
@@ -1205,16 +1247,7 @@ export const useStore = create<AppState>((set, get) => ({
   cwResult: null,
   setCwResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "cwResult", res, empreinte)),
 
-  wb: {
-    saturation_pct: 0,
-    residue_sg: 0,
-    residue_w_pct: 0,
-    num_recipes: 1,
-    desired_qty: 1,
-    safety_factor: 1,
-    binder_pct: zeros4(),
-    wc_ratio: zeros4(),
-  },
+  wb: defautsWb(),
   setWb: (patch) =>
     set((state) => ({
       ...partagerResidu(state, patch),
@@ -1227,8 +1260,8 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => {
       const binder_pct = [...state.wb.binder_pct];
       const wc_ratio = [...state.wb.wc_ratio];
-      if (patch.binder_pct !== undefined) binder_pct[index] = patch.binder_pct;
-      if (patch.wc_ratio !== undefined) wc_ratio[index] = patch.wc_ratio;
+      if ("binder_pct" in patch) binder_pct[index] = patch.binder_pct;
+      if ("wc_ratio" in patch) wc_ratio[index] = patch.wc_ratio;
       return {
         wb: {
           ...state.wb,
@@ -1240,17 +1273,7 @@ export const useStore = create<AppState>((set, get) => ({
   wbResult: null,
   setWbResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "wbResult", res, empreinte)),
 
-  slump: {
-    cone_type: "mini",
-    slump_mm: 0,
-    saturation_pct: 0,
-    residue_sg: 0,
-    residue_w_pct: 0,
-    num_recipes: 1,
-    desired_qty: 1,
-    safety_factor: 1,
-    binder_pct: zeros4(),
-  },
+  slump: defautsSlump(),
   setSlump: (patch) =>
     set((state) => ({
       ...partagerResidu(state, patch),
@@ -1262,7 +1285,7 @@ export const useStore = create<AppState>((set, get) => ({
   setSlumpRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.slump.binder_pct];
-      if (patch.binder_pct !== undefined) binder_pct[index] = patch.binder_pct;
+      if ("binder_pct" in patch) binder_pct[index] = patch.binder_pct;
       return {
         slump: {
           ...state.slump,
@@ -1273,12 +1296,7 @@ export const useStore = create<AppState>((set, get) => ({
   slumpResult: null,
   setSlumpResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "slumpResult", res, empreinte)),
 
-  essai: {
-    base_method: "dosage_cw",
-    base_cw: undefined,
-    base_wb: undefined,
-    ajustements: [],
-  },
+  essai: defautsEssai(),
   setEssai: (patch) =>
     set((state) => ({
       essai: {
@@ -1301,60 +1319,33 @@ export const useStore = create<AppState>((set, get) => ({
   essaiResult: null,
   setEssaiResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "essaiResult", res, empreinte)),
 
-  rpgCw: {
-    solid_mass_pct: 0,
-    saturation_pct: 0,
-    residue_sg: 0,
-    residue_w_pct: 0,
-    aggregate_fraction_pct: 0,
-    aggregate_sg: 0,
-    num_recipes: 1,
-    desired_qty: 1,
-    safety_factor: 1,
-    binder_pct: zeros4(),
-  },
+  rpgCw: defautsRpgCw(),
   setRpgCw: (patch) =>
     set((state) => ({ ...partagerResidu(state, patch), rpgCw: { ...state.rpgCw, ...patch } })),
   setRpgCwRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.rpgCw.binder_pct];
-      if (patch.binder_pct !== undefined) binder_pct[index] = patch.binder_pct;
+      if ("binder_pct" in patch) binder_pct[index] = patch.binder_pct;
       return { rpgCw: { ...state.rpgCw, binder_pct } };
     }),
   rpgCwResult: null,
   setRpgCwResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rpgCwResult", res, empreinte)),
 
-  rpgWb: {
-    saturation_pct: 0,
-    residue_sg: 0,
-    residue_w_pct: 0,
-    aggregate_fraction_pct: 0,
-    aggregate_sg: 0,
-    num_recipes: 1,
-    desired_qty: 1,
-    safety_factor: 1,
-    binder_pct: zeros4(),
-    wc_ratio: zeros4(),
-  },
+  rpgWb: defautsRpgWb(),
   setRpgWb: (patch) =>
     set((state) => ({ ...partagerResidu(state, patch), rpgWb: { ...state.rpgWb, ...patch } })),
   setRpgWbRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.rpgWb.binder_pct];
       const wc_ratio = [...state.rpgWb.wc_ratio];
-      if (patch.binder_pct !== undefined) binder_pct[index] = patch.binder_pct;
-      if (patch.wc_ratio !== undefined) wc_ratio[index] = patch.wc_ratio;
+      if ("binder_pct" in patch) binder_pct[index] = patch.binder_pct;
+      if ("wc_ratio" in patch) wc_ratio[index] = patch.wc_ratio;
       return { rpgWb: { ...state.rpgWb, binder_pct, wc_ratio } };
     }),
   rpgWbResult: null,
   setRpgWbResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rpgWbResult", res, empreinte)),
 
-  rpgEssai: {
-    base_method: "dosage_cw",
-    base_cw: undefined,
-    base_wb: undefined,
-    ajustements: [],
-  },
+  rpgEssai: defautsRpgEssai(),
   setRpgEssai: (patch) =>
     set((state) => ({ rpgEssai: { ...state.rpgEssai, ...patch } })),
   setRpgEssaiAjustement: (index, patch) =>
@@ -1368,29 +1359,20 @@ export const useStore = create<AppState>((set, get) => ({
   setRpgEssaiResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rpgEssaiResult", res, empreinte)),
 
   // ── RRC ── valeurs par défaut prêtes pour la démo (Dias 66-70)
-  rrc: {
-    quantity_mode: "volume",
-    volume_m3: 1000,
-    wet_density_kg_m3: 2200,
-    total_mass_kg: 0,
-    num_recipes: 1,
-    binder_pct: [5, 5, 6, 7],
-    wc_ratio: [1, 1, 1, 1],
-    cement_sg: 3.15,
-    retarder_d0: 100,
-    retarder_density: 1.2,
-  },
+  rrc: defautsRrc(),
   setRrc: (patch) => set((state) => ({ rrc: { ...state.rrc, ...patch } })),
   setRrcRecipe: (index, patch) =>
     set((state) => {
       const binder_pct = [...state.rrc.binder_pct];
       const wc_ratio = [...state.rrc.wc_ratio];
-      if (patch.binder_pct !== undefined) binder_pct[index] = patch.binder_pct;
-      if (patch.wc_ratio !== undefined) wc_ratio[index] = patch.wc_ratio;
+      if ("binder_pct" in patch) binder_pct[index] = patch.binder_pct;
+      if ("wc_ratio" in patch) wc_ratio[index] = patch.wc_ratio;
       return { rrc: { ...state.rrc, binder_pct, wc_ratio } };
     }),
   rrcResult: null,
   setRrcResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rrcResult", res, empreinte)),
+
+  reinitialiserMethode: (cle) => set({ [cle]: DEFAUTS_METHODE[cle]() } as Partial<AppState>),
 
   fillTestData: () =>
     set((state) => {

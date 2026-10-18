@@ -12,7 +12,7 @@
 
 import { useState } from "react";
 import { amDepuisAv, avDepuisAm } from "@/lib/granulats";
-import { num } from "@/lib/format";
+import ChampNombre, { lireNombre } from "@/components/ui/ChampNombre";
 
 function arrondi(v: number): number {
   return Math.round(v * 10000) / 10000;
@@ -29,10 +29,11 @@ export default function ChampFractionGranulat({
   onChangeAm,
 }: {
   /** Valeur canonique : A_m% (Ma/(Ma+Mr)×100) — celle du store et du backend. */
-  amPct: number;
+  amPct: number | undefined;
   gsResidu: number;
   gsGranulat: number;
-  onChangeAm: (amPct: number) => void;
+  /** undefined : champ vidé. */
+  onChangeAm: (amPct: number | undefined) => void;
 }) {
   const [mode, setMode] = useState<"am" | "av">("am");
   // Tampon de frappe (mode volumique) : non nul pendant l'édition, pour ne
@@ -42,15 +43,9 @@ export default function ChampFractionGranulat({
   // Sans Gs valides, la conversion est impossible : on retombe sur Am.
   const modeEffectif: "am" | "av" = mode === "av" && gsOk ? "av" : "am";
 
-  const av = gsOk ? avDepuisAm(amPct || 0, gsResidu, gsGranulat) : null;
-  const valeurAffichee =
-    modeEffectif === "am"
-      ? amPct || ""
-      : saisieAv !== null
-        ? saisieAv
-        : av !== null
-          ? arrondi(av) || ""
-          : "";
+  const av = gsOk && amPct !== undefined ? avDepuisAm(amPct, gsResidu, gsGranulat) : null;
+  // Mode volumique : le texte tapé pendant l'édition, sinon l'Av re-dérivé d'Am.
+  const valeurAv = saisieAv !== null ? saisieAv : av !== null ? String(arrondi(av)) : "";
 
   const equivalence =
     !gsOk
@@ -94,27 +89,28 @@ export default function ChampFractionGranulat({
           {boutonMode("av", "% volume", !gsOk)}
         </span>
       </div>
-      <input
-        type="number"
-        step="any"
-        min={0}
-        max={100}
-        id="fraction-granulat"
-        className="field-input"
-        placeholder={modeEffectif === "am" ? "ex : 30" : "ex : 33"}
-        value={valeurAffichee}
-        onChange={(e) => {
-          if (modeEffectif === "av") {
+      {modeEffectif === "am" ? (
+        <ChampNombre id="fraction-granulat" placeholder="ex : 30" value={amPct} onChange={onChangeAm} />
+      ) : (
+        <input
+          type="text"
+          inputMode="decimal"
+          id="fraction-granulat"
+          className="field-input"
+          placeholder="ex : 33"
+          value={valeurAv}
+          onChange={(e) => {
             setSaisieAv(e.target.value);
-            const am = amDepuisAv(borne0a100(num(e.target.value)), gsResidu, gsGranulat);
+            if (e.target.value.trim() === "") { onChangeAm(undefined); return; }
+            const n = lireNombre(e.target.value);
+            if (n === undefined) return;
+            const am = amDepuisAv(borne0a100(n), gsResidu, gsGranulat);
             // Précision pleine : l'arrondi n'existe qu'à l'AFFICHAGE.
-            onChangeAm(am !== null ? borne0a100(am) : 0);
-          } else {
-            onChangeAm(num(e.target.value));
-          }
-        }}
-        onBlur={() => setSaisieAv(null)}
-      />
+            onChangeAm(am !== null ? borne0a100(am) : undefined);
+          }}
+          onBlur={() => setSaisieAv(null)}
+        />
+      )}
       <p className="ui-champ-aide" style={{ margin: "6px 0 0" }}>
         {modeEffectif === "am"
           ? `Ma/(Ma+Mr)×100 : part du granulat dans les solides hors liant. ${equivalence}`

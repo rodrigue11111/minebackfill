@@ -75,3 +75,12 @@ describe("materiauxDepuisFormulation", () => {
     expect(JSON.stringify(m)).toBe("{}");
   });
 });
+
+describe("materiauxDepuisFormulation : champ laissé vide", () => {
+  it("rien de saisi dans le calcul : la bibliothèque donne Gs et w₀ ; un 0 saisi est gardé", () => {
+    const vide = materiauxDepuisFormulation(form({ selectedMaterials: { residueId: "res_laronde" }, inputs: { residue_sg: undefined, binder_pct: [null] } }), BIB);
+    expect(vide.residu).toMatchObject({ id: "res_laronde", gs: 3.1, w0Pct: 25 });
+    const sec = materiauxDepuisFormulation(form({ selectedMaterials: { residueId: "res_laronde" }, inputs: { residue_w_pct: 0 } }), BIB);
+    expect(sec.residu).toMatchObject({ gs: 3.1, w0Pct: 0 });
+  });
+});

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { balayerCourbesOrphelines, deplacerCourbesStockees } from "@/lib/courbes-client";
 import { loadVersioned, persistVersioned } from "@/lib/persisted";
-import { BROUILLON_KEY, BROUILLON_VERSION, brouillonModifie, extraireBrouillon, patchDepuisBrouillon } from "@/lib/brouillon-calculs";
+import { BROUILLON_KEY, BROUILLON_VERSION, brouillonModifie, extraireBrouillon, migrerBrouillon, patchDepuisBrouillon } from "@/lib/brouillon-calculs";
 
 /**
  * Hydrate l'état du store depuis localStorage une fois, au montage global de
@@ -69,7 +69,7 @@ export default function StoreHydrator() {
   // fois au démarrage, puis rangé après chaque modification (courte pause, et
   // tout de suite quand la page se ferme). Avant, un rechargement vidait tout.
   useEffect(() => {
-    const brut = loadVersioned<unknown>(BROUILLON_KEY, BROUILLON_VERSION, (d) => d, null);
+    const brut = loadVersioned<unknown>(BROUILLON_KEY, BROUILLON_VERSION, migrerBrouillon, null);
     if (brut) useStore.setState(patchDepuisBrouillon(useStore.getState() as never, brut) as never);
     let minuteur: number | undefined;
     const ranger = () => {

@@ -22,6 +22,8 @@ import { Champ } from "@/components/ui/Champ";
 import { Bandeau } from "@/components/ui/Bandeau";
 import { Icone } from "@/components/ui/Icones";
 import Segmente from "@/components/ui/Segmente";
+import { lireNombre } from "@/components/ui/ChampNombre";
+import { fractionsCompletes } from "@/lib/liants";
 
 const CONTAINER_TYPES = [
   { value: "section_hauteur", label: "Section et hauteur", court: "Section" },
@@ -83,16 +85,22 @@ export default function GeneralInfoPage() {
       | "binder3_fraction_pct",
     value: string
   ) => {
-    if (value === "") {
+    if (value.trim() === "") {
       setGeneral({ [field]: undefined });
-    } else if (field === "container_section") {
-      setGeneral({ [field]: toStoreArea(Number(value), units.area) });
+      return;
+    }
+    // Virgule acceptée (« 20,5 ») ; une saisie illisible n'écrit rien (le
+    // texte tapé reste affiché, la valeur gardée revient en quittant le champ).
+    const n = lireNombre(value);
+    if (n === undefined) return;
+    if (field === "container_section") {
+      setGeneral({ [field]: toStoreArea(n, units.area) });
     } else if (field === "container_volume_m3") {
-      setGeneral({ [field]: toStoreVolume(Number(value), volumeUnit) });
+      setGeneral({ [field]: toStoreVolume(n, volumeUnit) });
     } else if (dimFields.has(field)) {
-      setGeneral({ [field]: toStoreLength(Number(value), units.length) });
+      setGeneral({ [field]: toStoreLength(n, units.length) });
     } else {
-      setGeneral({ [field]: Number(value) });
+      setGeneral({ [field]: n });
     }
   };
 
@@ -123,7 +131,7 @@ export default function GeneralInfoPage() {
   const binders = lireBinders(general);
   const fractionTotal = binders.reduce((s, b) => s + (b.fraction_pct ?? 0), 0);
 
-  const fractionOk = Math.abs(fractionTotal - 100) < 0.01;
+  const fractionOk = fractionsCompletes(fractionTotal);
   // Plusieurs composants : leurs fractions doivent faire 100 % (le calcul les
   // refuse sinon, et le Labo afficherait « 60 %, 60 % »).
   const fractionsOk = binders.length < 2 || fractionOk;
@@ -138,7 +146,9 @@ export default function GeneralInfoPage() {
   // décimales) keyé par index, comme les dimensions.
   const editBinderFrac = (i: number, raw: string) => {
     setDraftNum((d) => ({ ...d, [`binder_frac_${i}`]: raw }));
-    updateBinder(i, { fraction_pct: raw === "" ? undefined : Number(raw) });
+    if (raw.trim() === "") { updateBinder(i, { fraction_pct: undefined }); return; }
+    const n = lireNombre(raw);
+    if (n !== undefined) updateBinder(i, { fraction_pct: n });
   };
 
   const champDim = (field: Parameters<typeof numChange>[0], libelle: string, unite: string, valeur: number | null | undefined, placeholder?: string) => (
@@ -295,7 +305,7 @@ export default function GeneralInfoPage() {
                       </select>
                     </Champ>
                     <Champ libelle="Fraction massique" unite="%">
-                      <input type="number" step="any" min={0} max={100} className="field-input"
+                      <input type="text" inputMode="decimal" className="field-input"
                         value={showNum(`binder_frac_${idx}`, b.fraction_pct)}
                         onChange={(e) => editBinderFrac(idx, e.target.value)}
                         onBlur={() => commitNum(`binder_frac_${idx}`)}
@@ -316,7 +326,7 @@ export default function GeneralInfoPage() {
 
           {binders.length >= 2 && (
             <Bandeau ton={fractionOk ? "succes" : "alerte"}>
-              Total des fractions : <strong>{fractionTotal.toFixed(1)} %</strong>
+              Total des fractions : <strong>{fractionTotal.toLocaleString("fr-CA", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %</strong>
               {!fractionOk && ". La somme doit être égale à 100 %."}
             </Bandeau>
           )}

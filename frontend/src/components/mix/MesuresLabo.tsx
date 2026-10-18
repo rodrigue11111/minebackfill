@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { calculeMesures, type MesureLabo } from "@/lib/mesures";
 import { fmt, TIRET } from "@/lib/format";
 import { CardSection, Field, GrilleChamps, PointRecette } from "@/components/mix/champs";
+import ChampNombre from "@/components/ui/ChampNombre";
 
 /**
  * Bloc « Paramètres mesurés au laboratoire » de la feuille Intra 2017
@@ -24,10 +26,13 @@ interface RecetteCalculee {
   solids_mass_pct?: number | null;
 }
 
-const num = (v: string): number | undefined => {
-  const x = parseFloat(v);
-  return Number.isFinite(x) ? x : undefined;
-};
+/** Champs mesurés : une masse ou un affaissement négatifs sont refusés à la saisie. */
+const CHAMPS_MESURES: { cle: keyof MesureLabo; libelle: string; unite: string; refus: string }[] = [
+  { cle: "slump", libelle: "Affaissement mesuré", unite: "mm", refus: "Un affaissement ne peut pas être négatif." },
+  { cle: "tare", libelle: "Tare", unite: "g", refus: "Une masse ne peut pas être négative." },
+  { cle: "mh", libelle: "Tare + pâte humide m_h", unite: "g", refus: "Une masse ne peut pas être négative." },
+  { cle: "ms", libelle: "Tare + pâte sèche m_s", unite: "g", refus: "Une masse ne peut pas être négative." },
+];
 
 function Ecart({ mesure, calcule }: { mesure: number | null; calcule: number | null | undefined }) {
   if (mesure === null || calcule === null || calcule === undefined) return null;
@@ -65,6 +70,8 @@ export default function MesuresLabo({
     next[i] = { ...next[i], ...patch };
     onChange(next);
   };
+  // Message de la saisie refusée en cours, par champ (« recette-clé »).
+  const [refus, setRefus] = useState<Record<string, string | null>>({});
 
   return (
     <CardSection
@@ -81,22 +88,13 @@ export default function MesuresLabo({
             <div key={i} className="mix-recette">
               <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
               <GrilleChamps>
-                <Field label="Affaissement mesuré" unit="mm">
-                  <input type="number" step="any" className="field-input" placeholder={TIRET}
-                    value={m.slump ?? ""} onChange={(e) => setMesure(i, { slump: num(e.target.value) })} />
-                </Field>
-                <Field label="Tare" unit="g">
-                  <input type="number" step="any" className="field-input" placeholder={TIRET}
-                    value={m.tare ?? ""} onChange={(e) => setMesure(i, { tare: num(e.target.value) })} />
-                </Field>
-                <Field label="Tare + pâte humide m_h" unit="g">
-                  <input type="number" step="any" className="field-input" placeholder={TIRET}
-                    value={m.mh ?? ""} onChange={(e) => setMesure(i, { mh: num(e.target.value) })} />
-                </Field>
-                <Field label="Tare + pâte sèche m_s" unit="g">
-                  <input type="number" step="any" className="field-input" placeholder={TIRET}
-                    value={m.ms ?? ""} onChange={(e) => setMesure(i, { ms: num(e.target.value) })} />
-                </Field>
+                {CHAMPS_MESURES.map(({ cle, libelle, unite, refus: messageRefus }) => (
+                  <Field key={cle} label={libelle} unit={unite} erreur={refus[`${i}-${cle}`]}>
+                    <ChampNombre placeholder={TIRET} min={0} messageRefus={messageRefus}
+                      value={m[cle]} onChange={(n) => setMesure(i, { [cle]: n })}
+                      onRefus={(msg) => setRefus((r) => ({ ...r, [`${i}-${cle}`]: msg }))} />
+                  </Field>
+                ))}
               </GrilleChamps>
               {slumpCibleMm !== undefined && slumpCibleMm > 0 && m.slump !== undefined && (
                 <div style={{ marginTop: 10, fontSize: 13.5, color: "var(--texte)" }}>

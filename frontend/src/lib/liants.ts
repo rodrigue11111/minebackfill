@@ -21,3 +21,14 @@ export function nomLiant(general: GeneralInfo, catalogue: LiantCatalogueItem[] =
     return item?.nom ?? ref.code ?? `Liant ${n}`;
   };
 }
+
+/**
+ * Les fractions d'un agent liant composé font-elles 100 % ? La tolérance suit
+ * l'affichage (« Total des fractions : 100,0 % », une décimale) : un total qui
+ * s'affiche 100,0 est accepté (33,33 + 66,66 = 99,99 l'est). Le calcul
+ * normalise lui-même les fractions (construireSystemeLiant) : cette garde est
+ * celle de l'interface.
+ */
+export function fractionsCompletes(total: number, decimales = 1): boolean {
+  return Math.abs(total - 100) < 0.5 * 10 ** -decimales;
+}

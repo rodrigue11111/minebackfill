@@ -12,7 +12,7 @@ class MemStorage {
   get length() { return this.m.size; }
 }
 
-import { ANNOTATIONS_KEY, empreinteAuDepart, loadAnnotationsFromStorage, persistAnnotations, useStore } from "./store";
+import { ANNOTATIONS_KEY, defautsCw, defautsWb, empreinteAuDepart, loadAnnotationsFromStorage, persistAnnotations, useStore } from "./store";
 import { chargerEtatSync, sauverEtatSync } from "./sync-etat";
 import { etatInitial } from "./sync-moteur";
 import { resultatPerime } from "./resultat-perime";
@@ -518,5 +518,56 @@ describe("store — recharger un résultat : Gs et w₀ partagés", () => {
       expect([k, s()[k].residue_sg, s()[k].residue_w_pct]).toEqual([k, 3.05, 24]);
     }
     expect(resultatPerime(s() as never, "cwResult", s().empreintesCalcul.cwResult)).toBe(false);
+  });
+});
+
+describe("store — champ vide distinct de zéro (2026-10)", () => {
+  it("défauts : champs saisis vides, un moule, κ = 1 ; un 0 tapé reste 0", () => {
+    useStore.setState({ cw: defautsCw(), wb: defautsWb() });
+    const s = () => useStore.getState();
+    expect(s().cw).toMatchObject({ residue_sg: undefined, residue_w_pct: undefined, solid_mass_pct: undefined, desired_qty: 1, safety_factor: 1 });
+    expect(s().cw.binder_pct).toEqual([undefined, undefined, undefined, undefined]);
+    s().setCw({ residue_w_pct: 0 });
+    expect(s().cw.residue_w_pct).toBe(0);
+    s().setCwRecipe(0, { binder_pct: 0 });
+    expect(s().cw.binder_pct[0]).toBe(0);
+    s().setCwRecipe(0, { binder_pct: undefined });
+    expect(s().cw.binder_pct[0]).toBeUndefined();
+  });
+
+  it("Gs et w₀ partagés : un champ vidé se vide aussi dans les autres méthodes", () => {
+    const s = () => useStore.getState();
+    s().setCw({ residue_sg: 3.1 });
+    expect(s().wb.residue_sg).toBe(3.1);
+    s().setWb({ residue_sg: undefined });
+    expect(s().cw.residue_sg).toBeUndefined();
+    expect(s().rpgCw.residue_sg).toBeUndefined();
+  });
+
+  it("« Réinitialiser » : la tranche revient à ses défauts, les autres sont intactes", () => {
+    const s = () => useStore.getState();
+    s().setCw({ solid_mass_pct: 72, residue_sg: 3.2 });
+    s().setWb({ saturation_pct: 95 });
+    s().reinitialiserMethode("cw");
+    expect(s().cw).toEqual(defautsCw());
+    expect(s().wb.saturation_pct).toBe(95);
+    expect(s().wb.residue_sg).toBe(3.2); // partagé avant la remise à zéro, gardé par E/L
+    s().setRrc({ volume_m3: 5 });
+    s().reinitialiserMethode("rrc");
+    expect(s().rrc.volume_m3).toBe(1000);
+  });
+
+  it("une sauvegarde ancienne (zéros) se recharge telle quelle : 0 est la valeur qui a servi au calcul", () => {
+    const s = () => useStore.getState();
+    useStore.setState({
+      savedResults: [{
+        id: "sr_zeros", savedAt: "2026-09-01T12:00:00.000Z", label: "Avant", category: "RPC", method: "dosage_cw",
+        general: { ...s().general }, recipes: [{ bw_mass_pct: 4.5 }] as never,
+        inputs: { solid_mass_pct: 75, saturation_pct: 100, residue_sg: 3.05, residue_w_pct: 0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [4.5, 0, 0, 0] },
+      }],
+    });
+    expect(s().restoreSavedResult("sr_zeros")).toBe(true);
+    expect(s().cw.residue_w_pct).toBe(0);
+    expect(s().cw.binder_pct).toEqual([4.5, 0, 0, 0]);
   });
 });
