@@ -1,6 +1,6 @@
 # Dictionnaire des données : jeu d'essais MineBackfill
 
-Version du dictionnaire : 1
+Version du dictionnaire : 2
 
 Ce document décrit le **jeu d'essais** que l'enseignant exporte depuis la page
 **Classe** (menu « Exporter », rubrique « Jeu d'essais »). Il est destiné à
@@ -80,7 +80,8 @@ publique. Le manifeste en donne la liste (`textes_libres`).
   fois est gardée en double chez l'étudiant ; seule l'originale est exportée.
 - **Matériaux.** `materiaux_source` dit d'où viennent les colonnes de
   matériaux : la fiche d'essai de la gâchée, ou, pour une gâchée antérieure à
-  la fiche, sa formulation d'origine. La table `materiaux` décrit chaque
+  la fiche (ou pour un groupe que la fiche n'a pas : résidu, granulat ou
+  liants), sa formulation d'origine. La table `materiaux` décrit chaque
   matériau une fois ; elle se joint à `essais` par `residu_ref`,
   `granulat_ref` ou `liant1_code`, `liant2_code`, `liant3_code` (colonne
   `ref`, avec `type`).
@@ -108,15 +109,15 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `gachee_date` | Date de gâchée |  | date | Jour de création de la gâchée (AAAA-MM-JJ). |
 | `gachee_statut` | Statut de la gâchée |  | code | brouillon : en cours de saisie ; terminee : déclarée terminée par l'étudiant. |
 | `categorie` | Catégorie de remblai |  | code | RPC : remblai en pâte cimenté ; RPG : remblai en pâte avec granulat ; RRC : remblai rocheux cimenté. |
-| `formulation_ref` | Formulation (référence) |  | texte | Identifiant aléatoire de la formulation d'origine chez l'opérateur : regroupe les gâchées d'une même formulation. Vide si la gâchée n'en a pas. |
+| `formulation_ref` | Formulation (référence) |  | texte | Référence de la formulation d'origine (« f- » et une empreinte du compte et de l'identifiant de la formulation) : regroupe les gâchées d'une même formulation, sans dater la sauvegarde. Vide si la gâchée n'en a pas. |
 | `recette` | Recette |  | entier | Numéro de la recette dans la formulation (1, 2, …). |
 | `solveur_version` | Version des formules |  | texte | Version des formules de l'application qui ont calculé la recette. |
 | `cw_pct` | Pourcentage solide massique Cw visé | % | nombre | Cw de la recette calculée (instantané de la gâchée, sinon relu dans la formulation d'origine). |
 | `el_ratio` | Rapport eau/liant E/L visé |  | nombre | Rapport massique eau/liant de la recette calculée. Sans unité. |
 | `bw_pct` | Taux massique de liant Bw visé | % | nombre | Masse de liant / masse sèche de résidu (et de granulat en RPG), de la recette calculée. |
 | `w_pct` | Teneur en eau w visée | % | nombre | Teneur en eau massique de la recette calculée. |
-| `materiaux_source` | Origine des matériaux |  | code | fiche : matériaux de la fiche d'essai de la gâchée ; formulation : déduits de la formulation d'origine (gâchée antérieure à la fiche d'essai) ; vide : inconnus. |
-| `residu_ref` | Résidu (référence) |  | texte | Identifiant du résidu dans le catalogue, sinon « instantane:residu:<nom> ». Jointure avec la table materiaux. |
+| `materiaux_source` | Origine des matériaux |  | code | fiche : matériaux de la fiche d'essai de la gâchée ; formulation : déduits de la formulation d'origine (gâchée antérieure à la fiche d'essai) ; fiche_et_formulation : fiche partielle, les groupes absents (résidu, granulat ou liants) relus dans la formulation ; vide : inconnus. |
+| `residu_ref` | Résidu (référence) |  | texte | Identifiant du résidu dans le catalogue, sinon « instantane:residu:<empreinte du nom et du Gs> » (le nom n'y paraît pas). Jointure avec la table materiaux. |
 | `residu_nom` | Résidu |  | texte libre | Nom du résidu, tel que saisi ou repris du catalogue. |
 | `residu_gs` | Densité relative des grains Gs du résidu |  | nombre | Gs du résidu entré dans le calcul de la recette. Sans unité. |
 | `residu_w0_pct` | Teneur en eau initiale w₀ du résidu (calcul) | % | nombre | w₀ du résidu entré dans le calcul de la recette (la valeur mesurée le jour de la gâchée est w0_mesure_pct). |
@@ -128,17 +129,17 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `residu_soufre_pct` | Soufre du résidu | % | nombre | Teneur massique en soufre total. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
 | `residu_phyllosilicates_pct` | Phyllosilicates du résidu | % | nombre | Teneur massique en phyllosilicates (argiles, micas…). Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
 | `residu_muscovite_pct` | Muscovite du résidu | % | nombre | Teneur massique en muscovite. Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée. |
-| `granulat_ref` | Granulat (référence) |  | texte | Identifiant du granulat dans le catalogue, sinon « instantane:granulat:<nom> ». RPG seulement. |
+| `granulat_ref` | Granulat (référence) |  | texte | Identifiant du granulat dans le catalogue, sinon « instantane:granulat:<empreinte du nom et du Gs> ». RPG seulement. |
 | `granulat_nom` | Granulat |  | texte libre | Nom du granulat, tel que saisi. RPG seulement. |
 | `granulat_gs` | Densité relative des grains Gs du granulat |  | nombre | Gs du granulat entré dans le calcul. Sans unité. RPG seulement. |
 | `nb_liants` | Nombre de composants du liant |  | entier | Nombre de composants du liant (ciment, laitier, cendres…). Les trois premiers ont leurs colonnes ; tous figurent dans « liants ». |
-| `liant1_code` | Liant, composant 1 |  | code | Code du composant 1 du liant dans le catalogue des liants (ex. CP10, SLAG). |
+| `liant1_code` | Liant, composant 1 |  | code | Code du composant 1 du liant dans le catalogue des liants (ex. CP10, SLAG) ; sinon son identifiant, ou une référence d'instantané (jamais le nom). Un liant personnel porte le code saisi par l'étudiant. |
 | `liant1_pct` | Proportion du composant 1 dans le liant | % | nombre | Part massique du composant 1 dans le liant. |
-| `liant2_code` | Liant, composant 2 |  | code | Code du composant 2 du liant dans le catalogue des liants (ex. CP10, SLAG). |
+| `liant2_code` | Liant, composant 2 |  | code | Code du composant 2 du liant dans le catalogue des liants (ex. CP10, SLAG) ; sinon son identifiant, ou une référence d'instantané (jamais le nom). Un liant personnel porte le code saisi par l'étudiant. |
 | `liant2_pct` | Proportion du composant 2 dans le liant | % | nombre | Part massique du composant 2 dans le liant. |
-| `liant3_code` | Liant, composant 3 |  | code | Code du composant 3 du liant dans le catalogue des liants (ex. CP10, SLAG). |
+| `liant3_code` | Liant, composant 3 |  | code | Code du composant 3 du liant dans le catalogue des liants (ex. CP10, SLAG) ; sinon son identifiant, ou une référence d'instantané (jamais le nom). Un liant personnel porte le code saisi par l'étudiant. |
 | `liant3_pct` | Proportion du composant 3 dans le liant | % | nombre | Part massique du composant 3 dans le liant. |
-| `liants` | Composition du liant |  | texte | Tous les composants, « code proportion % » séparés par « + ». |
+| `liants` | Composition du liant |  | texte | Tous les composants, « code proportion % » séparés par « + » (même référence que liantN_code). |
 | `lot_residu` | Lot de résidu |  | texte libre | Lot du résidu employé, tel que saisi. |
 | `lot_granulat` | Lot de granulat |  | texte libre | Lot du granulat employé, tel que saisi. |
 | `lot_liant` | Lot de liant |  | texte libre | Lot du liant employé, tel que saisi. |
@@ -173,7 +174,7 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `hauteur_mm` | Hauteur de l'éprouvette | mm | nombre | Hauteur de l'éprouvette (presse ou saisie). |
 | `masse_g` | Masse de l'éprouvette | g | nombre | Masse de l'éprouvette (presse ou pesée). |
 | `ucs_kpa` | Résistance en compression uniaxiale (UCS) | kPa | nombre | Contrainte retenue par l'application (ASTM C39/C39M) : la contrainte directe (presse ou saisie) si elle existe, sinon F / A avec A = π·d²/4. |
-| `ucs_source` | Origine de l'UCS |  | code | presse : contrainte importée du fichier de la presse ; saisie : contrainte saisie directement ; calcul_fa : déduite de la charge et du diamètre ; vide : pas de mesure. |
+| `ucs_source` | Origine de l'UCS |  | code | presse : contrainte importée du fichier de la presse ; saisie : contrainte saisie directement ; calcul_fa : déduite de la charge et du diamètre ; vide : pas de mesure. Limite : une contrainte retouchée à la main après un import reste « presse » (l'application ne garde pas l'origine de chaque saisie). |
 | `retenu` | Essai retenu |  | booléen | L'essai entre dans les moyennes de l'application : éprouvette écrasée, mesure exploitable, non exclue (règle essaiValide). |
 | `exclu` | Exclu par l'étudiant |  | booléen | L'étudiant a écarté cette valeur de la moyenne (valeur aberrante). |
 | `exclusion_motif` | Motif de l'exclusion |  | texte libre | Justification de l'exclusion, telle que saisie. |
@@ -243,11 +244,11 @@ l'instantané de la gâchée.
 | `exporte_le` | date et heure de l'export (ISO 8601, UTC) |
 | `session` | session exportée (« Toutes les sessions », « Sans session » ou son nom) |
 | `selection` | toutes les gâchées, ou seulement celles acceptées par l'enseignant et non modifiées depuis |
-| `nb_operateurs`, `nb_gachees`, `nb_eprouvettes`, `nb_essais_retenus`, `nb_materiaux` | comptes du jeu |
+| `nb_operateurs`, `nb_gachees`, `nb_eprouvettes`, `nb_essais_retenus`, `nb_materiaux` | comptes du jeu (`nb_essais_retenus` : essais retenus et non écartés par l'enseignant) |
 | `versions_solveur` | versions des formules présentes dans le jeu |
 | `pseudonymisation` | la règle du pseudonyme |
 | `champs_retires` | les champs exclus de l'export |
-| `textes_libres` | les colonnes en texte libre, à relire avant diffusion publique |
+| `textes_libres` | les colonnes qui peuvent contenir du texte saisi (texte libre, moule « autre », code d'un liant personnel), à relire avant diffusion publique |
 
 ## Accès direct (SQL)
 
@@ -268,3 +269,9 @@ essais ».
 - **Changer le sens d'une colonne** (unité, règle de calcul) : incrémenter
   `DICTIONNAIRE_VERSION` et la version en tête de ce document, et le dire dans
   la PR. Les jeux déjà exportés gardent leur numéro de version.
+- **Versions du dictionnaire** : 1 (2026-10-01), première version ; 2
+  (2026-10-18) : `formulation_ref` et les références d'instantané
+  (`residu_ref`, `granulat_ref`, `liantN_code`) deviennent des empreintes,
+  sans nom en clair ; `materiaux_source` gagne `fiche_et_formulation` ;
+  `nb_essais_retenus` ne compte plus les éprouvettes écartées par
+  l'enseignant.

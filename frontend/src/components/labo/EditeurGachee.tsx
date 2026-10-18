@@ -9,7 +9,10 @@
 // qu'une partie (CSS seulement, attribut data-vue).
 
 import { useState } from "react";
-import { MODES_CURE, TYPES_EAU, UNITES_DOSAGE_ADJUVANT, type Ajustement, type CureGachee, type Gachee, type MateriauxGachee } from "@/lib/gachee";
+import {
+  MODES_CURE, TYPES_EAU, UNITES_DOSAGE_ADJUVANT, groupeSansVide, materiauxSansVide,
+  type Ajustement, type CureGachee, type Gachee, type MateriauxGachee,
+} from "@/lib/gachee";
 import { completudeGachee, listeManquants } from "@/lib/completude";
 import type { Annotation } from "@/lib/annotations";
 import { agregerParAge } from "@/lib/eprouvette";
@@ -78,7 +81,9 @@ function LignesMateriau({ id, libelle, detail, items, snap, onChange }: {
       {choix === "autre" && (
         <LigneListe libelle={`Nom (${libelle.toLowerCase()})`} htmlFor={`${id}-nom`}>
           <input id={`${id}-nom`} className="field-input labo-champ-texte" value={snap?.nom ?? ""}
-            onChange={(e) => onChange({ nom: e.target.value })} />
+            // Saisie libre : plus aucune identité de bibliothèque (un id
+            // périmé ne doit pas survivre sous un autre nom).
+            onChange={(e) => onChange({ nom: e.target.value, id: undefined, catalogue: undefined, provenance: undefined })} />
         </LigneListe>
       )}
     </>
@@ -97,11 +102,13 @@ const TYPES_AJOUT: { valeur: Ajustement["type"]; libelle: string }[] = [
   { valeur: "granulat", libelle: "Granulat" }, { valeur: "liant", libelle: "Liant" },
 ];
 
-export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue }: {
+export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null }: {
   gachee: Gachee;
   maintenant: Date;
   /** Décision de l'enseignant sur cette gâchée (lue en ligne), s'il y en a une. */
   revue?: Revue;
+  /** Révision de cette gâchée connue en ligne : la revue dit si elle porte sur une version antérieure. */
+  revEnLigne?: number | null;
   /** Bibliothèque de matériaux (officiels et personnels) : choix du résidu et
    *  du granulat. Sans elle, le résidu se saisit en texte libre. */
   bibliotheque?: { residus: ResiduItem[]; granulats: GranulatItem[] };
@@ -128,9 +135,10 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
   const retirerAjustement = (id: string) =>
     onMaj({ ajustements: g.ajustements.filter((a) => a.id !== id) });
   // Groupes imbriqués de la fiche d'essai : toujours une copie complète du
-  // groupe (le magasin fusionne au premier niveau seulement).
-  const majMateriaux = (patch: Partial<MateriauxGachee>) => onMaj({ materiaux: { ...g.materiaux, ...patch } });
-  const majCure = (patch: Partial<CureGachee>) => onMaj({ cure: { ...g.cure, ...patch } });
+  // groupe (le magasin fusionne au premier niveau seulement), sans valeur
+  // vide : effacer un champ ne modifie pas la gâchée.
+  const majMateriaux = (patch: Partial<MateriauxGachee>) => onMaj({ materiaux: materiauxSansVide({ ...g.materiaux, ...patch }) });
+  const majCure = (patch: Partial<CureGachee>) => onMaj({ cure: groupeSansVide({ ...g.cure, ...patch }) });
 
   const fiche = completudeGachee(g);
   const manquants = listeManquants(fiche);
@@ -165,7 +173,7 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
         pastille={<>
           {g.statut === "terminee" ? <Pastille ton="succes">Terminée</Pastille> : <Pastille ton="alerte">Brouillon</Pastille>}
           {revue && (
-            <Pastille ton={revue.decision === "acceptee" ? "succes" : "danger"} title={revue.motif ?? undefined}>{libelleRevue(revue)}</Pastille>
+            <Pastille ton={revue.decision === "acceptee" ? "succes" : "danger"} title={revue.motif ?? undefined}>{libelleRevue(revue, revEnLigne)}</Pastille>
           )}
           <Pastille ton="neutre" title="Champs descriptifs renseignés. Rien n'est obligatoire : la fiche sert à la réutilisation des essais.">
             Fiche : {fiche.renseignes}/{fiche.total}

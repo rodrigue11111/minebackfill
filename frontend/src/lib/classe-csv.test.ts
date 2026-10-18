@@ -124,7 +124,7 @@ describe("export CSV de la classe", () => {
 
 describe("export CSV : revue de l'enseignant (colonnes à la fin)", () => {
   const etudiants = regrouper([ligne(gachee("g1"))], profils, sessions, "toutes");
-  const info = { decision: "refusee" as const, motif: "Pesées incomplètes.", ecartees: ["g1-2"], maj: "m", perimee: true };
+  const info = { decision: "refusee" as const, motif: "Pesées incomplètes.", ecartees: ["g1-2"], maj: "m", perimee: true, aRafraichir: false };
 
   it("éprouvettes : décision, motif, « modifiée depuis », éprouvette écartée ; vide sans revue", () => {
     const l = lignesCsvEprouvettes(etudiants, sessions, () => info);

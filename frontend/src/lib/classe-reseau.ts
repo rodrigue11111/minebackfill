@@ -397,7 +397,8 @@ export async function lireRevuesClasse(sb: SupabaseClient): Promise<RevueClasse[
     const { data, error } = await sb.from("revues")
       .select("owner_id,target_kind,target_id,target_rev,decision,motif,ecartees,updated_at")
       .eq("deleted", false)
-      .order("updated_at", { ascending: true }).order("owner_id", { ascending: true }).order("target_id", { ascending: true })
+      .order("updated_at", { ascending: true }).order("owner_id", { ascending: true })
+      .order("target_kind", { ascending: true }).order("target_id", { ascending: true })
       .range(debut, debut + PAGE - 1);
     if (error) {
       if (schemaPasAJour(error.code)) return null;

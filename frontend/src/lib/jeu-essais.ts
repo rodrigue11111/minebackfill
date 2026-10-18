@@ -29,15 +29,20 @@ import { sessionEffective, type Session } from "./sessions";
 import { completudeGachee } from "./completude";
 import { materiauxDepuisFormulation } from "./gachee-materiaux";
 import { securiserCsv, type CelluleCsv, type RevueDe } from "./classe-csv";
-import type { InfoRevue } from "./revues";
+import { accepteeTelleQuelle, type InfoRevue } from "./revues";
 import { fmtDate } from "./echeance-affichage";
 import { CARACTERISATION_GRANULAT, CARACTERISATION_RESIDU, type ChampCaracterisation, type GranulatItem, type ResiduItem } from "./materials";
 import type { LiantCatalogueItem } from "./store";
+import { empreinte } from "./sync-empreinte";
 
 /** Version du format du jeu d'essais (structure du JSON). */
 export const JEU_ESSAIS_VERSION = 1;
-/** Version du dictionnaire : à incrémenter quand une colonne change de sens. */
-export const DICTIONNAIRE_VERSION = 1;
+/** Version du dictionnaire : à incrémenter quand une colonne change de sens.
+ *  2 (2026-10-18) : formulation_ref et les références d'instantané
+ *  (residu_ref, granulat_ref, liantN_code) deviennent des empreintes ;
+ *  materiaux_source gagne fiche_et_formulation ; nb_essais_retenus sans les
+ *  éprouvettes écartées par l'enseignant. */
+export const DICTIONNAIRE_VERSION = 2;
 
 export type TypeColonne = "texte" | "texte libre" | "code" | "nombre" | "entier" | "date" | "booléen";
 export type Valeur = string | number | boolean | null;
@@ -47,6 +52,9 @@ export interface Colonne<C> {
   libelle: string;
   unite?: string;
   type: TypeColonne;
+  /** Peut contenir du texte saisi par l'étudiant (moule « autre », code d'un
+   *  liant personnel) : listé dans textes_libres du manifeste. */
+  libre?: true;
   description: string;
   val: (c: C) => Valeur;
 }
@@ -59,7 +67,7 @@ interface CtxGachee {
   g: Gachee;
   p: ParametresFormulation | undefined;
   m: MateriauxGachee;
-  materiauxSource: "fiche" | "formulation" | "";
+  materiauxSource: "fiche" | "formulation" | "fiche_et_formulation" | "";
   completude: number;
   /** Le résidu dans le catalogue de l'enseignant (sa caractérisation), s'il y est. */
   residuCatalogue?: ResiduItem;
@@ -97,16 +105,28 @@ const jour = (iso: string | undefined): string | null => {
 
 /**
  * Référence d'un matériau, commune aux tables essais et materiaux (jointure) :
- * pour un liant son code (colonnes liantN_code) ; pour un résidu ou un
- * granulat l'identifiant du catalogue ; sinon une clé construite depuis
- * l'instantané.
+ * pour un liant son code (colonnes liantN_code) ; sinon l'identifiant du
+ * catalogue ; sinon une clé d'instantané `instantane:<type>:<empreinte>`,
+ * empreinte du nom et du Gs : le nom (texte libre) n'y paraît jamais en
+ * clair, et deux matériaux homonymes de Gs différents restent distincts.
  */
-export function refMateriau(type: LigneMateriau["type"], m: { id?: string; nom?: string; code?: string } | undefined): string | null {
+export function refMateriau(type: LigneMateriau["type"], m: { id?: string; nom?: string; code?: string; gs?: number } | undefined): string | null {
   if (!m) return null;
   if (type === "liant" && txt(m.code)) return txt(m.code);
   if (m.id) return m.id;
   const nom = txt(m.code) ?? txt(m.nom);
-  return nom ? `instantane:${type}:${nom}` : null;
+  if (!nom && num(m.gs) === null) return null;
+  return `instantane:${type}:${empreinte(`${nom ?? ""}|${num(m.gs) ?? ""}`)}`;
+}
+
+/**
+ * Référence de la formulation d'origine : empreinte du compte et de son
+ * identifiant. Même formulation, même référence ; l'identifiant brut
+ * (`sr_<millisecondes>_…`) datait la sauvegarde, la référence ne date rien.
+ */
+export function refFormulation(ownerId: string, formulationId: string | undefined): string | null {
+  const id = txt(formulationId);
+  return id ? `f-${empreinte(`${ownerId}|${id}`)}` : null;
 }
 
 const liant = (c: CtxGachee, i: number) => c.m.liants?.[i];
@@ -137,8 +157,8 @@ const COLONNES_GACHEE: Colonne<CtxGachee>[] = [
     description: "brouillon : en cours de saisie ; terminee : déclarée terminée par l'étudiant." },
   { cle: "categorie", libelle: "Catégorie de remblai", type: "code", val: (c) => c.g.categorie ?? null,
     description: "RPC : remblai en pâte cimenté ; RPG : remblai en pâte avec granulat ; RRC : remblai rocheux cimenté." },
-  { cle: "formulation_ref", libelle: "Formulation (référence)", type: "texte", val: (c) => txt(c.g.formulationId),
-    description: "Identifiant aléatoire de la formulation d'origine chez l'opérateur : regroupe les gâchées d'une même formulation. Vide si la gâchée n'en a pas." },
+  { cle: "formulation_ref", libelle: "Formulation (référence)", type: "texte", val: (c) => refFormulation(c.ownerId, c.g.formulationId),
+    description: "Référence de la formulation d'origine (« f- » et une empreinte du compte et de l'identifiant de la formulation) : regroupe les gâchées d'une même formulation, sans dater la sauvegarde. Vide si la gâchée n'en a pas." },
   { cle: "recette", libelle: "Recette", type: "entier", val: (c) => (typeof c.g.recetteIndex === "number" ? c.g.recetteIndex + 1 : null),
     description: "Numéro de la recette dans la formulation (1, 2, …)." },
   { cle: "solveur_version", libelle: "Version des formules", type: "texte", val: (c) => txt(c.g.solverVersion),
@@ -152,9 +172,9 @@ const COLONNES_GACHEE: Colonne<CtxGachee>[] = [
   { cle: "w_pct", libelle: "Teneur en eau w visée", unite: "%", type: "nombre", val: (c) => num(c.p?.wPct),
     description: "Teneur en eau massique de la recette calculée." },
   { cle: "materiaux_source", libelle: "Origine des matériaux", type: "code", val: (c) => c.materiauxSource || null,
-    description: "fiche : matériaux de la fiche d'essai de la gâchée ; formulation : déduits de la formulation d'origine (gâchée antérieure à la fiche d'essai) ; vide : inconnus." },
+    description: "fiche : matériaux de la fiche d'essai de la gâchée ; formulation : déduits de la formulation d'origine (gâchée antérieure à la fiche d'essai) ; fiche_et_formulation : fiche partielle, les groupes absents (résidu, granulat ou liants) relus dans la formulation ; vide : inconnus." },
   { cle: "residu_ref", libelle: "Résidu (référence)", type: "texte", val: (c) => refMateriau("residu", c.m.residu),
-    description: "Identifiant du résidu dans le catalogue, sinon « instantane:residu:<nom> ». Jointure avec la table materiaux." },
+    description: "Identifiant du résidu dans le catalogue, sinon « instantane:residu:<empreinte du nom et du Gs> » (le nom n'y paraît pas). Jointure avec la table materiaux." },
   { cle: "residu_nom", libelle: "Résidu", type: "texte libre", val: (c) => txt(c.m.residu?.nom),
     description: "Nom du résidu, tel que saisi ou repris du catalogue." },
   { cle: "residu_gs", libelle: "Densité relative des grains Gs du résidu", type: "nombre", val: (c) => num(c.m.residu?.gs),
@@ -168,7 +188,7 @@ const COLONNES_GACHEE: Colonne<CtxGachee>[] = [
     description: `${ch.description} Lu dans le catalogue de l'enseignant au moment de l'export ; vide si le résidu n'y est pas ou si la valeur n'est pas renseignée.`,
   })),
   { cle: "granulat_ref", libelle: "Granulat (référence)", type: "texte", val: (c) => refMateriau("granulat", c.m.granulat),
-    description: "Identifiant du granulat dans le catalogue, sinon « instantane:granulat:<nom> ». RPG seulement." },
+    description: "Identifiant du granulat dans le catalogue, sinon « instantane:granulat:<empreinte du nom et du Gs> ». RPG seulement." },
   { cle: "granulat_nom", libelle: "Granulat", type: "texte libre", val: (c) => txt(c.m.granulat?.nom),
     description: "Nom du granulat, tel que saisi. RPG seulement." },
   { cle: "granulat_gs", libelle: "Densité relative des grains Gs du granulat", type: "nombre", val: (c) => num(c.m.granulat?.gs),
@@ -176,14 +196,15 @@ const COLONNES_GACHEE: Colonne<CtxGachee>[] = [
   { cle: "nb_liants", libelle: "Nombre de composants du liant", type: "entier", val: (c) => (c.m.liants ? c.m.liants.length : null),
     description: "Nombre de composants du liant (ciment, laitier, cendres…). Les trois premiers ont leurs colonnes ; tous figurent dans « liants »." },
   ...[1, 2, 3].flatMap((n): Colonne<CtxGachee>[] => [
-    { cle: `liant${n}_code`, libelle: `Liant, composant ${n}`, type: "code", val: (c) => txt(liant(c, n - 1)?.code) ?? txt(liant(c, n - 1)?.nom),
-      description: `Code du composant ${n} du liant dans le catalogue des liants (ex. CP10, SLAG).` },
+    { cle: `liant${n}_code`, libelle: `Liant, composant ${n}`, type: "code", libre: true, val: (c) => refMateriau("liant", liant(c, n - 1)),
+      description: `Code du composant ${n} du liant dans le catalogue des liants (ex. CP10, SLAG) ; sinon son identifiant, ou une référence d'instantané (jamais le nom). Un liant personnel porte le code saisi par l'étudiant.` },
     { cle: `liant${n}_pct`, libelle: `Proportion du composant ${n} dans le liant`, unite: "%", type: "nombre", val: (c) => num(liant(c, n - 1)?.fractionPct),
       description: `Part massique du composant ${n} dans le liant.` },
   ]),
-  { cle: "liants", libelle: "Composition du liant", type: "texte", description: "Tous les composants, « code proportion % » séparés par « + ».",
+  { cle: "liants", libelle: "Composition du liant", type: "texte", libre: true,
+    description: "Tous les composants, « code proportion % » séparés par « + » (même référence que liantN_code).",
     val: (c) => (c.m.liants?.length
-      ? c.m.liants.map((l) => `${l.code ?? l.nom ?? "?"}${l.fractionPct != null ? ` ${l.fractionPct.toLocaleString("fr-CA", { maximumFractionDigits: 2 })} %` : ""}`).join(" + ")
+      ? c.m.liants.map((l) => `${refMateriau("liant", l) ?? "?"}${l.fractionPct != null ? ` ${l.fractionPct.toLocaleString("fr-CA", { maximumFractionDigits: 2 })} %` : ""}`).join(" + ")
       : null) },
   { cle: "lot_residu", libelle: "Lot de résidu", type: "texte libre", val: (c) => txt(c.g.lotResidu), description: "Lot du résidu employé, tel que saisi." },
   { cle: "lot_granulat", libelle: "Lot de granulat", type: "texte libre", val: (c) => txt(c.g.lotGranulat), description: "Lot du granulat employé, tel que saisi." },
@@ -234,7 +255,7 @@ const COLONNES_EPROUVETTE: Colonne<CtxEssai>[] = [
   { cle: "essai_le", libelle: "Date d'essai", type: "date", val: (c) => (c.ep.statut === "ecrase" ? jour(c.ep.essai?.date) : null), description: "Jour de l'écrasement." },
   { cle: "age_reel_j", libelle: "Temps de cure réel", unite: "j", type: "nombre", val: (c) => (c.ep.statut === "ecrase" ? num(ageReelJours(c.ep)) : null),
     description: "Relevé par la presse s'il existe, sinon de la coulée au jour de l'essai." },
-  { cle: "moule", libelle: "Moule", type: "texte", val: (c) => txt(libelleMoule(c.ep)), description: "Moule nominal (« Cylindre 50 × 100 mm ») ou texte libre." },
+  { cle: "moule", libelle: "Moule", type: "texte", libre: true, val: (c) => txt(libelleMoule(c.ep)), description: "Moule nominal (« Cylindre 50 × 100 mm ») ou texte libre." },
   { cle: "moule_diametre_mm", libelle: "Diamètre du moule", unite: "mm", type: "nombre", val: (c) => num(c.ep.mouleDiametreMm),
     description: "Diamètre nominal du moule choisi parmi les moules proposés. Vide pour un moule saisi en texte libre." },
   { cle: "moule_hauteur_mm", libelle: "Hauteur du moule", unite: "mm", type: "nombre", val: (c) => num(c.ep.mouleHauteurMm), description: "Hauteur nominale du moule." },
@@ -245,7 +266,7 @@ const COLONNES_EPROUVETTE: Colonne<CtxEssai>[] = [
   { cle: "masse_g", libelle: "Masse de l'éprouvette", unite: "g", type: "nombre", val: (c) => num(c.ep.essai?.masseG), description: "Masse de l'éprouvette (presse ou pesée)." },
   { cle: "ucs_kpa", libelle: "Résistance en compression uniaxiale (UCS)", unite: "kPa", type: "nombre", val: (c) => (c.ep.statut === "ecrase" ? num(contrainteKpa(c.ep.essai)) : null),
     description: "Contrainte retenue par l'application (ASTM C39/C39M) : la contrainte directe (presse ou saisie) si elle existe, sinon F / A avec A = π·d²/4." },
-  { cle: "ucs_source", libelle: "Origine de l'UCS", type: "code", description: "presse : contrainte importée du fichier de la presse ; saisie : contrainte saisie directement ; calcul_fa : déduite de la charge et du diamètre ; vide : pas de mesure.",
+  { cle: "ucs_source", libelle: "Origine de l'UCS", type: "code", description: "presse : contrainte importée du fichier de la presse ; saisie : contrainte saisie directement ; calcul_fa : déduite de la charge et du diamètre ; vide : pas de mesure. Limite : une contrainte retouchée à la main après un import reste « presse » (l'application ne garde pas l'origine de chaque saisie).",
     val: (c) => {
       const es = c.ep.essai;
       if (c.ep.statut !== "ecrase" || contrainteKpa(es) === null) return null;
@@ -377,19 +398,35 @@ export function construireJeuEssais(x: EntreesJeuEssais): JeuEssais {
     const formulations = e.resultats.map((r) => ({ id: r.id, recipes: r.recipes ?? [] }));
     const gachees = [...gacheesRetenues(e)].sort((a, b) => (a.creeLe ?? "").localeCompare(b.creeLe ?? "") || a.code.localeCompare(b.code));
     for (const g of gachees) {
-      let m: MateriauxGachee = g.materiaux ?? {};
-      let materiauxSource: CtxGachee["materiauxSource"] = Object.keys(m).length > 0 ? "fiche" : "";
-      if (!materiauxSource) {
-        // Gâchée antérieure à la fiche d'essai : matériaux relus dans sa
-        // formulation d'origine (au moment de l'export, rien n'est écrit).
-        const form = g.formulationId ? e.resultats.find((r) => r.id === g.formulationId) : undefined;
-        if (form?.general) {
-          m = materiauxDepuisFormulation(form, { residus: catalogues.residus, granulats: catalogues.granulats });
-          if (Object.keys(m).length > 0) materiauxSource = "formulation";
-        }
+      // Matériaux PAR GROUPE (résidu, granulat, liants) : ceux de la fiche
+      // d'essai ; un groupe que la fiche n'a pas (gâchée antérieure à la
+      // fiche, ou fiche partielle) est relu dans la formulation d'origine,
+      // au moment de l'export seulement (rien n'est écrit).
+      const fiche: MateriauxGachee = g.materiaux ?? {};
+      const form = g.formulationId ? e.resultats.find((r) => r.id === g.formulationId) : undefined;
+      const deduits: MateriauxGachee = form?.general
+        ? materiauxDepuisFormulation(form, { residus: catalogues.residus, granulats: catalogues.granulats })
+        : {};
+      const sources = new Set<"fiche" | "formulation">();
+      const groupe = <K extends keyof MateriauxGachee>(cle: K): MateriauxGachee[K] => {
+        const fv = fiche[cle];
+        if (fv !== undefined && !(Array.isArray(fv) && fv.length === 0)) { sources.add("fiche"); return fv; }
+        if (deduits[cle] !== undefined) { sources.add("formulation"); return deduits[cle]; }
+        return undefined;
+      };
+      // Le reste de la fiche (eau, adjuvant) n'existe que dans la fiche.
+      const m: MateriauxGachee = { ...fiche };
+      for (const cle of ["residu", "granulat", "liants"] as const) {
+        const v = groupe(cle);
+        if (v === undefined) delete m[cle];
+        else (m as Record<string, unknown>)[cle] = v;
       }
+      if (Object.keys(fiche).some((k) => !["residu", "granulat", "liants"].includes(k))) sources.add("fiche");
+      const materiauxSource: CtxGachee["materiauxSource"] = sources.size === 2 ? "fiche_et_formulation"
+        : sources.has("fiche") ? "fiche" : sources.has("formulation") ? "formulation" : "";
       const revue = x.revueDe?.(e.id, g.id);
-      if (x.seulementAcceptees && !(revue?.decision === "acceptee" && !revue.perimee)) continue;
+      // Acceptée sur la version lue exactement (ni modifiée depuis, ni lecture en retard).
+      if (x.seulementAcceptees && !accepteeTelleQuelle(revue)) continue;
       ctxs.push({
         ownerId: e.id, operateur, g, m, materiauxSource, revue,
         residuCatalogue: m.residu?.id ? catalogues.residus.find((x) => x.id === m.residu?.id) : undefined,
@@ -424,12 +461,13 @@ export function construireJeuEssais(x: EntreesJeuEssais): JeuEssais {
       nb_operateurs: new Set(ctxs.map((c) => c.operateur)).size,
       nb_gachees: ctxs.length,
       nb_eprouvettes: essais.length,
-      nb_essais_retenus: essais.filter((l) => l.retenu === true).length,
+      // Retenus par l'application ET non écartés par l'enseignant.
+      nb_essais_retenus: essais.filter((l) => l.retenu === true && l.eprouvette_ecartee !== true).length,
       nb_materiaux: materiaux.length,
       versions_solveur: [...new Set(ctxs.map((c) => c.g.solverVersion).filter((v): v is string => !!v))].sort(),
       pseudonymisation: PSEUDONYMISATION,
       champs_retires: CHAMPS_RETIRES,
-      textes_libres: Object.values(TABLES).flatMap((t) => (t as Colonne<never>[]).filter((k) => k.type === "texte libre").map((k) => k.cle))
+      textes_libres: Object.values(TABLES).flatMap((t) => (t as Colonne<never>[]).filter((k) => k.type === "texte libre" || k.libre).map((k) => k.cle))
         .filter((k, i, tous) => tous.indexOf(k) === i),
     },
     essais,

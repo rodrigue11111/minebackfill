@@ -8,7 +8,7 @@
 import { useState } from "react";
 import type { Gachee } from "@/lib/gachee";
 import { contrainteKpa } from "@/lib/eprouvette";
-import { LIBELLE_DECISION, type DecisionRevue, type InfoRevue } from "@/lib/revues";
+import { ecarteesAEnvoyer, LIBELLE_DECISION, motifAEnvoyer, type DecisionRevue, type InfoRevue } from "@/lib/revues";
 import { Carte } from "@/components/labo/Carte";
 import { Bandeau } from "@/components/ui/Bandeau";
 import { Champ } from "@/components/ui/Champ";
@@ -29,6 +29,13 @@ export default function CarteRevue({ gachee: g, revue, actions }: {
   const [motif, setMotif] = useState(revue?.motif ?? "");
   const [ecartees, setEcartees] = useState<Set<string>>(() => new Set(revue?.ecartees ?? []));
   const [occupe, setOccupe] = useState(false);
+  // Décision changée (posée, retirée, relue) : le formulaire repart d'elle.
+  const [vue, setVue] = useState<string | null>(revue?.maj ?? null);
+  if ((revue?.maj ?? null) !== vue) {
+    setVue(revue?.maj ?? null);
+    setMotif(revue?.motif ?? "");
+    setEcartees(new Set(revue?.ecartees ?? []));
+  }
   const idMotif = `revue-motif-${g.id}`;
 
   if (!actions.disponible) {
@@ -48,7 +55,14 @@ export default function CarteRevue({ gachee: g, revue, actions }: {
     setOccupe(true);
     try { await f(); } finally { setOccupe(false); }
   };
-  const poser = (decision: DecisionRevue) => agir(() => actions.onPoser({ decision, motif: motif.trim() || null, ecartees: [...ecartees] }));
+  const poser = (decision: DecisionRevue) => agir(() => actions.onPoser({
+    decision, motif: motifAEnvoyer(decision, motif, revue), ecartees: ecarteesAEnvoyer(ecartees, g),
+  }));
+  const retirer = () => agir(async () => {
+    const ok = await actions.onRetirer();
+    if (ok) { setMotif(""); setEcartees(new Set()); }
+    return ok;
+  });
 
   return (
     <Carte titre="Revue de l'enseignant">
@@ -105,7 +119,7 @@ export default function CarteRevue({ gachee: g, revue, actions }: {
             Refuser la gâchée
           </button>
           {revue && (
-            <button type="button" className="btn-discret" disabled={occupe} onClick={() => void agir(actions.onRetirer)}>
+            <button type="button" className="btn-discret" disabled={occupe} onClick={() => void retirer()}>
               Retirer la revue
             </button>
           )}

@@ -29,6 +29,8 @@ import { Pastille } from "@/components/ui/Pastille";
 import { Icone } from "@/components/ui/Icones";
 import Segmente from "@/components/ui/Segmente";
 import EditeurGachee from "@/components/labo/EditeurGachee";
+import { chargerEtatSync } from "@/lib/sync-etat";
+import { cleDoc } from "@/lib/sync-moteur";
 import Echeancier from "@/components/labo/Echeancier";
 import ResultatsUCS from "@/components/labo/ResultatsUCS";
 import ProtocolesEditeur from "@/components/labo/ProtocolesEditeur";
@@ -66,8 +68,11 @@ export default function LaboPage() {
   const selection = gachees.find((g) => g.id === selId) ?? null;
 
   function creer() {
-    const form = formulations.find((s) => s.id === formId) ?? formulations[0];
-    if (!form) return;
+    const trouvee = formulations.find((s) => s.id === formId) ?? formulations[0];
+    if (!trouvee) return;
+    // Une sauvegarde importée peut n'avoir aucun `general` : rien à lire, mais
+    // la gâchée se crée quand même.
+    const form = { ...trouvee, general: trouvee.general ?? ({} as typeof trouvee.general) };
     const recette = form.recipes[Math.min(recIndex, form.recipes.length - 1)];
     if (!recette) return;
     const g: Gachee = {
@@ -96,6 +101,11 @@ export default function LaboPage() {
 
   if (!monte) return null;
 
+  // Révision de chaque gâchée connue en ligne : une revue posée sur une
+  // version antérieure le dit (« sur une version antérieure »).
+  const docsEnLigne = chargerEtatSync().docs;
+  const revEnLigne = (id: string) => docsEnLigne[cleDoc("gachee", id)]?.rev ?? null;
+
   // ── Éditeur d'une gâchée ──
   if (selection) {
     const g = selection;
@@ -109,6 +119,7 @@ export default function LaboPage() {
           onMaj={(patch) => modifierGachee(g.id, patch)}
           bibliotheque={{ residus: catalogueResidus, granulats: catalogueGranulats }}
           revue={revueDe.get(g.id)}
+          revEnLigne={revEnLigne(g.id)}
           onRetour={() => setSelId(null)}
           onSupprimer={() => {
             if (window.confirm(`Supprimer la gâchée ${g.code} ?`)) {
@@ -234,7 +245,7 @@ export default function LaboPage() {
                         {hors > 0 && <Pastille ton="danger">{hors} écart{hors > 1 ? "s" : ""} hors tolérance</Pastille>}
                         {revueDe.get(g.id) && (
                           <Pastille ton={revueDe.get(g.id)!.decision === "acceptee" ? "succes" : "danger"} title={revueDe.get(g.id)!.motif ?? undefined}>
-                            {libelleRevue(revueDe.get(g.id)!)}
+                            {libelleRevue(revueDe.get(g.id)!, revEnLigne(g.id))}
                           </Pastille>
                         )}
                         {g.statut === "terminee" ? <Pastille ton="succes">Terminée</Pastille> : <Pastille ton="neutre">Brouillon</Pastille>}

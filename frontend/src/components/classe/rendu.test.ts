@@ -228,7 +228,7 @@ describe("revue de l'enseignant : rendu", () => {
 
   it("décision existante : état, « modifiée depuis », motif et éprouvette écartée repris, retrait possible", () => {
     const html = rendu(createElement(CarteRevue, { gachee: g, actions,
-      revue: { decision: "refusee", motif: "Pesées incomplètes.", ecartees: ["e2"], maj: "2026-10-02T10:00:00Z", perimee: true } }));
+      revue: { decision: "refusee", motif: "Pesées incomplètes.", ecartees: ["e2"], maj: "2026-10-02T10:00:00Z", perimee: true, aRafraichir: false } }));
     expect(html).toContain("Revue : refusée");
     expect(html).toContain("Modifiée depuis la revue");
     expect(html).toContain("Pesées incomplètes.</textarea>");
@@ -247,7 +247,7 @@ describe("revue de l'enseignant : rendu", () => {
     const base = { etudiant: e, annotations: [], lignes: [], onAnnoter: async () => true, ctx, onOuvrir: () => {} };
     expect(rendu(createElement(DetailEtudiant, { ...base, revueDe: () => undefined }))).toContain("À revoir");
     const decide = rendu(createElement(DetailEtudiant, { ...base,
-      revueDe: () => ({ decision: "acceptee" as const, motif: null, ecartees: [], maj: "m", perimee: true }) }));
+      revueDe: () => ({ decision: "acceptee" as const, motif: null, ecartees: [], maj: "m", perimee: true, aRafraichir: false }) }));
     expect(decide).toContain("Revue : acceptée");
     expect(decide).toContain("modifiée depuis");
     expect(rendu(createElement(DetailEtudiant, base))).not.toContain("À revoir");

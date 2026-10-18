@@ -10,6 +10,7 @@ import { contrainteKpa, type Eprouvette } from "./eprouvette";
 import { nuageUcs, type AxeFormulation, type PointNuage } from "./ucs-formulation";
 import { correspond, type FiltreSession, type Session } from "./sessions";
 import { courbesRetenues } from "./courbes";
+import type { RevueClasse } from "./revues";
 
 /** Une ligne rendue par lire_docs_classe. */
 export interface LigneClasse {
@@ -178,6 +179,22 @@ export function agesClasse(etudiants: EtudiantClasse[]): number[] {
  * (l'offre gratuite n'en fait aucune). À ranger HORS de GitHub : il contient
  * des données d'étudiants.
  */
+/**
+ * Les étudiants d'une session, avec les formulations (résultats) de TOUTES
+ * leurs sessions : une gâchée peut venir d'une formulation sauvegardée dans
+ * une session antérieure (paramètres de la recette, matériaux).
+ */
+export function avecFormulationsDeToutesSessions(filtres: EtudiantClasse[], toutes: EtudiantClasse[]): EtudiantClasse[] {
+  const parId = new Map(toutes.map((e) => [e.id, e.resultats]));
+  return filtres.map((e) => ({ ...e, resultats: parId.get(e.id) ?? e.resultats }));
+}
+
+/** Une ligne de la classe remplacée par le document relu en entier (même compte, type et id). */
+export function remplacerLigne(lignes: LigneClasse[], l: LigneClasse): LigneClasse[] {
+  const cle = cleLigne(l);
+  return lignes.map((x) => (cleLigne(x) === cle ? l : x));
+}
+
 /** Éprouvettes des gâchées exportées, avec l'import que chacune désigne. */
 function eprouvettesDesCourbes(etudiants: EtudiantClasse[]): { proprietaire: string; eprouvetteId: string; importeLe?: string }[] {
   return etudiants.flatMap((e) => e.gachees.flatMap((g) => (g.eprouvettes ?? []).map((x) => ({
@@ -201,7 +218,15 @@ export function exportClasse(
   filtre: FiltreSession,
   maintenant: Date,
   courbes?: { proprietaire: string; eprouvetteId: string; gacheeId: string | null; importeLe: string | null; contenu: unknown }[],
+  revues?: RevueClasse[],
 ): unknown {
+  // Décisions de l'enseignant sur les gâchées exportées (elles vivent dans la
+  // table `revues`, pas dans les documents : sans cette clé, la sauvegarde
+  // mensuelle les perdrait).
+  const gacheesExportees = new Set(etudiants.flatMap((e) => e.gachees.map((g) => `${e.id}|${g.id}`)));
+  const revuesExportees = revues
+    ?.filter((r) => gacheesExportees.has(`${r.ownerId}|${r.id}`))
+    .map((r) => ({ proprietaire: r.ownerId, gacheeId: r.id, rev: r.rev, decision: r.decision, motif: r.motif, ecartees: r.ecartees, maj: r.maj }));
   // Courbes de presse (en ligne depuis 2026-10) : celle de l'import que
   // chaque éprouvette exportée désigne (ou l'ancien document sans import,
   // marqué origineNonVerifiee), sous une clé à part. La version reste 1 : un
@@ -222,5 +247,6 @@ export function exportClasse(
       id: e.id, nom: e.nom, email: e.email, resultats: e.resultats, gachees: e.gachees,
     })),
     ...(retenues ? { courbes: retenues } : {}),
+    ...(revuesExportees ? { revues: revuesExportees } : {}),
   };
 }

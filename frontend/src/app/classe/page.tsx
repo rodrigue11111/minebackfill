@@ -16,7 +16,10 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { useAujourdhui } from "@/lib/use-aujourdhui";
 import { sessionActive, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import FiltreSession from "@/components/FiltreSession";
-import { cleLigne, eprouvettesAvecCourbe, exportClasse, regrouper, type EtudiantClasse, type LigneClasse, type ProfilClasse } from "@/lib/classe";
+import {
+  avecFormulationsDeToutesSessions, cleLigne, eprouvettesAvecCourbe, exportClasse, regrouper, remplacerLigne,
+  type EtudiantClasse, type LigneClasse, type ProfilClasse,
+} from "@/lib/classe";
 import {
   ajouterAnnotation, estReponse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireProfils, lireRevuesClasse, marquerAnnotationsLues,
   lireCourbe, lireCourbesClasse, messageErreurClasse, poserRevue, retirerAnnotation, retirerRevue, type LigneAnnotation,
@@ -77,6 +80,7 @@ export default function ClassePage() {
   const [nouvelles, setNouvelles] = useState<Set<string>>(() => new Set());
   const [etat, setEtat] = useState<"attente" | "chargement" | "pret" | "erreur">("attente");
   const [erreur, setErreur] = useState<string | null>(null);
+  const [erreurRevues, setErreurRevues] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [exportEnCours, setExportEnCours] = useState(false);
   const [doc, setDoc] = useState<EtatDoc | null>(null);
@@ -97,12 +101,15 @@ export default function ClassePage() {
     if (!sb) return;
     setEtat("chargement");
     setErreur(null);
+    setErreurRevues(null);
     try {
       const [l, p, a, r] = await Promise.all([
         lireClasse(sb, { complet: false, session: sessionServeur }),
         lireProfils(sb),
         lireAnnotationsClasse(sb),
-        lireRevuesClasse(sb),
+        // Revues en échec (autre chose qu'une base pas à jour, qui rend
+        // null) : la classe s'affiche quand même, sans revues.
+        lireRevuesClasse(sb).catch((e: unknown) => { setErreurRevues(messageErreurClasse(e)); return null; }),
       ]);
       setLignes(l);
       setProfils(p);
@@ -127,9 +134,11 @@ export default function ClassePage() {
   );
   const couleurDe = new Map(etudiants.map((e, i) => [e.id, COULEURS[i % COULEURS.length]]));
   const revs = useMemo(() => new Map(lignes.map((l) => [cleLigne(l), l.rev])), [lignes]);
-  const revueDe = revues
-    ? (ownerId: string, gacheeId: string) => infoRevue(revues, (o, id) => revs.get(cleLigne({ proprietaire: o, kind: "gachee", id })), ownerId, gacheeId)
+  /** Revue d'une gâchée, jugée sur les révisions de `rv` (la classe affichée, ou une lecture fraîche). */
+  const revueSur = (rv: Map<string, number>) => revues
+    ? (ownerId: string, gacheeId: string) => infoRevue(revues, (o, id) => rv.get(cleLigne({ proprietaire: o, kind: "gachee", id })), ownerId, gacheeId)
     : undefined;
+  const revueDe = revueSur(revs);
   const comparaison = useMemo(() => comparerClasse(etudiants), [etudiants]);
   const alertes = useMemo(() => alertesClasse(etudiants, {
     maintenant, comparaison,
@@ -163,7 +172,17 @@ export default function ClassePage() {
     setDoc({ ref, etat: "chargement" });
     document.querySelector(".ui-page")?.scrollTo({ top: 0 });
     lireDocComplet(sb, ref.etudiantId, ref.kind, ref.id)
-      .then((d) => { if (jeton === jetonDoc.current) setDoc(d ? { ref, etat: "pret", doc: d } : { ref, etat: "absent" }); })
+      .then((d) => {
+        // La version relue remplace celle de la classe : la revue, les CSV
+        // et l'export « gâchées acceptées » portent alors sur cette version
+        // (sinon une revue posée ici semblerait porter sur l'ancienne).
+        if (d && !d.supprime) {
+          setLignes((ls) => remplacerLigne(ls, { proprietaire: ref.etudiantId, kind: ref.kind, id: ref.id, rev: d.rev, maj: d.maj,
+            cree: ls.find((l) => cleLigne(l) === cleLigne({ proprietaire: ref.etudiantId, kind: ref.kind, id: ref.id }))?.cree ?? d.maj,
+            supprime: false, contenu: d.contenu }));
+        }
+        if (jeton === jetonDoc.current) setDoc(d ? { ref, etat: "pret", doc: d } : { ref, etat: "absent" });
+      })
       .catch((e) => { if (jeton === jetonDoc.current) setDoc({ ref, etat: "erreur", message: messageErreurClasse(e) }); });
   };
   const fermerDoc = () => { jetonDoc.current++; setDoc(null); };
@@ -203,7 +222,7 @@ export default function ClassePage() {
     try {
       const exportes = regrouper(await lireClasse(sb, { complet: true, session: sessionServeur }), profils, sessions, filtreEffectif);
       const courbes = await lireCourbesClasse(sb, true, exportes.map((e) => e.id));
-      const donnees = exportClasse(exportes, filtreEffectif, new Date(), courbes);
+      const donnees = exportClasse(exportes, filtreEffectif, new Date(), courbes, revues ? [...revues.values()] : undefined);
       telechargerBlob(new Blob([JSON.stringify(donnees, null, 2)], { type: "application/json" }),
         nomFichier(`MineBackfill_classe_${filtreEffectif}`, "json"));
     } catch (e) {
@@ -220,22 +239,29 @@ export default function ClassePage() {
   };
 
   /**
-   * Jeu d'essais PSEUDONYMISÉ (recherche, modèles) depuis la classe déjà lue :
-   * ni nom ni courriel (voir lib/jeu-essais.ts et docs/DICTIONNAIRE_DONNEES.md).
+   * Jeu d'essais PSEUDONYMISÉ (recherche, modèles) : ni nom ni courriel (voir
+   * lib/jeu-essais.ts et docs/DICTIONNAIRE_DONNEES.md). Relu EN ENTIER (la
+   * classe affichée est allégée : sans les entrées du calcul), sur toutes les
+   * sessions pour les formulations d'origine ; les revues sont jugées sur
+   * cette lecture fraîche.
    */
   const exporterJeuEssais = async (format: "csv" | "json", seulementAcceptees = false) => {
+    const sb = getSupabase();
+    if (!sb) return;
+    setExportEnCours(true);
     try {
+      const complet = await lireClasse(sb, { complet: true, session: null });
+      const exportes = avecFormulationsDeToutesSessions(
+        regrouper(complet, profils, sessions, filtreEffectif), regrouper(complet, profils, sessions, "toutes"));
       // Qui a une courbe en ligne (colonne courbe_en_ligne) ; en échec, la
       // colonne reste vide plutôt que de bloquer l'export.
-      const sb = getSupabase();
-      const courbesEnLigne = sb
-        ? await lireCourbesClasse(sb, false, etudiants.map((e) => e.id)).then((l) => eprouvettesAvecCourbe(etudiants, l), () => undefined)
-        : undefined;
+      const courbesEnLigne = await lireCourbesClasse(sb, false, exportes.map((e) => e.id))
+        .then((l) => eprouvettesAvecCourbe(exportes, l), () => undefined);
       const jeu = construireJeuEssais({
-        etudiants, sessions, sessionLibelle: libelleSession, courbesEnLigne,
-        pseudonymes: await pseudonymes(etudiants.map((e) => e.id)),
+        etudiants: exportes, sessions, sessionLibelle: libelleSession, courbesEnLigne,
+        pseudonymes: await pseudonymes(exportes.map((e) => e.id)),
         catalogues: { residus: catalogueResidus, granulats: catalogueGranulats, liants: catalogueLiants },
-        maintenant: new Date(), revueDe, seulementAcceptees,
+        maintenant: new Date(), revueDe: revueSur(new Map(complet.map((l) => [cleLigne(l), l.rev]))), seulementAcceptees,
       });
       const nom = nomFichier(`MineBackfill_jeu-essais${seulementAcceptees ? "-acceptees" : ""}_${filtreEffectif}`, format);
       if (format === "json") {
@@ -245,6 +271,8 @@ export default function ClassePage() {
       }
     } catch (e) {
       window.alert(`Export impossible : ${messageErreurClasse(e)}`);
+    } finally {
+      setExportEnCours(false);
     }
   };
   /** Décision de l'enseignant sur une gâchée : écrite par RPC, jamais dans la gâchée. */
@@ -377,6 +405,11 @@ export default function ClassePage() {
           {etat === "erreur" && (
             <Bandeau ton="danger" role="alert">
               Lecture de la classe impossible : {erreur}. Rien n&apos;est affiché plutôt qu&apos;une classe vide trompeuse ; réessayez avec « Actualiser ».
+            </Bandeau>
+          )}
+          {etat === "pret" && erreurRevues && (
+            <Bandeau ton="alerte" role="status">
+              Revues indisponibles : {erreurRevues}. La classe s&apos;affiche sans elles ; « Actualiser » les relit.
             </Bandeau>
           )}
           {etat === "chargement" && lignes.length === 0 && <p className="classe-rien">Lecture de la classe…</p>}

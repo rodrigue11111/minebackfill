@@ -40,6 +40,9 @@ export interface InfoRevue {
   maj: string;
   /** Le document a été modifié depuis la décision. */
   perimee: boolean;
+  /** La décision porte sur une version PLUS RÉCENTE que celle lue ici : la
+   *  lecture est à rafraîchir avant d'exporter ce document comme accepté. */
+  aRafraichir: boolean;
 }
 
 export const LIBELLE_DECISION: Record<DecisionRevue, string> = { acceptee: "acceptée", refusee: "refusée" };
@@ -51,6 +54,16 @@ export function revuePerimee(r: Pick<Revue, "rev">, revDoc: number | null | unde
   return r.rev !== null && revDoc !== null && revDoc !== undefined && revDoc > r.rev;
 }
 
+/** Vrai si la version lue est PLUS ANCIENNE que celle sur laquelle porte la décision. */
+export function revueEnAvance(r: Pick<Revue, "rev">, revDoc: number | null | undefined): boolean {
+  return r.rev !== null && revDoc !== null && revDoc !== undefined && revDoc < r.rev;
+}
+
+/** Acceptée, et sur la version lue exactement (ni modifiée depuis, ni lecture en retard). */
+export function accepteeTelleQuelle(info: Pick<InfoRevue, "decision" | "perimee" | "aRafraichir"> | undefined): boolean {
+  return info?.decision === "acceptee" && !info.perimee && !info.aRafraichir;
+}
+
 /** Revue d'une gâchée de la classe, avec son état « modifiée depuis ». */
 export function infoRevue(
   revues: Map<string, RevueClasse>,
@@ -60,7 +73,8 @@ export function infoRevue(
 ): InfoRevue | undefined {
   const r = revues.get(cleRevue(ownerId, gacheeId));
   if (!r) return undefined;
-  return { decision: r.decision, motif: r.motif, ecartees: r.ecartees, maj: r.maj, perimee: revuePerimee(r, revDoc(ownerId, gacheeId)) };
+  const rev = revDoc(ownerId, gacheeId);
+  return { decision: r.decision, motif: r.motif, ecartees: r.ecartees, maj: r.maj, perimee: revuePerimee(r, rev), aRafraichir: revueEnAvance(r, rev) };
 }
 
 /**
@@ -71,8 +85,30 @@ export function aRevoir(g: Pick<Gachee, "statut" | "conflit">, info: InfoRevue |
   return !g.conflit && g.statut === "terminee" && (!info || info.perimee);
 }
 
-/** Libellé court (« Revue : acceptée »). */
-export const libelleRevue = (r: Pick<Revue, "decision">): string => `Revue : ${LIBELLE_DECISION[r.decision]}`;
+/**
+ * Motif à envoyer avec une décision. Accepter une gâchée refusée ne renvoie
+ * pas le motif du refus (il resterait affiché à l'étudiant comme motif de
+ * l'acceptation), sauf si l'enseignant l'a réécrit.
+ */
+export function motifAEnvoyer(decision: DecisionRevue, motif: string, precedente: Pick<InfoRevue, "decision" | "motif"> | undefined): string | null {
+  const m = motif.trim();
+  if (decision === "acceptee" && precedente?.decision === "refusee" && m === (precedente.motif ?? "").trim()) return null;
+  return m || null;
+}
+
+/** Éprouvettes écartées à envoyer : seulement celles encore écrasées dans la gâchée, sans doublon. */
+export function ecarteesAEnvoyer(ecartees: Iterable<string>, g: Pick<Gachee, "eprouvettes">): string[] {
+  const ecrasees = new Set(g.eprouvettes.filter((e) => e.statut === "ecrase").map((e) => e.id));
+  return [...new Set(ecartees)].filter((id) => ecrasees.has(id));
+}
+
+/**
+ * Libellé court (« Revue : acceptée »). Côté étudiant, avec la révision de
+ * la gâchée connue en ligne : une décision posée sur une version antérieure
+ * le dit (« Revue : refusée (sur une version antérieure) »).
+ */
+export const libelleRevue = (r: Pick<Revue, "decision" | "rev">, revEnLigne?: number | null): string =>
+  `Revue : ${LIBELLE_DECISION[r.decision]}${revuePerimee(r, revEnLigne) ? " (sur une version antérieure)" : ""}`;
 
 // ── Lignes lues en ligne ──
 
