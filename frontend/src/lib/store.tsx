@@ -11,7 +11,7 @@ import { sessionActive, validerSessions, type Session } from "./sessions";
 import { migrerAnnotationV1, type Annotation } from "./annotations";
 import type { Revue } from "./revues";
 import { descriptorFor, type MethodResultKey } from "./method-registry";
-import { empreinteEntrees } from "./resultat-perime";
+import { EMPREINTE_INCONNUE, empreinteEntrees } from "./resultat-perime";
 import type { MesureLabo } from "./mesures";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
@@ -593,9 +593,9 @@ interface AppState {
   setCw: (patch: Partial<CwState>) => void;
   setCwRecipe: (index: number, patch: { binder_pct?: number }) => void;
   cwResult: RpcCwResponse | null;
-  /** Empreinte des entrées de chaque résultat, prise quand il arrive (resultat-perime.ts). En mémoire seulement. */
+  /** Empreinte des entrées de chaque résultat, prise au DÉPART du calcul (resultat-perime.ts). En mémoire seulement. */
   empreintesCalcul: Partial<Record<MethodResultKey, string>>;
-  setCwResult: (res: RpcCwResponse | null) => void;
+  setCwResult: PoserResultat<RpcCwResponse>;
 
   wb: WbState;
   setWb: (patch: Partial<WbState>) => void;
@@ -604,13 +604,13 @@ interface AppState {
     patch: { binder_pct?: number; wc_ratio?: number }
   ) => void;
   wbResult: MixResult | null;
-  setWbResult: (res: MixResult | null) => void;
+  setWbResult: PoserResultat<MixResult>;
 
   slump: SlumpState;
   setSlump: (patch: Partial<SlumpState>) => void;
   setSlumpRecipe: (index: number, patch: { binder_pct?: number }) => void;
   slumpResult: MixResult | null;
-  setSlumpResult: (res: MixResult | null) => void;
+  setSlumpResult: PoserResultat<MixResult>;
 
   essai: EssaiInputsState;
   setEssai: (patch: Partial<EssaiInputsState>) => void;
@@ -623,31 +623,31 @@ interface AppState {
     }
   ) => void;
   essaiResult: MixResult | null;
-  setEssaiResult: (res: MixResult | null) => void;
+  setEssaiResult: PoserResultat<MixResult>;
 
   rpgCw: RpgCwState;
   setRpgCw: (patch: Partial<RpgCwState>) => void;
   setRpgCwRecipe: (index: number, patch: { binder_pct?: number }) => void;
   rpgCwResult: MixResult | null;
-  setRpgCwResult: (res: MixResult | null) => void;
+  setRpgCwResult: PoserResultat<MixResult>;
 
   rpgWb: RpgWbState;
   setRpgWb: (patch: Partial<RpgWbState>) => void;
   setRpgWbRecipe: (index: number, patch: { binder_pct?: number; wc_ratio?: number }) => void;
   rpgWbResult: MixResult | null;
-  setRpgWbResult: (res: MixResult | null) => void;
+  setRpgWbResult: PoserResultat<MixResult>;
 
   rpgEssai: RpgEssaiState;
   setRpgEssai: (patch: Partial<RpgEssaiState>) => void;
   setRpgEssaiAjustement: (index: number, patch: RpgEssaiAdjustment) => void;
   rpgEssaiResult: MixResult | null;
-  setRpgEssaiResult: (res: MixResult | null) => void;
+  setRpgEssaiResult: PoserResultat<MixResult>;
 
   rrc: RrcState;
   setRrc: (patch: Partial<RrcState>) => void;
   setRrcRecipe: (index: number, patch: { binder_pct?: number; wc_ratio?: number }) => void;
   rrcResult: RrcResultat | null;
-  setRrcResult: (res: RrcResultat | null) => void;
+  setRrcResult: PoserResultat<RrcResultat>;
 
   fillTestData: () => void;
 
@@ -909,12 +909,35 @@ export function migrerMateriauxCloud(env: { v: number; data: unknown } | null | 
 }
 
 /**
- * Un résultat arrive (ou s'efface) : il est rangé avec l'empreinte de ses
- * entrées à cet instant (resultat-perime.ts). Un résultat effacé n'en a plus.
+ * Poser un résultat avec l'empreinte des entrées prise AU DÉPART de la
+ * requête (`empreinteAuDepart`), ou l'effacer. Le type l'impose : un
+ * formulaire ne peut pas ranger une réponse sans dire de quelles entrées elle
+ * vient.
  */
-function avecEmpreinte(state: AppState, cle: MethodResultKey, res: unknown): Partial<AppState> {
+export type PoserResultat<R> = {
+  (res: null): void;
+  (res: R, empreinteAuDepart: string): void;
+};
+
+/**
+ * Empreinte des entrées d'un calcul, à prendre AVANT d'appeler l'API et à
+ * rendre avec la réponse. Prise à l'arrivée, elle décrirait les entrées
+ * saisies PENDANT l'attente : une réponse calculée pour Cw = 75 % passerait
+ * pour à jour alors que le formulaire dit 80 %.
+ */
+export function empreinteAuDepart(cle: MethodResultKey): string {
+  return empreinteEntrees(useStore.getState() as unknown as Record<string, unknown>, cle);
+}
+
+/**
+ * Un résultat arrive (ou s'efface) : il est rangé avec l'empreinte des
+ * entrées dont il vient (resultat-perime.ts). Sans empreinte fournie (une
+ * restauration, qui vient de poser ses entrées), celle de l'état courant.
+ * Un résultat effacé n'en a plus.
+ */
+function avecEmpreinte(state: AppState, cle: MethodResultKey, res: unknown, empreinte?: string): Partial<AppState> {
   const empreintesCalcul = { ...state.empreintesCalcul };
-  if (res) empreintesCalcul[cle] = empreinteEntrees(state as unknown as Record<string, unknown>, cle);
+  if (res) empreintesCalcul[cle] = empreinte ?? empreinteEntrees(state as unknown as Record<string, unknown>, cle);
   else delete empreintesCalcul[cle];
   return { [cle]: res, empreintesCalcul } as Partial<AppState>;
 }
@@ -1166,7 +1189,7 @@ export const useStore = create<AppState>((set, get) => ({
     }),
   empreintesCalcul: {},
   cwResult: null,
-  setCwResult: (res) => set((state) => avecEmpreinte(state, "cwResult", res)),
+  setCwResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "cwResult", res, empreinte)),
 
   wb: {
     saturation_pct: 0,
@@ -1200,7 +1223,7 @@ export const useStore = create<AppState>((set, get) => ({
       };
     }),
   wbResult: null,
-  setWbResult: (res) => set((state) => avecEmpreinte(state, "wbResult", res)),
+  setWbResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "wbResult", res, empreinte)),
 
   slump: {
     cone_type: "mini",
@@ -1232,7 +1255,7 @@ export const useStore = create<AppState>((set, get) => ({
       };
     }),
   slumpResult: null,
-  setSlumpResult: (res) => set((state) => avecEmpreinte(state, "slumpResult", res)),
+  setSlumpResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "slumpResult", res, empreinte)),
 
   essai: {
     base_method: "dosage_cw",
@@ -1260,7 +1283,7 @@ export const useStore = create<AppState>((set, get) => ({
       };
     }),
   essaiResult: null,
-  setEssaiResult: (res) => set((state) => avecEmpreinte(state, "essaiResult", res)),
+  setEssaiResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "essaiResult", res, empreinte)),
 
   rpgCw: {
     solid_mass_pct: 0,
@@ -1283,7 +1306,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rpgCw: { ...state.rpgCw, binder_pct } };
     }),
   rpgCwResult: null,
-  setRpgCwResult: (res) => set((state) => avecEmpreinte(state, "rpgCwResult", res)),
+  setRpgCwResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rpgCwResult", res, empreinte)),
 
   rpgWb: {
     saturation_pct: 0,
@@ -1308,7 +1331,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rpgWb: { ...state.rpgWb, binder_pct, wc_ratio } };
     }),
   rpgWbResult: null,
-  setRpgWbResult: (res) => set((state) => avecEmpreinte(state, "rpgWbResult", res)),
+  setRpgWbResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rpgWbResult", res, empreinte)),
 
   rpgEssai: {
     base_method: "dosage_cw",
@@ -1326,7 +1349,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rpgEssai: { ...state.rpgEssai, ajustements } };
     }),
   rpgEssaiResult: null,
-  setRpgEssaiResult: (res) => set((state) => avecEmpreinte(state, "rpgEssaiResult", res)),
+  setRpgEssaiResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rpgEssaiResult", res, empreinte)),
 
   // ── RRC ── valeurs par défaut prêtes pour la démo (Dias 66-70)
   rrc: {
@@ -1351,7 +1374,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { rrc: { ...state.rrc, binder_pct, wc_ratio } };
     }),
   rrcResult: null,
-  setRrcResult: (res) => set((state) => avecEmpreinte(state, "rrcResult", res)),
+  setRrcResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rrcResult", res, empreinte)),
 
   fillTestData: () =>
     set((state) => {
@@ -1694,14 +1717,30 @@ export const useStore = create<AppState>((set, get) => ({
     // Tranches de la méthode sauvegardée — via le registre (les vieilles
     // entrées à méthode inconnue restaurent au moins catégorie/contexte).
     const d = descriptorFor(entry.category, entry.method);
+    // Essai-erreur : il calcule sur l'état de sa méthode de base, rangé dans
+    // base_cw / base_wb (saveCurrentResult). Cet état est remis dans le
+    // formulaire de base AVANT l'empreinte ; sinon la base courante (un autre
+    // Cw) passerait pour celle du résultat, et le prochain calcul partirait
+    // d'elle. Une sauvegarde sans base (antérieure à 2026-10) ne peut pas la
+    // rendre : le résultat restauré est dit périmé (recalcul demandé).
+    let baseInconnue = false;
     if (d) {
       const p = patch as Record<string, unknown>;
       p[d.resultKey] = result;
-      if (entry.inputs) p[d.stateKey] = entry.inputs;
+      if (entry.method === "essai") {
+        const { base_cw, base_wb, ...essai } = (entry.inputs ?? {}) as { base_method?: string; base_cw?: object; base_wb?: object };
+        if (entry.inputs) p[d.stateKey] = { ...essai, base_cw: undefined, base_wb: undefined };
+        const dBase = essai.base_method ? descriptorFor(entry.category, essai.base_method) : undefined;
+        const base = essai.base_method === "wb" ? base_wb : base_cw;
+        if (dBase && base) p[dBase.stateKey] = { ...(state[dBase.stateKey] as object), ...base };
+        else baseInconnue = true;
+      } else if (entry.inputs) {
+        p[d.stateKey] = entry.inputs;
+      }
     }
     set(patch);
     // Le résultat restauré correspond aux entrées restaurées : nouvelle empreinte.
-    if (d) set((s) => avecEmpreinte(s, d.resultKey, s[d.resultKey]));
+    if (d) set((s) => avecEmpreinte(s, d.resultKey, s[d.resultKey], baseInconnue ? EMPREINTE_INCONNUE : undefined));
     return true;
   },
   deleteSavedResult: (id) =>
