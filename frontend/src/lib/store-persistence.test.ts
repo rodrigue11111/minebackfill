@@ -12,7 +12,7 @@ class MemStorage {
   get length() { return this.m.size; }
 }
 
-import { ANNOTATIONS_KEY, loadAnnotationsFromStorage, persistAnnotations, useStore } from "./store";
+import { ANNOTATIONS_KEY, empreinteAuDepart, loadAnnotationsFromStorage, persistAnnotations, useStore } from "./store";
 import { chargerEtatSync, sauverEtatSync } from "./sync-etat";
 import { etatInitial } from "./sync-moteur";
 import { resultatPerime } from "./resultat-perime";
@@ -409,7 +409,7 @@ describe("store — sauvegarde d'un essai-erreur : méthode de base comprise", (
 describe("store — résultats périmés", () => {
   it("un résultat garde l'empreinte de ses entrées ; une entrée modifiée le rend périmé ; effacé, plus d'empreinte", () => {
     const s = () => useStore.getState();
-    s().setCwResult({ category: "RPC", method: "dosage_cw", recipes: [{ bw_mass_pct: 4.5 }] } as never);
+    s().setCwResult({ category: "RPC", method: "dosage_cw", recipes: [{ bw_mass_pct: 4.5 }] } as never, empreinteAuDepart("cwResult"));
     const e = s().empreintesCalcul.cwResult;
     expect(e).toBeDefined();
     expect(resultatPerime(s() as never, "cwResult", e)).toBe(false);
@@ -431,5 +431,76 @@ describe("store — Gs et w₀ du résidu partagés par les méthodes", () => {
     expect(s().cw.solid_mass_pct).toBe(78);
     s().setRpgCw({ aggregate_sg: 2.65 });
     expect(s().cw.residue_sg).toBe(3.12);
+  });
+});
+
+describe("store — résultats périmés : revue du 2026-10-18", () => {
+  const recette = { category: "RPC", method: "dosage_cw", recipes: [{ bw_mass_pct: 4.5 }] } as never;
+  const perime = (cle: "cwResult" | "essaiResult" | "rpgEssaiResult") =>
+    resultatPerime(useStore.getState() as never, cle, useStore.getState().empreintesCalcul[cle]);
+
+  it("entrée modifiée PENDANT l'attente de la réponse : le résultat reçu est périmé", () => {
+    const s = () => useStore.getState();
+    s().setCw({ solid_mass_pct: 75 });
+    const depart = empreinteAuDepart("cwResult"); // calcul lancé à 75 %
+    s().setCw({ solid_mass_pct: 80 }); // saisie pendant l'attente
+    s().setCwResult(recette, depart); // réponse calculée pour 75 %
+    expect(perime("cwResult")).toBe(true);
+    // Sans saisie pendant l'attente : à jour.
+    s().setCwResult(recette, empreinteAuDepart("cwResult"));
+    expect(perime("cwResult")).toBe(false);
+  });
+
+  it("recharger un essai-erreur remet sa méthode de base dans le formulaire de base, puis l'empreinte", () => {
+    const s = () => useStore.getState();
+    useStore.setState({
+      category: "RPC", method: "essai",
+      cw: { ...s().cw, solid_mass_pct: 65, residue_sg: 3.05 },
+      essai: { ...s().essai, base_method: "dosage_cw" },
+      essaiResult: { category: "RPC", method: "essai", recipes: [{ bw_mass_pct: 4.5 }] } as never,
+    });
+    expect(s().saveCurrentResult("Essai 65")).toBe(true);
+    const id = s().savedResults.find((r) => r.label === "Essai 65")!.id;
+    s().setCw({ solid_mass_pct: 80 }); // formulaire courant à 80 %
+    expect(s().restoreSavedResult(id)).toBe(true);
+    expect(s().cw.solid_mass_pct).toBe(65);
+    expect(s().cw.residue_sg).toBe(3.05);
+    expect(s().essai.base_cw).toBeUndefined();
+    expect(perime("essaiResult")).toBe(false);
+    s().setCw({ solid_mass_pct: 70 });
+    expect(perime("essaiResult")).toBe(true);
+  });
+
+  it("RPG, base E/L : l'état rangé dans base_wb revient dans rpgWb", () => {
+    const s = () => useStore.getState();
+    useStore.setState({
+      category: "RPG", method: "essai",
+      rpgWb: { ...s().rpgWb, saturation_pct: 95, aggregate_fraction_pct: 30 },
+      rpgEssai: { ...s().rpgEssai, base_method: "wb" },
+      rpgEssaiResult: { category: "RPG", method: "essai", recipes: [{ bw_mass_pct: 5 }] } as never,
+    });
+    expect(s().saveCurrentResult("RPG E/L")).toBe(true);
+    const id = s().savedResults.find((r) => r.label === "RPG E/L")!.id;
+    s().setRpgWb({ saturation_pct: 100, aggregate_fraction_pct: 40 });
+    expect(s().restoreSavedResult(id)).toBe(true);
+    expect(s().rpgWb).toMatchObject({ saturation_pct: 95, aggregate_fraction_pct: 30 });
+    expect(s().rpgEssai.base_wb).toBeUndefined();
+    expect(perime("rpgEssaiResult")).toBe(false);
+  });
+
+  it("essai-erreur sauvegardé sans sa base (avant 2026-10) : base courante intacte, résultat dit périmé", () => {
+    const s = () => useStore.getState();
+    s().setCw({ solid_mass_pct: 80 });
+    useStore.setState({
+      savedResults: [{
+        id: "sr_essai_ancien", savedAt: "2026-09-01T12:00:00.000Z", label: "Ancien essai", category: "RPC", method: "essai",
+        general: { ...s().general }, recipes: [{ bw_mass_pct: 4.5 }] as never,
+        inputs: { base_method: "dosage_cw", ajustements: [] },
+      }],
+    });
+    expect(s().restoreSavedResult("sr_essai_ancien")).toBe(true);
+    expect(s().cw.solid_mass_pct).toBe(80);
+    expect(s().essaiResult?.recipes).toHaveLength(1);
+    expect(perime("essaiResult")).toBe(true);
   });
 });

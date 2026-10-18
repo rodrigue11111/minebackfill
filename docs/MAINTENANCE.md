@@ -108,11 +108,18 @@ catégorie vient de `methodeApresChangementCategorie()` (testée dans
 `avecEmpreinte` (`store.tsx`), qui range l'empreinte des entrées
 (`resultat-perime.ts` : état de la méthode, méthode de base de
 l'essai-erreur, informations, constantes, liants ; jamais les mesures au
-laboratoire). Le panneau de résultats compare à l'affichage : entrées
-changées, bandeau « Résultats périmés » et ni sauvegarde ni export. Le
-formulaire efface son résultat en cas d'erreur (`set…Result(null)` dans le
-`catch`). Une restauration depuis Mes calculs (`/historique`) reprend
-l'empreinte.
+laboratoire). L'empreinte est prise **au départ** : le formulaire appelle
+`empreinteAuDepart(cle)` avant son `fetch` et la rend avec la réponse
+(`set…Result(data, empreinte)`, imposé par le type `PoserResultat` et
+gardé par `resultat-perime.test.ts`) ; prise à l'arrivée, une saisie faite
+pendant l'attente passerait pour celle du résultat. Le panneau de résultats
+compare à l'affichage : entrées changées, bandeau « Résultats périmés » et
+ni sauvegarde ni export. Le formulaire efface son résultat en cas d'erreur
+(`set…Result(null)` dans le `catch`). Une restauration depuis Mes calculs
+(`/historique`) remet les entrées (pour l'essai-erreur, aussi sa méthode
+de base, rangée dans `base_cw` / `base_wb`) puis reprend l'empreinte ; un
+essai-erreur sauvegardé sans sa base est restauré « périmé »
+(`EMPREINTE_INCONNUE`).
 
 **Pédagogie** (2026-10) : chaque méthode porte aussi `quand` (quand
 l'utiliser, une phrase), affichée sous le choix de méthode et lue par le

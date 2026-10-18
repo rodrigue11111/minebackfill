@@ -6,13 +6,22 @@
 // gardait l'ancien résultat, et Sauvegarder, Excel et PDF restaient actifs.
 // Un étudiant pouvait ainsi enregistrer une recette qui ne correspondait plus
 // à ce qu'il voyait dans le formulaire. L'empreinte des entrées est prise au
-// moment où le résultat arrive ; à l'affichage, une empreinte différente dit
-// que le résultat est périmé.
+// DÉPART de la requête et rangée avec sa réponse (`empreinteAuDepart`,
+// store.tsx) : une saisie faite pendant l'attente rend donc le résultat
+// périmé. À l'affichage, une empreinte différente dit que le résultat est
+// périmé.
 
 import { descriptorFor, METHOD_REGISTRY, type MethodResultKey } from "./method-registry";
 import { empreinte } from "./sync-empreinte";
 
 type EtatCalcul = Record<string, unknown> & { general?: unknown; constantes?: unknown; catalogue_liants?: unknown };
+
+/**
+ * Empreinte d'un résultat dont les entrées ne sont pas connues en entier (un
+ * essai-erreur sauvegardé sans sa méthode de base) : elle n'égale jamais celle
+ * d'un état, donc le résultat est dit périmé jusqu'au prochain calcul.
+ */
+export const EMPREINTE_INCONNUE = "entrees-inconnues";
 
 /** Ce dont un résultat dépend : l'état de sa méthode (et de la méthode de base
  *  pour l'essai-erreur), les informations générales, les constantes et les liants. */

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useStore } from "@/lib/store";
+import { empreinteAuDepart, useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
 import type { RetardateurItem } from "@/lib/materials";
@@ -24,6 +24,9 @@ export default function RrcForm() {
   const modeVolume = rrc.quantity_mode === "volume";
 
   async function handleCompute() {
+    // Empreinte des entrées AVANT la requête : la réponse lui est associée, et
+    // une saisie faite pendant l'attente rend le résultat périmé.
+    const empreinte = empreinteAuDepart("rrcResult");
     setError(null);
     setLoading(true);
     try {
@@ -51,7 +54,7 @@ export default function RrcForm() {
       if (!res.ok) {
         throw new Error(messageErreurApi(data, res.status));
       }
-      setRrcResult(data);
+      setRrcResult(data, empreinte);
     } catch (err) {
       // Une erreur ne laisse jamais l'ancien résultat à l'écran (ni sauvegardable).
       setRrcResult(null);
