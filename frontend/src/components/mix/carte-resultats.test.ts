@@ -60,6 +60,12 @@ describe("CarteResultats", () => {
     expect(html).toContain("mix-col-choisie");
   });
 
+  it("sélecteur de recette : libellé court « R2 » pour les écrans étroits", () => {
+    const html = rendu({ sousTitre: "2 recettes", actions: null, donnees: { genre: "rpc", recipes: [recette(5), recette(6)], ctx } });
+    expect(html).toContain("ui-segment-court");
+    expect(html).toMatch(/R2</);
+  });
+
   it("une seule recette : pas de sélecteur", () => {
     const html = rendu({ sousTitre: "1 recette", actions: null, donnees: { genre: "rpc", recipes: [recette(5)], ctx } });
     expect(html).not.toContain('aria-label="Recette affichée"');
@@ -73,11 +79,17 @@ describe("CarteResultats", () => {
   });
 
   it("RRC : ciment, eau, roches stériles, E/L du coulis et tableau RRC", () => {
-    const rrc = { cement_mass_kg: 40, water_mass_kg: 16, waste_rock_mass_kg: 800, wc_ratio: 0.4, bw_mass_pct: 5 } as RrcRecipe;
+    const rrc = { cement_mass_kg: 40, water_mass_kg: 16, waste_rock_mass_kg: 800, wc_ratio: 0.4, bw_mass_pct: 5, total_mass_kg: 2200000 } as RrcRecipe;
     const html = rendu({ sousTitre: "", actions: null, donnees: { genre: "rrc", recipes: [rrc], massLabel: "kg", toMass: (kg) => kg ?? null } });
     for (const t of ["Ciment", "Roches stériles", "E/L du coulis", "Remblai rocheux cimenté (RRC)", "Rapport E/L du coulis (W/C)"]) {
       expect(html).toContain(t);
     }
+    // Milliers groupés dans le tableau ; formules du RRC listées et cliquables.
+    expect(html).toContain("2\u202F200\u202F000.000");
+    const avecFormules = rendu({ sousTitre: "", actions: null, onFormulaClick: () => {}, donnees: { genre: "rrc", recipes: [rrc], massLabel: "kg", toMass: (kg) => kg ?? null } });
+    expect(avecFormules).toContain("Formules utilisées pour ce résultat");
+    expect(avecFormules).toMatch(/<button[^>]*class="mix-formule"[^>]*>F056</);
+    expect(avecFormules).toContain("mix-valeur-formule");
   });
 
   it("état vide : tuiles à TIRET (valeur absente) et invitation à calculer", () => {

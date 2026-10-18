@@ -11,11 +11,11 @@ import Segmente from "@/components/ui/Segmente";
 import { TuilesChiffres, type Chiffre } from "@/components/ui/Chiffres";
 import BarresPhases from "@/components/analyse/BarresPhases";
 import { SectionsRapport, TableauLignes, TableauRrc, SectionHeader } from "@/components/mix/SectionsRapport";
-import { formulesDuRapport, lignesResume, nbLignesRapport, type ReportCtx } from "@/lib/report-schema";
+import { formulesDuRapport, formulesDuRapportRrc, lignesResume, nbLignesRapport, type ReportCtx } from "@/lib/report-schema";
 import { fromStoreDensity, fromStoreMass } from "@/lib/units";
 import { masseRemblaiTotaleKg } from "@/lib/derived";
 import { FORMULA_MAP } from "@/lib/formulas-data";
-import { fmt, TIRET } from "@/lib/format";
+import { fmt, fmtGroupe, TIRET } from "@/lib/format";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
 import type { Recipe, RrcRecipe } from "@/lib/types";
 
@@ -27,9 +27,7 @@ import type { Recipe, RrcRecipe } from "@/lib/types";
 export function chiffreMasse(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v)) return TIRET;
   const a = Math.abs(v);
-  const [ent, dec] = fmt(v, a >= 100 ? 0 : a >= 10 ? 1 : a >= 1 ? 2 : 3).split(".");
-  const groupe = ent.replace(/\B(?=(\d{3})+(?!\d))/g, "\u202F");
-  return dec ? `${groupe}.${dec}` : groupe;
+  return fmtGroupe(v, a >= 100 ? 0 : a >= 10 ? 1 : a >= 1 ? 2 : 3);
 }
 
 /**
@@ -79,14 +77,14 @@ export function chiffresRrc(r: RrcRecipe | undefined, massLabel: string, toMass:
 function FormulesUtilisees({ ids, recipe, onFormulaClick }: {
   ids: string[];
   recipe: Recipe | undefined;
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
 }) {
   if (ids.length === 0) return null;
   return (
     <section className="mix-formules" aria-label="Formules utilisées pour ce résultat">
       <span className="mix-groupe-titre">Formules utilisées pour ce résultat</span>
       <span className="mix-formules-liste">
-        {ids.map((id) => (onFormulaClick && recipe ? (
+        {ids.map((id) => (onFormulaClick ? (
           <button key={id} type="button" className="mix-formule" title={FORMULA_MAP.get(id)?.title ?? id}
             onClick={(e) => onFormulaClick([id], recipe, e.currentTarget.getBoundingClientRect())}>{id}</button>
         ) : (
@@ -113,6 +111,8 @@ function ChoixRecette({ n, choisie, onChoisir }: { n: number; choisie: number; o
       options={Array.from({ length: n }, (_, i) => ({
         valeur: String(i),
         libelle: <><span className="mix-point-recette" style={{ background: RECIPE_COLORS[i] }} aria-hidden="true" />Recette {i + 1}</>,
+        // Sous 720 px, « R1 » à « R4 » : les quatre tiennent à 320 px.
+        libelleCourt: <><span className="mix-point-recette" style={{ background: RECIPE_COLORS[i] }} aria-hidden="true" />R{i + 1}</>,
       }))}
     />
   );
@@ -126,7 +126,7 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
   /** null : aucun résultat encore (tuiles vides). */
   donnees: DonneesResultats | null;
   pleinEcran?: boolean;
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
 }) {
   const [choix, setChoix] = useState(0);
   const [rapportOuvert, setRapportOuvert] = useState(false);
@@ -152,8 +152,9 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
         <>
           <ChoixRecette n={n} choisie={choisie} onChoisir={setChoix} />
           <TuilesChiffres ariaLabel={`Chiffres clés, recette ${choisie + 1}`} chiffres={chiffresRrc(donnees.recipes[choisie], donnees.massLabel, donnees.toMass)} />
-          <TableauRrc recipes={donnees.recipes} massLabel={donnees.massLabel} toMass={donnees.toMass} choisie={n > 1 ? choisie : undefined} />
+          <TableauRrc recipes={donnees.recipes} massLabel={donnees.massLabel} toMass={donnees.toMass} choisie={n > 1 ? choisie : undefined} onFormulaClick={onFormulaClick} />
           <p className="mix-note">Bilan : MWR + Mc + M* = masse totale de RRC. Coulis de ciment = ciment + eau + retardateur de prise.</p>
+          <FormulesUtilisees ids={formulesDuRapportRrc()} recipe={undefined} onFormulaClick={onFormulaClick} />
         </>
       ) : (
         <>

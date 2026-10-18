@@ -6,7 +6,8 @@
 // écran). La présentation est dans CarteResultats.
 
 import { useCallback, useState } from "react";
-import { useStore, lireBinders } from "@/lib/store";
+import { useStore, lireBinders, loadSavedFromStorage } from "@/lib/store";
+import { nomParDefautAvecHeure } from "@/lib/nom-sauvegarde";
 import type { Category, LiantCatalogueItem } from "@/lib/store";
 import { fromStoreMass, MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS, type UnitPreferences } from "@/lib/units";
 import FormulaPopover from "@/components/mix/FormulaPopover";
@@ -32,10 +33,10 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
   /* ── Fenêtre des formules (clic sur une valeur « fx ») ── */
   const [formulaPopover, setFormulaPopover] = useState<{
     formulaIds: string[];
-    recipe: Recipe;
+    recipe: Recipe | undefined;
     anchorRect: DOMRect;
   } | null>(null);
-  const handleFormulaClick = useCallback((formulaIds: string[], recipe: Recipe, rect: DOMRect) => {
+  const handleFormulaClick = useCallback((formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => {
     setFormulaPopover({ formulaIds, recipe, anchorRect: rect });
   }, []);
 
@@ -47,7 +48,8 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
   const volLabel = VOLUME_LABELS[units.volume] ?? "L";
   const densLabel = DENSITY_LABELS[units.density] ?? "g/cm3";
   const toMass = (kg: number | null | undefined) => fromStoreMass(kg, units.mass);
-  const dateDuJour = new Date().toLocaleDateString("fr-CA");
+  // Noms déjà pris, relus du stockage (le magasin peut ne pas être hydraté).
+  const nomsSauvegardes = () => loadSavedFromStorage().map((s) => s.label);
 
   // Nom du composant n (1-indexé), pour un nombre N quelconque : lit la liste
   // N-aire des liants (repli legacy binder1/2/3 via lireBinders).
@@ -97,8 +99,10 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
     const vide = rrcRecipes.length === 0 || perime;
     const donnees: DonneesResultats | null = rrcRecipes.length === 0 ? null : { genre: "rrc", recipes: rrcRecipes, massLabel, toMass };
     return (
+      <>
       <CarteResultats
         avis={avisPerime}
+        onFormulaClick={handleFormulaClick}
         sousTitre={rrcRecipes.length === 0 ? "Remblai rocheux cimenté" : `${rrcRecipes.length} recette${rrcRecipes.length > 1 ? "s" : ""} · ${methodLabel("RRC", "rrc", "long")} · masses en ${massLabel}`}
         donnees={donnees}
         pleinEcran={pleinEcran}
@@ -112,13 +116,17 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
               onClick={async () => { const { exportRrcPdf } = await import("@/lib/rrc-export"); exportRrcPdf(rrcRecipes, general, units); }}>
               Feuille labo
             </button>
-            <Sauvegarder desactive={vide} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={`RRC du ${dateDuJour}`} />
+            <Sauvegarder desactive={vide} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={nomParDefautAvecHeure("RRC", new Date())} nomsExistants={nomsSauvegardes} />
             {pleinEcranMenu && (
               <Menu className="ui-bouton-icone" ariaLabel="Autres actions" declencheur={<Icone nom="plus" taille={18} epaisseur={2} />} elements={[pleinEcranMenu]} />
             )}
           </>
         }
       />
+      {formulaPopover && (
+        <FormulaPopover formulaIds={formulaPopover.formulaIds} recipe={formulaPopover.recipe} anchorRect={formulaPopover.anchorRect} onClose={() => setFormulaPopover(null)} />
+      )}
+      </>
     );
   }
 
@@ -169,7 +177,7 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
               onClick={async () => { const { exportToPdf } = await import("@/lib/pdf-report"); exportToPdf(recipes, general, binderName, category, method, units, mesuresEssai); }}>
               PDF
             </button>
-            <Sauvegarder desactive={vide || perime} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={`${category} ${methodLabel(category, method)} du ${dateDuJour}`} />
+            <Sauvegarder desactive={vide || perime} onSave={(nom) => store.saveCurrentResult(nom)} nomParDefaut={nomParDefautAvecHeure(`${category} ${methodLabel(category, method)}`, new Date())} nomsExistants={nomsSauvegardes} />
             <Menu
               className="ui-bouton-icone"
               ariaLabel="Autres actions"

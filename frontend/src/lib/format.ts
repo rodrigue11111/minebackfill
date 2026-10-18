@@ -41,8 +41,26 @@ export const valeurAvecUnite = (texte: string, unite: string): string =>
  */
 export const fmt = (v: number | null | undefined, digits = 3): string => {
   if (v === null || v === undefined || Number.isNaN(v)) return TIRET;
-  return v.toFixed(digits);
+  const s = v.toFixed(digits);
+  // Une valeur arrondie à zéro n'a pas de signe : « 0.000 », jamais « -0.000 ».
+  return /^-0(\.0*)?$/.test(s) ? s.slice(1) : s;
 };
+
+/**
+ * fmt, milliers séparés par une espace fine insécable (« 2 200 000.000 »).
+ * Pour l'ÉCRAN : les exports PDF (police WinAnsi) n'ont pas ce caractère et
+ * gardent fmt.
+ */
+export const fmtGroupe = (v: number | null | undefined, digits = 3): string => {
+  const s = fmt(v, digits);
+  if (s === TIRET) return s;
+  const [ent, dec] = s.split(".");
+  const groupe = ent.replace(/\B(?=(\d{3})+(?!\d))/g, "\u202F");
+  return dec !== undefined ? `${groupe}.${dec}` : groupe;
+};
+
+/** n chiffres significatifs, sans zéros inutiles : « 1.9685 » au lieu de « 1.96850393701 ». */
+export const chiffresSignificatifs = (v: number, n = 6): string => String(Number(v.toPrecision(n)));
 
 /**
  * Graduation ou valeur d'axe à la française : arrondie AVANT d'être écrite,

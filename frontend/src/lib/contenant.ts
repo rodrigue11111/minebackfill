@@ -60,3 +60,13 @@ export function parametresVolume(s: { category: Category; method: string } & Rec
 export function volumeTotalM3(volumeMoule: number | null, moules: number | undefined, kappa: number | undefined): number | null {
   return volumeMoule !== null && positif(moules) && positif(kappa) ? volumeMoule * moules * kappa : null;
 }
+
+/**
+ * Équivalent en m³ d'un volume affiché dans une autre unité, dès 1 m³ :
+ * « (11 000 m³) » à côté de « 11 000 000 000 cm³ » (l'unité de volume suit
+ * celle des longueurs). Chaîne vide sinon.
+ */
+export function equivalentM3(m3: number, unite: string): string {
+  if (unite === "m3" || !Number.isFinite(m3) || Math.abs(m3) < 1) return "";
+  return ` (${m3.toLocaleString("fr-CA", { maximumSignificantDigits: 6 })} m³)`;
+}

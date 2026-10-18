@@ -196,25 +196,32 @@ export interface RrcReportRow {
   getter: (r: RrcRecipe, toMass: (kg: number | null | undefined) => number | null) => number | null;
   digits: number;
   bold?: boolean;
+  /** Formules du RRC (lib/formulas-data.ts, F055 à F060, F090 à F092) qui donnent la ligne. */
+  formulaIds?: string[];
 }
 
 export const RRC_ROWS: RrcReportRow[] = [
-  { label: () => "Taux massique de liant Bw (ciment / roches stériles) (%)", getter: (r) => r.bw_mass_pct ?? null, digits: 2, bold: true },
-  { label: () => "Rapport E/L du coulis (W/C)", getter: (r) => r.wc_ratio ?? null, digits: 3 },
-  { label: () => "Teneur en eau massique w (%)", getter: (r) => r.w_mass_pct ?? null, digits: 3 },
-  { label: () => "Pourcentage solide massique Cw (%)", getter: (r) => r.solids_mass_pct ?? null, digits: 3 },
-  { label: (m) => `Masse totale de RRC (${m})`, getter: (r, toMass) => toMass(r.total_mass_kg), digits: 3, bold: true },
-  { label: () => "Volume de RRC (m3)", getter: (r) => r.crf_volume_m3 ?? null, digits: 2 },
-  { label: (m) => `Roches stériles M_WR (${m})`, getter: (r, toMass) => toMass(r.waste_rock_mass_kg), digits: 3, bold: true },
-  { label: (m) => `Ciment M_c (${m})`, getter: (r, toMass) => toMass(r.cement_mass_kg), digits: 3, bold: true },
-  { label: (m) => `Eau M_w (${m})`, getter: (r, toMass) => toMass(r.water_mass_kg), digits: 3 },
-  { label: (m) => `Fluide (eau + retardateur) M* (${m})`, getter: (r, toMass) => toMass(r.fluid_mass_kg), digits: 3 },
-  { label: (m) => `Retardateur de prise M_SR (${m})`, getter: (r, toMass) => toMass(r.retarder_mass_kg), digits: 3 },
-  { label: () => "Retardateur de prise V_SR (L)", getter: (r) => r.retarder_volume_l ?? null, digits: 2 },
-  { label: () => "Dosage en retardateur D_m (% de M_c)", getter: (r) => r.retarder_dosage_mass_pct ?? null, digits: 3 },
+  { label: () => "Taux massique de liant Bw (ciment / roches stériles) (%)", getter: (r) => r.bw_mass_pct ?? null, digits: 2, bold: true, formulaIds: ["F056"] },
+  { label: () => "Rapport E/L du coulis (W/C)", getter: (r) => r.wc_ratio ?? null, digits: 3, formulaIds: ["F057"] },
+  { label: () => "Teneur en eau massique w (%)", getter: (r) => r.w_mass_pct ?? null, digits: 3, formulaIds: ["F058"] },
+  { label: () => "Pourcentage solide massique Cw (%)", getter: (r) => r.solids_mass_pct ?? null, digits: 3, formulaIds: ["F059"] },
+  { label: (m) => `Masse totale de RRC (${m})`, getter: (r, toMass) => toMass(r.total_mass_kg), digits: 3, bold: true, formulaIds: ["F060"] },
+  { label: () => "Volume de RRC (m3)", getter: (r) => r.crf_volume_m3 ?? null, digits: 2, formulaIds: ["F060"] },
+  { label: (m) => `Roches stériles M_WR (${m})`, getter: (r, toMass) => toMass(r.waste_rock_mass_kg), digits: 3, bold: true, formulaIds: ["F060"] },
+  { label: (m) => `Ciment M_c (${m})`, getter: (r, toMass) => toMass(r.cement_mass_kg), digits: 3, bold: true, formulaIds: ["F056"] },
+  { label: (m) => `Eau M_w (${m})`, getter: (r, toMass) => toMass(r.water_mass_kg), digits: 3, formulaIds: ["F057"] },
+  { label: (m) => `Fluide (eau + retardateur) M* (${m})`, getter: (r, toMass) => toMass(r.fluid_mass_kg), digits: 3, formulaIds: ["F057"] },
+  { label: (m) => `Retardateur de prise M_SR (${m})`, getter: (r, toMass) => toMass(r.retarder_mass_kg), digits: 3, formulaIds: ["F090"] },
+  { label: () => "Retardateur de prise V_SR (L)", getter: (r) => r.retarder_volume_l ?? null, digits: 2, formulaIds: ["F091"] },
+  { label: () => "Dosage en retardateur D_m (% de M_c)", getter: (r) => r.retarder_dosage_mass_pct ?? null, digits: 3, formulaIds: ["F055"] },
   { label: (m) => `Coulis de ciment (${m})`, getter: (r, toMass) => toMass(r.slurry_mass_kg), digits: 3 },
-  { label: () => "Volume de coulis (m3)", getter: (r) => r.slurry_volume_m3 ?? null, digits: 3 },
+  { label: () => "Volume de coulis (m3)", getter: (r) => r.slurry_volume_m3 ?? null, digits: 3, formulaIds: ["F092"] },
 ];
+
+/** Formules du rapport RRC, sans doublon, dans l'ordre du rapport. */
+export function formulesDuRapportRrc(): string[] {
+  return [...new Set(RRC_ROWS.flatMap((r) => r.formulaIds ?? []))];
+}
 
 /** Formules du rapport pour ce contexte, sans doublon, dans l'ordre du rapport
  *  (« Formules utilisées pour ce résultat »). */

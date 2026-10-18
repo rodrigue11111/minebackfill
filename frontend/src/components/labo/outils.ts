@@ -69,6 +69,13 @@ export function dateLongue(d: Date): string {
   return d.toLocaleDateString("fr-CA", { day: "numeric", month: "long", year: "numeric" });
 }
 
+/** Date et heure d'une sauvegarde : « 2026-10-18, 14 h 05 » (distingue deux sauvegardes de même nom). */
+export function dateHeureSauvegarde(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${isoVersDateInput(iso)}, ${d.getHours()} h ${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 /** Date courte « 6 oct. ». */
 export function dateCourteFr(d: Date): string {
   return d.toLocaleDateString("fr-CA", { day: "numeric", month: "short" });

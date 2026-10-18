@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { confirmerExemple, LIBELLE_EXEMPLE } from "@/lib/exemple";
-import { parametresVolume, volumeMouleM3, volumeTotalM3 } from "@/lib/contenant";
+import { equivalentM3, parametresVolume, volumeMouleM3, volumeTotalM3 } from "@/lib/contenant";
+import { chiffresSignificatifs } from "@/lib/format";
 import Parcours from "@/components/ui/Parcours";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -110,7 +111,7 @@ export default function GeneralInfoPage() {
   const showNum = (field: string, canonical: number | null | undefined): string => {
     if (field in draftNum) return draftNum[field];
     if (canonical === null || canonical === undefined || Number.isNaN(canonical)) return "";
-    return String(Number(canonical.toPrecision(12)));
+    return chiffresSignificatifs(canonical, 6);
   };
 
   const editNum = (field: Parameters<typeof numChange>[0], raw: string) => {
@@ -256,10 +257,10 @@ export default function GeneralInfoPage() {
             // Même géométrie que le calcul : l'étudiant voit tout de suite
             // ce qu'un moule contient (et repère une dimension mal saisie).
             <p className="ui-liste-pied" style={{ margin: 0 }}>
-              Volume d&apos;un moule : <strong>{vol(volumeMoule)} {VOLUME_LABELS[volumeUnit]}</strong>.
+              Volume d&apos;un moule : <strong>{vol(volumeMoule)} {VOLUME_LABELS[volumeUnit]}</strong>{equivalentM3(volumeMoule, volumeUnit)}.
               {volumeTotal !== null && paramVolume && (
                 <>
-                  {" "}Volume total à préparer par recette : VT = {vol(volumeMoule)} × {paramVolume.moules} moule{paramVolume.moules! > 1 ? "s" : ""} × κ {paramVolume.kappa!.toLocaleString("fr-CA")} = <strong>{vol(volumeTotal)} {VOLUME_LABELS[volumeUnit]}</strong>
+                  {" "}Volume total à préparer par recette : VT = {vol(volumeMoule)} × {paramVolume.moules} moule{paramVolume.moules! > 1 ? "s" : ""} × κ {paramVolume.kappa!.toLocaleString("fr-CA")} = <strong>{vol(volumeTotal)} {VOLUME_LABELS[volumeUnit]}</strong>{equivalentM3(volumeTotal, volumeUnit)}
                   {" "}(moules par recette et facteur de perte κ : page Calculs).
                 </>
               )}
