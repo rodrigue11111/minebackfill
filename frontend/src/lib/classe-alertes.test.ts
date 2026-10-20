@@ -124,7 +124,18 @@ describe("alertes « à surveiller »", () => {
   });
 
   it("seuils affichés en clair", () => {
-    expect(libellesSeuils()).toHaveLength(7);
+    expect(libellesSeuils()).toHaveLength(8);
     expect(libellesSeuils().join(" ")).toContain(`${SEUILS_ALERTES.cvMaxPct} %`);
+    expect(libellesSeuils().join(" ")).toContain("Taille chantier : plus de 100 kg");
+  });
+
+  it("gâchée de taille chantier (exemple complet de 11 000 m³) : alerte, une seule par gâchée", () => {
+    const g = gachee("chantier", [], { composants: [
+      { cle: "residu", label: "Résidu humide", cibleKg: 18298021.683 }, { cle: "liant", label: "Liant", cibleKg: 625792.6 },
+    ] });
+    const labo = gachee("labo", [], { composants: [{ cle: "residu", label: "Résidu humide", cibleKg: 4.2 }, { cle: "liant", label: "Liant", cibleKg: 0.2 }] });
+    const a = alertes([ligne(A, g), ligne(A, labo)]);
+    expect(a.filter((x) => x.type === "masse_hors_labo").map((x) => x.cible?.code)).toEqual(["G-chantier"]);
+    expect(a.find((x) => x.type === "masse_hors_labo")?.message).toMatch(/^18\s?923\s?814 kg à peser au total/);
   });
 });

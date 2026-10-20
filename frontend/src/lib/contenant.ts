@@ -83,3 +83,32 @@ export function libelleContenant(type: string | null | undefined): string {
   if (!type) return "";
   return LIBELLES_CONTENANT[type] ?? type;
 }
+
+/**
+ * Au-delà de ce volume total (V_T), une gâchée n'est plus un essai de
+ * laboratoire : 50 L, quand les moules de la liste font 0,2 à 1,6 L
+ * (eprouvette.ts, MOULES_PROPOSES) et que le classeur « gramme » vise 2,6 L.
+ * L'exemple complet (chantier de 11 000 m³) donnait une gâchée de
+ * 18 298 021 kg de résidu humide sans aucun avis. Avis seulement, jamais un
+ * blocage.
+ */
+export const SEUIL_VOLUME_LABO_M3 = 0.05;
+/** Le même seuil en masse totale à peser : environ 50 L de remblai à 2 t/m³. */
+export const SEUIL_MASSE_LABO_KG = 100;
+
+/** Volume total d'une recette trop grand pour une gâchée de laboratoire. */
+export function volumeHorsLabo(vtM3: number | null | undefined): boolean {
+  return typeof vtM3 === "number" && Number.isFinite(vtM3) && vtM3 > SEUIL_VOLUME_LABO_M3;
+}
+
+/** Masse totale des cibles d'une gâchée si elle dépasse le seuil de laboratoire, sinon null. */
+export function masseHorsLabo(composants: { cibleKg: number }[] | undefined): number | null {
+  const total = (composants ?? []).reduce((s, c) => s + (Number.isFinite(c.cibleKg) ? c.cibleKg : 0), 0);
+  return total > SEUIL_MASSE_LABO_KG ? total : null;
+}
+
+/** Avis commun (Labo, vue de l'enseignant) pour une gâchée de taille chantier. */
+export function avisMasseHorsLabo(totalKg: number): string {
+  const kg = Math.round(totalKg).toLocaleString("fr-CA");
+  return `Cette gâchée demande de peser ${kg} kg au total : ce sont les masses d'un chantier, pas d'une gâchée de laboratoire (quelques litres). Refaites le calcul avec le volume de vos moules (Informations, Contenant de moulage), puis créez une nouvelle gâchée.`;
+}

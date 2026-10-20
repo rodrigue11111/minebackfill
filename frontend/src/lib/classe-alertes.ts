@@ -6,16 +6,18 @@
 // cours : ils sont affichés à l'écran comme « valeurs par défaut, à valider
 // par l'enseignant », et se changent ici, en un seul endroit.
 
-import { agregerParAge, ageReelJours, contrainteKpa, dateEcheance, joursRestants } from "./eprouvette";
+import { agregerParAge, contrainteKpa, dateEcheance, FENETRE_AGE, horsFenetreAge, joursRestants } from "./eprouvette";
 import { ecart, horsTolerance } from "./gachee";
+import { masseHorsLabo, SEUIL_MASSE_LABO_KG } from "./contenant";
 import { gacheesRetenues, type EtudiantClasse } from "./classe";
 import { libelleGroupe, type Comparaison } from "./classe-comparaison";
 import { fmtDate } from "./echeance-affichage";
 
 export const SEUILS_ALERTES = {
-  /** Âge à l'essai : écart toléré = max(fenetreAgeJoursMin, fenetreAgePct % de l'âge visé). */
-  fenetreAgeJoursMin: 1,
-  fenetreAgePct: 10,
+  /** Âge à l'essai : écart toléré = max(fenetreAgeJoursMin, fenetreAgePct % de l'âge visé).
+   *  Même fenêtre que la mention « hors fenêtre d'âge » des moyennes (eprouvette.ts). */
+  fenetreAgeJoursMin: FENETRE_AGE.joursMin,
+  fenetreAgePct: FENETRE_AGE.pct,
   /** Répliques d'une même gâchée à un âge : CV au-delà duquel on alerte, avec au moins cvNMin valeurs. */
   cvMaxPct: 15,
   cvNMin: 2,
@@ -31,11 +33,12 @@ export const SEUILS_ALERTES = {
 export type SeuilsAlertes = typeof SEUILS_ALERTES;
 
 export type TypeAlerte =
-  | "echeance_depassee" | "pesee_hors_tolerance" | "age_hors_fenetre" | "cv_eleve"
+  | "echeance_depassee" | "masse_hors_labo" | "pesee_hors_tolerance" | "age_hors_fenetre" | "cv_eleve"
   | "ecart_groupe" | "ecrasee_sans_mesure" | "inactif";
 
 export const LIBELLES_ALERTES: Record<TypeAlerte, string> = {
   echeance_depassee: "Écrasement en retard",
+  masse_hors_labo: "Gâchée de taille chantier",
   pesee_hors_tolerance: "Pesée hors tolérance",
   age_hors_fenetre: "Âge à l'essai hors fenêtre",
   cv_eleve: "Répliques dispersées",
@@ -91,6 +94,12 @@ export function alertesClasse(etudiants: EtudiantClasse[], o: {
           message: `${retard.length} éprouvette${retard.length > 1 ? "s" : ""} non écrasée${retard.length > 1 ? "s" : ""} après l'échéance (${retard.map((x) => x.code).join(", ")}) ; la plus ancienne était prévue le ${fmtDate(dateEcheance(retard[0]))} (${j} j de retard).` }, "");
       }
 
+      const masse = masseHorsLabo(g.composants);
+      if (masse !== null) {
+        ajouter({ ...base, cible, type: "masse_hors_labo",
+          message: `${n0(masse)} kg à peser au total (seuil ${n0(SEUIL_MASSE_LABO_KG)} kg, environ 50 L) : masses d'un calcul de chantier, pas d'une gâchée de laboratoire.` }, "");
+      }
+
       const hors = g.composants.filter((c) => horsTolerance(c, g.tolerancePct));
       if (hors.length > 0) {
         ajouter({ ...base, cible, type: "pesee_hors_tolerance",
@@ -98,11 +107,8 @@ export function alertesClasse(etudiants: EtudiantClasse[], o: {
       }
 
       const horsFenetre = g.eprouvettes.flatMap((ep) => {
-        if (ep.statut !== "ecrase") return [];
-        const reel = ageReelJours(ep);
-        if (reel === null) return [];
-        const tol = Math.max(s.fenetreAgeJoursMin, (s.fenetreAgePct / 100) * ep.ageJours);
-        return Math.abs(reel - ep.ageJours) > tol ? [{ ep, reel, tol }] : [];
+        const h = horsFenetreAge(ep, { joursMin: s.fenetreAgeJoursMin, pct: s.fenetreAgePct });
+        return h ? [{ ep, reel: h.ageReel, tol: h.tolJours }] : [];
       });
       if (horsFenetre.length > 0) {
         ajouter({ ...base, cible, type: "age_hors_fenetre",
@@ -170,8 +176,9 @@ export function alertesClasse(etudiants: EtudiantClasse[], o: {
 export function libellesSeuils(s: SeuilsAlertes = SEUILS_ALERTES): string[] {
   return [
     "Écrasement en retard : éprouvette encore en cure après son échéance.",
+    `Taille chantier : plus de ${n0(SEUIL_MASSE_LABO_KG)} kg à peser au total (environ 50 L de remblai ; les moules font 0,2 à 1,6 L).`,
     "Pesée : écart au-delà de la tolérance fixée sur la gâchée.",
-    `Âge à l'essai : écart à l'âge visé supérieur à ${n0(s.fenetreAgeJoursMin)} j ou à ${n0(s.fenetreAgePct)} % de cet âge (le plus grand des deux).`,
+    `Âge à l'essai : écart à l'âge visé supérieur à ${n0(s.fenetreAgeJoursMin)} j ou à ${n0(s.fenetreAgePct)} % de cet âge (le plus grand des deux). L'essai reste dans la moyenne de son âge visé, signalé « hors fenêtre d'âge ».`,
     `Répliques : CV supérieur à ${n0(s.cvMaxPct)} % (au moins ${s.cvNMin} valeurs retenues).`,
     `Formulation : UCS à plus de ${n0(s.ecartMedianePct)} % de la médiane des gâchées de même formulation (au moins ${s.groupeMinGachees} gâchées de ${s.groupeMinEtudiants} étudiants).`,
     `Écrasée sans mesure : plus de ${n0(s.delaiMesureJours * 24)} h après l'écrasement.`,

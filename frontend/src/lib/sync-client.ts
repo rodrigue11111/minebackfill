@@ -30,6 +30,7 @@ import { ecrivainCourbes, purgerMesCourbesIds, transportSupabase } from "./sync-
 import { cycleCourbes, oublierPurgees, planifierCourbes } from "./sync-courbes";
 import { chargerEtatCourbes, magasinCourbes, sauverEtatCourbes } from "./courbes-client";
 import { creerPlanificateur, type Planificateur, type StatutSync } from "./sync-planificateur";
+import { oublierReport, rattachementReporte, reporterPour } from "./rattachement-report";
 
 /**
  * Interrupteur de secours : NEXT_PUBLIC_SYNCHRO_V2 = « false » coupe la
@@ -457,7 +458,9 @@ export function connecterSynchro(sb: SupabaseClient, uid: string, o: { prof?: bo
   const etat = chargerEtatSync();
   const anonymes = compterAnonymes(c.depot);
   const liaison = deciderLiaison(etat.uid, uid, anonymes.resultats + anonymes.gachees > 0);
-  publier({ liaison, reporte: false, anonymes, erreur: null, avis: [] });
+  // « Plus tard » est mémorisé pour ce compte (rattachement-report.ts) : le
+  // bandeau ne revient pas à chaque chargement de page.
+  publier({ liaison, reporte: rattachementReporte(uid), anonymes, erreur: null, avis: [] });
   if (liaison === "lier") {
     sauverEtatSync({ ...etat, uid });
     publier({ liaison: "synchroniser" });
@@ -485,12 +488,14 @@ export function rattacher(): boolean {
   const etat = chargerEtatSync();
   if (etat.uid !== null && etat.uid !== c.uid) return false;
   if (!sauverEtatSync({ ...etat, uid: c.uid })) return false;
+  oublierReport();
   publier({ liaison: "synchroniser", reporte: false });
   demarrer(c);
   return true;
 }
 
 export function reporterRattachement(): void {
+  if (courant) reporterPour(courant.uid);
   publier({ reporte: true });
 }
 

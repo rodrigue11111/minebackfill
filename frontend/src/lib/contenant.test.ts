@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parametresVolume, volumeMouleM3, volumeTotalM3, equivalentM3 } from "./contenant";
+import {
+  parametresVolume, volumeMouleM3, volumeTotalM3, equivalentM3,
+  avisMasseHorsLabo, masseHorsLabo, SEUIL_MASSE_LABO_KG, SEUIL_VOLUME_LABO_M3, volumeHorsLabo,
+} from "./contenant";
 
 describe("volume d'un moule (même géométrie que le calcul)", () => {
   it("cylindre, section × hauteur, pavé, volume saisi ; dimensions incomplètes : null", () => {
@@ -41,5 +44,25 @@ describe("volume : équivalent en m³ dès 1 m³", () => {
     expect(equivalentM3(11000, "cm3").replace(/\s/g, " ")).toBe(" (11 000 m³)");
     expect(equivalentM3(11000, "m3")).toBe("");
     expect(equivalentM3(0.0016, "cm3")).toBe("");
+  });
+});
+
+describe("taille de laboratoire (avis, jamais un blocage)", () => {
+  it("volume : au-delà de 50 L ; l'exemple complet (11 000 m³) en est très loin", () => {
+    expect(volumeHorsLabo(11000)).toBe(true);
+    expect(volumeHorsLabo(0.0026)).toBe(false); // classeur « gramme » : 2,6 L
+    expect(volumeHorsLabo(0.05)).toBe(false);
+    expect(volumeHorsLabo(0.0501)).toBe(true);
+    expect(volumeHorsLabo(null)).toBe(false);
+    expect(volumeHorsLabo(Number.NaN)).toBe(false);
+  });
+
+  it("masse : total des cibles au-delà de 100 kg, sinon null ; message en clair", () => {
+    expect(masseHorsLabo([{ cibleKg: 60 }, { cibleKg: 41 }])).toBe(101);
+    expect(masseHorsLabo([{ cibleKg: 4.2 }, { cibleKg: 0.2 }])).toBeNull();
+    expect(masseHorsLabo(undefined)).toBeNull();
+    expect(SEUIL_VOLUME_LABO_M3).toBe(0.05);
+    expect(SEUIL_MASSE_LABO_KG).toBe(100);
+    expect(avisMasseHorsLabo(18298021.683)).toMatch(/^Cette gâchée demande de peser 18\s298\s022 kg au total/);
   });
 });

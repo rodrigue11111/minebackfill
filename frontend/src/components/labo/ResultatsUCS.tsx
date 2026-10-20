@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Gachee } from "@/lib/gachee";
 import { parametresEffectifs } from "@/lib/gachee";
-import { agregerParAge } from "@/lib/eprouvette";
+import { agregerParAge, mentionHorsFenetre } from "@/lib/eprouvette";
 import {
   AXES_FORMULATION, axeMeta, agesDisponibles, nuageUcs, lignesCsvNuage, lignesProvenanceLabo,
   type AxeFormulation,
@@ -256,7 +256,7 @@ export default function ResultatsUCS({ gachees, formulations }: {
                         <td>{a.ageJours} j</td>
                         <td style={{ fontWeight: 600 }}>{Math.round(a.moyenneKpa as number).toLocaleString("fr-CA")}</td>
                         <td>{a.ecartTypeKpa !== null ? Math.round(a.ecartTypeKpa).toLocaleString("fr-CA") : TIRET}</td>
-                        <td>{a.n}</td>
+                        <td>{a.n}{a.nHorsFenetre > 0 && <span style={{ color: "var(--hors-tolerance-texte)" }}> ({mentionHorsFenetre(a.nHorsFenetre)})</span>}</td>
                       </tr>
                     )),
                   )}

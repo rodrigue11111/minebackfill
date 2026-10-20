@@ -3,7 +3,7 @@ import {
   dateEcheance, joursRestants, classeEcheance, genererCodeEprouvette,
   construireIcs, etiquettesHtml,
   contrainteKpa, moyenne, ecartTypeEch, agregerParAge, ageReelJours,
-  libelleMoule, libelleRupture, libelleVitesse, ecrasementPrecoce,
+  libelleMoule, libelleRupture, libelleVitesse, ecrasementPrecoce, horsFenetreAge, mentionHorsFenetre, toleranceAgeJours,
   type Eprouvette, type EssaiUCS,
 } from "./eprouvette";
 
@@ -252,5 +252,29 @@ describe("écrasement avant l'échéance (avis)", () => {
     expect(ecrasementPrecoce(ep(28, { tempsDeCureReelJours: 27 }))).toEqual({ ageReel: 27, ageVise: 28 });
     expect(ecrasementPrecoce(ep(28, { date: new Date(2026, 8, 20, 12).toISOString() }, "en_cure"))).toBeNull();
     expect(ecrasementPrecoce(ep(28, undefined))).toBeNull();
+  });
+});
+
+describe("fenêtre d'âge à l'essai (gardé dans la moyenne, signalé)", () => {
+  const ecrasee = (kpa: number, ageReel: number | undefined, ageJours = 28, exclu = false): Eprouvette => ep({
+    ageJours, statut: "ecrase",
+    essai: { contrainteKpaSaisie: kpa, ...(ageReel !== undefined ? { tempsDeCureReelJours: ageReel } : {}), ...(exclu ? { exclu: true } : {}) },
+  });
+
+  it("tolérance : max(1 j, 10 % de l'âge visé)", () => {
+    expect(toleranceAgeJours(28)).toBeCloseTo(2.8, 10);
+    expect(toleranceAgeJours(7)).toBe(1);
+    expect(horsFenetreAge(ecrasee(900, 0))).toEqual({ ageReel: 0, tolJours: expect.closeTo(2.8, 10) });
+    expect(horsFenetreAge(ecrasee(900, 30))).toBeNull(); // 2 j d'écart : dans la fenêtre
+    expect(horsFenetreAge(ecrasee(900, 31))).not.toBeNull();
+    expect(horsFenetreAge(ecrasee(900, undefined))).toBeNull(); // non daté : rien à dire
+    expect(horsFenetreAge(ep({ statut: "en_cure" }))).toBeNull();
+  });
+
+  it("agregerParAge : la moyenne inclut l'essai hors fenêtre, nHorsFenetre le compte (exclues à part)", () => {
+    const [a] = agregerParAge([ecrasee(1000, 0), ecrasee(1200, 28), ecrasee(5000, 0, 28, true)]);
+    expect([a.n, a.moyenneKpa, a.nHorsFenetre, a.nExclus]).toEqual([2, 1100, 1, 1]);
+    expect(mentionHorsFenetre(a.nHorsFenetre)).toBe("dont 1 hors fenêtre d'âge");
+    expect(mentionHorsFenetre(0)).toBe("");
   });
 });

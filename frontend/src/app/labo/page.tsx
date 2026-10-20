@@ -16,6 +16,7 @@ import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/ses
 import { useHydrated } from "@/lib/use-hydrated";
 import { genererCode, composantsDepuisRecette, parametresDepuisRecette, nbHorsTolerance, type Gachee } from "@/lib/gachee";
 import { snapshotProtocoles } from "@/lib/protocole";
+import { volumeHorsLabo } from "@/lib/contenant";
 import { useAujourdhui } from "@/lib/use-aujourdhui";
 import { annotationsDe, docsAvecNonLus } from "@/lib/annotations";
 import { libelleRevue } from "@/lib/revues";
@@ -134,6 +135,10 @@ export default function LaboPage() {
   }
 
   const formChoisie = formulations.find((s) => s.id === (formId || formulations[0]?.id)) ?? formulations[0];
+  // Volume total de la recette choisie, s'il est de taille chantier (avis, jamais un blocage).
+  const recetteChoisie = formChoisie?.recipes[Math.min(recIndex, formChoisie.recipes.length - 1)];
+  const volumeChantier = volumeHorsLabo(recetteChoisie?.total_backfill_volume_m3)
+    ? (recetteChoisie?.total_backfill_volume_m3 as number) : null;
 
   // ── Liste des gâchées ──
   return (
@@ -206,8 +211,17 @@ export default function LaboPage() {
                       </Champ>
                     )}
                   </div>
+                  {volumeChantier !== null && (
+                    <Bandeau ton="alerte" role="status">
+                      Cette recette vise {volumeChantier.toLocaleString("fr-CA", { maximumFractionDigits: 3 })} m³ de remblai, un volume
+                      de chantier : une gâchée de laboratoire en fait quelques litres (moules de 0,2 à 1,6 L). Refaites le calcul avec le
+                      volume de vos moules (Informations, Contenant de moulage), ou créez quand même.
+                    </Bandeau>
+                  )}
                   <div>
-                    <button type="button" onClick={creer} className="btn-primary">Créer la gâchée</button>
+                    <button type="button" onClick={creer} className="btn-primary">
+                      {volumeChantier !== null ? "Créer quand même" : "Créer la gâchée"}
+                    </button>
                   </div>
                 </>
               )}

@@ -314,7 +314,7 @@ describe("classe-reseau", () => {
     expect(filtres).toEqual([["user_id", A], ["kind", "gachee"], ["id", "g1"]]);
     expect(await lireDocComplet(client(null), A, "gachee", "g2")).toBeNull();
     await expect(lireDocComplet(client(null, { code: "42501", message: "non" }), A, "gachee", "g3")).rejects.toMatchObject({ code: "42501" });
-    expect(messageErreurClasse(new ErreurClasse("PGRST202", "Could not find the function"))).toMatch(/schema\.sql/);
+    expect(messageErreurClasse(new ErreurClasse("PGRST202", "Could not find the function"))).toMatch(/pas à jour.*administre le site/);
     expect(messageErreurClasse(new ErreurClasse("42501", "refusé"))).toBe("refusé");
   });
 

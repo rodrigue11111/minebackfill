@@ -47,7 +47,8 @@ describe("comparaison — même formulation", () => {
       ligne(C, gachee("c1", { cw: 75, bw: 5, cat: "RPG" }, [800])), // autre catégorie
       ligne(C, gachee("c2", { cw: 70, bw: 5 }, [700])), ligne(C, gachee("c3", { cw: 70, bw: 5 }, [710])), // un seul étudiant
     ));
-    expect(c.groupes.map((g) => [g.cle, g.nbEtudiants, g.nbGachees])).toEqual([["RPC|75|5", 2, 2]]);
+    // Matériaux non renseignés : segment « ?/? » (résidu, liants), comparés entre eux seulement.
+    expect(c.groupes.map((g) => [g.cle, g.nbEtudiants, g.nbGachees])).toEqual([["RPC|75|5|?/?", 2, 2]]);
     expect(libelleGroupe(c.groupes[0])).toBe("RPC · Cw 75 % · Bw 5 %");
   });
 
@@ -82,8 +83,47 @@ describe("comparaison — même formulation", () => {
       ligne(C, gachee("c9", {}, [1])),
     ];
     const c = comparerClasse(classe(...l));
-    expect(c.groupes.map((g) => g.cle)).toEqual(["RPC|75|5"]); // a1 (Bw 5) + c1 ; b1 est à Bw 7
+    expect(c.groupes.map((g) => g.cle)).toEqual(["RPC|75|5|?/?"]); // a1 (Bw 5) + c1 ; b1 est à Bw 7
     expect(c.groupes[0].parAge[0].lignes.map((x) => x.gacheeCode).sort()).toEqual(["G-a1", "G-c1"]);
     expect(c.sansParametres.map((x) => x.code)).toEqual(["G-c9"]);
+  });
+
+  it("critère élargi (2026-10-20) : mêmes matériaux, proportions des liants, granulat et Am en RPG", () => {
+    const mat = (residu: string, liants: [string, number][], granulat?: string) => ({
+      materiaux: {
+        residu: { id: residu, nom: `Résidu ${residu}` },
+        liants: liants.map(([id, f]) => ({ id, nom: id, fractionPct: f })),
+        ...(granulat ? { granulat: { id: granulat, nom: `Granulat ${granulat}` } } : {}),
+      },
+    });
+    const rpg = (id: string, am: number, extra: Record<string, unknown>) =>
+      gachee(id, { cw: 80, bw: 4, cat: "RPG" }, [500], { ...extra, parametres: { cwPct: 80, bwPct: 4, amPct: am } });
+    const c = comparerClasse(classe(
+      // Même dosage, mêmes matériaux (ordre des liants indifférent, 79,8 % arrondi à 80 %) : un groupe.
+      ligne(A, gachee("a1", { cw: 75, bw: 5 }, [1000], mat("r1", [["GU", 80], ["SL", 20]]))),
+      ligne(B, gachee("b1", { cw: 75, bw: 5 }, [900], mat("r1", [["SL", 20.2], ["GU", 79.8]]))),
+      // Même dosage, autres proportions de liant : à part (et seule).
+      ligne(C, gachee("c1", { cw: 75, bw: 5 }, [800], mat("r1", [["GU", 50], ["SL", 50]]))),
+      // RPG : même granulat, Am 30 et 30,2 (même demi-point) ; puis Am 40 : à part.
+      ligne(A, rpg("a2", 30, mat("r1", [["GU", 100]], "g1"))),
+      ligne(B, rpg("b2", 30.2, mat("r1", [["GU", 100]], "g1"))),
+      ligne(C, rpg("c2", 40, mat("r1", [["GU", 100]], "g1"))),
+    ));
+    expect(c.groupes.map((g) => [g.cle, g.nbGachees])).toEqual([
+      ["RPC|75|5|r1/GU:80+SL:20", 2],
+      ["RPG|80|4|r1/GU:100/g1:30", 2],
+    ]);
+    expect(libelleGroupe(c.groupes[0])).toBe("RPC · Cw 75 % · Bw 5 % · Résidu r1 · GU 80 % + SL 20 %");
+    expect(libelleGroupe(c.groupes[1])).toBe("RPG · Cw 80 % · Bw 4 % · Résidu r1 · GU 100 % · Granulat g1 (Am 30 %)");
+  });
+
+  it("une ligne signale ses essais hors fenêtre d'âge, sans changer la moyenne", () => {
+    const tot = (id: string) => gachee(id, { cw: 75, bw: 5 }, [1000, 1200]);
+    const a1 = tot("a1");
+    // Écrasée le jour du coulage pour 28 j visés.
+    (a1.eprouvettes[0] as Record<string, unknown>).essai = { contrainteKpaSaisie: 1000, date: "2026-10-01T12:00:00.000Z" };
+    const c = comparerClasse(classe(ligne(A, a1), ligne(B, tot("b1"))));
+    const l = c.groupes[0].parAge[0].lignes.find((x) => x.gacheeCode === "G-a1")!;
+    expect([l.n, l.nHorsFenetre, l.moyenneKpa]).toEqual([2, 1, 1100]);
   });
 });

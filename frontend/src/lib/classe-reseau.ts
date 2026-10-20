@@ -44,7 +44,7 @@ export function droitAuthRefuse(e: unknown): boolean {
 /** Message d'une erreur réseau pour l'enseignant (schéma absent, droit refusé : quoi faire). */
 export function messageErreurClasse(e: unknown): string {
   if (e instanceof ErreurClasse && schemaPasAJour(e.code)) {
-    return "la base de données n'est pas à jour pour cette version du site : exécutez supabase/schema.sql dans SQL Editor (voir docs/OPERATIONS.md)";
+    return "la base de données du site n'est pas à jour pour cette version : prévenez la personne qui administre le site (mise à jour décrite dans docs/OPERATIONS.md)";
   }
   if (droitAuthRefuse(e)) {
     return "le serveur refuse de modifier les comptes de connexion : bloquez ce compte dans Supabase Studio (Authentication → Users → « Ban user »), voir docs/OPERATIONS.md";

@@ -13,6 +13,7 @@ import { Carte } from "./Carte";
 import { Pastille } from "./Pastille";
 import { Bandeau } from "./Bandeau";
 import Menu from "./Menu";
+import ConfirmationEnLigne from "./ConfirmationEnLigne";
 import ChampNombre, { lireNombre, refusNombre } from "./ChampNombre";
 
 const rendu = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
@@ -169,5 +170,17 @@ describe("kit — bornes haute et basse, menu ouvert ou fermé", () => {
     const id = html.match(/aria-controls="([^"]+)"/)?.[1];
     expect(id).toBeTruthy();
     expect(html).toContain(`id="${id}"`);
+  });
+});
+
+describe("kit : confirmation en ligne (sans window.confirm)", () => {
+  it("au rendu : un seul bouton, aucune action ni question tant qu'on n'a pas cliqué", () => {
+    let appels = 0;
+    const html = renderToStaticMarkup(createElement(ConfirmationEnLigne, {
+      libelle: "Retirer", question: "L'étudiant ne le verra plus.", libelleConfirmer: "Confirmer le retrait",
+      onConfirmer: () => { appels++; },
+    }));
+    expect(html).toBe('<button type="button">Retirer</button>');
+    expect(appels).toBe(0);
   });
 });

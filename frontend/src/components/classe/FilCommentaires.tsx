@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import { estReponse, type LigneAnnotation } from "@/lib/classe-reseau";
+import ConfirmationEnLigne from "@/components/ui/ConfirmationEnLigne";
 import { dateHeure } from "./commun";
 
 export default function FilCommentaires({ liste, moi, nomEtudiant, nouvelles, onAjouter, onRetirer, ancres }: {
@@ -48,10 +49,11 @@ export default function FilCommentaires({ liste, moi, nomEtudiant, nouvelles, on
               </span>
             </span>
             {!reponse && a.auteur_id === moi && (
-              <button type="button" onClick={() => void onRetirer(a.id)}
-                style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, fontFamily: "inherit", flexShrink: 0, alignSelf: "flex-start" }}>
-                Retirer
-              </button>
+              <span style={{ flexShrink: 0, alignSelf: "flex-start" }}>
+                <ConfirmationEnLigne libelle="Retirer" question="L'étudiant ne le verra plus." libelleConfirmer="Confirmer le retrait"
+                  onConfirmer={() => onRetirer(a.id)}
+                  style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, fontFamily: "inherit", padding: 0 }} />
+              </span>
             )}
           </div>
         );

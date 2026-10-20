@@ -110,8 +110,25 @@ describe("export CSV de la classe", () => {
     expect(l[1][col("Exclues")]).toBe(1);
     expect(l[1][col("UCS moyenne (kPa)")]).toBe(1234.6);
     expect(l[1][col("Pesées hors tolérance")]).toBe(1); // liant +6 %, eau +0,5 %
-    expect(EN_TETES_SYNTHESE.slice(-4)).toEqual(["Complétude de la fiche (%)", "Revue", "Motif de la revue", "Modifiée depuis la revue"]);
+    // Colonnes ajoutées à la fin seulement (2026-10-20 : « Dont hors fenêtre d'âge »).
+    expect(EN_TETES_SYNTHESE.slice(-5)).toEqual(["Complétude de la fiche (%)", "Revue", "Motif de la revue", "Modifiée depuis la revue", "Dont hors fenêtre d'âge"]);
     expect(l[1]).toHaveLength(EN_TETES_SYNTHESE.length);
+    expect(l[1][col("Dont hors fenêtre d'âge")]).toBe(0);
+  });
+
+  it("essai écrasé hors de la fenêtre d'âge : compté dans n et la moyenne, signalé en fin de ligne", () => {
+    const ep = (id: string, kpa: number, date: string) => ({ id, code: id, couleLe: "2026-09-01T12:00:00.000Z", ageJours: 28,
+      statut: "ecrase", essai: { contrainteKpaSaisie: kpa, date } });
+    const [e] = regrouper([ligne(gachee("g3", { eprouvettes: [
+      ep("E1", 1000, "2026-09-01T12:00:00.000Z"), // 0 j pour 28 j
+      ep("E2", 1200, "2026-09-29T12:00:00.000Z"),
+    ] }))], profils, sessions, "toutes");
+    const s = lignesCsvSynthese([e], sessions);
+    const cs = (nom: string) => EN_TETES_SYNTHESE.indexOf(nom);
+    expect([s[1][cs("n")], s[1][cs("UCS moyenne (kPa)")], s[1][cs("Dont hors fenêtre d'âge")]]).toEqual([2, 1100, 1]);
+    const p = lignesCsvEprouvettes([e], sessions);
+    const cp = EN_TETES_EPROUVETTES.indexOf("Hors fenêtre d'âge");
+    expect([p[1][cp], p[2][cp]]).toEqual(["oui", "non"]);
   });
 
   it("synthèse : gâchée sans mesure ni pesée → une ligne, pesées inconnues", () => {
@@ -129,7 +146,7 @@ describe("export CSV : revue de l'enseignant (colonnes à la fin)", () => {
   it("éprouvettes : décision, motif, « modifiée depuis », éprouvette écartée ; vide sans revue", () => {
     const l = lignesCsvEprouvettes(etudiants, sessions, () => info);
     const col = (nom: string) => EN_TETES_EPROUVETTES.indexOf(nom);
-    expect(EN_TETES_EPROUVETTES.slice(-4)).toEqual(["Revue", "Motif de la revue", "Modifiée depuis la revue", "Écartée par l'enseignant"]);
+    expect(EN_TETES_EPROUVETTES.slice(-5, -1)).toEqual(["Revue", "Motif de la revue", "Modifiée depuis la revue", "Écartée par l'enseignant"]);
     const [, e1, e2] = l;
     expect(e1[col("Revue")]).toBe("refusée");
     expect(e1[col("Motif de la revue")]).toBe("Pesées incomplètes.");
@@ -137,11 +154,11 @@ describe("export CSV : revue de l'enseignant (colonnes à la fin)", () => {
     expect(e1[col("Écartée par l'enseignant")]).toBe("non");
     expect(e2[col("Écartée par l'enseignant")]).toBe("oui");
     const sans = lignesCsvEprouvettes(etudiants, sessions);
-    expect(sans[1].slice(-4)).toEqual(["", "", "", ""]);
+    expect(sans[1].slice(-5, -1)).toEqual(["", "", "", ""]);
   });
 
   it("synthèse : décision de la gâchée sur chaque ligne", () => {
     const l = lignesCsvSynthese(etudiants, sessions, () => info);
-    expect(l[1].slice(-3)).toEqual(["refusée", "Pesées incomplètes.", "oui"]);
+    expect(l[1].slice(-4, -1)).toEqual(["refusée", "Pesées incomplètes.", "oui"]);
   });
 });

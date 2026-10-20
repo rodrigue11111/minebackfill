@@ -61,7 +61,7 @@ describe("revues : réseau (faux client)", () => {
     const refus = { select: () => refus, order: () => refus, eq: () => refus,
       range: () => Promise.resolve({ data: null, error: { code: "42501", message: "refusé" } }) };
     await expect(lireRevuesClasse({ from: () => refus } as unknown as SupabaseClient)).rejects.toMatchObject({ code: "42501" });
-    expect(messageErreurClasse(new ErreurClasse("PGRST205", "table absente"))).toMatch(/schema\.sql/);
+    expect(messageErreurClasse(new ErreurClasse("PGRST205", "table absente"))).toMatch(/pas à jour.*administre le site/);
   });
 
   it("poser et retirer : paramètres envoyés, motif nettoyé, décision rendue", async () => {

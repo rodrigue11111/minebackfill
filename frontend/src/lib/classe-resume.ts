@@ -3,13 +3,16 @@
 // quatre chiffres lus d'un coup d'œil. Module pur, mêmes règles que le reste
 // de la Classe : essais VALIDES seulement, copies de conflit exclues.
 
-import type { EtudiantClasse } from "./classe";
+import { essaiValide, type EtudiantClasse } from "./classe";
 import type { EcheanceClasse } from "./classe-echeancier";
 import { estReponse, type LigneAnnotation } from "./classe-reseau";
+import { horsFenetreAge } from "./eprouvette";
 import { aRevoir, type InfoRevue } from "./revues";
 
 export interface ResumeClasse {
   essaisValides: number;
+  /** Parmi les essais valides, écrasés hors de la fenêtre d'âge (comptés quand même). */
+  essaisHorsFenetre: number;
   gachees: number;
   /** Éprouvettes à écraser maintenant : en retard ou attendues aujourd'hui. */
   aEcraser: number;
@@ -28,6 +31,8 @@ export function resumeClasse(
   const enRetard = echeances.filter((x) => x.classe === "retard").length;
   return {
     essaisValides: etudiants.reduce((n, e) => n + e.nbEssais, 0),
+    essaisHorsFenetre: etudiants.reduce((n, e) => n + e.gachees.filter((g) => !g.conflit)
+      .reduce((m, g) => m + (g.eprouvettes ?? []).filter((ep) => essaiValide(ep) && horsFenetreAge(ep)).length, 0), 0),
     gachees: etudiants.reduce((n, e) => n + e.gachees.filter((g) => !g.conflit).length, 0),
     aEcraser: enRetard + echeances.filter((x) => x.classe === "aujourdhui").length,
     enRetard,

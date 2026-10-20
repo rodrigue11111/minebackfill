@@ -42,6 +42,7 @@ export default function CourbeUCS({
   ticksX = "valeurs",
   formatX = (x: number) => `${x} j`,
   messageVide = "Aucune mesure UCS pour l'instant. Écrase une éprouvette et saisis sa charge (ou sa contrainte).",
+  etendueMinX,
 }: {
   series: SerieUCS[];
   hauteur?: number;
@@ -53,6 +54,10 @@ export default function CourbeUCS({
   ticksX?: "valeurs" | "rondes";
   formatX?: (x: number) => string;
   messageVide?: string;
+  /** Étendue minimale de l'axe des abscisses (unités de x) : un point seul, ou
+   *  des points presque confondus, ne s'étalent plus sur toute la largeur
+   *  (4,44 à 4,56 % autour de 4,5). Absente : comportement d'origine. */
+  etendueMinX?: number;
 }) {
   const clipId = useId();
   const H = hauteur;
@@ -72,8 +77,13 @@ export default function CourbeUCS({
   const xs = [...new Set(tousPoints.map((p) => p.x))].sort((a, b) => a - b);
   const xmin = xs[0];
   const xmax = xs[xs.length - 1];
-  const xspan = xmax - xmin || 1;
-  const xDom: [number, number] = [xmin - xspan * 0.06, xmax + xspan * 0.06];
+  // Domaine centré sur les points, marge de 6 % de chaque côté. Sans
+  // etendueMinX, identique à [xmin − 6 %, xmax + 6 %].
+  const xspan = Math.max(xmax - xmin, etendueMinX ?? 0) || 1;
+  const xc = (xmin + xmax) / 2;
+  let xDom: [number, number] = [xc - xspan * 0.56, xc + xspan * 0.56];
+  // Une grandeur positive (Bw, Cw) n'a pas d'axe négatif à cause de l'élargissement.
+  if (etendueMinX !== undefined && xmin >= 0 && xDom[0] < 0) xDom = [0, xspan * 1.12];
 
   const hauts = tousPoints.map((p) => p.moyenne + (p.ecartType ?? 0));
   const ymax = Math.max(...hauts);

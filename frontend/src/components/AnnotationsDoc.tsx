@@ -6,6 +6,7 @@ import { annotationsDe, type Annotation } from "@/lib/annotations";
 import { chargerEtatSync } from "@/lib/sync-etat";
 import { cleDoc } from "@/lib/sync-moteur";
 import { marquerCommentairesLus, repondreCommentaire, retirerMaReponse } from "@/lib/sync-client";
+import ConfirmationEnLigne from "@/components/ui/ConfirmationEnLigne";
 
 const dateHeure = (iso: string) => new Date(iso).toLocaleString("fr-CA", { dateStyle: "medium", timeStyle: "short" });
 
@@ -57,8 +58,8 @@ export function FilEtudiant({ kind, id, liste, connecte, ancre = null }: {
     setTexte("");
     setOuvert(false);
   };
+  // Confirmé dans le fil (ConfirmationEnLigne), pas par window.confirm.
   const retirer = async (idA: string) => {
-    if (!window.confirm("Retirer votre réponse ? L'enseignant ne la verra plus.")) return;
     const e = await retirerMaReponse(idA);
     if (e) window.alert(`Retrait impossible : ${e}.`);
   };
@@ -88,9 +89,8 @@ export function FilEtudiant({ kind, id, liste, connecte, ancre = null }: {
                     {moi && (a.luLe ? `vu par l'enseignant le ${dateHeure(a.luLe)}` : "pas encore lu par l'enseignant")}
                   </span>
                   {moi && (
-                    <button type="button" className="fil-lien" onClick={() => void retirer(a.id)}>
-                      Retirer
-                    </button>
+                    <ConfirmationEnLigne libelle="Retirer" question="L'enseignant ne la verra plus." libelleConfirmer="Confirmer le retrait"
+                      className="fil-lien" onConfirmer={() => retirer(a.id)} />
                   )}
                 </div>
               </div>

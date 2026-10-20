@@ -14,9 +14,15 @@ import { Bandeau } from "@/components/ui/Bandeau";
 import { Champ } from "@/components/ui/Champ";
 import { dateCourte, nombre, Pastille } from "./commun";
 
+/**
+ * « ok » : revues lues. « base » : le serveur ne connaît pas encore les revues
+ * (base de données à mettre à jour). « erreur » : toute autre panne (droits,
+ * réseau), avec son message.
+ */
+export type EtatRevues = { etat: "ok" } | { etat: "base" } | { etat: "erreur"; message: string };
+
 export interface ActionsRevue {
-  /** La base connaît les revues (sinon : exécuter supabase/schema.sql). */
-  disponible: boolean;
+  disponibilite: EtatRevues;
   onPoser: (d: { decision: DecisionRevue; motif: string | null; ecartees: string[] }) => Promise<boolean>;
   onRetirer: () => Promise<boolean>;
 }
@@ -38,12 +44,14 @@ export default function CarteRevue({ gachee: g, revue, actions }: {
   }
   const idMotif = `revue-motif-${g.id}`;
 
-  if (!actions.disponible) {
+  const dispo = actions.disponibilite;
+  if (dispo.etat !== "ok") {
     return (
       <Carte titre="Revue de l'enseignant">
         <Bandeau ton="alerte">
-          La revue n&apos;est pas encore disponible : la base de données n&apos;est pas à jour. Exécutez
-          supabase/schema.sql dans SQL Editor (voir docs/OPERATIONS.md).
+          {dispo.etat === "base"
+            ? "La revue des gâchées n'est pas encore activée sur le serveur du cours. Prévenez la personne qui administre le site : la base de données doit être mise à jour."
+            : `La revue est momentanément indisponible : ${dispo.message}. Réessayez avec « Actualiser ».`}
         </Bandeau>
       </Carte>
     );

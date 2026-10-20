@@ -32,7 +32,12 @@ describe("versCsv", () => {
 
 describe("nomFichier", () => {
   it("nettoie et horodate", () => {
-    const d = new Date("2026-07-24T10:00:00Z");
+    const d = new Date(2026, 6, 24, 10);
     expect(nomFichier("Analyse RPG / courbes", "csv", d)).toBe("Analyse-RPG-courbes_2026-07-24.csv");
+  });
+
+  it("date locale : un export à 23 h garde la date du jour (pas celle du lendemain en UTC)", () => {
+    expect(nomFichier("x", "csv", new Date(2026, 9, 20, 23, 30))).toBe("x_2026-10-20.csv");
+    expect(nomFichier("x", "csv", new Date(2026, 9, 21, 0, 5))).toBe("x_2026-10-21.csv");
   });
 });
