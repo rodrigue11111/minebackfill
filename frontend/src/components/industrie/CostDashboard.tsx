@@ -20,7 +20,7 @@ const RechartsLineChart = dynamic(
             <YAxis tick={{ fontSize: 11, fill: "#64748b" }} />
             <Tooltip
               contentStyle={{ fontSize: 12, borderRadius: 6, border: "1px solid #e2e8f0" }}
-              formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(2)} $/m3`, "Coût"]}
+              formatter={(value: number | undefined) => [`${fmt(value ?? 0, 2)} $/m3`, "Coût"]}
             />
             <Line type="monotone" dataKey="cost_per_m3" stroke="#2563eb" strokeWidth={2} dot={{ r: 4, fill: "#2563eb" }} />
           </LineChart>

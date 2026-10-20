@@ -17,6 +17,7 @@
 // montre de nouveau la valeur gardée.
 
 import { useState } from "react";
+import { decimaleFr } from "@/lib/format";
 
 /** Nombre lu dans une saisie (virgule ou point, espaces ignorées, signe moins typographique accepté) ; undefined si vide ou illisible. */
 export function lireNombre(brut: string): number | undefined {
@@ -66,7 +67,7 @@ export default function ChampNombre({
 }) {
   const [brouillon, setBrouillon] = useState<string | null>(null);
   const [refuse, setRefuse] = useState(false);
-  const affiche = brouillon !== null ? brouillon : value ?? "";
+  const affiche = brouillon !== null ? brouillon : value === undefined || value === null ? "" : decimaleFr(String(value));
 
   const signalerRefus = (message: string | null) => {
     setRefuse(message !== null);
@@ -86,7 +87,7 @@ export default function ChampNombre({
       placeholder={placeholder}
       disabled={disabled}
       value={affiche}
-      onFocus={() => setBrouillon(value === undefined || value === null ? "" : String(value))}
+      onFocus={() => setBrouillon(value === undefined || value === null ? "" : decimaleFr(String(value)))}
       onBlur={() => {
         // La saisie refusée ou illisible est jetée : le champ montre de nouveau
         // la valeur gardée (la précédente).

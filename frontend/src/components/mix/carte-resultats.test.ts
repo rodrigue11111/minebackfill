@@ -85,7 +85,7 @@ describe("CarteResultats", () => {
       expect(html).toContain(t);
     }
     // Milliers groupés dans le tableau ; formules du RRC listées et cliquables.
-    expect(html).toContain("2\u202F200\u202F000.000");
+    expect(html).toContain("2\u202F200\u202F000,000");
     const avecFormules = rendu({ sousTitre: "", actions: null, onFormulaClick: () => {}, donnees: { genre: "rrc", recipes: [rrc], massLabel: "kg", toMass: (kg) => kg ?? null } });
     expect(avecFormules).toContain("Formules utilisées pour ce résultat");
     expect(avecFormules).toMatch(/<button[^>]*class="mix-formule"[^>]*>F056</);
@@ -104,9 +104,9 @@ describe("chiffres clés", () => {
     expect(chiffreMasse(1380.4)).toBe("1\u202F380");
     expect(chiffreMasse(13906501)).toBe("13\u202F906\u202F501");
     expect(chiffreMasse(-1234.5)).toBe("-1\u202F235");
-    expect(chiffreMasse(12.345)).toBe("12.3");
-    expect(chiffreMasse(1.2345)).toBe("1.23");
-    expect(chiffreMasse(0.12345)).toBe("0.123");
+    expect(chiffreMasse(12.345)).toBe("12,3");
+    expect(chiffreMasse(1.2345)).toBe("1,23");
+    expect(chiffreMasse(0.12345)).toBe("0,123");
     expect(chiffreMasse(undefined)).toBe(TIRET);
   });
 
@@ -121,14 +121,14 @@ describe("chiffres : \u00E0 pr\u00E9parer et caract\u00E9ristiques", () => {
     expect(chiffresRecette(recette(5), ctx).map((c) => c.libelle)).toEqual(["R\u00E9sidu humide", "Liant", "Eau \u00E0 ajouter", "Total du remblai"]);
     const r = recette(5);
     const retirer = { ...r, components: { ...r.components, water_to_add_mass_kg: -2.5 } } as unknown as Recipe;
-    expect(chiffresRecette(retirer, ctx).find((c) => c.libelle === "Eau \u00E0 retirer")).toMatchObject({ valeur: "2.50" });
+    expect(chiffresRecette(retirer, ctx).find((c) => c.libelle === "Eau \u00E0 retirer")).toMatchObject({ valeur: "2,50" });
     expect(chiffresRecette(r, { ...ctx, isRpg: true }).map((c) => c.libelle)).toContain("Granulat sec");
   });
 
   it("caract\u00E9ristiques : Cw, Bw, E/L, \u03C1h, e, n", () => {
     const c = chiffresCaracteristiques(recette(5), ctx);
     expect(c.map((x) => x.libelle)).toEqual(["Cw", "Bw", "Rapport E/L", "\u03C1h", "Indice des vides e", "Porosit\u00E9 n"]);
-    expect(c[0]).toMatchObject({ valeur: "75.00", unite: "%" });
+    expect(c[0]).toMatchObject({ valeur: "75,00", unite: "%" });
   });
 });
 

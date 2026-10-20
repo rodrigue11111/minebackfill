@@ -75,7 +75,7 @@ describe("éditeur d'une gâchée", () => {
     }));
     expect(html).toContain("cible 54,3 g");
     expect(html).not.toContain("(0,0543 kg)");
-    expect(html).toContain('value="54.3"');
+    expect(html).toContain('value="54,3"');
     expect(html).toContain('aria-label="Masse pesée : Liant (g)"');
     expect(html).toContain('class="labo-pesee-unite" aria-hidden="true">g<');
     expect(html).toContain('aria-label="Unité des pesées"');

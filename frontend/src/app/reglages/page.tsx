@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { decimaleFr } from "@/lib/format";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useStore, CATALOGUE_VERSION, CONSTANTES_VERSION, MATERIALS_VERSION } from "@/lib/store";
@@ -43,7 +44,7 @@ function ChampConstante({ libelle, unite, valeur, onChange, aide, positif }: {
   return (
     <Champ libelle={libelle} unite={unite} aide={refusee ? undefined : aide}
       erreur={refusee ? `${positif ? "Valeur strictement positive attendue" : "Nombre attendu"} : la valeur ${precedente} est conservée.` : undefined}>
-      <input type="text" inputMode="decimal" className="field-input" value={brouillon ?? String(valeur)}
+      <input type="text" inputMode="decimal" className="field-input" value={brouillon ?? decimaleFr(String(valeur))}
         onChange={(e) => {
           const texte = e.target.value;
           setBrouillon(texte);

@@ -40,7 +40,7 @@ function Ecart({ mesure, calcule }: { mesure: number | null; calcule: number | n
   const gros = Math.abs(d) > 1.0; // plus d'un point de pourcentage
   return (
     <span style={{ color: gros ? "var(--danger-texte)" : "var(--succes-texte)", fontWeight: 600 }}>
-      {" "}(écart {d >= 0 ? "+" : ""}{d.toFixed(2)} pt)
+      {" "}(écart {d >= 0 ? "+" : ""}{fmt(d, 2)} pt)
     </span>
   );
 }
@@ -98,7 +98,7 @@ export default function MesuresLabo({
               </GrilleChamps>
               {slumpCibleMm !== undefined && slumpCibleMm > 0 && m.slump !== undefined && (
                 <div style={{ marginTop: 10, fontSize: 13.5, color: "var(--texte)" }}>
-                  <strong>Affaissement : {m.slump} mm</strong> pour une cible de {slumpCibleMm} mm{" "}
+                  <strong>Affaissement : {m.slump.toLocaleString("fr-CA")} mm</strong> pour une cible de {slumpCibleMm.toLocaleString("fr-CA")} mm{" "}
                   {m.slump === slumpCibleMm ? (
                     <span style={{ color: "var(--succes-texte)", fontWeight: 600 }}>(cible atteinte)</span>
                   ) : m.slump < slumpCibleMm ? (
