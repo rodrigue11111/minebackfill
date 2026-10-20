@@ -134,8 +134,15 @@ Informations ne dépend donc pas de la méthode active. Un avis tiré d'un
 résultat (eau à retirer, Cw prédit hors plage) vit dans `lib/avis-recette.ts`
 et s'affiche en tête de la carte des résultats (`ResultsPanel`). Les tableaux
 de résultats groupent les milliers à l'écran (`fmtGroupe`) ; les exports PDF
-et Excel gardent `fmt` (police sans espace fine). Les lignes RRC portent leurs
-formules (`RrcReportRow.formulaIds`) ; la fiche s'ouvre alors sans valeurs.
+gardent `fmt` (police sans espace fine). **Virgule décimale partout** (depuis
+2026-10-19) : `fmt` écrit « 70,00 » à l'écran, dans le PDF et la feuille
+labo ; un champ de saisie affiche sa valeur avec `decimaleFr` et accepte la
+virgule comme le point (`lireNombre`). Les CSV, JSON et Excel reçoivent les
+nombres bruts : ne jamais y passer `fmt`. Les lignes RRC portent toutes leurs
+formules (`RrcReportRow.formulaIds`, la masse de coulis renvoie à F056 et
+F057) ; la fiche s'ouvre alors sans valeurs. Sauvegarder sous un nom déjà
+pris demande « Remplacer l'ancien » (même id, `saveCurrentResult(nom, true)`)
+ou « Garder les deux ».
 
 **Saisie des nombres** (2026-10) : tout champ numérique passe par
 `ChampNombre` (`components/ui/ChampNombre.tsx`), champ texte qui accepte la
