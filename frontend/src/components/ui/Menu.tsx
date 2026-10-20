@@ -8,7 +8,7 @@
 // au bouton (en plus de la fermeture native, pour ne dépendre d'aucun navigateur).
 
 import Link from "next/link";
-import { useId } from "react";
+import { useId, useState } from "react";
 
 export interface ElementMenu {
   libelle: React.ReactNode;
@@ -32,6 +32,8 @@ export default function Menu({ declencheur, elements, className = "btn-secondary
   titre?: React.ReactNode;
 }) {
   const id = `menu-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  // État annoncé aux lecteurs d'écran (aria-expanded), suivi par l'événement toggle du popover.
+  const [ouvert, setOuvert] = useState(false);
   const fermer = () => document.getElementById(id)?.hidePopover();
   const elementsActifs = (menu: HTMLElement) => Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])'));
   const surTouche = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -57,6 +59,8 @@ export default function Menu({ declencheur, elements, className = "btn-secondary
         className={className}
         popoverTarget={id}
         aria-haspopup="menu"
+        aria-expanded={ouvert}
+        aria-controls={id}
         aria-label={ariaLabel}
         data-menu-bouton={id}
       >
@@ -69,6 +73,7 @@ export default function Menu({ declencheur, elements, className = "btn-secondary
         className="ui-menu"
         onKeyDown={surTouche}
         onToggle={(e) => {
+          setOuvert(e.newState === "open");
           if (e.newState !== "open") return;
           const menu = e.currentTarget;
           requestAnimationFrame(() => elementsActifs(menu)[0]?.focus());

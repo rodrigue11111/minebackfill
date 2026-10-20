@@ -27,14 +27,16 @@ export function lireNombre(brut: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-/** Borne d'un champ : `min` inclus, ou exclu avec `minExclusif`. */
+/** Bornes d'un champ : `min` inclus, ou exclu avec `minExclusif` ; `max` inclus. */
 export interface BorneNombre {
   min?: number;
   minExclusif?: boolean;
+  max?: number;
 }
 
-/** Message de refus d'un nombre sous la borne, ou null s'il est accepté. */
-export function refusNombre(n: number, { min, minExclusif }: BorneNombre): string | null {
+/** Message de refus d'un nombre hors des bornes, ou null s'il est accepté. */
+export function refusNombre(n: number, { min, minExclusif, max }: BorneNombre): string | null {
+  if (max !== undefined && n > max) return `La valeur doit être au plus ${max}.`;
   if (min === undefined) return null;
   if (minExclusif ? n > min : n >= min) return null;
   if (min === 0) return minExclusif ? "La valeur doit être strictement positive." : "Une valeur négative est impossible.";
@@ -43,7 +45,7 @@ export function refusNombre(n: number, { min, minExclusif }: BorneNombre): strin
 
 export default function ChampNombre({
   value, onChange, placeholder, id, className = "field-input", ariaLabel, style, disabled,
-  min, minExclusif, messageRefus, onRefus, ariaInvalid, ariaDescribedby,
+  min, minExclusif, max, messageRefus, onRefus, ariaInvalid, ariaDescribedby,
 }: {
   value: number | undefined | null;
   onChange: (n: number | undefined) => void;
@@ -56,6 +58,8 @@ export default function ChampNombre({
   /** Borne basse : une valeur sous la borne n'est pas écrite (voir l'en-tête). */
   min?: number;
   minExclusif?: boolean;
+  /** Borne haute (incluse) : au-delà, même refus que sous `min`. */
+  max?: number;
   /** Message propre au champ (« Le diamètre doit être strictement positif. ») ; sinon un message générique. */
   messageRefus?: string;
   /** Prévient le parent qu'une saisie est refusée (message) ou ne l'est plus (null). */
@@ -67,6 +71,8 @@ export default function ChampNombre({
 }) {
   const [brouillon, setBrouillon] = useState<string | null>(null);
   const [refuse, setRefuse] = useState(false);
+  // La valeur gardée s'écrit à la française (« 75,5 ») ; la saisie accepte la
+  // virgule comme le point.
   const affiche = brouillon !== null ? brouillon : value === undefined || value === null ? "" : decimaleFr(String(value));
 
   const signalerRefus = (message: string | null) => {
@@ -100,7 +106,7 @@ export default function ChampNombre({
         if (brut.trim() === "") { if (refuse) signalerRefus(null); onChange(undefined); return; }
         const n = lireNombre(brut);
         if (n === undefined) return;
-        const refus = refusNombre(n, { min, minExclusif });
+        const refus = refusNombre(n, { min, minExclusif, max });
         if (refus) { signalerRefus(messageRefus ?? refus); return; }
         if (refuse) signalerRefus(null);
         onChange(n);

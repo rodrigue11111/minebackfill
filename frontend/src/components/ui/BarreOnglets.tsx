@@ -31,7 +31,7 @@ export default function BarreOnglets() {
             {l.href === "/classe" && nonLues > 0 && <span className="ui-badge-compteur">{nonLues}</span>}
           </Link>
         ))}
-        <button type="button" className="ui-onglet" aria-current={plusActif ? "page" : undefined} aria-haspopup="dialog" onClick={() => setPlus(true)}>
+        <button type="button" className="ui-onglet" aria-current={plusActif ? "page" : undefined} aria-haspopup="dialog" aria-expanded={plus} onClick={() => setPlus(true)}>
           <Icone nom="plus" taille={24} epaisseur={2} />
           Plus
         </button>

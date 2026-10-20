@@ -214,7 +214,8 @@ export const RRC_ROWS: RrcReportRow[] = [
   { label: (m) => `Retardateur de prise M_SR (${m})`, getter: (r, toMass) => toMass(r.retarder_mass_kg), digits: 3, formulaIds: ["F090"] },
   { label: () => "Retardateur de prise V_SR (L)", getter: (r) => r.retarder_volume_l ?? null, digits: 2, formulaIds: ["F091"] },
   { label: () => "Dosage en retardateur D_m (% de M_c)", getter: (r) => r.retarder_dosage_mass_pct ?? null, digits: 3, formulaIds: ["F055"] },
-  { label: (m) => `Coulis de ciment (${m})`, getter: (r, toMass) => toMass(r.slurry_mass_kg), digits: 3 },
+  // Coulis = ciment (F056) + fluide, eau et retardateur (F057) : la fiche montre les deux.
+  { label: (m) => `Coulis de ciment (${m})`, getter: (r, toMass) => toMass(r.slurry_mass_kg), digits: 3, formulaIds: ["F056", "F057"] },
   { label: () => "Volume de coulis (m3)", getter: (r) => r.slurry_volume_m3 ?? null, digits: 3, formulaIds: ["F092"] },
 ];
 

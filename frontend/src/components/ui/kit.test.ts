@@ -155,3 +155,19 @@ describe("kit — menu : rôles pour les lecteurs d'écran", () => {
     expect(html.match(/role="menuitem"/g)).toHaveLength(2);
   });
 });
+
+describe("kit — bornes haute et basse, menu ouvert ou fermé", () => {
+  it("refusNombre : au-delà de max, refus", () => {
+    expect(refusNombre(201, { min: 2, max: 200 })).toBe("La valeur doit être au plus 200.");
+    expect(refusNombre(200, { min: 2, max: 200 })).toBeNull();
+    expect(refusNombre(1, { min: 2, max: 200 })).toBe("La valeur doit être au moins 2.");
+  });
+
+  it("menu : aria-expanded (fermé au rendu) et aria-controls vers le menu", () => {
+    const html = renderToStaticMarkup(createElement(Menu, { declencheur: "Plus", ariaLabel: "Plus", elements: [{ libelle: "Guide" }] }));
+    expect(html).toContain('aria-expanded="false"');
+    const id = html.match(/aria-controls="([^"]+)"/)?.[1];
+    expect(id).toBeTruthy();
+    expect(html).toContain(`id="${id}"`);
+  });
+});
