@@ -13,7 +13,7 @@ import {
   computeCostPerM3,
   computeCostPerTonne,
 } from "@/lib/industrie_helpers";
-import { num } from "@/lib/format";
+import { num, fmt, decimaleFr } from "@/lib/format";
 
 const inputStyle: React.CSSProperties = {
   display: "block",
@@ -299,7 +299,7 @@ export default function ProductionForm() {
                   >
                     <option value="">-- Choisir --</option>
                     {liantsValides.map((l: LiantCatalogueItem) => (
-                      <option key={l.id} value={l.id}>{l.nom} (Gs={l.gs})</option>
+                      <option key={l.id} value={l.id}>{l.nom} (Gs {decimaleFr(String(l.gs))})</option>
                     ))}
                   </select>
                 </Field>
@@ -338,7 +338,7 @@ export default function ProductionForm() {
             color: fractionOk ? "#16a34a" : "#dc2626",
             border: `1px solid ${fractionOk ? "#bbf7d0" : "#fecaca"}`,
           }}>
-            Total des fractions : {fractionTotal.toFixed(1)} %
+            Total des fractions : {fmt(fractionTotal, 1)} %
             {!fractionOk && " (doit être 100%)"}
           </div>
         )}

@@ -33,7 +33,7 @@ import Pesees from "./Pesees";
 import CarteEprouvettes from "./CarteEprouvettes";
 import FilGachee from "./FilGachee";
 import { dateLongue, nouvelId } from "./outils";
-import { TIRET } from "@/lib/format";
+import { fmt, TIRET } from "@/lib/format";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
 
 type VueTelephone = "pesees" | "eprouvettes" | "echanges";
@@ -301,7 +301,7 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                 {parAge.map((a) => (
                   <LigneListe key={a.ageJours}
                     libelle={`${a.ageJours} jours`}
-                    detail={`n = ${a.n}${a.ecartTypeKpa !== null ? ` · ± ${Math.round(a.ecartTypeKpa).toLocaleString("fr-CA")} kPa` : ""}${a.cvPct !== null ? ` · CV ${a.cvPct.toFixed(1)} %` : ""}${a.nExclus > 0 ? ` · ${a.nExclus} exclue(s)` : ""}`}
+                    detail={`n = ${a.n}${a.ecartTypeKpa !== null ? ` · ± ${Math.round(a.ecartTypeKpa).toLocaleString("fr-CA")} kPa` : ""}${a.cvPct !== null ? ` · CV ${fmt(a.cvPct, 1)} %` : ""}${a.nExclus > 0 ? ` · ${a.nExclus} exclue(s)` : ""}`}
                     valeur={<strong className="labo-ucs">{Math.round(a.moyenneKpa as number).toLocaleString("fr-CA")} kPa</strong>} />
                 ))}
               </ListeGroupee>

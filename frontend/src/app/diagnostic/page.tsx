@@ -15,7 +15,7 @@ import { Page, EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
 import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
 import { Pastille, type TonPastille } from "@/components/ui/Pastille";
-import { TIRET } from "@/lib/format";
+import { TIRET, fmt } from "@/lib/format";
 
 type EtatBackend = "verification" | "operationnel" | "injoignable";
 
@@ -220,7 +220,7 @@ export default function DiagnosticPage() {
                   {stockage.map((e) => (
                     <tr key={e.cle}>
                       <td style={{ fontFamily: "var(--font-geist-mono, monospace)", fontSize: 12.5 }}>{e.cle}</td>
-                      <td style={{ textAlign: "right" }}>{e.taille_ko.toFixed(1)}</td>
+                      <td style={{ textAlign: "right" }}>{fmt(e.taille_ko, 1)}</td>
                       <td style={{ textAlign: "right" }}>{e.version}</td>
                       <td style={{ textAlign: "right" }}>{e.nb_elements ?? TIRET}</td>
                     </tr>
@@ -229,7 +229,7 @@ export default function DiagnosticPage() {
               </table>
             </div>
             <p className="ui-liste-pied" style={{ margin: 0 }}>
-              Total : <strong>{totalKo.toFixed(1)} Ko</strong>. La plupart des navigateurs
+              Total : <strong>{fmt(totalKo, 1)} Ko</strong>. La plupart des navigateurs
               plafonnent vers 5 000 Ko par site ; au-delà, les modifications ne sont plus
               enregistrées et un bandeau rouge l&apos;annonce.
             </p>

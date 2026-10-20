@@ -584,3 +584,21 @@ describe("store — moules par recette et κ partagés par les méthodes (2026-1
     expect(resultatPerime(s() as never, "cwResult", s().empreintesCalcul.cwResult)).toBe(true);
   });
 });
+
+describe("store — sauvegarde sous un nom déjà pris (19 octobre 2026)", () => {
+  it("« Garder les deux » ajoute une entrée ; « Remplacer l'ancien » met à jour la plus récente, même id", () => {
+    const s = () => useStore.getState();
+    useStore.setState({ category: "RPC", method: "dosage_cw", cwResult: { category: "RPC", method: "dosage_cw", recipes: [{ bw_mass_pct: 4.5 }] } as never });
+    expect(s().saveCurrentResult("Doublon")).toBe(true);
+    expect(s().saveCurrentResult("doublon")).toBe(true);
+    const deux = s().savedResults.filter((r) => r.label.toLowerCase() === "doublon");
+    expect(deux).toHaveLength(2);
+    useStore.setState({ cwResult: { category: "RPC", method: "dosage_cw", recipes: [{ bw_mass_pct: 6 }] } as never });
+    expect(s().saveCurrentResult("Doublon", true)).toBe(true);
+    const apres = s().savedResults.filter((r) => r.label.toLowerCase() === "doublon");
+    expect(apres).toHaveLength(2);
+    expect(apres[0].id).toBe(deux[0].id);
+    expect((apres[0].recipes[0] as { bw_mass_pct: number }).bw_mass_pct).toBe(6);
+    expect(apres[0].label).toBe("Doublon");
+  });
+});

@@ -179,3 +179,10 @@ describe("RRC : chaque ligne liée à une formule existante du RRC", () => {
     expect(formulesDuRapportRrc()).toEqual(["F056", "F057", "F058", "F059", "F060", "F090", "F091", "F055", "F092"]);
   });
 });
+
+describe("RRC : toutes les lignes ont leur fiche de formule (19 octobre 2026)", () => {
+  it("y compris la masse de coulis (ciment F056 et fluide F057)", () => {
+    for (const r of RRC_ROWS) expect([r.label("kg"), (r.formulaIds ?? []).length > 0]).toEqual([r.label("kg"), true]);
+    expect(RRC_ROWS.find((r) => r.label("kg").startsWith("Coulis de ciment"))?.formulaIds).toEqual(["F056", "F057"]);
+  });
+});

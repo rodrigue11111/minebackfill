@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { SANS_UNITE, TIRET, fmt, libelleAvecUnite, nombreAxe, valeurAvecUnite, fmtGroupe, chiffresSignificatifs, nombreFr } from "./format";
+import { SANS_UNITE, TIRET, fmt, libelleAvecUnite, nombreAxe, valeurAvecUnite, fmtGroupe, chiffresSignificatifs, nombreFr, decimaleFr } from "./format";
 
 describe("format : valeur absente et unités", () => {
   it("fmt rend TIRET pour une valeur absente", () => {
     expect(fmt(null)).toBe(TIRET);
     expect(fmt(undefined)).toBe(TIRET);
     expect(fmt(Number.NaN)).toBe(TIRET);
-    expect(fmt(1.23456, 2)).toBe("1.23");
+    expect(fmt(1.23456, 2)).toBe("1,23");
   });
 
   it("libelleAvecUnite : unité entre parenthèses, rien pour une grandeur sans unité", () => {
@@ -37,23 +37,23 @@ describe("format : graduations d'axe", () => {
 
 describe("nombres lisibles (campagnes de test du 18 octobre 2026)", () => {
   it("fmt : jamais « -0 » ; les vrais négatifs gardent leur signe", () => {
-    expect(fmt(-0.0001, 3)).toBe("0.000");
-    expect(fmt(-0, 2)).toBe("0.00");
+    expect(fmt(-0.0001, 3)).toBe("0,000");
+    expect(fmt(-0, 2)).toBe("0,00");
     expect(fmt(-1e-12, 0)).toBe("0");
-    expect(fmt(-0.5, 1)).toBe("-0.5");
+    expect(fmt(-0.5, 1)).toBe("-0,5");
   });
 
   it("fmtGroupe : milliers séparés par une espace fine insécable", () => {
-    expect(fmtGroupe(2200000, 3)).toBe("2\u202F200\u202F000.000");
-    expect(fmtGroupe(-1708.6, 1)).toBe("-1\u202F708.6");
+    expect(fmtGroupe(2200000, 3)).toBe("2\u202F200\u202F000,000");
+    expect(fmtGroupe(-1708.6, 1)).toBe("-1\u202F708,6");
     expect(fmtGroupe(999, 0)).toBe("999");
     expect(fmtGroupe(null)).toBe(TIRET);
   });
 
   it("chiffresSignificatifs : 6 chiffres, sans zéros inutiles", () => {
-    expect(chiffresSignificatifs(5 / 2.54)).toBe("1.9685");
-    expect(chiffresSignificatifs(5500 / 2.54)).toBe("2165.35");
-    expect(chiffresSignificatifs(20.5)).toBe("20.5");
+    expect(chiffresSignificatifs(5 / 2.54)).toBe("1,9685");
+    expect(chiffresSignificatifs(5500 / 2.54)).toBe("2165,35");
+    expect(chiffresSignificatifs(20.5)).toBe("20,5");
   });
 });
 
@@ -63,5 +63,14 @@ describe("nombreFr : valeurs d'Analyse sans « -0 »", () => {
     expect(nombreFr(-0.04, 1)).toBe("0");
     expect(nombreFr(-0.06, 1)).toBe("-0,1");
     expect(nombreFr(1234.5678, 2).replace(/\s/g, " ")).toBe("1 234,57");
+  });
+});
+
+describe("virgule décimale partout (19 octobre 2026)", () => {
+  it("fmt et fmtGroupe écrivent la virgule ; decimaleFr pour les champs de saisie", () => {
+    expect(fmt(70, 2)).toBe("70,00");
+    expect(fmtGroupe(1708.6, 3)).toBe("1 708,600");
+    expect(decimaleFr("75.5")).toBe("75,5");
+    expect(decimaleFr("1.5e-7")).toBe("1,5e-7");
   });
 });

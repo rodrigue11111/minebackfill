@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nomDejaPris, nomParDefautAvecHeure } from "./nom-sauvegarde";
+import { nomDejaPris, nomParDefautAvecHeure, homonyme } from "./nom-sauvegarde";
 
 describe("noms des sauvegardes", () => {
   it("le nom proposé porte l'heure : deux sauvegardes du même jour se distinguent", () => {
@@ -11,5 +11,14 @@ describe("noms des sauvegardes", () => {
     expect(nomDejaPris("  Essai 65 ", ["essai 65"])).toBe(true);
     expect(nomDejaPris("Essai 66", ["Essai 65"])).toBe(false);
     expect(nomDejaPris(" ", [" "])).toBe(false);
+  });
+});
+
+describe("homonyme : le résultat à remplacer", () => {
+  it("le plus récent de même nom (liste du plus récent au plus ancien), casse et espaces ignorées", () => {
+    const liste = [{ id: "b", label: "Essai 65" }, { id: "a", label: "essai 65 " }, { id: "c", label: "Autre" }];
+    expect(homonyme(" ESSAI 65", liste)?.id).toBe("b");
+    expect(homonyme("Essai 66", liste)).toBeUndefined();
+    expect(homonyme("", liste)).toBeUndefined();
   });
 });

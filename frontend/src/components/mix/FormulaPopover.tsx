@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { FORMULA_MAP, type Formula } from "@/lib/formulas-data";
 import type { Recipe } from "@/lib/types";
-import { TIRET } from "@/lib/format";
+import { TIRET, fmt, fmtGroupe } from "@/lib/format";
 
 /* ── Value substitution: map formula variable symbols to recipe fields ──
    Exporté pour un test d'invariant : chaque clé doit correspondre au `symbol`
@@ -117,9 +117,9 @@ function getFormulaValues(formula: Formula, recipe: Recipe | undefined): { symbo
 
 const fmtVal = (v: number | null, digits = 4): string => {
   if (v === null || v === undefined || Number.isNaN(v)) return TIRET;
-  if (Math.abs(v) >= 100) return v.toFixed(2);
-  if (Math.abs(v) >= 1) return v.toFixed(3);
-  return v.toFixed(digits);
+  if (Math.abs(v) >= 100) return fmtGroupe(v, 2);
+  if (Math.abs(v) >= 1) return fmt(v, 3);
+  return fmt(v, digits);
 };
 
 /* ── KaTeX rendering ── */

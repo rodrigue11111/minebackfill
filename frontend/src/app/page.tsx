@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { confirmerExemple, LIBELLE_EXEMPLE } from "@/lib/exemple";
 import { equivalentM3, parametresVolume, volumeMouleM3, volumeTotalM3, LIBELLES_CONTENANT } from "@/lib/contenant";
-import { chiffresSignificatifs } from "@/lib/format";
+import { chiffresSignificatifs, fmt } from "@/lib/format";
 import Parcours from "@/components/ui/Parcours";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -300,7 +300,7 @@ export default function GeneralInfoPage() {
                         <option value="">Sélectionner…</option>
                         {liantsValides.map((liant: LiantCatalogueItem) => (
                           <option key={liant.id} value={liant.id}>
-                            {liant.nom} ({liant.code}), Gs {Number(liant.gs).toFixed(4)}
+                            {liant.nom} ({liant.code}), Gs {fmt(Number(liant.gs), 4)}
                           </option>
                         ))}
                       </select>

@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { homonyme } from "./nom-sauvegarde";
 import { create } from "zustand";
 import { type UnitPreferences, DEFAULT_UNITS } from "./units";
 import type { MixResult, Recipe, RrcResultat } from "./types";
@@ -671,7 +672,8 @@ interface AppState {
   setSession: (session: CloudSession | null) => void;
 
   savedResults: SavedResult[];
-  saveCurrentResult: (label: string) => boolean;
+  /** `remplacer` : met à jour le résultat déjà sauvegardé sous ce nom (même id) au lieu d'en ajouter un. */
+  saveCurrentResult: (label: string, remplacer?: boolean) => boolean;
   deleteSavedResult: (id: string) => void;
   loadSavedResults: () => void;
   restoreSavedResult: (id: string) => boolean;
@@ -1561,8 +1563,11 @@ export const useStore = create<AppState>((set, get) => ({
 
   savedResults: [],
   loadSavedResults: () => set({ savedResults: loadSavedFromStorage() }),
-  saveCurrentResult: (label) => {
+  saveCurrentResult: (label, remplacer = false) => {
     const state = get();
+    // « Remplacer l'ancien » : même id, donc même entrée dans Mes calculs, dans
+    // la synchronisation et pour les commentaires de l'enseignant.
+    const remplace = remplacer ? homonyme(label, loadSavedFromStorage()) : undefined;
 
     // Traçabilité honnête : on ne snapshote un id de matériau QUE si les
     // valeurs réellement utilisées par le calcul correspondent encore au
@@ -1600,7 +1605,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     // Champs communs à toutes les catégories (dont l'instantané de contexte).
     const commun = {
-      id: `sr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      id: remplace?.id ?? `sr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       savedAt: new Date().toISOString(),
       label,
       general: { ...state.general },

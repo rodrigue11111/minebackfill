@@ -127,6 +127,27 @@ function FormulaDetail({
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
+  // Volet modal : le focus y entre à l'ouverture, y reste (Tab boucle) et
+  // revient sur la carte d'origine à la fermeture.
+  const voletRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const precedent = document.activeElement as HTMLElement | null;
+    voletRef.current?.focus();
+    return () => { precedent?.focus?.(); };
+  }, []);
+  const garderFocus = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab" || !voletRef.current) return;
+    const focusables = Array.from(voletRef.current.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+    ));
+    if (focusables.length === 0) return;
+    const premier = focusables[0];
+    const dernier = focusables[focusables.length - 1];
+    const actif = document.activeElement;
+    if (e.shiftKey && (actif === premier || actif === voletRef.current)) { e.preventDefault(); dernier.focus(); }
+    else if (!e.shiftKey && actif === dernier) { e.preventDefault(); premier.focus(); }
+  };
+
   const DerivLink = ({ f }: { f: Formula }) => (
     <button type="button" className="frm-lien-derivation" onClick={() => onNavigate(f.id)}>
       <span style={{ fontSize: 10.5, color: "var(--primary)", fontWeight: 700, minWidth: 44, flexShrink: 0 }}>
@@ -141,10 +162,13 @@ function FormulaDetail({
   return (
     <div className="frm-voile" onClick={onClose}>
       <div
+        ref={voletRef}
         className="frm-volet"
         role="dialog"
         aria-modal="true"
-        aria-label={formula.title}
+        aria-label={`${formula.id} : ${formula.title}`}
+        tabIndex={-1}
+        onKeyDown={garderFocus}
         style={{ width: isMax ? "100vw" : "min(580px, 100vw)" }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -27,7 +27,7 @@ import {
 } from "@/lib/analyse-series";
 import PanneauVariation from "@/components/analyse/PanneauVariation";
 import { estParamCle, valeurReference } from "@/lib/analyse-fixe";
-import { bornerPoints, lireArtefact } from "@/lib/analyse-artefact";
+import { bornerPoints, lireArtefact, POINTS_MAX, POINTS_MIN } from "@/lib/analyse-artefact";
 import { corpsBalayage, empreinteBalayage, payloadBase, type BaseAnalyse, type EntreesBalayage } from "@/lib/analyse-corps";
 import { empreinte } from "@/lib/sync-empreinte";
 import {
@@ -43,7 +43,7 @@ import {
 import { telechargerTexte, versCsv, nomFichier } from "@/lib/export-fig";
 import { phases, fractions } from "@/lib/composition";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
-import { num, fmt, libelleAvecUnite, valeurAvecUnite, nombreFr } from "@/lib/format";
+import { fmt, libelleAvecUnite, valeurAvecUnite, nombreFr } from "@/lib/format";
 import ChampNombre from "@/components/ui/ChampNombre";
 
 interface Balayage {
@@ -105,6 +105,8 @@ export default function AnalysePage() {
   const [xMin, setXMin] = useState(1);
   const [xMax, setXMax] = useState(10);
   const [steps, setSteps] = useState(40);
+  // Points hors de 2 à 200 : refusés avec un message (avant : ramenés en silence).
+  const [refusPoints, setRefusPoints] = useState<string | null>(null);
   const [sorties, setSorties] = useState<string[]>(() => {
     const valides = new Set(sortiesPour(categorie).map((s) => s.cle));
     return DEFAUT_SORTIES.filter((k) => valides.has(k));
@@ -544,8 +546,10 @@ export default function AnalysePage() {
                   <Champ libelle="À">
                     <ChampNombre value={xMax} onChange={(n) => { if (n !== undefined) setXMax(n); }} />
                   </Champ>
-                  <Champ libelle="Points">
-                    <input type="number" min={2} max={200} className="field-input" value={steps} onChange={(e) => setSteps(bornerPoints(num(e.target.value)))} />
+                  <Champ libelle="Points" erreur={refusPoints ?? undefined}>
+                    <ChampNombre value={steps} min={POINTS_MIN} max={POINTS_MAX}
+                      messageRefus={`Entre ${POINTS_MIN} et ${POINTS_MAX} points : la valeur précédente est gardée.`}
+                      onRefus={setRefusPoints} onChange={(n) => { if (n !== undefined) setSteps(bornerPoints(n)); }} />
                   </Champ>
                 </div>
 
