@@ -391,6 +391,17 @@ revoke update on public.annotations from authenticated;
 grant update (texte, deleted) on public.annotations to authenticated;
 grant usage on sequence public.user_docs_rev_seq to authenticated;
 
+-- Depuis le 2026-10-30, Supabase n'accorde plus AUTOMATIQUEMENT les droits de
+-- l'API sur une table nouvelle de « public » (projet neuf, branche de
+-- prévisualisation, « supabase db reset ») : sans GRANT, l'API répond
+-- « permission denied ». Chaque table que le site lit ou écrit a donc ici son
+-- droit explicite ; la RLS (politiques ci-dessus) reste la vraie barrière.
+-- Sans effet sur un projet existant, qui a déjà ces droits.
+grant select on public.profiles to authenticated;
+grant select on public.official_catalogs to anon, authenticated;
+grant insert, update on public.official_catalogs to authenticated;
+grant select on public.saved_results to authenticated;
+
 -- ======================================================================
 --  RPC : lecture et écriture des documents
 -- ======================================================================
