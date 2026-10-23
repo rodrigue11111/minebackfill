@@ -50,7 +50,9 @@ const SUPABASE_MINIMAL = `
   grant usage on schema auth to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
   grant usage on schema public to anon, authenticated;
-  alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+  -- Comportement de Supabase depuis le 2026-10-30 pour un projet neuf : AUCUN
+  -- droit automatique sur les tables nouvelles de « public ». Le schéma doit
+  -- donc porter chaque GRANT dont le site a besoin (voir le test « droits »).
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
   alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
 `;
@@ -115,12 +117,32 @@ describe("schema.sql — inscription et profils", () => {
   it("definir_nom change le nom, et seulement lui", async () => {
     await comme(B, "select public.definir_nom($1)", ["Bruno"]);
     await expect(comme(B, "select public.definir_nom($1)", ["x".repeat(81)])).rejects.toMatchObject({ code: "22001" });
-    // Aucune politique UPDATE : un étudiant ne se promeut pas.
-    const maj = await comme(B, "update public.profiles set role = 'prof' where id = $1", [B]);
-    expect(maj.affectedRows).toBe(0);
+    // Un étudiant ne se promeut pas : sur un projet neuf (sans droits
+    // automatiques), aucun droit UPDATE ; sur un projet ancien, qui a ces
+    // droits, aucune politique UPDATE (0 ligne touchée).
+    await expect(comme(B, "update public.profiles set role = 'prof' where id = $1", [B])).rejects.toMatchObject({ code: "42501" });
     const r = await db.query<{ role: string; display_name: string }>(
       "select role, display_name from public.profiles where id = $1", [B]);
     expect(r.rows[0]).toEqual({ role: "etudiant", display_name: "Bruno" });
+  });
+});
+
+describe("schema.sql : droits explicites (Supabase, projets neufs après le 2026-10-30)", () => {
+  it("chaque table et vue lue par le site a son GRANT ; les tables privées n'en ont aucun", async () => {
+    const droits = async (role: string) => (await db.query<{ t: string; p: string }>(
+      `select table_name as t, string_agg(privilege_type, ',' order by privilege_type) as p
+         from information_schema.role_table_grants
+        where table_schema = 'public' and grantee = $1 group by table_name`, [role])).rows
+      .reduce<Record<string, string>>((m, x) => ({ ...m, [x.t]: x.p }), {});
+    const auth = await droits("authenticated");
+    for (const t of ["profiles", "official_catalogs", "saved_results", "user_docs", "user_usage", "annotations", "revues", "vue_gachees", "vue_essais"]) {
+      expect([t, auth[t] ?? ""]).toEqual([t, expect.stringContaining("SELECT")]);
+    }
+    expect(auth.official_catalogs).toBe("INSERT,SELECT,UPDATE");
+    expect(auth.code_enseignant).toBeUndefined();
+    expect(auth.prof_a_promouvoir).toBeUndefined();
+    // L'anonyme ne lit que les catalogues officiels.
+    expect(await droits("anon")).toEqual({ official_catalogs: "SELECT" });
   });
 });
 
