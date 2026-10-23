@@ -149,17 +149,17 @@ export const FORMULAS: Formula[] = [
     chapter: CHAPITRE,
     pageNumber: 8,
     equationLatex:
-      "n = \\frac{V_v}{V_T} \\times 100 \\quad \\Leftrightarrow \\quad n = \\frac{e}{1+e}",
-    equationPlainText: "n = Vv/VT * 100 = e/(1+e)",
+      "n = \\frac{V_v}{V_T} = \\frac{e}{1+e}",
+    equationPlainText: "n = Vv/VT = e/(1+e)",
     variables: [
-      { symbol: "n", description: "Porosité totale", unit: "%" },
+      { symbol: "n", description: "Porosité totale (décimal ; × 100 pour l'exprimer en %)", unit: null },
       { symbol: "V_v", description: "Volume des vides", unit: "m³" },
       { symbol: "V_T", description: "Volume total de l'échantillon", unit: "m³" },
       { symbol: "e", description: "Indice des vides", unit: null },
     ],
     keywords: ["porosity", "porosité", "n", "void ratio", "vides"],
     contextSnippet:
-      "Fraction volumique des vides dans le remblai. Aussi exprimée via l'indice des vides : n = e/(1+e).",
+      "Fraction volumique des vides dans le remblai, en décimal (multipliée par 100, elle s'exprime en %). Aussi exprimée via l'indice des vides : n = e/(1+e).",
     derivationLinks: {
       derivedFrom: ["F004", "F010", "F031"],
       derivesInto: ["F004", "F027", "F033"],
@@ -198,17 +198,17 @@ export const FORMULAS: Formula[] = [
     chapter: CHAPITRE,
     pageNumber: 8,
     equationLatex:
-      "\\rho_d = \\frac{M_d}{V_s} = \\frac{\\rho_s}{1+e}",
-    equationPlainText: "rho_d = Md/Vs = rho_s/(1+e)",
+      "\\rho_d = \\frac{M_d}{V_T} = \\frac{\\rho_s}{1+e}",
+    equationPlainText: "rho_d = Md/VT = rho_s/(1+e)",
     variables: [
       { symbol: "\\rho_d", description: "Masse volumique sèche", unit: "kg/m³" },
       { symbol: "M_d", description: "Masse sèche de l'échantillon", unit: "kg" },
-      { symbol: "V_s", description: "Volume du solide", unit: "m³" },
+      { symbol: "V_T", description: "Volume total de l'échantillon (vides compris)", unit: "m³" },
       { symbol: "\\rho_s", description: "Masse volumique des grains solides", unit: "kg/m³" },
       { symbol: "e", description: "Indice des vides", unit: null },
     ],
     keywords: ["dry density", "masse volumique sèche", "rho_d", "void ratio"],
-    contextSnippet: "Masse volumique des solides seuls ramené au volume total.",
+    contextSnippet: "Masse des solides seuls rapportée au volume total de l'échantillon, vides compris.",
     derivationLinks: {
       derivedFrom: ["F004", "F093", "F095"],
       derivesInto: ["F004", "F012", "F093", "F095"],
@@ -327,21 +327,21 @@ export const FORMULAS: Formula[] = [
     chapter: CHAPITRE,
     pageNumber: 11,
     equationLatex:
-      "C_w = \\frac{1}{1+w} = \\frac{\\rho_d}{\\rho_s}",
-    equationPlainText: "Cw = 1/(1+w) = rho_d/rho_s",
+      "C_w = \\frac{1}{1+w} = \\frac{\\rho_d}{\\rho_h}",
+    equationPlainText: "Cw = 1/(1+w) = rho_d/rho_h",
     variables: [
       { symbol: "C_w", description: "Pourcentage solide massique (décimal)", unit: null },
       { symbol: "w", description: "Teneur en eau massique (décimal)", unit: null },
       { symbol: "\\rho_d", description: "Masse volumique sèche", unit: "kg/m³" },
-      { symbol: "\\rho_s", description: "Masse volumique des grains", unit: "kg/m³" },
+      { symbol: "\\rho_h", description: "Masse volumique humide (totale)", unit: "kg/m³" },
     ],
-    keywords: ["Cw", "solid content", "formes équivalentes", "rho_d", "Gs"],
+    keywords: ["Cw", "solid content", "formes équivalentes", "rho_d", "rho_h"],
     contextSnippet:
-      "Identités utiles entre Cw, w, ρd et ρs pour passer d'une formulation à l'autre.",
+      "Identités utiles entre Cw, w, ρd et ρh pour passer d'une formulation à l'autre (ρd = ρh·Cw, Dia. 33).",
     derivationLinks: {
       derivedFrom: ["F007", "F009"],
       derivesInto: ["F023"],
-      derivationNote: "Forme compacte valide : Cw = Ms/M = 1/(1+w) et Cw = rho_d/rho_s",
+      derivationNote: "Cw = Ms/M = 1/(1+w), et ρd = Ms/VT = (M/VT)·(Ms/M) = ρh·Cw, d'où Cw = ρd/ρh",
     },
   },
 
@@ -835,18 +835,17 @@ export const FORMULAS: Formula[] = [
     chapter: CHAPITRE,
     pageNumber: 34,
     equationLatex:
-      "e = \\frac{\\rho_w G_s}{S_r} \\cdot \\frac{1-C_w}{C_w}",
-    equationPlainText: "e = rho_w*Gs/Sr * (1-Cw)/Cw",
+      "e = \\frac{G_s}{S_r} \\cdot \\frac{1-C_w}{C_w}",
+    equationPlainText: "e = Gs/Sr * (1-Cw)/Cw",
     variables: [
       { symbol: "e", description: "Indice des vides", unit: null },
-      { symbol: "\\rho_w", description: "Masse volumique de l'eau (1 ou 1000)", unit: null },
       { symbol: "G_s", description: "Densité relative des grains", unit: null },
       { symbol: "S_r", description: "Degré de saturation", unit: null },
       { symbol: "C_w", description: "Pourcentage solide (décimal)", unit: null },
     ],
     keywords: ["void ratio", "indice des vides", "e", "Gs", "Sr", "Cw"],
     contextSnippet:
-      "Calcul de l'indice des vides directement depuis Gs, Sr et Cw. Pour Sr=1 : e = Gs·(1−Cw)/Cw.",
+      "Calcul de l'indice des vides directement depuis Gs, Sr et Cw (Dia. 34 : e = w·Gs/Sr, avec w = 1/Cw − 1). Pour Sr = 1 : e = Gs·(1−Cw)/Cw.",
     derivationLinks: {
       derivedFrom: ["F004", "F009"],
       derivesInto: ["F005", "F079"],
@@ -862,16 +861,19 @@ export const FORMULAS: Formula[] = [
     chapter: CHAPITRE,
     pageNumber: 34,
     equationLatex:
-      "S_r = \\frac{w \\cdot G_s}{e} = \\frac{w \\cdot \\rho_d}{(\\rho_s - \\rho_d) \\cdot \\rho_w} \\cdot \\rho_w^2",
-    equationPlainText: "Sr = w*Gs/e",
+      "S_r = \\frac{w \\cdot G_s}{e} = \\frac{w \\cdot \\rho_s \\cdot \\rho_d}{\\rho_w \\cdot (\\rho_s - \\rho_d)}",
+    equationPlainText: "Sr = w*Gs/e = w*rho_s*rho_d/(rho_w*(rho_s-rho_d))",
     variables: [
       { symbol: "S_r", description: "Degré de saturation (décimal)", unit: null },
       { symbol: "w", description: "Teneur en eau (décimal)", unit: null },
       { symbol: "G_s", description: "Densité relative des grains", unit: null },
       { symbol: "e", description: "Indice des vides", unit: null },
+      { symbol: "\\rho_s", description: "Masse volumique des grains", unit: "kg/m³" },
+      { symbol: "\\rho_d", description: "Masse volumique sèche", unit: "kg/m³" },
+      { symbol: "\\rho_w", description: "Masse volumique de l'eau", unit: "kg/m³" },
     ],
     keywords: ["saturation", "Sr", "w", "Gs", "e"],
-    contextSnippet: "Relation standard issue de la mécanique des sols.",
+    contextSnippet: "Relation standard issue de la mécanique des sols ; seconde forme de la Dia. 34 (e = ρs/ρd − 1 et Gs = ρs/ρw).",
     derivationLinks: {
       derivedFrom: ["F003", "F004"],
       derivesInto: ["F003", "F096"],
@@ -2541,18 +2543,19 @@ export const FORMULAS: Formula[] = [
     subtitle: "Relations directes de calcul",
     section: "Description des remblais miniers",
     chapter: CHAPITRE,
-    pageNumber: 32,
+    pageNumber: 33,
     equationLatex:
-      "C_v = 1 - \\frac{\\rho_d}{\\rho_s}",
-    equationPlainText: "Cv = 1 - rho_d/rho_s",
+      "C_v = \\frac{\\rho_d}{\\rho_s} = \\frac{1}{1+e}",
+    equationPlainText: "Cv = rho_d/rho_s = 1/(1+e)",
     variables: [
       { symbol: "C_v", description: "Pourcentage solide volumique (décimal)", unit: null },
       { symbol: "\\rho_d", description: "Masse volumique sèche", unit: "kg/m³" },
       { symbol: "\\rho_s", description: "Masse volumique des grains", unit: "kg/m³" },
+      { symbol: "e", description: "Indice des vides", unit: null },
     ],
-    keywords: ["Cv", "rho_d", "rho_s", "solide volumique", "Dia 32"],
+    keywords: ["Cv", "rho_d", "rho_s", "solide volumique", "Dia 33"],
     contextSnippet:
-      "Dia. 32: expression compacte de Cv en fonction des masses volumiques sèche et solide.",
+      "Dia. 33 : expression compacte de Cv en fonction des masses volumiques sèche et des grains (× 100 pour l'exprimer en %). Ne pas confondre avec la porosité n = 1 − Cv.",
     derivationLinks: {
       derivedFrom: ["F007", "F010", "F093"],
       derivesInto: ["F007"],
@@ -2568,17 +2571,18 @@ export const FORMULAS: Formula[] = [
     chapter: CHAPITRE,
     pageNumber: 34,
     equationLatex:
-      "S_r = \\frac{w\\,\\rho_d}{\\rho_s - \\rho_d}",
-    equationPlainText: "Sr = (w*rho_d)/(rho_s-rho_d)",
+      "S_r = \\frac{w \\cdot \\rho_s \\cdot \\rho_d}{\\rho_w \\cdot (\\rho_s - \\rho_d)}",
+    equationPlainText: "Sr = w*rho_s*rho_d/(rho_w*(rho_s-rho_d))",
     variables: [
       { symbol: "S_r", description: "Degré de saturation (décimal)", unit: null },
       { symbol: "w", description: "Teneur en eau massique (décimal)", unit: null },
       { symbol: "\\rho_d", description: "Masse volumique sèche", unit: "kg/m³" },
       { symbol: "\\rho_s", description: "Masse volumique des grains", unit: "kg/m³" },
+      { symbol: "\\rho_w", description: "Masse volumique de l'eau", unit: "kg/m³" },
     ],
     keywords: ["Sr", "saturation", "rho_d", "rho_s", "Dia 34"],
     contextSnippet:
-      "Dia. 34: forme utilitaire de Sr en fonction de w, ρd et ρs (forme pratique quand ρw = 1 en g/cm³).",
+      "Dia. 34 : forme utilitaire de Sr en fonction de w, ρd et ρs (ρs/ρw = Gs).",
     derivationLinks: {
       derivedFrom: ["F032", "F093"],
       derivesInto: [],

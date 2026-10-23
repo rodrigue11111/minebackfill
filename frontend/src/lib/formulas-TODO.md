@@ -15,7 +15,8 @@ Source de verite:
 
 ## 2. Corrections appliquees sur les formules existantes
 
-- [x] `F012` simplifiee en relation cohérente `Cw = 1/(1+w) = rho_d/rho_s`.
+- [x] `F012` : `Cw = 1/(1+w) = rho_d/rho_h` (2026-10 ; la forme `rho_d/rho_s` notee ici auparavant etait Cv, pas Cw : Dia.33 donne rho_d = rho_h*Cw).
+- [x] 2026-10, contre les Dia.33 et 34 et le classeur (tests `formulas-unites.test.ts`) : `F005` en decimal, `F007` `Md/VT`, `F031` sans rho_w, `F032` seconde forme `w*rho_s*rho_d/(rho_w*(rho_s-rho_d))`, `F095` `Cv = rho_d/rho_s = 1/(1+e)` (p.33 ; l'ancienne forme `1 - rho_d/rho_s` etait la porosite n), `F096` avec le facteur rho_s/rho_w.
 - [x] `F022` texte brut aligne avec le ratio des densites residus/liant.
 - [x] `F030` harmonisee avec la forme Dia.30 `W/C = ((1-Cw)/Cw)*(1/Bw + 1)`.
 - [x] `F037` corrigee vers une forme dimensionnellement coherente de `rho_h`.
@@ -28,7 +29,7 @@ Source de verite:
 ## 4. Points a reverifier en lecture metier
 
 - [ ] Verification finale metier de la convention d'unites de `D1`/`D2` (retardateur CRF) selon vos feuilles labo.
-- [ ] Verification finale metier de la forme pratique de `F096` selon la convention `rho_w = 1 g/cm3`.
+- [x] Forme pratique de `F096` : corrigee en 2026-10 (facteur rho_s/rho_w = Gs manquant, Dia.34) ; relecture du professeur demandee.
 
 ## 5. Ajouts complementaires (disponibilite/visibilite)
 
