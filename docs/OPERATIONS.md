@@ -232,8 +232,24 @@ puis : `drop table public.saved_results;`
 
 ## Anti-pause Supabase (automatique)
 
-Le dépôt contient `.github/workflows/supabase-keepalive.yml` : deux fois par
-semaine, GitHub interroge la base pour la maintenir active. À activer une
+**Mécanisme principal (depuis le 2026-10-23) : Vercel, chaque jour.**
+`frontend/vercel.json` planifie l'appel de `/api/maintien-supabase` chaque
+jour vers 11 h UTC ; la route lit les catalogues officiels (une vraie requête
+en base) avec les variables `NEXT_PUBLIC_SUPABASE_URL` et
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` déjà présentes dans Vercel : rien à
+configurer. Vérifier : vercel.com → le projet du site → Settings → Cron Jobs
+(la tâche y figure, bouton « Run » pour la lancer) ; un échec apparaît dans
+Logs (réponse 502 ou 503 et message « [maintien-supabase] … »). Facultatif :
+définir `CRON_SECRET` dans Vercel pour que seul Vercel puisse appeler la
+route (sans lui, elle reste ouverte, mais ne fait qu'une lecture publique).
+
+Pourquoi : la tâche GitHub ci-dessous n'a plus été lancée par GitHub entre le
+24 septembre et le 23 octobre 2026, alors qu'elle était « active » et sans
+aucun courriel. Elle reste en place comme seconde sécurité.
+
+**Seconde sécurité : GitHub.** Le dépôt contient
+`.github/workflows/supabase-keepalive.yml` : deux fois par semaine, GitHub
+interroge la base pour la maintenir active. À activer une
 fois : GitHub → dépôt → Settings → Secrets and variables → Actions → ajouter
 `SUPABASE_URL` et `SUPABASE_ANON_KEY` (les mêmes valeurs que dans Vercel).
 
