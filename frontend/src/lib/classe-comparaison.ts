@@ -1,10 +1,15 @@
 // frontend/src/lib/classe-comparaison.ts
 // Comparer les étudiants qui ont gâché la MÊME formulation. Module PUR.
 //
-// « Même formulation » (décision de l'enseignant, 2026-09) : même catégorie,
-// et mêmes Cw % et Bw % arrondis au demi-point. Les paramètres viennent de
-// l'instantané figé sur la gâchée, sinon de la formulation d'origine cherchée
-// parmi les résultats de SON auteur (les ids ne valent que chez lui).
+// « Même formulation » (décision de l'enseignant, 2026-09, élargie le
+// 2026-10-20) : même catégorie, mêmes Cw % et Bw % arrondis au demi-point, ET
+// mêmes matériaux : résidu, liants avec leurs proportions (au pour cent), et
+// en RPG granulat et fraction de granulat A_m (au demi-point). Les paramètres
+// viennent de l'instantané figé sur la gâchée, sinon de la formulation
+// d'origine cherchée parmi les résultats de SON auteur (les ids ne valent que
+// chez lui). Un matériau non renseigné (gâchée ancienne) compte comme « ? » :
+// ces gâchées ne se regroupent qu'entre elles, jamais avec une gâchée dont
+// les matériaux sont connus.
 //
 // Ce qui est refusé, et pourquoi (même règle que ucs-formulation.ts) :
 //   - AUCUNE moyenne inter-gâchées : ce serait présenter comme « l'UCS de la
@@ -15,7 +20,7 @@
 //     déguisée. Jamais tracée, jamais exportée (CSV, PDF).
 
 import { agregerParAge } from "./eprouvette";
-import { parametresEffectifs, type ParametresFormulation } from "./gachee";
+import { parametresEffectifs, type MateriauxGachee, type ParametresFormulation } from "./gachee";
 import { gacheesRetenues, type EtudiantClasse } from "./classe";
 
 /** Nombre de gâchées à partir duquel la médiane sert de repère. */
@@ -30,6 +35,43 @@ export function cleFormulation(categorie: string, p: ParametresFormulation | und
   const cw = p?.cwPct, bw = p?.bwPct;
   if (typeof cw !== "number" || typeof bw !== "number" || !Number.isFinite(cw) || !Number.isFinite(bw)) return null;
   return `${categorie}|${arrondiDemiPoint(cw)}|${arrondiDemiPoint(bw)}`;
+}
+
+const INCONNU = "?";
+const idMateriau = (m: { id?: string; code?: string } | undefined): string => m?.id || m?.code || INCONNU;
+const fini = (x: number | undefined): x is number => typeof x === "number" && Number.isFinite(x);
+
+/**
+ * Partie « matériaux » de la clé : résidu, liants triés avec leur proportion
+ * arrondie au pour cent, et en RPG granulat avec A_m au demi-point.
+ * Exemple : « res1/GU:80+SL:20 » ; RPG : « res1/GU:100/gr1:30 ».
+ */
+export function cleMateriaux(categorie: string, m: MateriauxGachee | undefined, p: ParametresFormulation | undefined): string {
+  const liants = (m?.liants ?? [])
+    .map((l) => `${idMateriau(l)}:${fini(l.fractionPct) ? Math.round(l.fractionPct) : INCONNU}`)
+    .sort().join("+") || INCONNU;
+  const parts = [idMateriau(m?.residu), liants];
+  const am = p?.amPct;
+  if (categorie === "RPG") parts.push(`${idMateriau(m?.granulat)}:${fini(am) ? arrondiDemiPoint(am) : INCONNU}`);
+  return parts.join("/");
+}
+
+/** Matériaux d'une gâchée en clair (« Résidu A · GU 80 % + Slag 20 % ») ; vide si rien n'est renseigné. */
+export function libelleMateriaux(categorie: string, m: MateriauxGachee | undefined, p: ParametresFormulation | undefined): string {
+  const n = (x: number) => x.toLocaleString("fr-CA", { maximumFractionDigits: 1 });
+  const morceaux: string[] = [];
+  const residu = m?.residu?.nom || m?.residu?.id;
+  if (residu) morceaux.push(residu);
+  const liants = (m?.liants ?? [])
+    .map((l) => `${l.nom || l.code || l.id || "liant"}${fini(l.fractionPct) ? ` ${n(l.fractionPct)} %` : ""}`);
+  if (liants.length > 0) morceaux.push(liants.join(" + "));
+  const am = p?.amPct;
+  if (categorie === "RPG") {
+    const granulat = m?.granulat?.nom || m?.granulat?.id;
+    // « Am » en lettres simples : le rapport PDF n'imprime pas les indices.
+    if (granulat || fini(am)) morceaux.push(`${granulat ?? "granulat"}${fini(am) ? ` (Am ${n(am)} %)` : ""}`);
+  }
+  return morceaux.join(" · ");
 }
 
 export function mediane(xs: number[]): number | null {
@@ -51,6 +93,8 @@ export interface LigneComparaison {
   ageJours: number;
   n: number;
   nExclus: number;
+  /** Parmi les n, essais écrasés hors de la fenêtre d'âge (comptés quand même). */
+  nHorsFenetre: number;
   moyenneKpa: number;
   ecartTypeKpa: number | null;
   cvPct: number | null;
@@ -76,6 +120,8 @@ export interface GroupeComparaison {
   categorie: string;
   cwArrondi: number;
   bwArrondi: number;
+  /** Matériaux communs du groupe en clair (libelleMateriaux) ; vide s'ils ne sont pas renseignés. */
+  materiaux: string;
   nbEtudiants: number;
   nbGachees: number;
   parAge: AgeGroupe[];
@@ -101,11 +147,12 @@ export function comparerClasse(etudiants: EtudiantClasse[]): Comparaison {
     const formulations = e.resultats.map((r) => ({ id: r.id, recipes: r.recipes ?? [] }));
     for (const g of gacheesRetenues(e)) {
       const p = parametresEffectifs(g, formulations);
-      const cle = cleFormulation(g.categorie, p);
-      if (!cle || !p) {
+      const dosage = cleFormulation(g.categorie, p);
+      if (!dosage || !p) {
         sansParametres.push({ etudiantId: e.id, etudiant: e.nom, gacheeId: g.id, code: g.code });
         continue;
       }
+      const cle = `${dosage}|${cleMateriaux(g.categorie, g.materiaux, p)}`;
       const l = parCle.get(cle) ?? [];
       l.push({ etudiantId: e.id, etudiant: e.nom, gachee: g, p });
       parCle.set(cle, l);
@@ -124,7 +171,7 @@ export function comparerClasse(etudiants: EtudiantClasse[]): Comparaison {
         l.push({
           etudiantId: m.etudiantId, etudiant: m.etudiant, gacheeId: m.gachee.id, gacheeCode: m.gachee.code,
           creeLe: m.gachee.creeLe, cwPct: m.p.cwPct as number, bwPct: m.p.bwPct as number, wcRatio: m.p.wcRatio,
-          ageJours: a.ageJours, n: a.n, nExclus: a.nExclus, moyenneKpa: a.moyenneKpa,
+          ageJours: a.ageJours, n: a.n, nExclus: a.nExclus, nHorsFenetre: a.nHorsFenetre, moyenneKpa: a.moyenneKpa,
           ecartTypeKpa: a.ecartTypeKpa, cvPct: a.cvPct, ecartMedianePct: null,
         });
         parAgeMap.set(a.ageJours, l);
@@ -146,6 +193,7 @@ export function comparerClasse(etudiants: EtudiantClasse[]): Comparaison {
     const [categorie, cw, bw] = cle.split("|");
     groupes.push({
       cle, categorie, cwArrondi: Number(cw), bwArrondi: Number(bw),
+      materiaux: libelleMateriaux(categorie, membres[0].gachee.materiaux, membres[0].p),
       nbEtudiants, nbGachees: membres.length, parAge,
     });
   }
@@ -154,8 +202,13 @@ export function comparerClasse(etudiants: EtudiantClasse[]): Comparaison {
   return { groupes, sansParametres };
 }
 
-/** Libellé d'un groupe : « RPC · Cw 75,5 % · Bw 5 % ». */
-export function libelleGroupe(g: Pick<GroupeComparaison, "categorie" | "cwArrondi" | "bwArrondi">): string {
+/** Libellé d'un groupe : « RPC · Cw 75,5 % · Bw 5 % », suivi des matériaux quand ils sont connus. */
+export function libelleGroupe(g: Pick<GroupeComparaison, "categorie" | "cwArrondi" | "bwArrondi"> & { materiaux?: string }): string {
   const n = (x: number) => x.toLocaleString("fr-CA", { maximumFractionDigits: 1 });
-  return `${g.categorie} · Cw ${n(g.cwArrondi)} % · Bw ${n(g.bwArrondi)} %`;
+  const dosage = `${g.categorie} · Cw ${n(g.cwArrondi)} % · Bw ${n(g.bwArrondi)} %`;
+  return g.materiaux ? `${dosage} · ${g.materiaux}` : dosage;
 }
+
+/** Le critère « même formulation » en clair, pour l'écran et le rapport. */
+export const CRITERE_MEME_FORMULATION =
+  "Même formulation = même catégorie, Cw et Bw arrondis au demi-point, mêmes matériaux (résidu, liants et leurs proportions) et, en RPG, même granulat et même fraction de granulat Am (au demi-point). Une gâchée dont les matériaux ne sont pas renseignés n'est comparée qu'aux gâchées dans le même cas.";

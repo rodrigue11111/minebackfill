@@ -25,6 +25,7 @@ import {
   lireCourbe, lireCourbesClasse, messageErreurClasse, poserRevue, retirerAnnotation, retirerRevue, type LigneAnnotation,
 } from "@/lib/classe-reseau";
 import { decoderCourbe } from "@/lib/courbes";
+import { mentionHorsFenetre } from "@/lib/eprouvette";
 import { cleRevue, indexerRevues, infoRevue, type RevueClasse } from "@/lib/revues";
 import type { ActionsRevue } from "@/components/classe/CarteRevue";
 import { rafraichirReponsesNonLues } from "@/lib/sync-client";
@@ -199,9 +200,10 @@ export default function ClassePage() {
       return false;
     }
   };
+  // Confirmé dans le fil (ConfirmationEnLigne), pas par window.confirm.
   const retirer = async (id: string) => {
     const sb = getSupabase();
-    if (!sb || !window.confirm("Retirer ce commentaire ? L'étudiant ne le verra plus.")) return;
+    if (!sb) return;
     try {
       await retirerAnnotation(sb, id);
       setAnnotations((l) => l.filter((x) => x.id !== id));
@@ -277,7 +279,9 @@ export default function ClassePage() {
   };
   /** Décision de l'enseignant sur une gâchée : écrite par RPC, jamais dans la gâchée. */
   const actionsRevue = (ref: RefDoc, rev: number | null): ActionsRevue => ({
-    disponible: revues !== null,
+    // revues null sans erreur : lireRevuesClasse a reconnu une base sans la
+    // table des revues ; avec une erreur : autre panne, dite telle quelle.
+    disponibilite: revues !== null ? { etat: "ok" } : erreurRevues ? { etat: "erreur", message: erreurRevues } : { etat: "base" },
     onPoser: async (d) => {
       const sb = getSupabase();
       if (!sb) return false;
@@ -317,7 +321,9 @@ export default function ClassePage() {
       nomFichier(`MineBackfill_classe_echeances_${filtreEffectif}`, "ics"));
   };
   const exporterCsvEcheancier = () =>
-    telechargerTexte(versCsv(lignesCsvEcheancier(echeances)), nomFichier(`MineBackfill_classe_echeances_${filtreEffectif}`, "csv"), "text/csv;charset=utf-8");
+    // Même « maintenant » que l'écran : le fichier donne les mêmes jours restants, et le dit.
+    telechargerTexte(versCsv(lignesCsvEcheancier(echeances, maintenant)),
+      nomFichier(`MineBackfill_classe_echeances_${filtreEffectif}`, "csv", maintenant), "text/csv;charset=utf-8");
 
   /** Rapport PDF (jsPDF chargé à la demande) : la classe, ou un étudiant. */
   const exporterPdf = async (e?: EtudiantClasse) => {
@@ -425,7 +431,8 @@ export default function ClassePage() {
               {onglet === "etudiants" && (
                 <>
                   <BandeChiffres ariaLabel="Résumé de la classe" chiffres={[
-                    { libelle: "Essais valides", valeur: resume.essaisValides },
+                    { libelle: "Essais valides", valeur: resume.essaisValides, ton: resume.essaisHorsFenetre > 0 ? "alerte" : "normal",
+                      detail: mentionHorsFenetre(resume.essaisHorsFenetre) || undefined },
                     { libelle: "Gâchées", valeur: resume.gachees },
                     { libelle: "À écraser aujourd'hui", valeur: resume.aEcraser, ton: resume.enRetard > 0 ? "danger" : "normal",
                       detail: resume.enRetard > 0 ? `dont ${resume.enRetard} en retard` : undefined },

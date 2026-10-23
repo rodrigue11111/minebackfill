@@ -15,7 +15,8 @@ import {
 } from "@/lib/gachee";
 import { completudeGachee, listeManquants } from "@/lib/completude";
 import type { Annotation } from "@/lib/annotations";
-import { agregerParAge } from "@/lib/eprouvette";
+import { agregerParAge, mentionHorsFenetre } from "@/lib/eprouvette";
+import { avisMasseHorsLabo, masseHorsLabo } from "@/lib/contenant";
 import { ancresGachee, repartirAnnotations } from "@/lib/ancres";
 import { EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
@@ -161,6 +162,8 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
   ].filter(Boolean).join(" · ");
 
   const parAge = agregerParAge(g.eprouvettes).filter((a) => a.moyenneKpa !== null);
+  // Gâchée créée depuis un calcul de chantier (exemple complet, 11 000 m³) : avis.
+  const masseChantier = masseHorsLabo(g.composants);
   const coulee = g.eprouvettes.length > 0
     ? new Date(Math.min(...g.eprouvettes.map((e) => new Date(e.couleLe).getTime())))
     : null;
@@ -212,6 +215,8 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
       />
 
       <FilGachee gachee={g} connecte={connecte} />
+
+      {masseChantier !== null && <Bandeau ton="alerte" role="status">{avisMasseHorsLabo(masseChantier)}</Bandeau>}
 
       {revue && (revue.motif || ecarteesCodes.length > 0) && (
         <Bandeau ton="neutre" titre={`Revue de l'enseignant : gâchée ${LIBELLE_DECISION[revue.decision]}.`}>
@@ -301,7 +306,7 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                 {parAge.map((a) => (
                   <LigneListe key={a.ageJours}
                     libelle={`${a.ageJours} jours`}
-                    detail={`n = ${a.n}${a.ecartTypeKpa !== null ? ` · ± ${Math.round(a.ecartTypeKpa).toLocaleString("fr-CA")} kPa` : ""}${a.cvPct !== null ? ` · CV ${fmt(a.cvPct, 1)} %` : ""}${a.nExclus > 0 ? ` · ${a.nExclus} exclue(s)` : ""}`}
+                    detail={`n = ${a.n}${a.nHorsFenetre > 0 ? ` (${mentionHorsFenetre(a.nHorsFenetre)})` : ""}${a.ecartTypeKpa !== null ? ` · ± ${Math.round(a.ecartTypeKpa).toLocaleString("fr-CA")} kPa` : ""}${a.cvPct !== null ? ` · CV ${fmt(a.cvPct, 1)} %` : ""}${a.nExclus > 0 ? ` · ${a.nExclus} exclue(s)` : ""}`}
                     valeur={<strong className="labo-ucs">{Math.round(a.moyenneKpa as number).toLocaleString("fr-CA")} kPa</strong>} />
                 ))}
               </ListeGroupee>

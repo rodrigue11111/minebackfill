@@ -5,7 +5,7 @@ import type { EcheanceClasse } from "./classe-echeancier";
 import type { LigneAnnotation } from "./classe-reseau";
 import type { InfoRevue } from "./revues";
 
-const etudiant = (id: string, nbEssais: number, gachees: { conflit?: boolean }[]) =>
+const etudiant = (id: string, nbEssais: number, gachees: { conflit?: boolean; eprouvettes?: unknown[] }[]) =>
   ({ id, nom: id, email: null, resultats: [], gachees, nbEssais, derniereActivite: null }) as unknown as EtudiantClasse;
 const echeance = (classe: EcheanceClasse["classe"]) => ({ classe }) as EcheanceClasse;
 
@@ -14,6 +14,15 @@ describe("résumé de la classe", () => {
     const r = resumeClasse([etudiant("a", 3, [{}, { conflit: true }]), etudiant("b", 2, [{}, {}])], [], []);
     expect(r.essaisValides).toBe(5);
     expect(r.gachees).toBe(3);
+    expect(r.essaisHorsFenetre).toBe(0);
+  });
+
+  it("essais valides hors fenêtre d'âge : comptés, et dénombrés à part (copies de conflit exclues)", () => {
+    const ep = (date: string) => ({ id: date, code: "E", couleLe: "2026-09-01T12:00:00.000Z", ageJours: 28, statut: "ecrase",
+      essai: { contrainteKpaSaisie: 900, date } });
+    const g = { eprouvettes: [ep("2026-09-01T12:00:00.000Z"), ep("2026-09-29T12:00:00.000Z")] }; // 0 j puis 28 j
+    const r = resumeClasse([etudiant("a", 2, [g, { ...g, conflit: true }])], [], []);
+    expect([r.essaisValides, r.essaisHorsFenetre]).toEqual([2, 1]);
   });
 
   it("à écraser = en retard + aujourd'hui ; le reste attend", () => {

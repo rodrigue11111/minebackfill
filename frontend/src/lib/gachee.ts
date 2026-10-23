@@ -20,6 +20,9 @@ export interface ParametresFormulation {
   wcRatio?: number; // rapport eau/liant (wc_ratio)
   bwPct?: number; // dosage en liant Bw (bw_mass_pct)
   wPct?: number; // teneur en eau w (w_mass_pct)
+  /** Fraction de granulat A_m (aggregate_mass_pct), % des solides hors liant ; 0 en RPC.
+   *  Ajoutée le 2026-10-20 : absente des gâchées plus anciennes. */
+  amPct?: number;
 }
 
 /** Un composant à peser : masse CIBLE (théorique) vs masse RÉELLEMENT pesée. */
@@ -309,6 +312,7 @@ export function parametresDepuisRecette(r: Recipe): ParametresFormulation {
     wcRatio: val(r.wc_ratio),
     bwPct: val(r.bw_mass_pct),
     wPct: val(r.w_mass_pct),
+    amPct: val(r.aggregate_mass_pct),
   };
 }
 

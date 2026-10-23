@@ -53,9 +53,10 @@ describe("échéancier de la classe", () => {
   });
 
   it("liste CSV, formules neutralisées", () => {
-    const l = lignesCsvEcheancier(echeancierClasse(etudiants, maintenant));
+    const l = lignesCsvEcheancier(echeancierClasse(etudiants, maintenant), maintenant);
     expect(l[0]).toEqual(EN_TETES_ECHEANCIER);
-    expect(l[1]).toEqual(["2026-10-18", "en retard", -2, "Alice", "A-E1", 28, "G-a1", "Formule A"]);
+    // « Calculé le » : le jour (local) dont partent les jours restants.
+    expect(l[1]).toEqual(["2026-10-18", "en retard", -2, "Alice", "A-E1", 28, "G-a1", "Formule A", "2026-10-20"]);
     expect(l[3][3]).toBe("'=Bruno");
   });
 });

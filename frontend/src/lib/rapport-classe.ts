@@ -8,10 +8,10 @@
 // gâchées, et pas de médiane dans un document qui circule — on n'imprime que
 // des valeurs par gâchée et l'étendue min – max.
 
-import { agregerParAge } from "./eprouvette";
+import { agregerParAge, mentionHorsFenetre } from "./eprouvette";
 import { horsTolerance, parametresEffectifs } from "./gachee";
 import { gacheesRetenues, type EtudiantClasse } from "./classe";
-import { libelleGroupe, type Comparaison } from "./classe-comparaison";
+import { CRITERE_MEME_FORMULATION, libelleGroupe, type Comparaison } from "./classe-comparaison";
 import { LIBELLES_ALERTES, libellesSeuils, type Alerte, type TypeAlerte } from "./classe-alertes";
 import { estReponse, type LigneAnnotation } from "./classe-reseau";
 import { fmtDate } from "./echeance-affichage";
@@ -56,7 +56,7 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
 function ucsParAge(g: EtudiantClasse["gachees"][number]): string {
   const a = agregerParAge(g.eprouvettes);
   if (a.length === 0) return TIRET;
-  return a.map((x) => `${x.ageJours} j : ${nombrePdf(x.moyenneKpa)}${x.ecartTypeKpa !== null ? ` ± ${nombrePdf(x.ecartTypeKpa)}` : ""} (n=${x.n}${x.nExclus ? `, ${x.nExclus} excl.` : ""})`).join(" ; ");
+  return a.map((x) => `${x.ageJours} j : ${nombrePdf(x.moyenneKpa)}${x.ecartTypeKpa !== null ? ` ± ${nombrePdf(x.ecartTypeKpa)}` : ""} (n=${x.n}${x.nHorsFenetre ? `, ${mentionHorsFenetre(x.nHorsFenetre)}` : ""}${x.nExclus ? `, ${x.nExclus} excl.` : ""})`).join(" ; ");
 }
 
 function chapitreEtudiant(e: EtudiantClasse, ctx: ContexteRapport): BlocRapport[] {
@@ -196,7 +196,7 @@ export function documentRapportClasse(etudiants: EtudiantClasse[], ctx: Contexte
   }));
   if (lignesGroupes.length > 0) {
     blocs.push({ type: "titre", texte: "Formulations gâchées par plusieurs étudiants", niveau: 2 });
-    blocs.push({ type: "texte", texte: "Même catégorie, Cw et Bw arrondis au demi-point. Étendue des UCS moyennes par gâchée ; aucune moyenne entre gâchées (lots, opérateurs et protocoles différents).", discret: true });
+    blocs.push({ type: "texte", texte: `${CRITERE_MEME_FORMULATION} Étendue des UCS moyennes par gâchée ; aucune moyenne entre gâchées (lots, opérateurs et protocoles différents).`, discret: true });
     blocs.push({
       type: "tableau",
       colonnes: [{ titre: "Formulation", largeur: 70 }, { titre: "Âge", largeur: 16 }, { titre: "Gâchées", largeur: 18, alignement: "d" }, { titre: "Étudiants", largeur: 18, alignement: "d" }, { titre: "Étendue de l'UCS (kPa)", largeur: 40, alignement: "d" }],

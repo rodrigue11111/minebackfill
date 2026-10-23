@@ -7,7 +7,7 @@
 //     des essais retenus d'UNE gâchée — jamais de moyenne entre gâchées).
 // Copies de conflit exclues (elles répètent les éprouvettes de l'original).
 
-import { agregerParAge, ageReelJours, contrainteKpa, dateCoulee, dateEcheance, libelleMoule, libelleRupture } from "./eprouvette";
+import { agregerParAge, ageReelJours, contrainteKpa, dateCoulee, dateEcheance, horsFenetreAge, libelleMoule, libelleRupture } from "./eprouvette";
 import { MODES_CURE, TYPES_EAU, horsTolerance, parametresEffectifs } from "./gachee";
 import { completudeGachee } from "./completude";
 import { LIBELLE_DECISION, type InfoRevue } from "./revues";
@@ -98,7 +98,7 @@ export const EN_TETES_EPROUVETTES = [
   "Module de Young (kPa)", "Déformation max (%)", "Fichier de presse",
   ...EN_TETE_FICHE, "Moule", "Diamètre du moule (mm)", "Hauteur du moule (mm)", "Masse (g)", "Vitesse de chargement",
   "Unité de vitesse", "Presse", "Code de rupture", "Déflexion max (mm)", "Complétude de la fiche (%)",
-  ...EN_TETE_REVUE, "Écartée par l'enseignant",
+  ...EN_TETE_REVUE, "Écartée par l'enseignant", "Hors fenêtre d'âge",
 ];
 
 /** Une ligne par éprouvette (en-tête compris). */
@@ -121,6 +121,7 @@ export function lignesCsvEprouvettes(etudiants: EtudiantClasse[], sessions: Sess
         es?.vitesseChargement?.valeur ?? null, es?.vitesseChargement?.unite ?? "", es?.presse ?? "",
         es?.modeRuptureCode ?? "", es?.deflexionMaxMm ?? null, completude,
         ...revueGachee(revue), revue ? (revue.ecartees.includes(ep.id) ? "oui" : "non") : "",
+        ep.statut === "ecrase" && ageReelJours(ep) !== null ? (horsFenetreAge(ep) ? "oui" : "non") : "",
       ]);
     }
   }
@@ -130,6 +131,8 @@ export function lignesCsvEprouvettes(etudiants: EtudiantClasse[], sessions: Sess
 export const EN_TETES_SYNTHESE = [
   ...EN_TETE_COMMUN, "Âge (j)", "n", "Exclues", "UCS moyenne (kPa)", "Écart-type (kPa)", "CV (%)", "Pesées hors tolérance",
   ...EN_TETE_FICHE, "Complétude de la fiche (%)", ...EN_TETE_REVUE,
+  // Comptées dans n et dans la moyenne, mais écrasées hors de la fenêtre d'âge.
+  "Dont hors fenêtre d'âge",
 ];
 
 /** Une ligne par gâchée et par âge mesuré (une ligne sans âge si rien n'est mesuré). */
@@ -141,11 +144,11 @@ export function lignesCsvSynthese(etudiants: EtudiantClasse[], sessions: Session
     const fin = [...ficheGachee(c.g), completudeGachee(c.g).pct, ...revueGachee(revueDe?.(c.e.id, c.g.id))];
     const ages = agregerParAge(c.g.eprouvettes);
     if (ages.length === 0) {
-      lignes.push([...tete(c), null, 0, 0, null, null, null, hors, ...fin]);
+      lignes.push([...tete(c), null, 0, 0, null, null, null, hors, ...fin, 0]);
       continue;
     }
     for (const a of ages) {
-      lignes.push([...tete(c), a.ageJours, a.n, a.nExclus, arrondi(a.moyenneKpa, 1), arrondi(a.ecartTypeKpa, 1), arrondi(a.cvPct, 1), hors, ...fin]);
+      lignes.push([...tete(c), a.ageJours, a.n, a.nExclus, arrondi(a.moyenneKpa, 1), arrondi(a.ecartTypeKpa, 1), arrondi(a.cvPct, 1), hors, ...fin, a.nHorsFenetre]);
     }
   }
   return securiserCsv(lignes);

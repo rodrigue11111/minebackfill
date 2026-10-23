@@ -8,6 +8,12 @@ import { Icone } from "@/components/ui/Icones";
 import { dateCourte } from "./commun";
 import { TIRET } from "@/lib/format";
 
+const INFOBULLES: Record<string, string | undefined> = {
+  "Essais valides": "Éprouvettes écrasées, mesurées, non exclues ; copies de conflit non comptées",
+  // Pas la même mesure que « Dernière synchronisation » de l'onglet Comptes.
+  "Dernière activité": "Dernier résultat ou dernière gâchée modifié, dans la session affichée (courbes de presse et suppressions non comptées)",
+};
+
 export default function TableauEtudiants({ etudiants, annotations, selId, onChoisir, couleurDe, alertesParEtudiant }: {
   etudiants: EtudiantClasse[];
   alertesParEtudiant: Map<string, number>;
@@ -24,8 +30,7 @@ export default function TableauEtudiants({ etudiants, annotations, selId, onChoi
           <thead>
             <tr>
               {colonnes.map((t) => (
-                <th key={t} scope="col"
-                  title={t === "Essais valides" ? "Éprouvettes écrasées, mesurées, non exclues ; copies de conflit non comptées" : undefined}>{t}</th>
+                <th key={t} scope="col" title={INFOBULLES[t]}>{t}</th>
               ))}
               <th aria-hidden="true" />
             </tr>
@@ -55,7 +60,7 @@ export default function TableauEtudiants({ etudiants, annotations, selId, onChoi
                   <td className={alertesParEtudiant.get(e.id) ? "classe-alerte" : undefined}>
                     {alertesParEtudiant.get(e.id) || TIRET}
                   </td>
-                  <td>{dateCourte(e.derniereActivite)}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{dateCourte(e.derniereActivite)}</td>
                   <td>
                     {siens.length || TIRET}
                     {nbNonLues > 0 && <span className="classe-note-alerte"> · {nbNonLues} réponse{nbNonLues > 1 ? "s" : ""} non lue{nbNonLues > 1 ? "s" : ""}</span>}

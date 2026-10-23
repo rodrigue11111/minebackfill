@@ -52,11 +52,15 @@ export function icsClasse(l: EcheanceClasse[], horodatage: Date): string {
   })), horodatage);
 }
 
-export const EN_TETES_ECHEANCIER = ["Échéance", "État", "Jours restants", "Étudiant", "Éprouvette", "Âge cible (j)", "Gâchée", "Formulation"];
+// « Calculé le » (ajouté à la fin, 2026-10-20) : « Jours restants » se compte
+// depuis ce jour-là, pas depuis le jour où l'on rouvre le fichier.
+export const EN_TETES_ECHEANCIER = ["Échéance", "État", "Jours restants", "Étudiant", "Éprouvette", "Âge cible (j)", "Gâchée", "Formulation", "Calculé le"];
 const ETATS: Record<EcheanceClasse["classe"], string> = { retard: "en retard", aujourdhui: "aujourd'hui", proche: "7 prochains jours", planifie: "plus tard" };
 
-export function lignesCsvEcheancier(l: EcheanceClasse[]): CelluleCsv[][] {
+/** `calculeLe` : le « maintenant » qui a servi à echeancierClasse (jour local). */
+export function lignesCsvEcheancier(l: EcheanceClasse[], calculeLe: Date): CelluleCsv[][] {
+  const jour = fmtDate(calculeLe);
   return securiserCsv([EN_TETES_ECHEANCIER, ...l.map((x) => [
-    fmtDate(x.echeance), ETATS[x.classe], x.joursRestants, x.etudiant, x.eprouvetteCode, x.ageJours, x.gacheeCode, x.formulation,
+    fmtDate(x.echeance), ETATS[x.classe], x.joursRestants, x.etudiant, x.eprouvetteCode, x.ageJours, x.gacheeCode, x.formulation, jour,
   ])]);
 }

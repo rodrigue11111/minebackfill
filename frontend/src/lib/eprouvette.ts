@@ -171,6 +171,9 @@ export interface AgregatAge {
   valeurs: number[]; // contraintes RETENUES (kPa), hors exclusions
   n: number; // nb retenu
   nExclus: number;
+  /** Parmi les retenues, essais écrasés hors de la fenêtre d'âge (horsFenetreAge) :
+   *  gardés dans la moyenne, mais signalés partout où elle s'affiche. */
+  nHorsFenetre: number;
   moyenneKpa: number | null;
   ecartTypeKpa: number | null;
   cvPct: number | null; // coefficient de variation (%)
@@ -184,20 +187,23 @@ export interface AgregatAge {
  * éprouvette. Trié par âge croissant.
  */
 export function agregerParAge(eprouvettes: Eprouvette[]): AgregatAge[] {
-  const parAge = new Map<number, { retenus: number[]; exclus: number }>();
+  const parAge = new Map<number, { retenus: number[]; exclus: number; horsFenetre: number }>();
   for (const e of eprouvettes) {
     // Seules les éprouvettes ÉCRASÉES comptent : une éprouvette remise en cure
     // conserve son essai (donnée non perdue) mais sort des statistiques.
     if (e.statut !== "ecrase") continue;
     const c = contrainteKpa(e.essai);
     if (c === null) continue;
-    const slot = parAge.get(e.ageJours) ?? { retenus: [], exclus: 0 };
+    const slot = parAge.get(e.ageJours) ?? { retenus: [], exclus: 0, horsFenetre: 0 };
     if (e.essai?.exclu) slot.exclus += 1;
-    else slot.retenus.push(c);
+    else {
+      slot.retenus.push(c);
+      if (horsFenetreAge(e)) slot.horsFenetre += 1;
+    }
     parAge.set(e.ageJours, slot);
   }
   return [...parAge.entries()]
-    .map(([ageJours, { retenus, exclus }]) => {
+    .map(([ageJours, { retenus, exclus, horsFenetre }]) => {
       const m = moyenne(retenus);
       const sd = ecartTypeEch(retenus);
       return {
@@ -205,6 +211,7 @@ export function agregerParAge(eprouvettes: Eprouvette[]): AgregatAge[] {
         valeurs: retenus,
         n: retenus.length,
         nExclus: exclus,
+        nHorsFenetre: horsFenetre,
         moyenneKpa: m,
         ecartTypeKpa: sd,
         cvPct: m !== null && m !== 0 && sd !== null ? (sd / m) * 100 : null,
@@ -251,6 +258,42 @@ export function ageReelJours(e: Eprouvette): number | null {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   return Math.round((jourLocal(d).getTime() - dateCoulee(e).getTime()) / MS_JOUR);
+}
+
+/**
+ * Fenêtre d'âge à l'essai : écart toléré autour de l'âge visé =
+ * max(joursMin, pct % de l'âge visé), soit ± 2,8 j à 28 j et ± 1 j à 7 j.
+ * Heuristique de contrôle qualité (pas une formule du cours), affichée comme
+ * valeur par défaut à valider par l'enseignant (classe-alertes.ts).
+ */
+export const FENETRE_AGE = { joursMin: 1, pct: 10 };
+
+/** Écart toléré (jours) autour de l'âge visé. */
+export function toleranceAgeJours(ageVise: number, f: { joursMin: number; pct: number } = FENETRE_AGE): number {
+  return Math.max(f.joursMin, (f.pct / 100) * ageVise);
+}
+
+/**
+ * Éprouvette écrasée hors de la fenêtre d'âge (par exemple à 0 j pour 28 j
+ * visés). Elle reste dans la moyenne de son âge visé (choix du 2026-10-20),
+ * mais elle est signalée : alerte de la Classe et mention « dont n hors
+ * fenêtre d'âge » à côté de chaque moyenne. null : non écrasée, non datée,
+ * ou dans la fenêtre.
+ */
+export function horsFenetreAge(
+  e: Eprouvette,
+  f: { joursMin: number; pct: number } = FENETRE_AGE,
+): { ageReel: number; tolJours: number } | null {
+  if (e.statut !== "ecrase") return null;
+  const ageReel = ageReelJours(e);
+  if (ageReel === null) return null;
+  const tolJours = toleranceAgeJours(e.ageJours, f);
+  return Math.abs(ageReel - e.ageJours) > tolJours ? { ageReel, tolJours } : null;
+}
+
+/** « dont 2 hors fenêtre d'âge » ; chaîne vide quand il n'y en a aucun. */
+export function mentionHorsFenetre(n: number): string {
+  return n > 0 ? `dont ${n} hors fenêtre d'âge` : "";
 }
 
 /**

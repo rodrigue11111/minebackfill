@@ -3,6 +3,7 @@
 // bouton : irréversible, elle reste une procédure SQL (docs/OPERATIONS.md).
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { bloquerCompte, definirRole, lireComptes, messageErreurClasse, type CompteClasse } from "@/lib/classe-reseau";
 import { dateCourte, Pastille, td, th } from "./commun";
@@ -11,6 +12,13 @@ import { Bandeau } from "@/components/ui/Bandeau";
 import { TIRET } from "@/lib/format";
 
 const nomDe = (c: CompteClasse) => c.nom?.trim() || c.courriel || `Compte ${c.id.slice(0, 8)}`;
+
+// Deux dates qui se ressemblent sans mesurer la même chose que la colonne
+// « Dernière activité » de l'onglet Étudiants (voir TableauEtudiants).
+const INFOBULLES_COMPTES: Record<string, string | undefined> = {
+  "Dernière connexion": "Dernière ouverture de session avec mot de passe (un retour sur le site déjà connecté ne compte pas).",
+  "Dernière synchronisation": "Dernière modification envoyée en ligne, quelle qu'elle soit : courbes de presse et suppressions comprises, toutes sessions.",
+};
 
 /** Ce que chaque action fait, dit AVANT de la faire. */
 export function confirmationAction(action: "nommer" | "retirer" | "bloquer" | "debloquer", nom: string): string {
@@ -87,9 +95,11 @@ export default function OngletComptes({ moi, onChangement }: {
       {etat === "pret" && (
         <Carte titre="Comptes" aside={`${comptes.length}`} sansMarge>
           <div className="classe-tableau">
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
             <thead>
-              <tr>{["Nom", "Courriel", "Rôle", "Inscrit le", "Dernière connexion", "Travail en ligne", "Dernière activité", "État", ""].map((t, i) => <th key={i} style={th}>{t}</th>)}</tr>
+              <tr>{["Nom", "Courriel", "Rôle", "Inscrit le", "Dernière connexion", "Travail en ligne", "Dernière synchronisation", "État", ""].map((t, i) => (
+                <th key={i} style={{ ...th, whiteSpace: "normal", verticalAlign: "bottom" }} title={INFOBULLES_COMPTES[t]}>{t}</th>
+              ))}</tr>
             </thead>
             <tbody>
               {comptes.map((c) => {
@@ -97,13 +107,18 @@ export default function OngletComptes({ moi, onChangement }: {
                 const bloque = c.bloqueJusquA !== null;
                 return (
                   <tr key={c.id} style={{ background: bloque ? "var(--danger-pale)" : undefined }}>
-                    <td style={{ ...td, fontWeight: 600 }}>{c.nom?.trim() || TIRET}</td>
-                    <td style={td}>{c.courriel ?? TIRET}</td>
+                    <td style={{ ...td, fontWeight: 600 }}>
+                      {c.nom?.trim() || (soi
+                        // Sans nom, l'avatar et la liste montrent l'initiale du courriel : on le dit où l'on regarde.
+                        ? <Link href="/compte" style={{ fontWeight: 500 }}>Ajouter mon nom</Link>
+                        : TIRET)}
+                    </td>
+                    <td style={{ ...td, overflowWrap: "anywhere" }}>{c.courriel ?? TIRET}</td>
                     <td style={td}>{c.role === "prof" ? <Pastille ton="bleu">enseignant</Pastille> : "étudiant"}</td>
-                    <td style={td}>{dateCourte(c.creeLe)}</td>
-                    <td style={td}>{dateCourte(c.derniereConnexion)}</td>
+                    <td style={{ ...td, whiteSpace: "nowrap" }}>{dateCourte(c.creeLe)}</td>
+                    <td style={{ ...td, whiteSpace: "nowrap" }}>{dateCourte(c.derniereConnexion)}</td>
                     <td style={td}>{c.nbResultats} résultat{c.nbResultats > 1 ? "s" : ""} · {c.nbGachees} gâchée{c.nbGachees > 1 ? "s" : ""}</td>
-                    <td style={td}>{dateCourte(c.derniereActivite)}</td>
+                    <td style={{ ...td, whiteSpace: "nowrap" }}>{dateCourte(c.derniereActivite)}</td>
                     <td style={td}>{bloque ? <Pastille ton="rouge">bloqué</Pastille> : "actif"}</td>
                     <td style={{ ...td, whiteSpace: "nowrap" }}>
                       {soi ? <span style={{ color: "var(--texte-3)", fontSize: 13 }}>vous</span> : (

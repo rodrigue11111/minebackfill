@@ -7,7 +7,7 @@ import { getSupabase, cloudConfigure } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
 import { messageErreurAuth } from "@/lib/auth-messages";
 import {
-  abonnerSync, instantaneSync, instantaneSyncServeur, libelleEnAttente, type InstantaneSync,
+  abonnerSync, instantaneSync, instantaneSyncServeur, libelleEnAttente, rattacher, type InstantaneSync,
 } from "@/lib/sync-client";
 import { Page, EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
@@ -149,6 +149,18 @@ function EtatSynchro() {
         (le travail de l&apos;autre compte n&apos;a pas pu être mis de côté). Rien n&apos;est perdu ;
         libérez de la place, puis rechargez la page.
       </Bandeau>
+    );
+  }
+  if (s.liaison === "proposer_rattachement") {
+    // Rappel permanent du bandeau « Rattacher » (que « Plus tard » fait taire 12 h).
+    const { resultats, gachees } = s.anonymes;
+    return (
+      <LigneListe
+        libelle="Données de cet appareil"
+        accent={<Pastille point ton="alerte" />}
+        detail={`${resultats} résultat${resultats > 1 ? "s" : ""} et ${gachees} gâchée${gachees > 1 ? "s" : ""} créés sans compte, pas encore sauvegardés en ligne.`}
+        valeur={<button type="button" className="btn-secondary" onClick={() => rattacher()}>Rattacher à mon compte</button>}
+      />
     );
   }
   if (s.liaison !== "synchroniser") return null;

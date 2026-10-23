@@ -9,6 +9,9 @@ import { agesClasse, nuageClasse, type EtudiantClasse } from "@/lib/classe";
 import { COULEURS } from "./commun";
 import { libelleAvecUnite } from "@/lib/format";
 
+/** Étendue minimale de l'abscisse : 2 points de % (Bw, Cw, w), 1 pour E/L. */
+const ETENDUE_MIN_X: Record<AxeFormulation, number> = { bwPct: 2, cwPct: 2, wPct: 2, wcRatio: 1 };
+
 export default function FigureClasse({ etudiants, couleurDe }: { etudiants: EtudiantClasse[]; couleurDe: Map<string, string> }) {
   const [axe, setAxe] = useState<AxeFormulation>("bwPct");
   const [ageVoulu, setAgeVoulu] = useState<number | null>(null);
@@ -22,6 +25,7 @@ export default function FigureClasse({ etudiants, couleurDe }: { etudiants: Etud
         .map((p) => ({ x: p.x, moyenne: p.moyenneKpa, ecartType: p.ecartTypeKpa, n: p.n })),
     }))
     .filter((s) => s.points.length > 0);
+  const nbAbscisses = new Set(nuage.points.map((p) => p.x)).size;
 
   return (
     <Carte titre="UCS mesurée de la classe">
@@ -49,7 +53,13 @@ export default function FigureClasse({ etudiants, couleurDe }: { etudiants: Etud
       <CourbeUCS series={series} relier={false} ticksX="rondes"
         xLabel={(() => { const m = axeMeta(axe); return m ? libelleAvecUnite(m.label, m.unite) : axe; })()}
         formatX={(x) => x.toLocaleString("fr-CA", { maximumFractionDigits: 2 })}
+        etendueMinX={ETENDUE_MIN_X[axe]}
         messageVide="Aucune gâchée de la classe n'a de mesure exploitable à cet âge." />
+      {nbAbscisses === 1 && (
+        <p className="classe-intro" role="status">
+          Un seul dosage dans la sélection : il faut au moins deux gâchées de dosages différents pour lire une tendance.
+        </p>
+      )}
       {nuage.ecartees.length > 0 && (
         <details className="classe-seuils">
           <summary>{nuage.ecartees.length} gâchée(s) absente(s) de cette figure</summary>

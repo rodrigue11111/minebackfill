@@ -2,7 +2,7 @@
 // commentaires de l'enseignant.
 
 import { useState } from "react";
-import { agregerParAge } from "@/lib/eprouvette";
+import { agregerParAge, mentionHorsFenetre } from "@/lib/eprouvette";
 import { essaiValide, type EtudiantClasse, type LigneClasse } from "@/lib/classe";
 import { estReponse, type LigneAnnotation } from "@/lib/classe-reseau";
 import { methodLabel } from "@/lib/method-registry";
@@ -113,7 +113,7 @@ export default function DetailEtudiant({ etudiant, annotations, onAnnoter, ctx, 
               </div>
               <div style={{ fontSize: 13.5, color: "var(--texte-2)", marginTop: 3 }}>
                 {valides}/{g.eprouvettes.length} essai(s) valide(s)
-                {parAge.length > 0 && " · UCS : " + parAge.map((a) => `${a.ageJours} j = ${Math.round(a.moyenneKpa as number).toLocaleString("fr-CA")} kPa (n=${a.n})`).join(" ; ")}
+                {parAge.length > 0 && " · UCS : " + parAge.map((a) => `${a.ageJours} j = ${Math.round(a.moyenneKpa as number).toLocaleString("fr-CA")} kPa (n=${a.n}${a.nHorsFenetre > 0 ? `, ${mentionHorsFenetre(a.nHorsFenetre)}` : ""})`).join(" ; ")}
               </div>
               <FilReplie liste={commentaires("gachee", g.id)} nomEtudiant={etudiant.nom} ctx={ctx}
                 ancres={ancresGachee(g)}

@@ -38,9 +38,14 @@ export function versCsv(lignes: (string | number | null | undefined)[][]): strin
   return lignes.map((l) => l.map(celluleCsv).join(";")).join("\r\n");
 }
 
-/** Nom de fichier « sûr » (sans caractères interdits), horodaté à la journée. */
+/**
+ * Nom de fichier « sûr » (sans caractères interdits), horodaté à la journée
+ * LOCALE : en UTC, un export fait après 20 h à Ottawa portait la date du
+ * lendemain.
+ */
 export function nomFichier(base: string, ext: string, date = new Date()): string {
-  const jour = date.toISOString().slice(0, 10);
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  const jour = `${date.getFullYear()}-${p2(date.getMonth() + 1)}-${p2(date.getDate())}`;
   const propre = base.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
   return `${propre}_${jour}.${ext}`;
 }

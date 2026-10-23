@@ -238,6 +238,7 @@ optionnel+nullable pour les vieux localStorage).
 | IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par clé de courbe (`cleCourbe` : `<idEprouvette>:<importeLe>`, ou l'id d'éprouvette pour une courbe d'origine inconnue) | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` (avec `importeLe` depuis le 2026-10-18) ; orphelines balayées au démarrage (`balayerCourbesOrphelines`, prudent) |
 | `minebackfill_sync_courbes` | `{v,data}` | 2 | envoi des courbes en ligne (`sync-courbes.ts`) : `{ comptes: { [uid]: { envoyees, bloquees } } }`, par id de document ; v1 → v2 : compte repris, entrées abandonnées (`migrerEtatCourbes`) — **hors sauvegarde** |
 | `minebackfill_revues` | `{v,data}` | 1 | revues de l'enseignant sur mes gâchées, relues en entier (`revues.ts`) — **hors sauvegarde** |
+| `minebackfill_rattachement_reporte` | `{v,data}` | 1 | « Plus tard » sur le bandeau de rattachement : `{ uid, jusqua }`, 12 h, pour ce compte sur cet appareil (`rattachement-report.ts`) ; effacé au rattachement ; illisible : le bandeau revient ; **hors sauvegarde** |
 | `minebackfill_brouillon_calculs` | `{v,data}` | 2 | brouillon des formulaires de Calculs (catégorie, méthode, état de chaque formulaire), relu au démarrage et rangé à chaque modification (`brouillon-calculs.ts`, `StoreHydrator`) ; fusionné sur les défauts au chargement. Les résultats ne sont pas rangés ; **hors sauvegarde**. v1 → v2 (`migrerBrouillon`) : les 0 des champs saisis deviennent vides (en v1, 0 voulait dire « non saisi ») |
 | Sauvegarde (fichier) | `backup.ts` | schéma 6 | fusion par id, le local gagne ; courbes dans `data.courbes` |
 
@@ -412,6 +413,27 @@ connexion enseignant). Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
   négatif.
 - **Compter des essais** : toujours `essaiValide` — ne pas réécrire une règle
   voisine (le tableau, la figure et les exports doivent dire la même chose).
+- **Essai hors fenêtre d'âge** (choix du 2026-10-20) : gardé dans la moyenne
+  de son âge visé, mais signalé. Une seule règle, `horsFenetreAge`
+  (`eprouvette.ts`, fenêtre `FENETRE_AGE` : max(1 j, 10 % de l'âge visé)),
+  reprise par l'alerte ; `agregerParAge` en donne le compte (`nHorsFenetre`),
+  affiché « dont n hors fenêtre d'âge » (`mentionHorsFenetre`) partout où une
+  moyenne par âge s'affiche : tuile « Essais valides », détail de l'étudiant,
+  gâchée en lecture, rapport PDF, CSV (colonnes en fin de ligne), Comparaison,
+  et chez l'étudiant (éditeur de gâchée, Résultats).
+- **« Même formulation »** (élargi le 2026-10-20) : `cleFormulation` (catégorie,
+  Cw et Bw au demi-point) + `cleMateriaux` (résidu, liants triés avec leur
+  proportion au pour cent, et en RPG granulat + `amPct` au demi-point, champ de
+  `ParametresFormulation` rempli depuis `aggregate_mass_pct`). Un matériau
+  absent compte « ? » : une gâchée ancienne ne se mêle jamais à une gâchée
+  renseignée. Le critère en clair : `CRITERE_MEME_FORMULATION` (écran et PDF).
+- **Gâchée de taille chantier** : `SEUIL_VOLUME_LABO_M3` (50 L, à la création,
+  sur le V_T de la recette) et `SEUIL_MASSE_LABO_KG` (100 kg de cibles, sur une
+  gâchée existante, plus l'alerte `masse_hors_labo`), dans `contenant.ts`.
+  Avis seulement, jamais un blocage.
+- **Revue indisponible** : la carte distingue la base sans la table des revues
+  (« pas encore activée ») d'une autre panne (message d'erreur) ; aucun texte
+  destiné à l'enseignant ne parle de SQL.
 - **Jamais de moyenne entre gâchées**, et pas de valeur de médiane dans ce qui
   s'exporte (CSV, PDF, messages d'alerte). Voir l'en-tête de
   `classe-comparaison.ts`.

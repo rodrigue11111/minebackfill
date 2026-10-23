@@ -4,6 +4,7 @@
 import { useState } from "react";
 import type React from "react";
 import { Carte, CarteProtocolesFiges } from "@/components/labo/Carte";
+import { Bandeau } from "@/components/ui/Bandeau";
 import { MODES_CURE, TYPES_EAU, parametresEffectifs, type Gachee } from "@/lib/gachee";
 import { completudeGachee, listeManquants } from "@/lib/completude";
 import Pesees from "@/components/labo/Pesees";
@@ -12,6 +13,7 @@ import {
   type Eprouvette,
 } from "@/lib/eprouvette";
 import { badgeEcheance, fmtDate } from "@/lib/echeance-affichage";
+import { avisMasseHorsLabo, masseHorsLabo } from "@/lib/contenant";
 import { fmt, TIRET } from "@/lib/format";
 import type { Recipe } from "@/lib/types";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
@@ -122,8 +124,10 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
   const eau = m?.eau?.type ? TYPES_EAU.find((t) => t.valeur === m.eau?.type)?.libelle : undefined;
   const cure = g.cure?.mode ? MODES_CURE.find((c) => c.valeur === g.cure?.mode)?.libelle : undefined;
 
+  const masseChantier = masseHorsLabo(g.composants);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {masseChantier !== null && <Bandeau ton="alerte" role="status">{avisMasseHorsLabo(masseChantier)}</Bandeau>}
       <Carte titre="Formulation">
         <div style={grille}>
           <Info label="Formulation" valeur={g.formulationLabel || TIRET} />
@@ -278,7 +282,8 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
           <p style={{ fontSize: 12.5, color: "var(--texte-3)", margin: 0 }}>Aucun essai exploitable.</p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr>{["Âge", "n", "Moyenne (kPa)", "± écart-type", "CV", "Exclues"].map((t, i) => <th key={t} style={i > 0 ? { ...th, textAlign: "right" } : th}>{t}</th>)}</tr></thead>
+            <thead><tr>{["Âge", "n", "Moyenne (kPa)", "± écart-type", "CV", "Exclues", "Hors fenêtre d'âge"].map((t, i) => <th key={t} style={i > 0 ? { ...th, textAlign: "right" } : th}
+              title={t === "Hors fenêtre d'âge" ? "Comptées dans la moyenne, mais écrasées trop loin de l'âge visé (voir l'alerte de la Classe)" : undefined}>{t}</th>)}</tr></thead>
             <tbody>
               {parAge.map((a) => (
                 <tr key={a.ageJours}>
@@ -288,6 +293,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
                   <td style={tdNum}>{nombre(a.ecartTypeKpa, 0)}</td>
                   <td style={tdNum}>{a.cvPct === null ? TIRET : `${nombre(a.cvPct, 1)} %`}</td>
                   <td style={tdNum}>{a.nExclus || TIRET}</td>
+                  <td style={{ ...tdNum, color: a.nHorsFenetre > 0 ? "var(--hors-tolerance-texte)" : undefined }}>{a.nHorsFenetre || TIRET}</td>
                 </tr>
               ))}
             </tbody>

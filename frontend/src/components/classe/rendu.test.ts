@@ -175,7 +175,12 @@ describe("vues de l'enseignant — rendu", () => {
     expect(detail).toContain("Ouvrir");
     expect(detail).toContain("Commentaires (3 · 1 nouvelle réponse)"); // fil replié
     expect(detail).toContain("1/3 essai(s) valide(s)");
-    expect(rendu(createElement(FigureClasse, { etudiants, couleurDe }))).toContain("UCS mesurée de la classe");
+    const figure = rendu(createElement(FigureClasse, { etudiants, couleurDe }));
+    expect(figure).toContain("UCS mesurée de la classe");
+    // Une seule gâchée (Bw 5 %) : message, et un axe d'au moins 2 points de % (plus 4,94 à 5,06).
+    expect(figure).toContain("Un seul dosage dans la sélection");
+    expect(figure).toMatch(/>4,5</);
+    expect(figure).not.toMatch(/>4,98</);
   });
 
   it("comparaison : une ligne par gâchée, repère étiqueté, sinon message", () => {
@@ -213,7 +218,7 @@ describe("vues de l'enseignant — rendu", () => {
 describe("revue de l'enseignant : rendu", () => {
   const [e] = regrouper([ligne("gachee", gachee)], profils, [], "toutes");
   const g = e.gachees[0];
-  const actions = { disponible: true, onPoser: async () => true, onRetirer: async () => true };
+  const actions = { disponibilite: { etat: "ok" as const }, onPoser: async () => true, onRetirer: async () => true };
 
   it("sans décision : invitation, éprouvettes à écarter, refus impossible sans motif", () => {
     const html = rendu(createElement(CarteRevue, { gachee: g, revue: undefined, actions }));
@@ -237,9 +242,18 @@ describe("revue de l'enseignant : rendu", () => {
     expect(html.match(/>Retirer</g)).toBeNull(); // jamais un bouton « Retirer » tout court
   });
 
-  it("base pas à jour : la carte le dit, sans boutons", () => {
-    const html = rendu(createElement(CarteRevue, { gachee: g, revue: undefined, actions: { ...actions, disponible: false } }));
-    expect(html).toContain("supabase/schema.sql");
+  it("base pas à jour : la carte le dit sans parler SQL, sans boutons", () => {
+    const html = rendu(createElement(CarteRevue, { gachee: g, revue: undefined, actions: { ...actions, disponibilite: { etat: "base" as const } } }));
+    expect(html).toContain("pas encore activée sur le serveur du cours");
+    expect(html).not.toMatch(/schema\.sql|SQL Editor/);
+    expect(html).not.toContain("Accepter la gâchée");
+  });
+
+  it("autre panne (droits, réseau) : la carte donne le message, pas « base pas à jour »", () => {
+    const html = rendu(createElement(CarteRevue, { gachee: g, revue: undefined,
+      actions: { ...actions, disponibilite: { etat: "erreur" as const, message: "permission refusée" } } }));
+    expect(html).toContain("momentanément indisponible : permission refusée");
+    expect(html).not.toContain("pas encore activée");
     expect(html).not.toContain("Accepter la gâchée");
   });
 

@@ -3,7 +3,8 @@
 // (voir lib/classe-comparaison.ts).
 
 import { useState } from "react";
-import { libelleGroupe, MIN_GACHEES_REPERE, type Comparaison, type GroupeComparaison } from "@/lib/classe-comparaison";
+import { CRITERE_MEME_FORMULATION, libelleGroupe, MIN_GACHEES_REPERE, type Comparaison, type GroupeComparaison } from "@/lib/classe-comparaison";
+import { mentionHorsFenetre } from "@/lib/eprouvette";
 import { SEUILS_ALERTES } from "@/lib/classe-alertes";
 import { dateCourte, lienBouton, nombre, td, tdNum, th, type RefDoc } from "./commun";
 import { Carte } from "@/components/ui/Carte";
@@ -51,7 +52,7 @@ function CarteGroupe({ groupe, onOuvrir }: { groupe: GroupeComparaison; onOuvrir
                   <td style={tdNum}>{nombre(l.wcRatio, 2)}</td>
                   <td style={{ ...tdNum, fontWeight: 700 }}>{nombre(l.moyenneKpa, 0)}</td>
                   <td style={tdNum}>{nombre(l.ecartTypeKpa, 0)}</td>
-                  <td style={tdNum}>{l.n}{l.nExclus > 0 && <span style={{ color: "var(--texte-3)" }}> (+{l.nExclus} exclue{l.nExclus > 1 ? "s" : ""})</span>}</td>
+                  <td style={tdNum}>{l.n}{l.nHorsFenetre > 0 && <span style={{ color: "var(--hors-tolerance-texte)" }}> ({mentionHorsFenetre(l.nHorsFenetre)})</span>}{l.nExclus > 0 && <span style={{ color: "var(--texte-3)" }}> (+{l.nExclus} exclue{l.nExclus > 1 ? "s" : ""})</span>}</td>
                   <td style={tdNum}>{l.cvPct === null ? TIRET : `${nombre(l.cvPct, 1)} %`}</td>
                   <td style={{ ...tdNum, color: l.ecartMedianePct === null ? "var(--texte-3)" : Math.abs(l.ecartMedianePct) > SEUILS_ALERTES.ecartMedianePct ? "var(--hors-tolerance-texte)" : "var(--texte)" }}>
                     {l.ecartMedianePct === null ? TIRET : `${l.ecartMedianePct > 0 ? "+" : ""}${nombre(l.ecartMedianePct, 0)} %`}
@@ -75,7 +76,7 @@ export default function OngletComparaison({ comparaison, onOuvrir }: { comparais
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <p className="classe-intro">
-        Même formulation = même catégorie, avec Cw et Bw arrondis au demi-point. Chaque ligne est une gâchée :
+        {CRITERE_MEME_FORMULATION} Chaque ligne est une gâchée :
         aucune moyenne n&apos;est faite entre gâchées (lots, opérateurs et protocoles différents). La médiane,
         à partir de {MIN_GACHEES_REPERE} gâchées, est un <strong>repère de dispersion entre opérateurs</strong>,
         pas l&apos;UCS de la formulation. Seuls les essais valides comptent ; copies de conflit exclues.
