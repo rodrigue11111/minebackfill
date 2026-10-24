@@ -450,7 +450,7 @@ class RpcEssaiAdjustment(BaseModel):
     """
 
     added_dry_residue_mass: float = Field(
-        0.0, description="Masse de résidu sec ajoutée (kg)."
+        0.0, description="Masse de résidu SÉCHÉ ajoutée (kg) : grains seuls, sans eau (w = 0)."
     )
     added_wet_residue_mass: float = Field(
         0.0, description="Masse de résidu humide ajoutée (kg)."
@@ -648,7 +648,7 @@ class RpgEssaiAdjustment(BaseModel):
     Ajustements appliqués à une recette RPG lors de la méthode essai-erreur.
     Identique à RpcEssaiAdjustment mais avec un champ agrégat supplémentaire.
     """
-    added_dry_residue_mass: float = Field(0.0, description="Masse de résidu sec ajoutée (kg).")
+    added_dry_residue_mass: float = Field(0.0, description="Masse de résidu SÉCHÉ ajoutée (kg) : grains seuls, sans eau (w = 0).")
     added_wet_residue_mass: float = Field(0.0, description="Masse de résidu humide ajoutée (kg).")
     added_aggregate_mass:   float = Field(0.0, description="Masse d'agrégat sec ajouté (kg). Spécifique RPG.")
     aggregate_moisture_mass_pct: float = Field(0.0, description="Teneur en eau massique de l'agrégat ajouté (w0-ag, %). Par défaut 0 (agrégat sec).")

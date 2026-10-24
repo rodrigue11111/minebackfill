@@ -254,8 +254,13 @@ def apply_essai_adjustments(*,
       - Cv, theta calculés sur les volumes réels                      [D82, D80].
 
     Notes de convention :
-      - `delta_dry_residue` (entrée propre à l'application, absente de la
-        feuille) apporte son eau naturelle w0, comme dans le C# historique ;
+      - `delta_dry_residue` (entrée propre à l'application, absente des trois
+        feuilles du professeur, qui ne saisissent que le résidu HUMIDE [D59])
+        est du résidu SÉCHÉ : il n'apporte AUCUNE eau (w = 0). Décision du
+        2026-10-23 : avant, il apportait son eau naturelle w0 (repris du C#
+        historique), ce qui en faisait un doublon de `delta_wet_residue`
+        (10 kg « sec » = 13,16 kg « humide » à w0 = 31,6 %). Le résidu humide,
+        lui, apporte ses grains ET son eau w0 [D59-D60] ;
       - `delta_aggregate` est sec par défaut (w0_ag = 0, comme la feuille) ;
       - `dose_binder_by_wc` (option, défaut False) : Belem et al. 2018 §3.2.3 —
         quand on ajuste le mélange en AJOUTANT DE L'EAU (monter le slump), le
@@ -269,9 +274,9 @@ def apply_essai_adjustments(*,
     # -- décomposition des ajouts  [D59-D60, 28]
     sec_from_wet = delta_wet_residue / (1.0 + w0_frac) if (1.0 + w0_frac) > 0.0 else 0.0
     eau_from_wet = delta_wet_residue - sec_from_wet
-    eau_from_sec = delta_dry_residue * w0_frac
+    # Résidu sec ajouté : séché, il n'apporte pas d'eau (voir la docstring).
     eau_from_agr = delta_aggregate * aggregate_w0_frac
-    delta_eau_tot = delta_water + eau_from_wet + eau_from_sec + eau_from_agr
+    delta_eau_tot = delta_water + eau_from_wet + eau_from_agr
 
     # -- nouvelles masses sèches  [23a]
     mr_sec_tot = mr_sec_base + delta_dry_residue + sec_from_wet

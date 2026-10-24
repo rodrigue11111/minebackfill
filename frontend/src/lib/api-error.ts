@@ -34,7 +34,7 @@ const NOMS_CHAMPS: Record<string, string> = {
   retarder_dosage_ml_per_100kg: "dosage en retardateur D0",
   retarder_density_g_ml: "masse volumique du retardateur",
   adjustments: "ajouts",
-  added_dry_residue_mass: "résidu sec ajouté",
+  added_dry_residue_mass: "résidu séché ajouté",
   added_wet_residue_mass: "résidu humide ajouté",
   added_water_mass: "eau ajoutée",
   added_aggregate_mass: "granulat ajouté",

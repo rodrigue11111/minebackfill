@@ -12,7 +12,7 @@ import {
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
 import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
-import { Field, CardSection, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
+import { AIDE_RESIDU_HUMIDE, AIDE_RESIDU_SEC, Field, CardSection, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
 import { Bandeau } from "@/components/ui/Bandeau";
 
 export default function EssaiForm() {
@@ -142,10 +142,10 @@ export default function EssaiForm() {
             <div key={i} className="mix-recette">
               <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
               <div className="mix-grille-3">
-                <Field label="Résidu sec" unit={massLabel}>
+                <Field label="Résidu sec" unit={massLabel} hint={AIDE_RESIDU_SEC}>
                   <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_residu_sec, units.mass)} onChange={(n) => setEssaiAjustement(i, { ajout_residu_sec: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
-                <Field label="Résidu humide" unit={massLabel}>
+                <Field label="Résidu humide" unit={massLabel} hint={AIDE_RESIDU_HUMIDE}>
                   <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass)} onChange={(n) => setEssaiAjustement(i, { ajout_residu_humide: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
                 <Field label="Eau" unit={massLabel}>

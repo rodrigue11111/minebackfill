@@ -282,6 +282,29 @@ class TestApplyEssai:
         eq_base = apply_essai_adjustments(**args, delta_aggregate=500_000.0)
         _close("Gs base figé", eq_base.gs_backfill, q.gs_backfill)
 
+    def test_residu_sec_n_apporte_pas_d_eau(self):
+        """Résidu SEC ajouté (décision du 2026-10-23) : séché, il n'apporte que
+        des grains. L'eau totale ne bouge pas, le Cw monte, w baisse ; avant,
+        il apportait w0 d'eau et doublait simplement le champ « humide »."""
+        q, args = _base()
+        add = 500_000.0
+        eq = apply_essai_adjustments(**args, delta_dry_residue=add)
+        _close("eau totale inchangée", eq.mw_tot, q.mw_total)
+        _close("résidu sec total", eq.mr_sec_tot, q.mr_sec + add)
+        assert eq.cw > 0.70 + 1e-6
+        assert eq.w < q.w - 1e-6
+
+    def test_residu_humide_egale_sec_plus_son_eau(self):
+        """Feuille [D59-D60] : M de résidu humide = M/(1+w0) de grains (sec)
+        + M·w0/(1+w0) d'eau. Les deux décompositions donnent le même mélange."""
+        q, args = _base()
+        m, w0 = 650_000.0, args["w0_frac"]
+        humide = apply_essai_adjustments(**args, delta_wet_residue=m)
+        decompose = apply_essai_adjustments(**args, delta_dry_residue=m / (1 + w0),
+                                            delta_water=m * w0 / (1 + w0))
+        for nom in ("mr_sec_tot", "mw_tot", "mb_tot", "vt_new", "e", "w", "cw", "rho_h"):
+            _close(nom, getattr(decompose, nom), getattr(humide, nom))
+
     def test_double_application_additive(self):
         """Ajouter 200 t puis 300 t d'eau == ajouter 500 t d'une traite."""
         q, args = _base()

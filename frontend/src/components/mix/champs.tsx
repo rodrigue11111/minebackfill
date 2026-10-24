@@ -35,6 +35,12 @@ export function Field({ label, hint, unit, children, plage, valeur, erreur }: {
 }
 
 /** Sous-partie du formulaire (dans la carte « Paramètres »), séparée par un filet. */
+// Essai-erreur : ce que chaque ajout de résidu apporte au mélange (RPC et RPG).
+// Le résidu sec est SÉCHÉ (sans eau) depuis le 2026-10-23 ; le résidu humide
+// apporte ses grains et son eau w₀, comme la ligne D59 des feuilles.
+export const AIDE_RESIDU_SEC = "Séché à l'étuve : grains seuls, sans eau.";
+export const AIDE_RESIDU_HUMIDE = "Tel que stocké : grains et leur eau (teneur en eau w₀ du résidu).";
+
 export function CardSection({ title, subtitle, children }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;

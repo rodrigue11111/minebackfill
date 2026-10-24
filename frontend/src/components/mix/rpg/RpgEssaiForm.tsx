@@ -12,7 +12,7 @@ import {
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
 import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
-import { Field, CardSection, GrilleChamps, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
+import { AIDE_RESIDU_HUMIDE, AIDE_RESIDU_SEC, Field, CardSection, GrilleChamps, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
 import { Bandeau } from "@/components/ui/Bandeau";
 
 export default function RpgEssaiForm() {
@@ -172,10 +172,10 @@ export default function RpgEssaiForm() {
             <div key={i} className="mix-recette">
               <div className="mix-recette-titre"><PointRecette i={i} />Recette {i + 1}</div>
               <GrilleChamps>
-                <Field label="Résidu sec" unit={massLabel}>
+                <Field label="Résidu sec" unit={massLabel} hint={AIDE_RESIDU_SEC}>
                   <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_residu_sec, units.mass)} onChange={(n) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_sec: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
-                <Field label="Résidu humide" unit={massLabel}>
+                <Field label="Résidu humide" unit={massLabel} hint={AIDE_RESIDU_HUMIDE}>
                   <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass)} onChange={(n) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_humide: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
                 <Field label="Granulat sec" unit={massLabel} hint="Modifie Am et recalcule le Gs du remblai">
