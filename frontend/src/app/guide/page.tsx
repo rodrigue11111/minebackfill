@@ -323,8 +323,8 @@ export default function GuidePage() {
             when={QUAND_METHODE.essai}
             inputs={[
               "Méthode de base : dosage selon Cw ou selon E/L (avec tous ses paramètres)",
-              "Pour chaque recette : masse de résidu sec ajoutée",
-              "Pour chaque recette : masse de résidu humide ajoutée",
+              "Pour chaque recette : masse de résidu sec ajoutée (séché à l'étuve : n'apporte pas d'eau)",
+              "Pour chaque recette : masse de résidu humide ajoutée (apporte ses grains et son eau w₀)",
               "Pour chaque recette : masse d'eau ajoutée",
             ]}
             formula="Mr total = Mr base + ajout sec + part sèche de l'ajout humide   |   Mb-ad = Mb visé − Mb base"

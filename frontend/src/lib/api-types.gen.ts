@@ -654,7 +654,7 @@ export interface components {
         RpcEssaiAdjustment: {
             /**
              * Added Dry Residue Mass
-             * @description Masse de résidu sec ajoutée (kg).
+             * @description Masse de résidu SÉCHÉ ajoutée (kg) : grains seuls, sans eau (w = 0).
              * @default 0
              */
             added_dry_residue_mass: number;
@@ -898,7 +898,7 @@ export interface components {
         RpgEssaiAdjustment: {
             /**
              * Added Dry Residue Mass
-             * @description Masse de résidu sec ajoutée (kg).
+             * @description Masse de résidu SÉCHÉ ajoutée (kg) : grains seuls, sans eau (w = 0).
              * @default 0
              */
             added_dry_residue_mass: number;

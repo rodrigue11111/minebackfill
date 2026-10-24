@@ -121,6 +121,17 @@ de base, rangée dans `base_cw` / `base_wb`) puis reprend l'empreinte ; un
 essai-erreur sauvegardé sans sa base est restauré « périmé »
 (`EMPREINTE_INCONNUE`).
 
+**Ajouts de l'essai-erreur** (convention du 2026-10-23) : le **résidu humide**
+ajouté apporte ses grains et son eau w₀ (ligne D59 des feuilles du
+professeur ; D60 en est la part sèche, calculée). Le **résidu sec** ajouté,
+propre à l'application (aucune des trois feuilles ne le saisit), est du
+résidu **séché** : grains seuls, aucune eau (`apply_essai_adjustments`,
+`mix_pipeline.py`). Avant cette date il apportait w₀ d'eau et faisait double
+emploi avec le résidu humide. Tests : `test_unit_pipeline.py`
+(`test_residu_sec_n_apporte_pas_d_eau`, `test_residu_humide_egale_sec_plus_son_eau`).
+Un essai-erreur sauvegardé avant cette date avec un ajout « sec » garde son
+résultat enregistré ; recalculé, il donne moins d'eau (de w₀ × l'ajout).
+
 **Pédagogie** (2026-10) : chaque méthode porte aussi `quand` (quand
 l'utiliser, une phrase), affichée sous le choix de méthode et lue par le
 Guide (`QUAND_METHODE`) : une seule source. Les plages usuelles des champs
