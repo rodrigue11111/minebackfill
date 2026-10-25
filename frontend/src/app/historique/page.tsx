@@ -151,6 +151,13 @@ export default function HistoriquePage() {
                           title="Recharge la catégorie, la méthode, les entrées et les résultats dans la page Calculs">
                           Recharger dans Calculs
                         </button>
+                        {/* L'Analyse part d'un calcul sauvegardé (2026-10-25) ; RRC exclu. */}
+                        {sr.category !== "RRC" && (sr.recipes?.length ?? 0) > 0 && (
+                          <Link className="btn-contour" href={`/analyse?calcul=${encodeURIComponent(sr.id)}`}
+                            title="Ouvre ce calcul dans la page Analyse (courbes de réponse et composition)">
+                            Analyser
+                          </Link>
+                        )}
                         <button className="btn-contour" onClick={() => exporterExcel(sr)}>
                           Excel
                         </button>

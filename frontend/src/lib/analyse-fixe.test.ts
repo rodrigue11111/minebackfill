@@ -105,3 +105,19 @@ describe("analyse-fixe — tenuFixe", () => {
     }
   });
 });
+
+describe("analyse-fixe — tenuFixe, analyse partie d'un calcul sauvegardé", () => {
+  it("recette analysée, volume et deux versions ; l'ancienne ligne « Recettes » pour les vieux fichiers", () => {
+    const avec = tenuFixe(inst({
+      volumeM3: 0.0123, versionSolveur: "gramme-1.1",
+      source: { id: "sr_1", libelle: "Essai A", sauveLe: "2026-10-25T14:03:00Z", methode: "Dosage selon E/L", recette: 2, nbRecettes: 3, versionCalcul: "intra2017-1.0" },
+    }), "binder_mass_pct");
+    const val = (label: string) => avec.find((l) => l.label === label)?.valeur;
+    expect(val("Recette analysée")).toBe("2 sur 3 du calcul « Essai A » (Dosage selon E/L)");
+    expect(val("Volume analysé")).toBe("12,3 L");
+    expect(val("Version des formules de l'analyse")).toBe("gramme-1.1");
+    expect(val("Version du calcul d'origine")).toBe("intra2017-1.0");
+    expect(avec.some((l) => l.label === "Recettes")).toBe(false);
+    expect(tenuFixe(inst(), "binder_mass_pct").find((l) => l.label === "Recettes")?.valeur).toBe("1 (la première de la base)");
+  });
+});

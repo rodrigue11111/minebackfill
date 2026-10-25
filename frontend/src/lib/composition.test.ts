@@ -102,3 +102,12 @@ describe("phases — eau bornée aux vides (sur-saturation par arrondi)", () => 
     expect(ph.some((p) => p.cle === "air")).toBe(false); // air = 0 -> filtré
   });
 });
+
+describe("volumesIncomplets (recettes sauvegardées affichées sans recalcul)", () => {
+  it("volumes complets : faux ; volume de phase absent, ou granulat sans volume : vrai", async () => {
+    const { volumesIncomplets } = await import("./composition");
+    expect(volumesIncomplets([RPG, RPC_AIR])).toBe(false);
+    expect(volumesIncomplets([{ ...RPC_AIR, water_volume_m3: undefined } as Recipe])).toBe(true);
+    expect(volumesIncomplets([{ ...RPG, aggregate_volume_m3: undefined } as Recipe])).toBe(true);
+  });
+});

@@ -9,7 +9,34 @@
 // que SolverConstants().model_dump() == valeurs intra2017 ; vitest
 // (conventions.test.ts) épingle le contenu de ces packs.
 
-import type { ConstantesCalcul, ConventionPackId } from "./store";
+import type { ConstantesCalcul, ConventionPackId, EssaiBinderRule, EssaiGsConvention } from "./store";
+
+// Convention de calcul : la feuille « gramme » (Belem 2016), et elle seule :
+// décision de l'utilisateur, 2026-09-29. Elle ne diffère de la feuille tonne
+// (Intra 2017) qu'en essai-erreur : un ajout de granulat n'ajoute pas de liant
+// (Issues.md #4). Le choix a été retiré de l'interface ; la règle est imposée
+// au chargement (store.tsx, completerConstantes) et à chaque modification.
+export const REGLE_LIANT_ESSAI: EssaiBinderRule = "residu_ajoute";
+
+// Gs après les ajouts de l'essai-erreur : celui de la composition FINALE
+// (2026-10-25, Issues.md #6). Les feuilles gardent le Gs de départ pour e et Sr
+// (D36) et se contredisent quand un ajout change la composition des grains ;
+// le calculateur garde « base » par défaut pour ses tests d'or, le site envoie
+// « recalcule ». Imposé comme la règle du liant ; un essai-erreur sauvegardé
+// sous l'ancienne convention est restauré périmé, et l'Analyse le refuse.
+export const CONVENTION_GS_ESSAI: EssaiGsConvention = "recalcule";
+
+/**
+ * Essai-erreur calculé sous d'autres conventions que celles imposées
+ * aujourd'hui (Gs de départ, règle du liant « tonne »), lu sur l'instantané
+ * BRUT des constantes (avant tout complément). Un essai sans instantané compte
+ * comme révisé : rien ne dit sous quelle convention il a été calculé.
+ */
+export function essaiConventionRevisee(r: { method?: string; constantes?: Partial<ConstantesCalcul> | null }): boolean {
+  return r.method === "essai"
+    && (r.constantes?.essai_gs_convention !== CONVENTION_GS_ESSAI
+      || r.constantes?.essai_binder_rule !== REGLE_LIANT_ESSAI);
+}
 
 export interface ConventionPack {
   id: Exclude<ConventionPackId, "personnalise">;

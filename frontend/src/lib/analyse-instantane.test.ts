@@ -98,3 +98,42 @@ describe("analyse-instantane — export : les grandeurs nommées sont celles des
     expect(inst.sorties).toEqual(["Rapport E/L"]); // l'instantané du tracé n'est pas modifié
   });
 });
+
+describe("lignesResume : analyse partie d'un calcul sauvegardé (2026-10-25)", () => {
+  const AVEC_SOURCE: InstantaneAnalyse = {
+    ...INST,
+    categorie: "RPC",
+    recette: { ...INST.recette, amPct: undefined, gsAgregat: undefined },
+    methode: "Balayage selon la méthode Cw",
+    versionSolveur: "gramme-1.1",
+    volumeM3: 0.0123,
+    source: {
+      id: "sr_1", libelle: "Essai A", sauveLe: "2026-10-25T14:03:00Z", methode: "Dosage selon E/L",
+      recette: 2, nbRecettes: 3, versionCalcul: "intra2017-1.0",
+      reconstitutions: ["Constantes absentes de la sauvegarde, valeurs par défaut : gravité."],
+    },
+  };
+  const t = lignesResume(AVEC_SOURCE).join("\n");
+
+  it("méthode d'origine et méthode d'analyse distinctes, recette, volume, deux versions", () => {
+    expect(t).toContain("Calcul d'origine : « Essai A » (Dosage selon E/L, recette 2 sur 3, sauvegardé le 2026-10-25T14:03:00Z)");
+    expect(t).toContain("Catégorie : RPC · Analyse : Balayage selon la méthode Cw");
+    expect(t).toContain("Valeurs de départ : ");
+    expect(t).toContain("Volume analysé : 12,3 L (volume total de la recette sauvegardée)");
+    expect(t).toContain("Version des formules de l'analyse : gramme-1.1 · du calcul d'origine : intra2017-1.0");
+    expect(t).toContain("Valeurs reconstituées : Constantes absentes");
+    expect(t).not.toContain("Version du solveur");
+  });
+
+  it("composition : toutes les recettes", () => {
+    const comp = lignesResume({ ...AVEC_SOURCE, source: { ...AVEC_SOURCE.source!, recette: undefined } }).join("\n");
+    expect(comp).toContain("(Dosage selon E/L, 3 recettes, sauvegardé le");
+  });
+
+  it("ancien instantané (sans source) : lignes d'origine inchangées", () => {
+    const ancien = lignesResume(INST).join("\n");
+    expect(ancien).toContain("Catégorie : RPG · Méthode : Cw%");
+    expect(ancien).toContain("Recette de base : ");
+    expect(ancien).not.toContain("Volume analysé");
+  });
+});

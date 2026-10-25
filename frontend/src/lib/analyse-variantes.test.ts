@@ -1,55 +1,72 @@
 import { describe, it, expect } from "vitest";
 import {
-  variantesDepuisBase, comparaisonPossible, memePlage, construireTracesVariantes,
+  variantesDepuisRecettes, comparaisonPossible, memePlage, construireTracesVariantes,
   MAX_VARIANTES, TIRETS_VARIANTE,
 } from "./analyse-variantes";
+import type { LectureRecette } from "./analyse-source";
+import { RECIPE_COLORS } from "./recipe-theme";
 
-describe("analyse-variantes — variantesDepuisBase", () => {
-  it("reprend les recettes déjà saisies dans Calculs", () => {
-    const v = variantesDepuisBase([3, 5, 7], 3);
-    expect(v.map((x) => x.bwPct)).toEqual([3, 5, 7]);
-    expect(v[0].label).toContain("3");
+const ok = (cwPct: number, bwPct: number, srPct = 100, volumeM3 = 0.0123, amPct?: number): LectureRecette =>
+  ({ ok: true, valeurs: { cwPct, srPct, bwPct, volumeM3, amPct } });
+
+// Calcul selon Cw : même Cw, Bw différents. Calcul selon E/L : Cw ET Bw différents.
+const CALCUL_CW = [ok(75, 3), ok(75, 5), ok(75, 7)];
+const CALCUL_EL = [ok(74.2, 4.5), ok(76.1, 6)];
+
+describe("analyse-variantes — variantesDepuisRecettes", () => {
+  it("la recette analysée d'abord, puis les autres dans l'ordre ; numéro et couleur de la recette", () => {
+    const { variantes } = variantesDepuisRecettes(CALCUL_CW, 1, "solids_mass_pct");
+    expect(variantes.map((v) => v.recette)).toEqual([2, 1, 3]);
+    expect(variantes.map((v) => v.couleur)).toEqual([RECIPE_COLORS[1], RECIPE_COLORS[0], RECIPE_COLORS[2]]);
+    expect(variantes[0].valeurs.bwPct).toBe(5);
   });
 
-  it("se limite au nombre de recettes demandé", () => {
-    expect(variantesDepuisBase([3, 5, 7, 9], 2)).toHaveLength(2);
-  });
-
-  it("plafonne à MAX_VARIANTES", () => {
-    expect(variantesDepuisBase([1, 2, 3, 4, 5, 6], 6)).toHaveLength(MAX_VARIANTES);
-  });
-
-  it("ignore une valeur absente ou non finie", () => {
-    expect(variantesDepuisBase([3, NaN, 7], 3).map((x) => x.bwPct)).toEqual([3, 7]);
-  });
-
-  it("donne des tirets distincts, pas seulement des couleurs", () => {
-    // Une figure imprimée en niveaux de gris doit rester lisible, et la
-    // couleur seule exclut les daltoniens.
-    const v = variantesDepuisBase([3, 5, 7], 3);
-    expect(new Set(v.map((x) => x.tirets)).size).toBe(3);
+  it("tirets distincts selon la position : la recette analysée reste en trait plein", () => {
+    const { variantes } = variantesDepuisRecettes(CALCUL_CW, 2, "solids_mass_pct");
+    expect(variantes[0].tirets).toBe(TIRETS_VARIANTE[0]);
     expect(TIRETS_VARIANTE[0]).toBe("");
+    expect(new Set(variantes.map((x) => x.tirets)).size).toBe(3);
+  });
+
+  it("libellés : seulement ce qui DIFFÈRE entre recettes, hors paramètre balayé", () => {
+    const cw = variantesDepuisRecettes(CALCUL_CW, 0, "solids_mass_pct").variantes;
+    expect(cw.map((v) => v.label)).toEqual(["R1 (Bw 3 %)", "R2 (Bw 5 %)", "R3 (Bw 7 %)"]);
+    const el = variantesDepuisRecettes(CALCUL_EL, 0, "binder_mass_pct").variantes;
+    expect(el[1].label).toBe("R2 (Cw 76,1 %)");
+  });
+
+  it("une recette illisible est écartée avec sa raison ; plafond MAX_VARIANTES", () => {
+    const { variantes, exclues } = variantesDepuisRecettes([ok(75, 3), { ok: false, raison: "Recette 2 : Sr manque." }, ok(75, 7)], 0, "solids_mass_pct");
+    expect(variantes.map((v) => v.recette)).toEqual([1, 3]);
+    expect(exclues).toEqual([{ recette: 2, raison: "Recette 2 : Sr manque." }]);
+    const six = [1, 2, 3, 4, 5, 6].map((b) => ok(75, b));
+    expect(variantesDepuisRecettes(six, 0, "solids_mass_pct").variantes).toHaveLength(MAX_VARIANTES);
   });
 });
 
 describe("analyse-variantes — comparaisonPossible", () => {
-  it("refuse de comparer des Bw quand Bw EST l'axe X", () => {
-    // Le paramètre balayé écrase la valeur de base : les N courbes seraient
-    // rigoureusement identiques. Les superposer serait un mensonge visuel.
-    const r = comparaisonPossible("binder_mass_pct", variantesDepuisBase([3, 5], 2));
+  const v = (lectures: LectureRecette[], param: string) => variantesDepuisRecettes(lectures, 0, param).variantes;
+
+  it("calcul selon Cw balayé en Bw : refusé (les courbes se superposeraient)", () => {
+    const r = comparaisonPossible("binder_mass_pct", v(CALCUL_CW, "binder_mass_pct"));
     expect(r.ok).toBe(false);
     expect(r.raison).toContain("axe X");
   });
 
-  it("refuse quand une seule recette est saisie", () => {
-    const r = comparaisonPossible("solids_mass_pct", variantesDepuisBase([5], 1));
-    expect(r.ok).toBe(false);
-    expect(r.raison).toContain("seule recette");
+  it("calcul selon E/L balayé en Bw : accepté, ses recettes diffèrent aussi par Cw", () => {
+    expect(comparaisonPossible("binder_mass_pct", v(CALCUL_EL, "binder_mass_pct")).ok).toBe(true);
+    expect(comparaisonPossible("solids_mass_pct", v(CALCUL_EL, "solids_mass_pct")).ok).toBe(true);
   });
 
-  it("accepte sur un autre paramètre avec au moins deux recettes", () => {
-    expect(comparaisonPossible("solids_mass_pct", variantesDepuisBase([3, 5], 2)).ok).toBe(true);
-    expect(comparaisonPossible("saturation_pct", variantesDepuisBase([3, 5, 7], 3)).ok).toBe(true);
+  it("recettes qui ne diffèrent que par Sr, balayées en Sr : refusé ; recettes identiques : refusé", () => {
+    expect(comparaisonPossible("saturation_pct", v([ok(75, 5, 90), ok(75, 5, 100)], "saturation_pct")).ok).toBe(false);
+    expect(comparaisonPossible("solids_mass_pct", v([ok(75, 5), ok(75, 5)], "solids_mass_pct")).ok).toBe(false);
+  });
+
+  it("une seule recette analysable : refusé", () => {
+    const r = comparaisonPossible("solids_mass_pct", v([ok(75, 5)], "solids_mass_pct"));
+    expect(r.ok).toBe(false);
+    expect(r.raison).toContain("qu'une recette");
   });
 });
 
@@ -71,7 +88,7 @@ describe("analyse-variantes — memePlage", () => {
 });
 
 describe("analyse-variantes — construireTracesVariantes", () => {
-  const variantes = variantesDepuisBase([3, 5], 2);
+  const variantes = variantesDepuisRecettes([ok(75, 3), ok(75, 5)], 0, "solids_mass_pct").variantes;
 
   it("rend une série par variante pour une grandeur donnée", () => {
     const t = construireTracesVariantes(
@@ -88,7 +105,7 @@ describe("analyse-variantes — construireTracesVariantes", () => {
     const t = construireTracesVariantes(
       [{ series: { wc_ratio: [1] } }, { series: { wc_ratio: [2] } }], "wc_ratio", variantes,
     );
-    expect(t[0].label).toContain("Bw");
+    expect(t[0].label).toContain("R1");
   });
 
   it("saute une variante dont la grandeur manque", () => {

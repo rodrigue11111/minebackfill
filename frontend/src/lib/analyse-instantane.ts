@@ -10,7 +10,7 @@ import { nombreFr } from "./format";
 export interface InstantaneAnalyse {
   date: string; // ISO
   categorie: string; // "RPC" | "RPG"
-  methode: string; // « Dosage selon Cw »
+  methode: string; // méthode d'ANALYSE : « Balayage selon la méthode Cw » (avant 2026-10-25 : « Dosage selon Cw »)
   /** Balayage (mode courbes) — absent en composition. */
   parametre?: { label: string; min: number; max: number; points: number };
   recette: {
@@ -38,6 +38,24 @@ export interface InstantaneAnalyse {
   facteurSecurite?: number;
   /** Recettes comparées sur un même balayage (vide ou absent si une seule). */
   variantes?: string[];
+
+  // ── Ajouts 2026-10-25 (additifs) : l'analyse part d'un calcul sauvegardé. ──
+  /** Volume analysé (m³) : le volume total de la recette sauvegardée. */
+  volumeM3?: number;
+  /** Calcul sauvegardé d'origine : sa méthode et sa version, distinctes de celles de l'analyse. */
+  source?: {
+    id: string;
+    libelle: string;
+    sauveLe: string;
+    /** Méthode d'origine (libellé long). */
+    methode: string;
+    /** Recette analysée (absente en composition : toutes les recettes). */
+    recette?: number;
+    nbRecettes: number;
+    versionCalcul?: string;
+    /** Valeurs absentes de la sauvegarde et reconstituées. */
+    reconstitutions?: string[];
+  };
 }
 
 function f(n: number, dec = 3): string {
@@ -58,8 +76,15 @@ export function lignesResume(inst: InstantaneAnalyse): string[] {
   const lignes = [
     "MineBackfill : analyse (reproductibilité)",
     `Date : ${inst.date}`,
-    `Catégorie : ${inst.categorie} · Méthode : ${inst.methode}`,
   ];
+  const s = inst.source;
+  if (s) {
+    const ou = s.recette !== undefined ? `recette ${s.recette} sur ${s.nbRecettes}` : `${s.nbRecettes} recette${s.nbRecettes > 1 ? "s" : ""}`;
+    lignes.push(`Calcul d'origine : « ${s.libelle} » (${s.methode}, ${ou}, sauvegardé le ${s.sauveLe})`);
+    lignes.push(`Catégorie : ${inst.categorie} · Analyse : ${inst.methode}`);
+  } else {
+    lignes.push(`Catégorie : ${inst.categorie} · Méthode : ${inst.methode}`);
+  }
   if (inst.parametre) {
     const p = inst.parametre;
     lignes.push(`Paramètre balayé : ${p.label} de ${f(p.min)} à ${f(p.max)} (${p.points} points)`);
@@ -70,7 +95,10 @@ export function lignesResume(inst: InstantaneAnalyse): string[] {
   ];
   if (r.amPct !== undefined) rec.push(`Am ${f(r.amPct, 1)} %`);
   if (r.gsAgregat !== undefined) rec.push(`Gs granulat ${f(r.gsAgregat)}`);
-  lignes.push(`Recette de base : ${rec.join(" · ")}`);
+  lignes.push(`${s ? "Valeurs de départ" : "Recette de base"} : ${rec.join(" · ")}`);
+  if (inst.volumeM3 !== undefined) {
+    lignes.push(`Volume analysé : ${inst.volumeM3 < 1 ? `${f(inst.volumeM3 * 1000)} L` : `${f(inst.volumeM3)} m³`} (volume total de la recette sauvegardée)`);
+  }
   lignes.push(
     "Liants : " + (inst.liants.length
       ? inst.liants.map((l) => `${l.code || "?"} (Gs ${f(l.gs)} · ${f(l.fractionPct, 1)} %)`).join(", ")
@@ -98,7 +126,10 @@ export function lignesResume(inst: InstantaneAnalyse): string[] {
     // que l'on peut affirmer sans mentir, c'est ce que contient l'export.
     lignes.push("Export en valeurs absolues (le mode « écart % » est un affichage).");
   }
-  lignes.push(`Version du solveur : ${inst.versionSolveur}`);
+  if (s?.reconstitutions?.length) lignes.push(`Valeurs reconstituées : ${s.reconstitutions.join(" ")}`);
+  lignes.push(s
+    ? `Version des formules de l'analyse : ${inst.versionSolveur} · du calcul d'origine : ${s.versionCalcul ?? "inconnue"}`
+    : `Version du solveur : ${inst.versionSolveur}`);
   return lignes;
 }
 

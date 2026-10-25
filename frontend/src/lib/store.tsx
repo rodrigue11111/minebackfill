@@ -15,7 +15,7 @@ import { descriptorFor, type MethodResultKey, type MethodStateKey } from "./meth
 import { EMPREINTE_CONVENTION_REVISEE, EMPREINTE_INCONNUE, empreinteEntrees } from "./resultat-perime";
 import type { MesureLabo } from "./mesures";
 import type { RegleLiant } from "./essai-liant";
-import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
+import { solverVersionActive, CONVENTION_PACKS, CONVENTION_GS_ESSAI, REGLE_LIANT_ESSAI, essaiConventionRevisee } from "./conventions";
 import type { CloudSession } from "./supabase";
 import {
   type MaterialOrigine, type MaterialKind, type MaterialItem,
@@ -804,20 +804,8 @@ const generalDefaut: GeneralInfo = {
   binder3_id: null,
 };
 
-// Convention de calcul : la feuille « gramme » (Belem 2016), et elle seule —
-// décision de l'utilisateur, 2026-09-29. Elle ne diffère de la feuille tonne
-// (Intra 2017) qu'en essai-erreur : un ajout de granulat n'ajoute pas de liant
-// (Issues.md #4). Le choix a été retiré de l'interface ; la règle est imposée
-// au chargement (completerConstantes) et à chaque modification.
-const REGLE_LIANT_ESSAI: EssaiBinderRule = "residu_ajoute";
-
-// Gs après les ajouts de l'essai-erreur : celui de la composition FINALE
-// (2026-10-25, Issues.md #6). Les feuilles gardent le Gs de départ pour e et Sr
-// (D36) et se contredisent quand un ajout change la composition des grains ;
-// le calculateur garde « base » par défaut pour ses tests d'or, le site envoie
-// « recalcule ». Imposé comme la règle du liant (completerConstantes) ; un
-// essai-erreur sauvegardé sous l'ancienne convention est restauré périmé.
-const CONVENTION_GS_ESSAI: EssaiGsConvention = "recalcule";
+// Conventions imposées de l'essai-erreur (REGLE_LIANT_ESSAI, CONVENTION_GS_ESSAI) :
+// définies dans conventions.ts, que l'Analyse partage (2026-10-25).
 
 const constantesDefaut: ConstantesCalcul = {
   masse_volumique_eau_kg_m3: 1000.0,
@@ -1751,9 +1739,7 @@ export const useStore = create<AppState>((set, get) => ({
     // aujourd'hui (Gs de départ, règle du liant « tonne ») : lues sur le
     // snapshot BRUT, avant completerConstantes. Chiffres enregistrés affichés
     // tels quels, mais périmés (recalcul avant sauvegarde ou export).
-    const conventionRevisee = entry.method === "essai"
-      && (entry.constantes?.essai_gs_convention !== CONVENTION_GS_ESSAI
-        || entry.constantes?.essai_binder_rule !== REGLE_LIANT_ESSAI);
+    const conventionRevisee = essaiConventionRevisee(entry);
     // État d'où viennent le Gs et le w₀ du résidu restaurés (partagés ensuite).
     let etatResidu: MethodStateKey | undefined;
     if (d) {
