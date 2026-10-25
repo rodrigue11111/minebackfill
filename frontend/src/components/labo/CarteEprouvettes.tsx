@@ -186,7 +186,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
       />
 
       {eprouvettes.length === 0 ? (
-        <p className="labo-vide">Aucune éprouvette. Choisis un âge de cure et un nombre de réplicats, puis « Ajouter ».</p>
+        <p className="labo-vide">Aucune éprouvette. Choisissez un âge de cure et un nombre de réplicats, puis cliquez sur « Ajouter ».</p>
       ) : (
         <div className="ui-liste">
           {eprouvettes.map((e) => {

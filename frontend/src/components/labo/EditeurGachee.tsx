@@ -286,7 +286,7 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
             aside={g.ajustements.length === 0 ? undefined : `${g.ajustements.length} ajout${g.ajustements.length > 1 ? "s" : ""}`}
             actions={<button type="button" onClick={ajouterAjustement} className="btn-discret"><Icone nom="ajouter" taille={14} epaisseur={2.4} />Nouvel ajout</button>}>
             {g.ajustements.length === 0 ? (
-              <p className="labo-vide">Aucun ajustement. Ajoute ce que tu as versé après le premier malaxage (eau, résidu, granulat, liant).</p>
+              <p className="labo-vide">Aucun ajustement. Ajoutez ce que vous avez versé après le premier malaxage (eau, résidu, granulat, liant).</p>
             ) : (
               <div className="ui-liste">
                 {g.ajustements.map((a) => (

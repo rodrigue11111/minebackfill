@@ -66,7 +66,7 @@ export default function CourbeSvg({
   if (x.length === 0 || series.length === 0) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "#64748b", fontSize: 13 }}>
-        Sélectionne au moins une grandeur, puis lance le calcul.
+        Sélectionnez au moins une grandeur, puis lancez le calcul.
       </div>
     );
   }

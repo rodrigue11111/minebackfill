@@ -135,7 +135,7 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
           {retenue !== null ? (
             <>UCS retenue : <strong>{Math.round(retenue).toLocaleString("fr-CA")} kPa</strong>
               {es.contrainteKpaSaisie != null && es.contrainteKpaSaisie > 0 ? " (saisie directe)" : calculee !== null ? " (déduite de F / A)" : ""}</>
-          ) : <span style={{ color: "var(--texte-2)" }}>Saisis une charge + un diamètre, ou une contrainte directe.</span>}
+          ) : <span style={{ color: "var(--texte-2)" }}>Saisissez une charge + un diamètre, ou une contrainte directe.</span>}
         </div>
       </div>
 
@@ -213,7 +213,7 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
       </label>
       {es.exclu && (
         <Champ libelle="Justification de l'exclusion (obligatoire)"
-          erreur={!es.justificationExclusion ? "Exclusion non documentée : la valeur est déjà écartée de la moyenne, mais indique pourquoi (rigueur scientifique)." : undefined}>
+          erreur={!es.justificationExclusion ? "Exclusion non documentée : la valeur est déjà écartée de la moyenne, mais indiquez pourquoi (rigueur scientifique)." : undefined}>
           <input className="field-input" placeholder="ex. défaut de surfaçage, rupture prématurée sur bulle…"
             value={es.justificationExclusion ?? ""} onChange={(e) => onChange({ justificationExclusion: e.target.value || undefined })} />
         </Champ>

@@ -41,7 +41,7 @@ export default function CourbeUCS({
   relier = true,
   ticksX = "valeurs",
   formatX = (x: number) => `${x} j`,
-  messageVide = "Aucune mesure UCS pour l'instant. Écrase une éprouvette et saisis sa charge (ou sa contrainte).",
+  messageVide = "Aucune mesure UCS pour l'instant. Écrasez une éprouvette et saisissez sa charge (ou sa contrainte).",
   etendueMinX,
 }: {
   series: SerieUCS[];
