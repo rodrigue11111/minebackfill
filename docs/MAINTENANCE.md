@@ -157,6 +157,23 @@ ses chiffres enregistrés et un bandeau qui en donne la raison. Tests :
 `test_unit_pipeline.py::TestCompositionFinale`, `conventions.test.ts`,
 `store-persistence.test.ts`.
 
+**Valeurs impossibles** (audit du 2026-10-25) : les 8 méthodes ont été appelées
+des milliers de fois avec des entrées au hasard, et 30 règles physiques
+vérifiées sur chaque résultat (masses et volumes ≥ 0, 0 < Cw ≤ 100 %,
+0 < Sr ≤ 100 %, 0 ≤ n < 1, e ≥ 0, ρd ≤ ρh, ρd < ρs, bilans Cw = Ms/(Ms+Mw),
+Vs + Vv = VT, Sr = Vw/Vv, ρd = Ms/VT…) : aucune violation avec des entrées
+réalistes. Deux gardes ajoutés au calculateur, refus 422 avec le numéro de la
+recette : un retrait de l'essai-erreur plus grand que le contenu du mélange
+(`_verifier_masses_finales`, `ajustements_recette`, `mix_pipeline.py`), et un
+Cw ≥ 100 % prédit par le modèle d'affaissement (Bw élevé et affaissement très
+faible, `solve_rpc_slump`). Saisies bornées dans le Labo (date d'essai pas
+avant la coulée, âge de cure ≥ 1 j, réplicats ≥ 1, w₀ et humidité 0 à 100 %,
+affaissement 0 à 300 mm, Cw 0 à 100 %, w, malaxage, tolérance et adjuvant ≥ 0 :
+`LigneMesure`, `EditeurGachee.tsx`) et dans les catalogues de Réglages (Gs > 0,
+pourcentages 0 à 100, tailles de grain > 0 : `MaterialColumn.borne`,
+`borneCaracterisation`). Hors périmètre : le module Industrie (calculateur
+d'usine, journal de production), dont les champs ne sont pas bornés.
+
 **Pédagogie** (2026-10) : chaque méthode porte aussi `quand` (quand
 l'utiliser, une phrase), affichée sous le choix de méthode et lue par le
 Guide (`QUAND_METHODE`) : une seule source. Les plages usuelles des champs
