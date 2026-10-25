@@ -28,6 +28,7 @@ import { essaiValide, gacheesRetenues, type EtudiantClasse } from "./classe";
 import { sessionEffective, type Session } from "./sessions";
 import { completudeGachee } from "./completude";
 import { materiauxDepuisFormulation } from "./gachee-materiaux";
+import { wPateMesuree } from "./mesures-pate";
 import { securiserCsv, type CelluleCsv, type RevueDe } from "./classe-csv";
 import { accepteeTelleQuelle, type InfoRevue } from "./revues";
 import { fmtDate } from "./echeance-affichage";
@@ -41,8 +42,9 @@ export const JEU_ESSAIS_VERSION = 1;
  *  2 (2026-10-18) : formulation_ref et les références d'instantané
  *  (residu_ref, granulat_ref, liantN_code) deviennent des empreintes ;
  *  materiaux_source gagne fiche_et_formulation ; nb_essais_retenus sans les
- *  éprouvettes écartées par l'enseignant. */
-export const DICTIONNAIRE_VERSION = 2;
+ *  éprouvettes écartées par l'enseignant.
+ *  3 (2026-10-26) : w_mesure_pct est déduit de cw_mesure_pct (plus saisi). */
+export const DICTIONNAIRE_VERSION = 3;
 
 export type TypeColonne = "texte" | "texte libre" | "code" | "nombre" | "entier" | "date" | "booléen";
 export type Valeur = string | number | boolean | null;
@@ -224,8 +226,8 @@ const COLONNES_GACHEE: Colonne<CtxGachee>[] = [
     description: "Affaissement au cône d'Abrams (ASTM C143/C143M)." },
   { cle: "temperature_pate_c", libelle: "Température de la pâte", unite: "°C", type: "nombre", val: (c) => num(c.g.temperatureC),
     description: "Température de la pâte fraîche." },
-  { cle: "w_mesure_pct", libelle: "Teneur en eau w mesurée", unite: "%", type: "nombre", val: (c) => num(c.g.wMesurePct),
-    description: "Teneur en eau de la pâte, mesurée." },
+  { cle: "w_mesure_pct", libelle: "Teneur en eau w de la pâte", unite: "%", type: "nombre", val: (c) => num(wPateMesuree(c.g)?.valeur),
+    description: "Teneur en eau de la pâte : déduite de cw_mesure_pct (w = (100 − Cw) / Cw × 100, F012) ; saisie pour une gâchée d'avant le 2026-10-26 sans Cw mesuré." },
   { cle: "cw_mesure_pct", libelle: "Cw mesuré", unite: "%", type: "nombre", val: (c) => num(c.g.cwMesurePct),
     description: "Pourcentage solide massique de la pâte, mesuré." },
   { cle: "cure_mode", libelle: "Mode de cure", type: "code", val: (c) => c.g.cure?.mode ?? null,
