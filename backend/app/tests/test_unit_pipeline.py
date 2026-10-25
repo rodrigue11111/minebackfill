@@ -315,3 +315,84 @@ class TestApplyEssai:
         etape2 = apply_essai_adjustments(**args2, delta_water=300_000.0)
         for champ in ("mw_tot", "vt_new", "e", "sr", "cw", "rho_h"):
             _close(champ, getattr(etape2, champ), getattr(une_fois, champ))
+
+
+# ======================================================================
+#  Convention « recalcule » : Gs de la composition FINALE (2026-10-25)
+#  Issues.md #6. Les feuilles gardent le Gs de départ pour e et Sr (D36) et
+#  se contredisent quand un ajout change la composition des grains ; avec la
+#  composition finale, les relations de phases sont exactes.
+# ======================================================================
+
+AJOUTS_COMPOSITION = {
+    "granulat": dict(delta_aggregate=500_000.0),
+    "residu_humide": dict(delta_wet_residue=600_000.0),
+    "residu_sec": dict(delta_dry_residue=400_000.0),
+    "eau": dict(delta_water=300_000.0),
+    "combine": dict(delta_aggregate=300_000.0, delta_wet_residue=250_000.0,
+                    delta_dry_residue=100_000.0, delta_water=-80_000.0),
+}
+LIANTS = {
+    "garder_bw": dict(essai_binder_rule="solides_totaux"),
+    "residu_seul": dict(essai_binder_rule="residu_ajoute"),
+    "aucun": dict(essai_binder_rule="aucun"),
+    "dose_el": dict(dose_binder_by_wc=True),
+}
+
+
+class TestCompositionFinale:
+    @pytest.mark.parametrize("sr", [1.0, 0.85])
+    @pytest.mark.parametrize("liant", list(LIANTS))
+    @pytest.mark.parametrize("ajout", list(AJOUTS_COMPOSITION))
+    def test_relations_de_phases_exactes(self, sr, liant, ajout):
+        """e = Vv/Vs, Sr = Vw/Vv, n = 1 − Cv, rho_d = Ms/VT ; air de la base
+        conservé ; Sr = 100 % sur base saturée ; masses et volumes identiques
+        à la convention « base »."""
+        q, args = _base(sr=sr, xg=0.30)
+        kw = {**args, **AJOUTS_COMPOSITION[ajout], **LIANTS[liant]}
+        eq = apply_essai_adjustments(**kw, essai_gs_convention="recalcule")
+        vv = eq.vt_new - eq.vs_new
+        _close("e = Vv/Vs", eq.e, vv / eq.vs_new)
+        _close("Sr = Vw/Vv", eq.sr, eq.vw_tot / vv)
+        _close("n = 1 - Cv", eq.n, 1.0 - eq.cv)
+        _close("rho_d = Ms/VT", eq.rho_d, eq.ms_total / eq.vt_new)
+        _close("rho_h = (Ms+Mw)/VT", eq.rho_h, (eq.ms_total + eq.mw_tot) / eq.vt_new)
+        # Les ajouts n'apportent pas d'air : le volume d'air de la base reste.
+        air_base = 11000.0 - q.vs - q.vw
+        assert abs((vv - eq.vw_tot) - air_base) <= 1e-9 * 11000.0, (vv - eq.vw_tot, air_base)
+        if sr == 1.0:
+            _close("Sr = 100 % sur base saturée", eq.sr, 1.0)
+        base = apply_essai_adjustments(**kw, essai_gs_convention="base")
+        for nom in ("mr_sec_tot", "mg_sec_tot", "mb_tot", "mb_ad", "mw_tot", "mw_to_add",
+                    "mr_hum_tot", "vt_new", "vs_new", "vw_tot", "w", "cw", "bw", "cv"):
+            _close(f"{nom} identique entre conventions", getattr(eq, nom), getattr(base, nom))
+
+    def test_la_feuille_derive_quand_la_composition_change(self):
+        """Témoin : en convention « base » (feuille), un ajout de granulat fait
+        dériver Sr et sépare n de 1 − Cv ; « recalcule » corrige les deux."""
+        _q, args = _base(xg=0.30)
+        base = apply_essai_adjustments(**args, delta_aggregate=500_000.0, essai_gs_convention="base")
+        assert abs(base.sr - 1.0) > 1e-3
+        assert abs(base.n - (1.0 - base.cv)) > 1e-4
+        corr = apply_essai_adjustments(**args, delta_aggregate=500_000.0, essai_gs_convention="recalcule")
+        _close("Sr corrigé", corr.sr, 1.0)
+
+    def test_bw_dilue_suivi_par_le_gs(self):
+        """Avant le 2026-10-25, « recalcule » gardait le Bw VISÉ : avec « aucun »
+        liant, Sr sortait à ~99,97 %. Le Bw final le ramène à 100 %."""
+        _q, args = _base(xg=0.30)
+        eq = apply_essai_adjustments(**args, delta_aggregate=500_000.0, essai_binder_rule="aucun",
+                                     essai_gs_convention="recalcule")
+        assert eq.bw < 0.045 - 1e-4
+        _close("Sr", eq.sr, 1.0)
+
+    @pytest.mark.parametrize("ajout", ["residu_humide", "eau", "residu_sec"])
+    def test_sans_changement_de_composition_rien_ne_change(self, ajout):
+        """RPC, liant qui garde le Bw : la composition des grains ne change pas,
+        les deux conventions donnent les mêmes chiffres (ceux de la feuille)."""
+        _q, args = _base(xg=0.0)
+        kw = {**args, **AJOUTS_COMPOSITION[ajout]}
+        a = apply_essai_adjustments(**kw, essai_gs_convention="base")
+        b = apply_essai_adjustments(**kw, essai_gs_convention="recalcule")
+        for nom in ("e", "sr", "n", "rho_d", "rho_h", "gs_backfill", "bv"):
+            _close(nom, b.__getattribute__(nom), a.__getattribute__(nom))

@@ -5,7 +5,7 @@
 
 import { lireBinders, type SavedResult } from "@/lib/store";
 import { nomLiant } from "@/lib/liants";
-import { estVersionCourante } from "@/lib/conventions";
+import { AIDE_CONVENTION_REVISEE, etatVersion } from "@/lib/conventions";
 import { methodLabel } from "@/lib/method-registry";
 import type { ReportCtx } from "@/lib/report-schema";
 import { DENSITY_LABELS, fromStoreMass, MASS_LABELS, VOLUME_LABELS, type UnitPreferences } from "@/lib/units";
@@ -47,9 +47,14 @@ export default function ResultatLecture({ resultat: sr, units }: { resultat: Sav
           </div>
         }
       >
-        {!estVersionCourante(sr.solverVersion) && (
+        {etatVersion(sr.solverVersion, sr.method) === "obsolete" && (
           <div>
             <Pastille ton="ambre" title="Calculé avec une version antérieure des formules : les masses peuvent être incorrectes.">anciennes formules</Pastille>
+          </div>
+        )}
+        {etatVersion(sr.solverVersion, sr.method) === "convention_revisee" && (
+          <div>
+            <Pastille ton="gris" title={AIDE_CONVENTION_REVISEE}>convention révisée</Pastille>
           </div>
         )}
         {(g.operator_name || g.project_name || g.residue_id) && (

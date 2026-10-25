@@ -15,7 +15,7 @@ class MemStorage {
 import { ANNOTATIONS_KEY, defautsCw, defautsWb, empreinteAuDepart, loadAnnotationsFromStorage, persistAnnotations, useStore } from "./store";
 import { chargerEtatSync, sauverEtatSync } from "./sync-etat";
 import { etatInitial } from "./sync-moteur";
-import { resultatPerime } from "./resultat-perime";
+import { EMPREINTE_CONVENTION_REVISEE, resultatPerime } from "./resultat-perime";
 
 function resetTout() {
   (globalThis as unknown as { window: unknown }).window = globalThis;
@@ -171,8 +171,9 @@ describe("store — constantes pré-P4 complétées (revue P3-P5)", () => {
 
     expect(useStore.getState().restoreSavedResult("sr_ancien_prep4")).toBe(true);
     const c = useStore.getState().constantes;
-    // Drapeaux complétés : la feuille gramme, seule convention de l'application.
-    expect(c.essai_gs_convention).toBe("base");
+    // Drapeaux complétés : la feuille gramme, seule convention de l'application,
+    // avec le Gs de la composition finale depuis le 2026-10-25.
+    expect(c.essai_gs_convention).toBe("recalcule");
     expect(c.essai_binder_rule).toBe("residu_ajoute");
     expect(c.pack_id).toBe("gramme");
   });
@@ -502,6 +503,36 @@ describe("store — résultats périmés : revue du 2026-10-18", () => {
     expect(s().cw.solid_mass_pct).toBe(80);
     expect(s().essaiResult?.recipes).toHaveLength(1);
     expect(perime("essaiResult")).toBe(true);
+  });
+
+  it("essai-erreur sauvegardé avec le Gs de départ (avant 2026-10-25) : chiffres gardés tels quels, résultat périmé avec sa raison", () => {
+    const s = () => useStore.getState();
+    useStore.setState({
+      category: "RPC", method: "essai",
+      essai: { ...s().essai, base_method: "dosage_cw" },
+      essaiResult: { category: "RPC", method: "essai", recipes: [{ bw_mass_pct: 4.5, void_ratio: 1.111 }] } as never,
+    });
+    expect(s().saveCurrentResult("Essai ancien Gs")).toBe(true);
+    const entry = s().savedResults.find((r) => r.label === "Essai ancien Gs")!;
+    expect(entry.constantes?.essai_gs_convention).toBe("recalcule"); // nouveaux calculs
+    useStore.setState({ savedResults: s().savedResults.map((r) => r.id === entry.id
+      ? { ...r, constantes: { ...r.constantes!, essai_gs_convention: "base" as const }, solverVersion: "gramme-1.0" } : r) });
+    expect(s().restoreSavedResult(entry.id)).toBe(true);
+    expect((s().essaiResult?.recipes[0] as { void_ratio: number }).void_ratio).toBe(1.111); // pas modifié
+    expect(s().constantes.essai_gs_convention).toBe("recalcule"); // le prochain calcul suit la convention du site
+    expect(s().empreintesCalcul.essaiResult).toBe(EMPREINTE_CONVENTION_REVISEE);
+    expect(perime("essaiResult")).toBe(true);
+  });
+
+  it("résultat Selon Cw sauvegardé avec le Gs de départ : à jour (le Gs n'agit qu'après les ajouts)", () => {
+    const s = () => useStore.getState();
+    seedResultatRpc();
+    expect(s().saveCurrentResult("Cw ancien Gs")).toBe(true);
+    const entry = s().savedResults.find((r) => r.label === "Cw ancien Gs")!;
+    useStore.setState({ savedResults: s().savedResults.map((r) => r.id === entry.id
+      ? { ...r, constantes: { ...r.constantes!, essai_gs_convention: "base" as const } } : r) });
+    expect(s().restoreSavedResult(entry.id)).toBe(true);
+    expect(perime("cwResult")).toBe(false);
   });
 });
 

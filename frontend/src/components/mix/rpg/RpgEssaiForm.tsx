@@ -181,7 +181,7 @@ export default function RpgEssaiForm() {
                 <Field label="Résidu humide" unit={massLabel} hint={AIDE_RESIDU_HUMIDE}>
                   <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_residu_humide, units.mass)} onChange={(n) => setRpgEssaiAjustement(i, { ...aj, ajout_residu_humide: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
-                <Field label="Granulat sec" unit={massLabel} hint="Modifie Am et recalcule le Gs du remblai">
+                <Field label="Granulat sec" unit={massLabel} hint="Modifie Am ; e, n et Sr sont recalculés avec la composition finale.">
                   <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_agregat, units.mass)} onChange={(n) => setRpgEssaiAjustement(i, { ...aj, ajout_agregat: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
                 <Field label="Teneur en eau du granulat ajouté" unit="%" hint="Teneur en eau massique du granulat, tel qu'ajouté">

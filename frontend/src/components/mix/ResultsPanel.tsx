@@ -19,7 +19,7 @@ import { nomLiant } from "@/lib/liants";
 import { descriptorFor, methodLabel } from "@/lib/method-registry";
 import type { ReportCtx } from "@/lib/report-schema";
 import type { MixResult, Recipe } from "@/lib/types";
-import { resultatPerime } from "@/lib/resultat-perime";
+import { EMPREINTE_CONVENTION_REVISEE, resultatPerime } from "@/lib/resultat-perime";
 import { cwHorsPlageUsuelle, eauARetirer } from "@/lib/avis-recette";
 import { PLAGES } from "@/lib/plages";
 import { Bandeau } from "@/components/ui/Bandeau";
@@ -84,7 +84,10 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
   const perime = cleResultat ? resultatPerime(store as unknown as Record<string, unknown>, cleResultat, store.empreintesCalcul[cleResultat]) : false;
   const avisPerime = perime ? (
     <Bandeau ton="alerte" role="status" titre="Résultats périmés.">
-      Les entrées ont changé depuis ce calcul : ces résultats ne leur correspondent plus. Cliquez sur
+      {cleResultat && store.empreintesCalcul[cleResultat] === EMPREINTE_CONVENTION_REVISEE
+        ? <>Ce résultat a été calculé avec une ancienne convention (Gs de départ après les ajouts, comme la feuille) :
+          les masses restent justes, mais e, n, Sr et ρ ne suivent pas la composition finale. Cliquez sur</>
+        : <>Les entrées ont changé depuis ce calcul : ces résultats ne leur correspondent plus. Cliquez sur</>}
       <strong> Calculer</strong> pour les mettre à jour avant de les sauvegarder ou de les exporter.
     </Bandeau>
   ) : undefined;

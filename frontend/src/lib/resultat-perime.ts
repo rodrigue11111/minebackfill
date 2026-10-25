@@ -23,6 +23,15 @@ type EtatCalcul = Record<string, unknown> & { general?: unknown; constantes?: un
  */
 export const EMPREINTE_INCONNUE = "entrees-inconnues";
 
+/**
+ * Empreinte d'un essai-erreur sauvegardé sous d'autres conventions de calcul
+ * que celles du site aujourd'hui (Gs de départ avant le 2026-10-25, règle du
+ * liant « tonne » avant le 2026-09-29) : ses chiffres enregistrés restent
+ * affichés tels quels, mais il est périmé jusqu'au prochain calcul, et le
+ * bandeau en donne la raison (ResultsPanel).
+ */
+export const EMPREINTE_CONVENTION_REVISEE = "convention-revisee";
+
 /** Ce dont un résultat dépend : l'état de sa méthode (et de la méthode de base
  *  pour l'essai-erreur), les informations générales, les constantes et les liants. */
 export function entreesDuCalcul(state: EtatCalcul, cle: MethodResultKey): unknown {

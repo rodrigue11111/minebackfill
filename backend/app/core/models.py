@@ -262,9 +262,11 @@ class SolverConstants(BaseModel):
     essai_gs_convention: Literal["base", "recalcule"] = Field(
         "base",
         description=(
-            "Essai-erreur : « base » fige les Gs de la recette de base (Intra "
-            "2017) ; « recalcule » les recalcule à partir de la composition "
-            "après ajouts."
+            "Essai-erreur : « base » fige les Gs de la recette de départ, comme "
+            "les cellules D36 et D34 des feuilles (Sr dérive quand un ajout change "
+            "la composition des grains) ; « recalcule » prend le Gs de la "
+            "composition FINALE (Bw final et part finale de granulat) : Sr = Vw/Vv, "
+            "n = 1 − Cv. Masses et volumes identiques dans les deux cas."
         ),
     )
     essai_binder_rule: Literal["solides_totaux", "residu_ajoute"] = Field(
