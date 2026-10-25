@@ -51,6 +51,7 @@ export default function Pesees({ gachee: g, onPesee, onTolerance, notes, connect
   const setUnits = useStore((s) => s.setUnits);
   // Message de la saisie refusée en cours, par composant.
   const [refus, setRefus] = useState<Record<string, string | null>>({});
+  const [refusTolerance, setRefusTolerance] = useState<string | null>(null);
   const choixUnite = (
     <Segmente ariaLabel="Unité des pesées" taille="compact" valeur={unite}
       onChange={(u) => setUnits({ masseLabo: u })}
@@ -68,8 +69,10 @@ export default function Pesees({ gachee: g, onPesee, onTolerance, notes, connect
           {onTolerance && (
             <label className="labo-tolerance">
               Tolérance ±
-              <ChampNombre className="field-input labo-tolerance-champ" ariaLabel="Tolérance en pour cent" value={tol ?? undefined} onChange={(n) => onTolerance(n ?? 0)} />
+              <ChampNombre className="field-input labo-tolerance-champ" ariaLabel="Tolérance en pour cent" value={tol ?? undefined} onChange={(n) => onTolerance(n ?? 0)}
+                min={0} messageRefus="Une tolérance ne peut pas être négative." onRefus={setRefusTolerance} />
               %
+              {refusTolerance && <span className="ui-champ-erreur" role="alert">{refusTolerance}</span>}
             </label>
           )}
         </span>

@@ -20,6 +20,7 @@ import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
 import { Page, EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
 import { Champ } from "@/components/ui/Champ";
+import ChampNombre from "@/components/ui/ChampNombre";
 import { Pastille } from "@/components/ui/Pastille";
 import Segmente from "@/components/ui/Segmente";
 
@@ -69,6 +70,8 @@ export default function ReglagesPage() {
     setUnits,
     loadUnits,
   } = useStore();
+  // Gs de liant refusé en cours de saisie (≤ 0), par id de liant.
+  const [refusGs, setRefusGs] = useState<Record<string, string | null>>({});
   const session = useStore((s) => s.session);
   // isProf = vrai compte prof connecté (requis pour PUBLIER en ligne).
   const isProf = session?.role === "prof";
@@ -176,9 +179,12 @@ export default function ReglagesPage() {
                   <input className="field-input" value={liant.nom} disabled={verrou}
                     onChange={(e) => modifierLiant(index, { nom: e.target.value }, vueAdmin)} />
                 </Champ>
-                <Champ libelle="Densité relative Gs">
-                  <input type="number" step="any" className="field-input" value={liant.gs} disabled={verrou}
-                    onChange={(e) => modifierLiant(index, { gs: Number(e.target.value || 0) }, vueAdmin)} />
+                <Champ libelle="Densité relative Gs" erreur={refusGs[liant.id] ?? undefined}>
+                  {/* Virgule ou point ; Gs ≤ 0 refusé à la saisie (audit 2026-10-25). */}
+                  <ChampNombre value={liant.gs} disabled={verrou} ariaLabel={`Gs : ${liant.nom}`}
+                    min={0} minExclusif messageRefus="Gs doit être supérieur à 0."
+                    onRefus={(m) => setRefusGs((r) => ({ ...r, [liant.id]: m }))}
+                    onChange={(n) => { if (n !== undefined) modifierLiant(index, { gs: n }, vueAdmin); }} />
                 </Champ>
                 <div className="regl-ligne-fin">
                   {estOfficiel(liant) && <Pastille ton="accent">officiel</Pastille>}
@@ -211,8 +217,8 @@ export default function ReglagesPage() {
         onPublish={isProf ? () => publierMateriaux("residus", "residus", MATERIALS_VERSION) : undefined}
         columns={[
           { key: "nom", label: "Nom", type: "text", flex: 2 },
-          { key: "gs", label: "Gs", type: "number" },
-          { key: "w0_pct", label: "w₀ (%)", type: "number" },
+          { key: "gs", label: "Gs", type: "number", borne: { min: 0, minExclusif: true, message: "Gs doit être supérieur à 0." } },
+          { key: "w0_pct", label: "w₀ (%)", type: "number", borne: { min: 0, max: 100, message: "w₀ est compris entre 0 et 100 %." } },
           { key: "provenance", label: "Provenance", type: "text", flex: 1.5 },
         ]}
         caracterisation={CARACTERISATION_RESIDU}
@@ -225,9 +231,9 @@ export default function ReglagesPage() {
         onPublish={isProf ? () => publierMateriaux("granulats", "granulats", MATERIALS_VERSION) : undefined}
         columns={[
           { key: "nom", label: "Nom", type: "text", flex: 2 },
-          { key: "gs", label: "Gs", type: "number" },
-          { key: "humidite_pct", label: "Teneur en eau (%)", type: "number" },
-          { key: "fraction_defaut_pct", label: "Am par défaut (%)", type: "number" },
+          { key: "gs", label: "Gs", type: "number", borne: { min: 0, minExclusif: true, message: "Gs doit être supérieur à 0." } },
+          { key: "humidite_pct", label: "Teneur en eau (%)", type: "number", borne: { min: 0, max: 100, message: "La teneur en eau est compris entre 0 et 100 %." } },
+          { key: "fraction_defaut_pct", label: "Am par défaut (%)", type: "number", borne: { min: 0, max: 100, message: "Am est compris entre 0 et 100 %." } },
           { key: "provenance", label: "Provenance", type: "text", flex: 1.5 },
         ]}
         caracterisation={CARACTERISATION_GRANULAT}
@@ -240,8 +246,8 @@ export default function ReglagesPage() {
         onPublish={isProf ? () => publierMateriaux("retardateurs", "retardateurs", MATERIALS_VERSION) : undefined}
         columns={[
           { key: "nom", label: "Nom", type: "text", flex: 2 },
-          { key: "densite_g_ml", label: "Masse volumique (g/ml)", type: "number" },
-          { key: "dosage_d0_ml_100kg", label: "Dosage D0 (ml/100 kg)", type: "number" },
+          { key: "densite_g_ml", label: "Masse volumique (g/ml)", type: "number", borne: { min: 0, minExclusif: true, message: "Une masse volumique est strictement positive." } },
+          { key: "dosage_d0_ml_100kg", label: "Dosage D0 (ml/100 kg)", type: "number", borne: { min: 0, message: "Un dosage ne peut pas être négatif." } },
         ]}
       />
 

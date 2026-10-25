@@ -237,3 +237,46 @@ def test_essai_choix_du_liant_inconnu_refuse():
     r = client.post("/rpc/essai", json={**base_cw, "base_method": "dosage_cw", "base_inputs_cw": base_cw,
                                          "adjustments": [{"added_water_mass": 1.0, "binder_rule": "moitie"}]})
     assert r.status_code == 422
+
+
+def test_essai_retrait_superieur_au_contenu_refuse():
+    """Audit du 2026-10-25 : retirer plus d'eau, de résidu ou de granulat que le
+    mélange n'en contient donnait des masses négatives, Cw > 100 %, n < 0.
+    Refus 422 avec le numéro de la recette ; un retrait possible reste accepté."""
+    base_cw = {**BASE, "category": "RPC", "solids_mass_pct": 70.0}
+    base = client.post("/rpc/cw", json=base_cw).json()["recipes"][0]["components"]
+
+    def essai(adj):
+        return client.post("/rpc/essai", json={**base_cw, "base_method": "dosage_cw",
+                                               "base_inputs_cw": base_cw, "adjustments": [adj]})
+
+    r = essai({"added_water_mass": -1.2 * base["water_total_mass_kg"]})
+    assert r.status_code == 422
+    assert r.json()["detail"].startswith("Recette 1 : retrait impossible : on retirerait plus d'eau")
+    r = essai({"added_wet_residue_mass": -1.5 * base["residue_dry_mass_kg"]})
+    assert r.status_code == 422 and "plus de résidu" in r.json()["detail"]
+    ok = essai({"added_water_mass": -0.5 * base["water_total_mass_kg"]})
+    assert ok.status_code == 200
+    assert 0 < ok.json()["recipes"][0]["solids_mass_pct"] <= 100
+
+    base_rpg = {**BASE, "category": "RPG", "solids_mass_pct": 70.0,
+                "aggregate_fraction_pct": 30.0, "aggregate_specific_gravity": 2.8}
+    g = client.post("/rpg/cw", json=base_rpg).json()["recipes"][0]["components"]["aggregate_dry_mass_kg"]
+    r = client.post("/rpg/essai", json={**base_rpg, "base_method": "dosage_cw", "base_inputs_cw": base_rpg,
+                                         "adjustments": [{"added_aggregate_mass": -2 * g}]})
+    assert r.status_code == 422 and "plus de granulat" in r.json()["detail"]
+
+
+def test_affaissement_cw_predit_impossible_refuse():
+    """Le modèle prédictif dépasse 100 % pour un Bw élevé et un très faible
+    affaissement : refus 422 au lieu d'une recette à Cw > 100 %."""
+    corps = {**BASE, "category": "RPC", "cone_type": "grand", "slump_mm": 5.0,
+             "binder_mass_pct_recipes": [30.0]}
+    r = client.post("/rpc/slump", json=corps)
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert detail.startswith("Recette 1 : le modèle prédictif donne Cw = ")
+    assert "impossible" in detail and "." not in detail.split("Cw = ")[1].split(" %")[0]
+    # Domaine usuel : accepté, Cw < 100 %.
+    ok = client.post("/rpc/slump", json={**BASE, "category": "RPC", "cone_type": "grand", "slump_mm": 180.0})
+    assert ok.status_code == 200 and ok.json()["recipes"][0]["solids_mass_pct"] < 100

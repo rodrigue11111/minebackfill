@@ -45,7 +45,7 @@ from .rpc_solver import (
 )
 from .mix_pipeline import (
     solve_recipe,
-    apply_essai_adjustments,
+    ajustements_recette,
     gs_backfill_eff,
     gs_nonbinder_eff,
     cw_from_wc,
@@ -500,7 +500,8 @@ def solve_rpg_essai(inputs: RpgEssaiInputs) -> MixDesignResult:
         # Ajustements selon la feuille Intra 2017 [D57-D96] : le volume total
         # croît des volumes ajoutés, Sr reste à la valeur de base [D86-D87],
         # liant/eau « à ajouter » non bornés (négatif = à retirer) [D65, D50].
-        eq = apply_essai_adjustments(
+        eq = ajustements_recette(
+            i + 1,
             mr_sec_base=base_comp.residue_dry_mass_kg,
             mg_sec_base=base_comp.aggregate_dry_mass_kg,
             mb_base=base_comp.binder_total_mass_kg,

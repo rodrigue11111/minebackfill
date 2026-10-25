@@ -47,7 +47,7 @@ from typing import List, Optional
 
 from .mix_pipeline import (
     solve_recipe,
-    apply_essai_adjustments,
+    ajustements_recette,
     gs_backfill_eff,
     gs_nonbinder_eff,
     cw_from_wc,
@@ -556,7 +556,8 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
         # Ajustements selon la feuille Intra 2017 [D57-D96] : le volume total
         # croît des volumes ajoutés, Sr reste à la valeur de base [D86-D87],
         # liant/eau « à ajouter » non bornés (négatif = à retirer) [D65, D50].
-        eq = apply_essai_adjustments(
+        eq = ajustements_recette(
+            i + 1,
             mr_sec_base=base_comp.residue_dry_mass_kg,
             mg_sec_base=base_comp.aggregate_dry_mass_kg,
             mb_base=base_comp.binder_total_mass_kg,
@@ -872,6 +873,17 @@ def solve_rpc_slump(inputs: RpcSlumpInputs) -> MixDesignResult:
             model_coeff=constantes["slump_model_coeff"],
             model_offset=constantes["slump_model_offset"],
         )
+        # Cw >= 100 % est impossible (eau nulle ou négative). Le modèle y arrive
+        # pour un Bw élevé (environ 12 % et plus) et un très faible affaissement
+        # (audit du 2026-10-25) : refus explicite plutôt qu'une recette absurde.
+        if cw_pred >= 100.0:
+            fr = lambda x, d: f"{x:.{d}f}".replace(".", ",")  # noqa: E731
+            raise ValueError(
+                f"Recette {i + 1} : le modèle prédictif donne Cw = {fr(cw_pred, 1)} % pour un "
+                f"affaissement de {fr(slump_mm_eff, 0)} mm (grand cône) et Bw = {fr(bw_pct, 1)} %, "
+                "ce qui est impossible (Cw ne dépasse pas 100 %). L'affaissement est trop faible "
+                "ou le Bw trop élevé pour le domaine du modèle."
+            )
 
         state_i = _solve_single_cw_recipe(
             Cw_pct=cw_pred,

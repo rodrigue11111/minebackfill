@@ -224,6 +224,30 @@ class EssaiQuantities:
     vv_new: float
 
 
+def _verifier_masses_finales(mr_sec_tot: float, mg_sec_tot: float, mw_tot: float) -> None:
+    """Refuse un retrait plus grand que ce que contient le mélange (masse
+    finale négative). Message pour l'étudiant ; le solveur y ajoute le numéro
+    de la recette."""
+    tol = 1e-9 * max(1.0, abs(mr_sec_tot) + abs(mg_sec_tot) + abs(mw_tot))
+    trop = [nom for nom, m in (("de résidu", mr_sec_tot), ("de granulat", mg_sec_tot), ("d'eau", mw_tot))
+            if m < -tol]
+    if trop:
+        raise ValueError(
+            f"Retrait impossible : on retirerait plus {' et plus '.join(trop)} que le mélange "
+            "n'en contient. Réduisez le retrait (valeur négative) dans les ajouts."
+        )
+
+
+def ajustements_recette(numero: int, **kwargs) -> "EssaiQuantities":
+    """apply_essai_adjustments pour la recette `numero` (à partir de 1) : une
+    erreur de saisie est rapportée avec le numéro de la recette."""
+    try:
+        return apply_essai_adjustments(**kwargs)
+    except ValueError as e:
+        msg = str(e)
+        raise ValueError(f"Recette {numero} : {msg[:1].lower()}{msg[1:]}") from e
+
+
 def apply_essai_adjustments(*,
                             mr_sec_base: float,
                             mg_sec_base: float,
@@ -294,6 +318,11 @@ def apply_essai_adjustments(*,
     # -- eau totale  [29a] — calculée AVANT le liant : la règle « dosage par
     # W/C » en fait son assiette.
     mw_tot = mw_base + delta_eau_tot
+
+    # -- un retrait ne peut pas dépasser ce que contient le mélange (2026-10-25,
+    # audit des valeurs impossibles) : sans ce garde, une masse finale
+    # négative donnait Cw > 100 %, une porosité négative, etc.
+    _verifier_masses_finales(mr_sec_tot, mg_sec_tot, mw_tot)
 
     # -- liant : trois règles (défaut = Intra 2017, sans borne à 0)
     if dose_binder_by_wc:

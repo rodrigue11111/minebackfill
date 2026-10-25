@@ -44,6 +44,7 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
   // Saisie refusée en cours (valeur négative, diamètre nul) : message sous le champ.
   const [refus, setRefus] = useState<Record<string, string | null>>({});
   const surRefus = (cle: string) => (msg: string | null) => setRefus((r) => ({ ...r, [cle]: msg }));
+  const couleJour = isoVersDateInput(eprouvette.couleLe);
   const calculee = contrainteKpa({ chargeKn: es.chargeKn, diametreMm: es.diametreMm });
   const retenue = contrainteKpa(es);
   // Une contrainte directe renseignée l'emporte sur F/A (voir contrainteKpa).
@@ -56,9 +57,18 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
   return (
     <div className="labo-essai">
       <div className="labo-grille-essai">
-        <Champ libelle="Date d'essai">
-          <input type="date" className="field-input" value={es.date ? isoVersDateInput(es.date) : ""}
-            onChange={(e) => onChange({ date: e.target.value ? new Date(`${e.target.value}T12:00:00`).toISOString() : undefined })} />
+        <Champ libelle="Date d'essai" erreur={refus.date ?? undefined}>
+          {/* Un essai ne précède pas la coulée : l'âge réel serait négatif. */}
+          <input type="date" className="field-input" min={couleJour} value={es.date ? isoVersDateInput(es.date) : ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v && v < couleJour) {
+                surRefus("date")(`L'essai ne peut pas précéder la coulée (${couleJour}) : la date précédente est gardée.`);
+                return;
+              }
+              surRefus("date")(null);
+              onChange({ date: v ? new Date(`${v}T12:00:00`).toISOString() : undefined });
+            }} />
         </Champ>
         <Champ libelle="Charge à la rupture" unite="kN" erreur={refus.charge ?? undefined}>
           <ChampNombre min={0} messageRefus="Une charge ne peut pas être négative." onRefus={surRefus("charge")}
