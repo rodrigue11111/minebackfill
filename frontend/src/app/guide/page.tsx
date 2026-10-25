@@ -199,14 +199,19 @@ export default function GuidePage() {
           <Step n={6} title="Explorer les courbes de réponse (page Analyse)">
             La page <strong>Calculs</strong> répond à « quelle recette pour ces valeurs ? ». La page{" "}
             <strong>Analyse</strong> répond à une autre question : « et si je faisais varier un
-            paramètre, que devient le reste ? ». Choisissez un paramètre à balayer (Bw, Cw, Sr ou
+            paramètre, que devient le reste ? ». Elle part d&apos;un <strong>calcul sauvegardé</strong>{" "}
+            (Mes calculs), quelle que soit sa méthode : choisissez le calcul et la recette en haut de la
+            page, ou cliquez sur « Analyser » dans Mes calculs. Les valeurs calculées de la recette (Cw,
+            Sr, Bw, Am) deviennent les entrées d&apos;un balayage selon la méthode Cw, au volume total de
+            la recette ; un E/L ou un affaissement visé n&apos;est donc pas maintenu pendant le balayage,
+            et la page le dit. Choisissez un paramètre à balayer (Bw, Cw, Sr ou
             la fraction massique de granulat) et une plage : l&apos;application calcule une recette
             complète à chaque point. Aucune formule n&apos;est approchée : chaque point est une vraie
             résolution par les mêmes solveurs que la page Calculs, donc une courbe ne peut pas diverger
             du calculateur. Le tableau <strong>« Tenu fixe / ce qui varie »</strong> sous le graphique
             dit exactement ce que le balayage laisse constant. Un second mode montre la{" "}
-            <strong>composition du mélange</strong> en barres, en diagramme ternaire et en
-            échantillon. Exports CSV, JSON et PNG, chacun accompagné de son bloc de provenance.
+            <strong>composition du mélange</strong> des recettes sauvegardées, sans recalcul, en barres,
+            en diagramme ternaire et en échantillon. Exports CSV, JSON et PNG, chacun accompagné de son bloc de provenance.
           </Step>
 
           <Step n={7} title="Suivre les gâchées et les essais UCS (page Labo)">

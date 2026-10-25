@@ -367,16 +367,50 @@ par une chaîne d'unités, et le défaut donne « 1 234,5678 kg ». Elles écriv
 par `nombreFr` (`lib/format.ts`), qui arrondit avant d'écrire : jamais
 « -0 » ; ne pas revenir à `toLocaleString` direct.
 
-**Courbe périmée** (2026-10). Les requêtes du balayage sont construites par
-`corpsBalayage` (`lib/analyse-corps.ts`, module pur) ; `tracer()` prend leur
-empreinte et la provenance AU DÉPART, et la courbe est périmée dès que
-l'empreinte des entrées courantes diffère (bandeau, figures estompées,
-exports CSV, JSON et PNG désactivés). Un nouveau champ envoyé au balayage
-se met donc dans `payloadBase` ou `corpsBalayage`, jamais directement dans
-la page : sinon il échapperait à l'empreinte. Une erreur de tracé retire la
-courbe. Une courbe rechargée d'un fichier n'a pas d'empreinte (provenance du
-fichier, exportable telle quelle). La courbe est un état local de la page :
-quitter Analyse la retire.
+**Source de l'analyse** (2026-10-25). L'Analyse part d'un **calcul
+sauvegardé** (Mes calculs) et d'une de ses recettes, plus du formulaire en
+cours de Calculs (après un calcul selon E/L ou en essai-erreur, elle montrait
+d'autres valeurs que le résultat obtenu). `lib/analyse-source.ts` (pur) :
+- valeurs de la RECETTE sauvegardée (Cw, Sr, Bw, Am) comme entrées d'un
+  balayage selon la méthode Cw ; Gs et w₀ du résidu, Gs du granulat dans
+  `inputs` (en essai-erreur : la base désignée par `base_method`) ;
+- **volume analysé = `total_backfill_volume_m3` de la recette** (contenant
+  `"volume"`, 1 contenant, κ = 1) : au point de référence, le balayage
+  redonne toutes les grandeurs sauvegardées, masses et volumes compris, même
+  après un essai-erreur dont le volume final dépasse celui des moules.
+  Épinglé par `test_base_reconstruite_reproduit_la_recette_sauvegardee`
+  (`backend/app/tests/test_balayage.py`) : une méthode qui y échoue doit être
+  refusée par l'Analyse, pas approchée ;
+- contexte STRICT : constantes et liants de l'instantané du calcul, jamais
+  `completerConstantes` (qui impose les conventions du site) ni `gsLiant`
+  (qui retombe sur un Gs par défaut). Valeur absente : reconstituée ET
+  signalée, ou refus expliqué (`baseDepuisCalcul`). Essai-erreur sous
+  l'ancienne convention : refusé, par le même prédicat que la restauration
+  (`essaiConventionRevisee`, `lib/conventions.ts`) ;
+- méthode d'origine et méthode d'analyse affichées séparément (`notesSource`,
+  selon l'axe : jamais « à Cw constant » quand l'axe est Cw), et deux versions
+  dans la provenance (formules du balayage, calcul d'origine).
+Accès : lien « Analyser » de Mes calculs (`/analyse?calcul=<id>`), lu par
+`useSearchParams`, ce qui exige la frontière `<Suspense>` de la page (sinon
+le build échoue). La sélection est dérivée à chaque rendu : un calcul supprimé
+ailleurs fait retomber sur le plus récent. RRC exclu. La composition affiche
+les recettes sauvegardées telles quelles, sans requête.
+
+**Courbe périmée et requêtes concurrentes** (2026-10, revu le 2026-10-25). Les
+requêtes du balayage sont construites par `corpsBalayage` (`lib/analyse-corps.ts`,
+module pur) ; `tracer()` prend leur empreinte (avec la clé `idCalcul#recette`)
+et la provenance AU DÉPART, et la courbe est périmée dès que l'empreinte des
+entrées courantes diffère (bandeau, figures estompées, exports CSV, JSON et
+PNG désactivés). Un nouveau champ envoyé au balayage se met donc dans
+`payloadBase` ou `corpsBalayage`, jamais directement dans la page : sinon il
+échapperait à l'empreinte. La figure et ses requêtes vivent dans
+`lib/analyse-figure.ts` (réducteur pur) : chaque requête a un numéro ; changer
+de calcul ou de recette, effacer ou recharger un fichier passe au numéro
+suivant, et la réponse d'un numéro dépassé est ignorée. Une erreur de tracé
+retire la courbe. Une courbe rechargée d'un fichier n'a pas d'empreinte
+(provenance du fichier, exportable telle quelle) et restitue toutes ses
+variantes (`variantesDetail` du JSON, champ ajouté au format `/2`). La courbe
+est un état local de la page : quitter Analyse la retire.
 
 **Ajouter un paramètre balayable (axe X)** — trois garde-fous, tous
 indispensables :

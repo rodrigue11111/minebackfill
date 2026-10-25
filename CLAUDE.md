@@ -26,6 +26,9 @@ français simple dans tes réponses d'issue/PR.
   localStorage (enveloppes versionnées `{v, data}`, migrations — voir
   MAINTENANCE.md recette 8).
 - UI et textes en **français avec accents corrects**, **aucun emoji**.
+- Textes adressés au lecteur au **vouvoiement** (« Choisissez », « vos
+  données »), jamais « tu », « ton » ni « ta ». Gardes :
+  `frontend/src/lib/vouvoiement.test.ts` et `backend/app/tests/test_vouvoiement.py`.
 - **Aucun tiret cadratin « — » ni demi-cadratin « – »** dans un texte
   affiché ou exporté (ils font « texte écrit par une IA ») : virgule,
   deux-points, parenthèses ou point ; « 3 à 10 » pour un intervalle ; « − »
