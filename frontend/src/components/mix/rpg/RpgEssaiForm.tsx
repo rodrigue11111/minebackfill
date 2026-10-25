@@ -13,6 +13,7 @@ import {
 } from "@/lib/rpc_payload";
 import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
 import { AIDE_RESIDU_HUMIDE, AIDE_RESIDU_SEC, Field, CardSection, GrilleChamps, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
+import { optionsRegleLiant, regleLiantAffichee, type RegleLiant } from "@/lib/essai-liant";
 import { Bandeau } from "@/components/ui/Bandeau";
 
 export default function RpgEssaiForm() {
@@ -112,6 +113,8 @@ export default function RpgEssaiForm() {
           aggregate_moisture_mass_pct: a.w0_agregat || 0,
           added_water_mass: a.ajout_eau || 0,
           dose_binder_by_wc: a.dose_liant_wc || false,
+          // Absent : règle de la convention (constantes.essai_binder_rule).
+          binder_rule: a.regle_liant,
         })),
       };
 
@@ -188,6 +191,16 @@ export default function RpgEssaiForm() {
                   <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_eau, units.mass)} onChange={(n) => setRpgEssaiAjustement(i, { ...aj, ajout_eau: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
               </GrilleChamps>
+              {aj.dose_liant_wc ? (
+                <p className="ui-champ-aide">Liant pendant les ajouts : dosé selon le rapport E/L de conception (case ci-dessous).</p>
+              ) : (
+                <ChoixOptions<RegleLiant>
+                  libelle="Liant pendant les ajouts"
+                  valeur={regleLiantAffichee(aj.regle_liant, constantes.essai_binder_rule, true)}
+                  onChange={(v) => setRpgEssaiAjustement(i, { ...aj, regle_liant: v })}
+                  options={optionsRegleLiant(true)}
+                />
+              )}
               <label className="mix-case">
                 <input
                   type="checkbox"

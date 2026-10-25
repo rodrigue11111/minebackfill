@@ -676,6 +676,11 @@ export interface components {
              * @default false
              */
             dose_binder_by_wc: boolean;
+            /**
+             * Binder Rule
+             * @description Liant pendant les ajouts, pour cette recette : « solides_totaux » garde le Bw (Intra 2017), « residu_ajoute » n'en verse que pour le résidu ajouté (feuille gramme), « aucun » n'en verse pas (Bw dilué). Absent : règle de la convention. Ignoré quand dose_binder_by_wc est actif.
+             */
+            binder_rule?: ("solides_totaux" | "residu_ajoute" | "aucun") | null;
         };
         /**
          * RpcEssaiInputs
@@ -932,6 +937,11 @@ export interface components {
              * @default false
              */
             dose_binder_by_wc: boolean;
+            /**
+             * Binder Rule
+             * @description Liant pendant les ajouts, pour cette recette : « solides_totaux » garde le Bw (Intra 2017), « residu_ajoute » n'en verse que pour le résidu ajouté (feuille gramme), « aucun » n'en verse pas (Bw dilué). Absent : règle de la convention. Ignoré quand dose_binder_by_wc est actif.
+             */
+            binder_rule?: ("solides_totaux" | "residu_ajoute" | "aucun") | null;
         };
         /**
          * RpgEssaiInputs

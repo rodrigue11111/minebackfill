@@ -13,6 +13,7 @@ import {
 } from "@/lib/rpc_payload";
 import { fromStoreMass, toStoreMass, MASS_LABELS } from "@/lib/units";
 import { AIDE_RESIDU_HUMIDE, AIDE_RESIDU_SEC, Field, CardSection, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
+import { optionsRegleLiant, regleLiantAffichee, type RegleLiant } from "@/lib/essai-liant";
 import { Bandeau } from "@/components/ui/Bandeau";
 
 export default function EssaiForm() {
@@ -91,6 +92,8 @@ export default function EssaiForm() {
           added_dry_residue_mass: a.ajout_residu_sec || 0,
           added_wet_residue_mass: a.ajout_residu_humide || 0,
           added_water_mass: a.ajout_eau || 0,
+          // Absent : règle de la convention (constantes.essai_binder_rule).
+          binder_rule: a.regle_liant,
         })),
       };
 
@@ -152,6 +155,12 @@ export default function EssaiForm() {
                   <ChampNombre placeholder="0" value={fromStoreMass(aj.ajout_eau, units.mass)} onChange={(n) => setEssaiAjustement(i, { ajout_eau: toStoreMass(n, units.mass) ?? undefined })} />
                 </Field>
               </div>
+              <ChoixOptions<RegleLiant>
+                libelle="Liant pendant les ajouts"
+                valeur={regleLiantAffichee(aj.regle_liant, constantes.essai_binder_rule, false)}
+                onChange={(v) => setEssaiAjustement(i, { regle_liant: v })}
+                options={optionsRegleLiant(false)}
+              />
             </div>
           );
         })}

@@ -520,7 +520,7 @@ def solve_rpg_essai(inputs: RpgEssaiInputs) -> MixDesignResult:
             aggregate_w0_frac=adj.aggregate_moisture_mass_pct / 100.0,
             water_density=water_density,
             essai_gs_convention=constantes["essai_gs_convention"],
-            essai_binder_rule=constantes["essai_binder_rule"],
+            essai_binder_rule=adj.binder_rule or constantes["essai_binder_rule"],
             dose_binder_by_wc=adj.dose_binder_by_wc,
         )
 
