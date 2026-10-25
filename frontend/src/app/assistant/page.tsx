@@ -200,7 +200,7 @@ export default function AssistantPage() {
             <div className="assistant-fil">
               {messages.length === 0 && (
                 <p className="classe-rien" style={{ padding: "18px 4px" }}>
-                  {issue ? "Chargement de la conversation..." : "Exemples : « Ajoute le liant GUb-SF (Gs 2,95) aux liants officiels. » ou « Le bouton d'export PDF affiche une erreur, corrige-le. »"}
+                  {issue ? "Chargement de la conversation..." : "Exemples : « Ajoutez le liant GUb-SF (Gs 2,95) aux liants officiels. » ou « Le bouton d'export PDF affiche une erreur, corrigez-le. »"}
                 </p>
               )}
               {messages.map((m, i) => {

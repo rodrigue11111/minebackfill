@@ -17,7 +17,7 @@ export const PARCOURS: EtapeParcours[] = [
   { n: 2, libelle: "Type", href: "/mix", detail: "Calculs : catégorie de remblai et méthode" },
   { n: 3, libelle: "Données", href: "/mix", detail: "Calculs : paramètres du résidu et du mélange" },
   { n: 4, libelle: "Calculer", href: "/mix", detail: "Calculs : bouton Calculer" },
-  { n: 5, libelle: "Analyser / sauvegarder", href: "/analyse", detail: "Résultats : sauvegarde, exports, courbes de réponse (Analyse)" },
+  { n: 5, libelle: "Sauvegarder / analyser", href: "/analyse", detail: "Résultats : sauvegarde, exports ; Analyse : courbes de réponse d'un calcul sauvegardé" },
 ];
 
 /** Étape en cours sur la page Calculs : 5 dès qu'un résultat est affiché, sinon 3. */

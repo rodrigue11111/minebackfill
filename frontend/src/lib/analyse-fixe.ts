@@ -96,12 +96,25 @@ export function tenuFixe(inst: InstantaneAnalyse, param: ParamCle): LigneFixe[] 
   if (inst.contenants !== undefined) l.push({ label: "Nombre de contenants", valeur: f(inst.contenants, 0) });
   if (inst.facteurSecurite !== undefined) l.push({ label: "Facteur de perte κ", valeur: f(inst.facteurSecurite) });
 
-  // Comportement non évident et jamais affiché jusqu'ici : le balayage réduit
-  // la base à UNE seule recette et reprend le premier dosage de liant. Une
-  // personne ayant saisi trois recettes dans Calculs doit le savoir.
-  l.push({ label: "Recettes", valeur: "1 (la première de la base)" });
+  if (inst.volumeM3 !== undefined) {
+    l.push({ label: "Volume analysé", valeur: inst.volumeM3 < 1 ? `${f(inst.volumeM3 * 1000)} L` : `${f(inst.volumeM3)} m³` });
+  }
+
+  const s = inst.source;
+  if (s?.recette !== undefined) {
+    l.push({ label: "Recette analysée", valeur: `${s.recette} sur ${s.nbRecettes} du calcul « ${s.libelle} » (${s.methode})` });
+  } else {
+    // Fichiers d'avant 2026-10-25 : le balayage réduisait la base du
+    // formulaire à UNE recette et reprenait le premier dosage de liant.
+    l.push({ label: "Recettes", valeur: "1 (la première de la base)" });
+  }
 
   l.push({ label: "Pack de conventions", valeur: inst.constantes.packLabel });
-  l.push({ label: "Version du solveur", valeur: inst.versionSolveur });
+  if (s) {
+    l.push({ label: "Version des formules de l'analyse", valeur: inst.versionSolveur });
+    l.push({ label: "Version du calcul d'origine", valeur: s.versionCalcul ?? "inconnue" });
+  } else {
+    l.push({ label: "Version du solveur", valeur: inst.versionSolveur });
+  }
   return l;
 }

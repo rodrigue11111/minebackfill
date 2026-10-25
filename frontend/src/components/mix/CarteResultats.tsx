@@ -187,7 +187,7 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
             <>
               <SectionsRapport recipes={donnees.recipes} ctx={donnees.ctx} grille={pleinEcran} onFormulaClick={onFormulaClick} choisie={n > 1 ? choisie : undefined} />
               <section className="mix-rapport-section">
-                <SectionHeader title="Composition des phases" sub="Répartition volumique par recette ; vue détaillée dans la page Analyse" />
+                <SectionHeader title="Composition des phases" sub="Répartition volumique par recette ; vue détaillée dans la page Analyse, après sauvegarde" />
                 <BarresPhases recipes={donnees.recipes} base="volume" compact />
               </section>
             </>

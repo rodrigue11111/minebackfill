@@ -28,6 +28,9 @@ export interface Artefact {
   resultats: BalayageArtefact[];
   /** Étiquettes des variantes, alignées sur `resultats` (vide si absentes). */
   variantes: string[];
+  /** Numéro de recette et étiquette de chaque variante (ajout 2026-10-25 :
+   *  couleurs et légendes restituées au rechargement). Vide pour un ancien fichier. */
+  variantesDetail: { recette: number | null; label: string }[];
 }
 
 export type LectureArtefact = { ok: true; artefact: Artefact } | { ok: false; erreur: string };
@@ -87,9 +90,17 @@ export function lireArtefact(texte: string): LectureArtefact {
     ? (o.variantes as unknown[]).map((v) => String(v))
     : [];
 
+  const variantesDetail = Array.isArray(o.variantesDetail)
+    ? (o.variantesDetail as unknown[]).map((d) => {
+        const x = (d && typeof d === "object" ? d : {}) as { recette?: unknown; label?: unknown };
+        const recette = typeof x.recette === "number" && Number.isInteger(x.recette) && x.recette >= 1 ? x.recette : null;
+        return { recette, label: typeof x.label === "string" ? x.label : "" };
+      })
+    : [];
+
   return {
     ok: true,
-    artefact: { instantane, resultats: resultats as BalayageArtefact[], variantes },
+    artefact: { instantane, resultats: resultats as BalayageArtefact[], variantes, variantesDetail },
   };
 }
 

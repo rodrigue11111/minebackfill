@@ -85,3 +85,17 @@ describe("affaissement équivalent au grand cône", () => {
     expect(slumpGrandConeMm(undefined, "mini", 2.335)).toBeUndefined();
   });
 });
+
+describe("essaiConventionRevisee : même règle pour la restauration et l'Analyse", () => {
+  it("essai-erreur hors des conventions imposées, ou sans instantané : révisé ; autres méthodes : jamais", async () => {
+    const { essaiConventionRevisee, CONVENTION_GS_ESSAI, REGLE_LIANT_ESSAI } = await import("./conventions");
+    const gramme = packById("gramme")!.constantes;
+    expect(CONVENTION_GS_ESSAI).toBe("recalcule");
+    expect(REGLE_LIANT_ESSAI).toBe("residu_ajoute");
+    expect(essaiConventionRevisee({ method: "essai", constantes: gramme })).toBe(false);
+    expect(essaiConventionRevisee({ method: "essai", constantes: { ...gramme, essai_gs_convention: "base" } })).toBe(true);
+    expect(essaiConventionRevisee({ method: "essai", constantes: { ...gramme, essai_binder_rule: "solides_totaux" } })).toBe(true);
+    expect(essaiConventionRevisee({ method: "essai" })).toBe(true);
+    expect(essaiConventionRevisee({ method: "wb", constantes: { ...gramme, essai_gs_convention: "base" } })).toBe(false);
+  });
+});

@@ -109,3 +109,15 @@ export function ternaire(r: Recipe, base: BaseTernaire): PointTernaire {
     a, b, c,
   };
 }
+
+/**
+ * Des recettes sauvegardées dont les volumes de phases manquent (anciennes
+ * sauvegardes : le volume de granulat n'existe que depuis juillet 2026) : les
+ * vues en volume seraient fausses, celles en masse restent justes.
+ */
+export function volumesIncomplets(recipes: Recipe[]): boolean {
+  const ok = (v: number | null | undefined) => typeof v === "number" && Number.isFinite(v);
+  return recipes.some((r) =>
+    !ok(r.residue_volume_m3) || !ok(r.binder_volume_m3) || !ok(r.water_volume_m3) || !ok(r.void_volume_m3)
+    || ((r.components?.aggregate_dry_mass_kg ?? 0) > 0 && !((r.aggregate_volume_m3 ?? 0) > 0)));
+}
