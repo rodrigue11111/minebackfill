@@ -15,6 +15,7 @@ import {
 import { badgeEcheance, fmtDate } from "@/lib/echeance-affichage";
 import { avisMasseHorsLabo, masseHorsLabo } from "@/lib/contenant";
 import { fmt, TIRET } from "@/lib/format";
+import { wPateMesuree } from "@/lib/mesures-pate";
 import type { Recipe } from "@/lib/types";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
 import type { CourbeAffichee } from "@/lib/courbes";
@@ -106,6 +107,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
   chargerCourbe?: (e: Eprouvette) => Promise<CourbeAffichee | null>;
 }) {
   const p = parametresEffectifs(g, formulations);
+  const wPate = wPateMesuree(g);
   const parAge = agregerParAge(g.eprouvettes);
   const eprouvettes = [...g.eprouvettes].sort((a, b) => dateEcheance(a).getTime() - dateEcheance(b).getTime());
   const nbCourbes = g.eprouvettes.filter((e) => e.essai?.sourcePresse).length;
@@ -160,7 +162,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
           <Info label="w₀ mesuré (%)" valeur={nombre(g.w0MesurePct, 2)} />
           <Info label="Affaissement (mm)" valeur={nombre(g.slumpMesureMm, 0)} />
           <Info label="Température (°C)" valeur={nombre(g.temperatureC, 1)} />
-          <Info label="w mesuré (%)" valeur={nombre(g.wMesurePct, 2)} />
+          <Info label="w de la pâte (%)" valeur={wPate ? `${nombre(wPate.valeur, 2)}${wPate.source === "deduit" ? " (déduit de Cw)" : ""}` : TIRET} />
           <Info label="Cw mesuré (%)" valeur={nombre(g.cwMesurePct, 2)} />
           <Info label="Durée de malaxage (min)" valeur={nombre(g.malaxageDureeMin, 0)} />
           <Info label="Mode de cure" valeur={cure ? `${cure}${g.cure?.note ? ` (${g.cure.note})` : ""}` : (g.cure?.note || TIRET)} />

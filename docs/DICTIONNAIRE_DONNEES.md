@@ -1,6 +1,6 @@
 # Dictionnaire des données : jeu d'essais MineBackfill
 
-Version du dictionnaire : 2
+Version du dictionnaire : 3
 
 Ce document décrit le **jeu d'essais** que l'enseignant exporte depuis la page
 **Classe** (menu « Exporter », rubrique « Jeu d'essais »). Il est destiné à
@@ -151,7 +151,7 @@ publique. Le manifeste en donne la liste (`textes_libres`).
 | `w0_mesure_pct` | Teneur en eau w₀ mesurée | % | nombre | Humidité réelle du résidu, mesurée le jour de la gâchée. |
 | `affaissement_mm` | Affaissement mesuré | mm | nombre | Affaissement au cône d'Abrams (ASTM C143/C143M). |
 | `temperature_pate_c` | Température de la pâte | °C | nombre | Température de la pâte fraîche. |
-| `w_mesure_pct` | Teneur en eau w mesurée | % | nombre | Teneur en eau de la pâte, mesurée. |
+| `w_mesure_pct` | Teneur en eau w de la pâte | % | nombre | Teneur en eau de la pâte : déduite de `cw_mesure_pct` (w = (100 − Cw) / Cw × 100, F012) ; saisie pour une gâchée d'avant le 2026-10-26 sans Cw mesuré. |
 | `cw_mesure_pct` | Cw mesuré | % | nombre | Pourcentage solide massique de la pâte, mesuré. |
 | `cure_mode` | Mode de cure |  | code | chambre_humide, immersion, ambiante (air ambiant), scellee (sac ou film) ou autre. |
 | `cure_temperature_c` | Température de cure | °C | nombre | Température de la cure des éprouvettes. |
@@ -274,4 +274,6 @@ essais ».
   (`residu_ref`, `granulat_ref`, `liantN_code`) deviennent des empreintes,
   sans nom en clair ; `materiaux_source` gagne `fiche_et_formulation` ;
   `nb_essais_retenus` ne compte plus les éprouvettes écartées par
-  l'enseignant.
+  l'enseignant ; 3 (2026-10-26) : `w_mesure_pct` est déduit de
+  `cw_mesure_pct` (même mesure, F012 : Cw = 1 / (1 + w)), il n'est plus saisi
+  dans le Labo.

@@ -14,7 +14,7 @@ import { materiauxDepuisFormulation } from "@/lib/gachee-materiaux";
 import FiltreSession from "@/components/FiltreSession";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useHydrated } from "@/lib/use-hydrated";
-import { genererCode, composantsDepuisRecette, parametresDepuisRecette, nbHorsTolerance, type Gachee } from "@/lib/gachee";
+import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, type Gachee } from "@/lib/gachee";
 import { snapshotProtocoles } from "@/lib/protocole";
 import { volumeHorsLabo } from "@/lib/contenant";
 import { useAujourdhui } from "@/lib/use-aujourdhui";
@@ -114,6 +114,7 @@ export default function LaboPage() {
       <Page>
         <EditeurGachee
           gachee={g}
+          parametres={parametresEffectifs(g, formulations)}
           maintenant={maintenant}
           annotations={annotationsDe(annotations, "gachee", g.id)}
           connecte={connecte}

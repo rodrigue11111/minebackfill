@@ -216,3 +216,33 @@ describe("courbe contrainte-déformation", () => {
     expect(renderToStaticMarkup(createElement(CourbeContrainteDeformation, { points: pts.slice(0, 1), titre: "x" }))).toContain("Courbe sans points exploitables");
   });
 });
+
+describe("mesures du jour : valeur visée, écart, w de la pâte déduit de Cw (2026-10-26)", () => {
+  const avecMesures = (p: Partial<Gachee>) => renderToStaticMarkup(createElement(EditeurGachee, {
+    gachee: { ...gachee, materiaux: { residu: { nom: "Casa Berardi", gs: 3.05, w0Pct: 31.6 } }, ...p },
+    parametres: { cwPct: 75 },
+    maintenant: new Date(2026, 9, 7, 9), annotations: [], connecte: true,
+    onMaj: () => {}, onRetour: () => {}, onSupprimer: () => {},
+  }));
+
+  it("w₀ et Cw mesurés : la valeur visée et l'écart sous le libellé", () => {
+    const html = avecMesures({ w0MesurePct: 28, cwMesurePct: 76.2 });
+    expect(html).toContain("Résidu, mesure du jour. Visé : 31,6 % · écart −3,6 points. Plus sec que dans le calcul");
+    expect(html).toContain("plus sèche (Cw plus élevé)");
+    expect(html).toContain("Pâte après malaxage. Visé : 75 % · écart +1,2 point.");
+  });
+
+  it("w de la pâte n'est plus une saisie : déduit de Cw mesuré", () => {
+    const html = avecMesures({ cwMesurePct: 75 });
+    expect(html).not.toContain('id="w-mesure"');
+    expect(html).toContain("w de la pâte (%)");
+    expect(html).toContain("33,33");
+    expect(html).toContain("Déduit de Cw mesuré");
+  });
+
+  it("gâchée plus ancienne avec un w saisi et sans Cw : son w reste affiché", () => {
+    const html = avecMesures({ wMesurePct: 31.2, cwMesurePct: undefined });
+    expect(html).toContain("31,2");
+    expect(html).toContain("Saisi dans une version précédente.");
+  });
+});

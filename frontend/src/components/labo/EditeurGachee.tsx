@@ -11,7 +11,7 @@
 import { useState } from "react";
 import {
   MODES_CURE, TYPES_EAU, UNITES_DOSAGE_ADJUVANT, groupeSansVide, materiauxSansVide,
-  type Ajustement, type CureGachee, type Gachee, type MateriauxGachee,
+  type Ajustement, type CureGachee, type Gachee, type MateriauxGachee, type ParametresFormulation,
 } from "@/lib/gachee";
 import { completudeGachee, listeManquants } from "@/lib/completude";
 import type { Annotation } from "@/lib/annotations";
@@ -34,7 +34,8 @@ import Pesees from "./Pesees";
 import CarteEprouvettes from "./CarteEprouvettes";
 import FilGachee from "./FilGachee";
 import { dateLongue, nouvelId } from "./outils";
-import { fmt, TIRET } from "@/lib/format";
+import { fmt, nombreFr, TIRET } from "@/lib/format";
+import { ecartPoints, effetEcartW0, texteVise, wPateMesuree } from "@/lib/mesures-pate";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
 
 type VueTelephone = "pesees" | "eprouvettes" | "echanges";
@@ -106,7 +107,7 @@ function sansIdentite<T extends IdentiteMateriau>(snap: T | undefined): T | unde
  */
 function LigneMesure({ libelle, detail, id, value, onChange, min, minExclusif, max, message }: {
   libelle: string;
-  detail?: string;
+  detail?: React.ReactNode;
   id: string;
   value: number | undefined;
   onChange: (n: number | undefined) => void;
@@ -130,9 +131,11 @@ const TYPES_AJOUT: { valeur: Ajustement["type"]; libelle: string }[] = [
   { valeur: "granulat", libelle: "Granulat" }, { valeur: "liant", libelle: "Liant" },
 ];
 
-export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null }: {
+export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null, parametres }: {
   gachee: Gachee;
   maintenant: Date;
+  /** Paramètres VISÉS de la formulation (parametresEffectifs) : Cw visé à côté du Cw mesuré. */
+  parametres?: ParametresFormulation;
   /** Décision de l'enseignant sur cette gâchée (lue en ligne), s'il y en a une. */
   revue?: Revue;
   /** Révision de cette gâchée connue en ligne : la revue dit si elle porte sur une version antérieure. */
@@ -176,6 +179,7 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
   // Éprouvettes écartées par l'enseignant, par leur code (l'id reste interne).
   const ecarteesCodes = (revue?.ecartees ?? []).map((id) => g.eprouvettes.find((e) => e.id === id)?.code).filter((c): c is string => !!c);
   const residuSnap = g.materiaux?.residu;
+  const wPate = wPateMesuree(g);
   const granulatSnap = g.materiaux?.granulat;
   const detailGranulat = [
     granulatSnap?.gs != null ? `Gs ${granulatSnap.gs.toLocaleString("fr-CA", { maximumFractionDigits: 3 })}` : null,
@@ -345,15 +349,21 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                 <LigneListe libelle="Lot de résidu" htmlFor="lot-residu"><input id="lot-residu" className="field-input" value={g.lotResidu ?? ""} onChange={(e) => onMaj({ lotResidu: e.target.value })} /></LigneListe>
                 <LigneListe libelle="Lot de granulat" htmlFor="lot-granulat"><input id="lot-granulat" className="field-input" value={g.lotGranulat ?? ""} onChange={(e) => onMaj({ lotGranulat: e.target.value })} /></LigneListe>
                 <LigneListe libelle="Lot de liant" htmlFor="lot-liant"><input id="lot-liant" className="field-input" value={g.lotLiant ?? ""} onChange={(e) => onMaj({ lotLiant: e.target.value })} /></LigneListe>
-                <LigneMesure libelle="w₀ mesuré (%)" detail="Teneur en eau du résidu, mesure du jour" id="w0-mesure" value={g.w0MesurePct} onChange={(n) => onMaj({ w0MesurePct: n })}
+                <LigneMesure libelle="w₀ mesuré (%)" id="w0-mesure" value={g.w0MesurePct} onChange={(n) => onMaj({ w0MesurePct: n })}
+                  detail={["Résidu, mesure du jour.", texteVise(residuSnap?.w0Pct, g.w0MesurePct),
+                    effetEcartW0(ecartPoints(g.w0MesurePct, residuSnap?.w0Pct))].filter(Boolean).join(" ")}
                   min={0} max={100} message="w₀ est compris entre 0 et 100 %." />
                 <LigneMesure libelle="Affaissement mesuré (mm)" detail="Cône d'Abrams, ASTM C143/C143M" id="affaissement" value={g.slumpMesureMm} onChange={(n) => onMaj({ slumpMesureMm: n })}
                   min={0} max={300} message="L'affaissement est compris entre 0 et 300 mm (hauteur du cône d'Abrams)." />
                 <LigneListe libelle="Température (°C)" htmlFor="temperature"><ChampNombre id="temperature" placeholder={TIRET} value={g.temperatureC} onChange={(n) => onMaj({ temperatureC: n })} /></LigneListe>
-                <LigneMesure libelle="w mesuré (%)" id="w-mesure" value={g.wMesurePct} onChange={(n) => onMaj({ wMesurePct: n })}
-                  min={0} message="Une teneur en eau ne peut pas être négative." />
                 <LigneMesure libelle="Cw mesuré (%)" id="cw-mesure" value={g.cwMesurePct} onChange={(n) => onMaj({ cwMesurePct: n })}
+                  detail={["Pâte après malaxage.", texteVise(parametres?.cwPct, g.cwMesurePct)].filter(Boolean).join(" ")}
                   min={0} minExclusif max={100} message="Cw est supérieur à 0 et au plus 100 %." />
+                {/* w de la pâte : même mesure que Cw (F012, Cw = 1 / (1 + w)), donc
+                    déduit, plus saisi ; une gâchée plus ancienne garde son w saisi. */}
+                <LigneListe libelle="w de la pâte (%)"
+                  detail={wPate?.source === "saisi" ? "Saisi dans une version précédente." : "Déduit de Cw mesuré (F012)."}
+                  valeur={wPate ? nombreFr(wPate.valeur, 2) : TIRET} />
                 {bibliotheque ? (
                   <LignesMateriau id="residu" libelle="Résidu" detail={detailResidu || "Choisi dans la bibliothèque, ou saisi librement"}
                     items={bibliotheque.residus} snap={residuSnap}
