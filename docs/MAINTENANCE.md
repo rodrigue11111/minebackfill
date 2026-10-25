@@ -142,6 +142,21 @@ s'applique comme avant. L'option E/L de conception (RPG) prime et masque le
 choix. Tests : `test_api.py` (`test_essai_choix_du_liant_par_recette`),
 `essai-liant.test.ts`.
 
+**Gs après les ajouts** (2026-10-25, `Issues.md` #6) : le site envoie
+`essai_gs_convention = "recalcule"`, imposé par `completerConstantes`
+(`CONVENTION_GS_ESSAI`, `store.tsx`) : e, n, Sr, ρd et ρs sont calculés avec le
+Gs de la composition FINALE (Bw final et part finale de granulat), soit
+Ms/(Vs·ρw) ; Sr = Vw/Vv, n = 1 − Cv. Les feuilles gardent le Gs de départ (D36,
+D34) ; le calculateur garde ce défaut (`base`) pour ses tests d'or, qui ne
+changent pas. Version du pack gramme : `gramme-1.1`. `etatVersion`
+(`conventions.ts`) donne « convention révisée » à un essai-erreur estampillé
+`gramme-1.0` ou `intra2017-1.0`, « courante » aux autres méthodes. Un
+essai-erreur sauvegardé sous une autre convention (Gs ou règle du liant) est
+restauré PÉRIMÉ (`EMPREINTE_CONVENTION_REVISEE`, `resultat-perime.ts`), avec
+ses chiffres enregistrés et un bandeau qui en donne la raison. Tests :
+`test_unit_pipeline.py::TestCompositionFinale`, `conventions.test.ts`,
+`store-persistence.test.ts`.
+
 **Pédagogie** (2026-10) : chaque méthode porte aussi `quand` (quand
 l'utiliser, une phrase), affichée sous le choix de méthode et lue par le
 Guide (`QUAND_METHODE`) : une seule source. Les plages usuelles des champs

@@ -135,8 +135,14 @@ Principe impose par l'utilisateur:
      partage dans `backend/app/core/mix_pipeline.py` (RPC = cas Xg=0 du RPG)
    - L'ancienne convention C# `Vr = Vs` (Modele C1b 2005) est ABANDONNEE:
      elle gonflait toutes les masses d'un facteur exact (1+Bv). Voir Issues.md #3.
-   - Essai-erreur: le volume total croit des volumes ajoutes; Sr reste a la
-     valeur de base; "a ajouter" negatif = "a retirer" (pas de bornage a 0).
+   - Essai-erreur: le volume total croit des volumes ajoutes; "a ajouter"
+     negatif = "a retirer" (pas de bornage a 0). Depuis 2026-10-25, le site
+     calcule e, n, Sr, rho_d et rho_s avec le Gs de la composition FINALE
+     (drapeau `essai_gs_convention = "recalcule"`) : Sr = Vw/Vv (100 % sans
+     air), n = 1 - Cv. Les feuilles, elles, gardent le Gs de depart (D36, D34)
+     et Sr derive quand un ajout change la composition des grains ; le
+     calculateur garde ce defaut (« base ») pour ses tests d'or. Voir
+     Issues.md #6.
    - Tests d'or: `backend/app/tests/test_excel_golden.py` (oracle
      `excel_twin.py` — ne jamais l'editer pour faire passer un test).
    - **Variante « en gramme » (Belem 2016)**: meme recette de base (Sr=100%),

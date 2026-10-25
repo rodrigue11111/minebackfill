@@ -171,3 +171,67 @@ tests unitaires en fixent la définition.
 ---
 
 *Logged: 2026-07-23*
+
+## Issue #6 : Essai-erreur : e, Sr et ρs gardent le Gs de départ (feuilles) ; le site calcule avec la composition finale
+
+**Status:** RÉSOLU côté site (2026-10-25), calculateur fidèle à la feuille par défaut.
+
+**Classeurs :** `Data/Feuille calculs mélanges_tonne (Intra 2017).xlsx` et
+`Data/Feuille calculs remblais_TBelem_en gramme (1).xlsx`, mêmes formules :
+
+| Cellule | Formule | Gs utilisé |
+|---|---|---|
+| D82, Cv final | `=(D41/C10+D42/E10+D43/D35+D61+D62+D63)/(D38+D61+D62+D63+D64)` | volumes réels (Gs propre de chaque ingrédient) |
+| D86, e final | `=(D36*(D38+D61+D62+D63+D64)/(D39+D58+D60+D65))-1` | D36, Gs de la pâte de DÉPART |
+| D87, Sr final | `=D36*D79/D86` | D36 |
+| D88, n final | `=D86/(1+D86)` | (via D86) |
+| D95, ρs final | `=(1+D89)/(1/D34+D89/D35)` | Bw final, mais D34 (résidu + granulat de DÉPART) |
+
+**Le défaut.** Le volume total et Cv utilisent les volumes réels ; e, Sr et ρs
+un Gs de départ. Tant que la composition des grains ne change pas (RPC, ajout
+d'eau ou de résidu avec le liant qui garde le Bw), les deux coïncident. Dès
+qu'un ajout la change (granulat, Bw dilué), la feuille se contredit. Réplique
+exacte `excel_twin.py` (Gs résidu 3,05, granulat 2,70, liant 3,15, Cw 75 %,
+Bw 5 %, gâchée de 2,6 L) :
+
+| Cas | Sr (D87) | n (D88) | 1 − Cv (D82) |
+|---|---|---|---|
+| RPC + eau + résidu humide | 100,00 % | 0,5520 | 0,5520 |
+| RPG Xg 30 % + 300 g de résidu humide | 100,21 % | 0,4935 | 0,4945 |
+| RPG Xg 30 % + 1 kg de granulat | 97,74 % | 0,4413 | 0,4313 |
+
+La feuille en grammes donne les mêmes écarts (`excel_twin_gramme.py` :
+100,21 %, 100,64 % pour 1 kg de résidu humide, 99,29 % pour 300 g de granulat).
+Écart sur e : 1,3 % pour 300 g de granulat, 4 % pour 1 kg (la docstring de
+`mix_pipeline.py` annonçait « ≤ 0,4 % » : faux, corrigé).
+
+**Correction.** Gs de la composition FINALE (Bw final D89 ET part finale de
+granulat D83) : `(1 + Bw) / ((1 − Xg)/Gs_r + Xg/Gs_g + Bw/Gs_b)` = Ms/(Vs·ρw).
+Alors e = Vv/Vs, Sr = Vw/Vv, n = 1 − Cv, ρd = Ms/VT exactement ; le volume
+d'air de la base est conservé (les ajouts n'en apportent pas), Sr = 100 % sur
+une base saturée. Les masses et les volumes ne changent pas. C'est la branche
+`essai_gs_convention = "recalcule"` de `apply_essai_adjustments`, qui prenait
+jusque-là le Bw VISÉ (Sr 99,97 % avec « aucun liant ») : corrigée pour le Bw
+final.
+
+**Décisions (2026-10-25).**
+- Calculateur : défaut `base` inchangé (tests d'or `test_excel_golden.py`,
+  `test_excel_golden_gramme.py` intacts) ; le site envoie `recalcule`
+  (imposé dans `completerConstantes`, `frontend/src/lib/store.tsx`).
+- Version : pack gramme `gramme-1.1`. Un essai-erreur estampillé
+  `gramme-1.0` ou `intra2017-1.0` porte la pastille « convention révisée »
+  (masses justes, e/n/Sr/ρ à recalculer) ; les autres méthodes restent
+  courantes (calcul identique).
+- Traçabilité : un essai-erreur sauvegardé sous une autre convention est
+  restauré avec ses chiffres enregistrés, mais PÉRIMÉ
+  (`EMPREINTE_CONVENTION_REVISEE`) : ni sauvegarde ni export avant recalcul.
+- Tests : `test_unit_pipeline.py::TestCompositionFinale` (bases saturée et à
+  Sr 0,85 ; règles du liant, dosage par E/L ; ajouts seuls et combinés ;
+  masses et volumes identiques entre conventions).
+
+À faire relire par le professeur : la convention « Gs de la composition
+finale » pour e, Sr et ρ après ajouts.
+
+---
+
+*Logged: 2026-10-25*
