@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import CarteResultats, { chiffreMasse, chiffresCaracteristiques, chiffresRecette } from "./CarteResultats";
+import CarteResultats, { chiffreMasse, chiffresCaracteristiques, chiffresRecette, titreMasses } from "./CarteResultats";
 import { lignesResume, nbLignesRapport, type ReportCtx } from "@/lib/report-schema";
 import { DEFAULT_UNITS } from "@/lib/units";
 import type { Recipe, RrcRecipe } from "@/lib/types";
@@ -58,6 +58,18 @@ describe("CarteResultats", () => {
     expect(html).toContain(">F009<");
     // La recette choisie (1) est mise en valeur dans le tableau.
     expect(html).toContain("mix-col-choisie");
+  });
+
+  it("essai-erreur : les masses sont celles du mélange refait depuis le début, pas « À préparer »", () => {
+    const essai = { ...ctx, isEssai: true };
+    expect(titreMasses(ctx)).toBe("À préparer");
+    expect(titreMasses(essai)).toBe("Pour refaire ce mélange depuis le début (résidu tel que stocké)");
+    const sec = { ...recette(2.13), components: { ...recette(2.13).components, water_to_add_mass_kg: -0.746 } } as unknown as Recipe;
+    const html = rendu({ sousTitre: "1 recette ajustée", actions: null, donnees: { genre: "rpc", recipes: [sec], ctx: essai } });
+    expect(html).toContain("Pour refaire ce mélange depuis le début (résidu tel que stocké)");
+    expect(html).toContain('aria-label="Pour refaire ce mélange depuis le début (résidu tel que stocké), recette 1"');
+    expect(html).not.toContain("À préparer");
+    expect(html).toContain("Eau à retirer");
   });
 
   it("sélecteur de recette : libellé court « R2 » pour les écrans étroits", () => {

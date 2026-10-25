@@ -31,9 +31,20 @@ export function chiffreMasse(v: number | null | undefined): string {
 }
 
 /**
- * « À préparer » : ce que l'étudiant pèse pour la recette (résidu humide tel
- * que reçu, granulat en RPG, liant, eau à ajouter) et la masse totale du
- * remblai. Valeurs du calcul, sans formule nouvelle.
+ * Titre du groupe des masses. En essai-erreur, ces masses sont celles du
+ * mélange ajusté refait d'un coup avec le résidu tel que stocké (à w₀), pas
+ * une consigne pour la gâchée déjà faite : après un ajout de résidu sec,
+ * « Eau à retirer » y signifiait « mélange plus sec que le résidu stocké » et
+ * se lisait comme un ordre de retirer de l'eau du seau.
+ */
+export function titreMasses(ctx: ReportCtx): string {
+  return ctx.isEssai ? "Pour refaire ce mélange depuis le début (résidu tel que stocké)" : "À préparer";
+}
+
+/**
+ * Masses du groupe titré par `titreMasses` : ce que l'étudiant pèse pour la
+ * recette (résidu humide tel que reçu, granulat en RPG, liant, eau à ajouter)
+ * et la masse totale du remblai. Valeurs du calcul, sans formule nouvelle.
  */
 export function chiffresRecette(r: Recipe | undefined, ctx: ReportCtx): Chiffre[] {
   const m = (kg: number | null | undefined) => chiffreMasse(fromStoreMass(kg, ctx.units.mass));
@@ -159,8 +170,8 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
       ) : (
         <>
           <ChoixRecette n={n} choisie={choisie} onChoisir={setChoix} />
-          <p className="mix-groupe-titre">À préparer</p>
-          <TuilesChiffres ariaLabel={`À préparer, recette ${choisie + 1}`} chiffres={chiffresRecette(donnees.recipes[choisie], donnees.ctx)} />
+          <p className="mix-groupe-titre">{titreMasses(donnees.ctx)}</p>
+          <TuilesChiffres ariaLabel={`${titreMasses(donnees.ctx)}, recette ${choisie + 1}`} chiffres={chiffresRecette(donnees.recipes[choisie], donnees.ctx)} />
           <BarresPhases recipes={[donnees.recipes[choisie]]} base="masse" compact />
           <p className="mix-groupe-titre">Caractéristiques</p>
           <TuilesChiffres ariaLabel={`Caractéristiques, recette ${choisie + 1}`} chiffres={chiffresCaracteristiques(donnees.recipes[choisie], donnees.ctx)} />
