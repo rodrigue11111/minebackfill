@@ -20,7 +20,7 @@ import { descriptorFor, methodLabel } from "@/lib/method-registry";
 import type { ReportCtx } from "@/lib/report-schema";
 import type { MixResult, Recipe } from "@/lib/types";
 import { EMPREINTE_CONVENTION_REVISEE, resultatPerime } from "@/lib/resultat-perime";
-import { cwHorsPlageUsuelle, eauARetirer } from "@/lib/avis-recette";
+import { cwHorsPlageUsuelle, eauARetirer, texteEauARetirer } from "@/lib/avis-recette";
 import { PLAGES } from "@/lib/plages";
 import { Bandeau } from "@/components/ui/Bandeau";
 
@@ -136,12 +136,14 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
   const vide = recipes.length === 0;
   const donnees: DonneesResultats | null = vide ? null : { genre: "rpc", recipes, ctx: reportCtx };
   // Eau à RETIRER (valeur négative du calcul) : impossible à faire dans une
-  // gâchée ; on dit pourquoi et quoi changer, sans formule nouvelle.
+  // gâchée ; on dit pourquoi et quoi changer, sans formule nouvelle. En
+  // essai-erreur, elle ne concerne que le mélange refait depuis le début.
   const retraits = eauARetirer(recipes);
+  const texteEau = texteEauARetirer(isEssai);
   const avisEau = retraits.length > 0 ? (
-    <Bandeau ton="alerte" titre="Eau à retirer.">
-      {retraits.map((x) => `Recette ${x.recette} : il faudrait RETIRER ${(toMass(x.kg) ?? 0).toLocaleString("fr-CA", { maximumFractionDigits: 3 })} ${massLabel} d'eau`).join(" ; ")}.
-      {" "}Le résidu apporte déjà plus d&apos;eau que la recette n&apos;en contient : visez un Cw plus bas, ou séchez le résidu.
+    <Bandeau ton="alerte" titre={texteEau.titre}>
+      {retraits.map((x) => texteEau.ligne(x.recette, `${(toMass(x.kg) ?? 0).toLocaleString("fr-CA", { maximumFractionDigits: 3 })} ${massLabel}`)).join(" ; ")}.
+      {" "}{texteEau.conseil}
     </Bandeau>
   ) : null;
   // Modèle prédictif : le Cw est calculé ; hors de la plage usuelle, on le dit.
