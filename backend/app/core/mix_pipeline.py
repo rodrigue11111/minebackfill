@@ -17,11 +17,18 @@ Conventions:
     à Sr = 1 ce pipeline reproduit la feuille à ~1e-15 ; Sr < 1 est la
     généralisation naturelle (e = w*Gs/Sr, Ms = rho_d*VT).
 
-Décision utilisateur (2026-07-06) : ESSAI_GS_CONVENTION = "base"
-(les formules e/Sr/rho_s/Bv de l'essai-erreur gardent le Gs de la composition
-de BASE, comme les cellules D34/D36 figées de la feuille). Mettre "recalcule"
-pour la variante rigoureuse (Gs recalculé avec la proportion de granulat
-ajustée) — écarts <= 0.4 % sur e, rho_s, n lors d'ajouts de granulat.
+Convention du Gs après les ajouts de l'essai-erreur (Issues.md #6) :
+  - "base" (défaut du calculateur, épinglé par les tests d'or) : e/Sr/rho_s/Bv
+    gardent le Gs de la composition de DÉPART, comme les cellules D36 (e, Sr)
+    et D34 (rho_s) figées des feuilles. Quand un ajout change la composition
+    des grains (granulat, Bw dilué), la feuille se contredit : Sr s'écarte de
+    100 % (100,21 % ou 97,74 % sur une gâchée RPG de 2,6 L) et n (D88) n'est
+    plus 1 − Cv (D82). Écart mesuré sur e : 1,3 % pour 300 g de granulat,
+    4 % pour 1 kg (et non « 0,4 % » comme écrit ici jusqu'au 2026-10-25).
+  - "recalcule" (envoyé par le site depuis le 2026-10-25) : Gs de la
+    composition FINALE (Bw final et part finale de granulat) = Ms / (Vs·rho_w),
+    les volumes réels déjà utilisés par D82. Sr = Vw/Vv (100 % sans air),
+    n = 1 − Cv, rho_d = Ms/VT. Les masses et les volumes ne changent pas.
 """
 
 from __future__ import annotations
@@ -246,11 +253,12 @@ def apply_essai_adjustments(*,
       - le liant est ajusté pour maintenir Bw% (négatif = à retirer)  [D65] ;
       - le volume total CROÎT du volume de chaque composant ajouté    [D61-D64] ;
       - e = Gs*rho_w*VT_new/Ms_tot - 1                                [D86] ;
-      - Sr = Gs*w/e — reste exactement à la valeur de base, SAUF sous
-        l'option dose_binder_by_wc en convention Gs « base » : le liant
-        réel dérivant de la cible, Sr peut s'en écarter marginalement
-        (artefact de convention, même famille que essai_gs_convention ;
-        la convention « recalcule » suit le Bw réel et reste exacte)    [D87] ;
+      - Sr = Gs*w/e                                                    [D87].
+        En convention « recalcule » (Gs de la composition finale), e = Vv/Vs
+        et Sr = Vw/Vv exactement : le volume d'air de la base est conservé
+        (les ajouts n'en apportent pas), Sr reste à 100 % sur une base
+        saturée. En convention « base » (Gs de départ, comme la feuille),
+        Sr dérive dès qu'un ajout change la composition des grains ;
       - Cv, theta calculés sur les volumes réels                      [D82, D80].
 
     Notes de convention :
@@ -328,19 +336,16 @@ def apply_essai_adjustments(*,
     # la valeur résolue explicitement.
     conv = essai_gs_convention if essai_gs_convention is not None else ESSAI_GS_CONVENTION
     if conv == "recalcule":
+        # Composition FINALE complète (2026-10-25) : part finale de granulat ET
+        # Bw FINAL (liant réel / grains réels). Avant, le Bw visé était gardé
+        # hors de l'option dose_binder_by_wc : faux dès que le Bw est dilué
+        # (règles « residu_ajoute » avec granulat, « aucun »), Sr 99,97 %.
+        # Ce Gs vaut exactement Ms / (Vs·rho_w), les volumes réels de D82 :
+        # e = Vv/Vs, Sr = Vw/Vv, n = 1 − Cv, rho_d = Ms/VT. Issues.md #6.
         xg_new = mg_sec_tot / solids_nb if solids_nb > 0.0 else 0.0
-        # Sous « dose_binder_by_wc », le liant RÉEL dérive de la cible : la
-        # convention « recalcule » (la rigoureuse) suit le Bw réel. Les autres
-        # chemins gardent bw_target (comportements historiques épinglés par
-        # les tests d'or — inchangés au bit près quand l'option est absente,
-        # puisque bw réel == cible sous la règle « solides_totaux »).
-        bw_pour_gs = (
-            mb_tot / solids_nb
-            if (dose_binder_by_wc and solids_nb > 0.0)
-            else bw_target_frac
-        )
+        bw_final = mb_tot / solids_nb if solids_nb > 0.0 else bw_target_frac
         gs_nb_used = gs_nonbinder_eff(gs_r, xg_new, gs_g)
-        gs_bkf_used = gs_backfill_eff(gs_r, xg_new, gs_g, bw_pour_gs, gs_binder)
+        gs_bkf_used = gs_backfill_eff(gs_r, xg_new, gs_g, bw_final, gs_binder)
     else:
         gs_nb_used = gs_nonbinder_base
         gs_bkf_used = gs_backfill_base
