@@ -355,7 +355,7 @@ class RpcWbInputs(BaseMixDesignInput):
     """
     Entrées pour la méthode RPC – rapport eau/ciment (W/C).
 
-    Dans ton C#, tu utilisais la valeur -99 pour signifier :
+    Dans le programme C# d'origine, la valeur -99 signifiait :
       'le programme calcule W/C automatiquement'.
     Ici on fait plus propre :
       - si wc_ratio_recipes est None, le solver le calcule
@@ -558,7 +558,7 @@ class MixComponentMass(BaseModel):
 class MixState(BaseModel):
     """
     Résumé de l'état d'une recette de remblai après calcul.
-    Tu pourras enrichir cette classe (porosité, compacité, etc.) plus tard.
+    D'autres grandeurs (porosité, compacité, etc.) pourront y être ajoutées.
     """
 
     # Densités (kg/m³)

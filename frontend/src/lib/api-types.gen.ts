@@ -484,7 +484,7 @@ export interface components {
         /**
          * MixState
          * @description Résumé de l'état d'une recette de remblai après calcul.
-         *     Tu pourras enrichir cette classe (porosité, compacité, etc.) plus tard.
+         *     D'autres grandeurs (porosité, compacité, etc.) pourront y être ajoutées.
          */
         MixState: {
             /** Bulk Density Kg M3 */
@@ -789,7 +789,7 @@ export interface components {
          * RpcWbInputs
          * @description Entrées pour la méthode RPC – rapport eau/ciment (W/C).
          *
-         *     Dans ton C#, tu utilisais la valeur -99 pour signifier :
+         *     Dans le programme C# d'origine, la valeur -99 signifiait :
          *       'le programme calcule W/C automatiquement'.
          *     Ici on fait plus propre :
          *       - si wc_ratio_recipes est None, le solver le calcule
@@ -1198,7 +1198,7 @@ export interface components {
             slump_model_offset: number;
             /**
              * Essai Gs Convention
-             * @description Essai-erreur : « base » fige les Gs de la recette de base (Intra 2017) ; « recalcule » les recalcule à partir de la composition après ajouts.
+             * @description Essai-erreur : « base » fige les Gs de la recette de départ, comme les cellules D36 et D34 des feuilles (Sr dérive quand un ajout change la composition des grains) ; « recalcule » prend le Gs de la composition FINALE (Bw final et part finale de granulat) : Sr = Vw/Vv, n = 1 − Cv. Masses et volumes identiques dans les deux cas.
              * @default base
              * @enum {string}
              */

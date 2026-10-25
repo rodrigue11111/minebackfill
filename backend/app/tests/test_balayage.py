@@ -278,3 +278,141 @@ class TestValidation:
         with pytest.raises(ValidationError, match="x_max"):
             BalayageInputs(category="RPC", base_inputs_rpc=base,
                            param="binder_mass_pct", x_min=8, x_max=2, steps=3)
+
+
+# ----------------------------------------------------------------------
+# Analyse à partir d'un calcul sauvegardé (2026-10-25)
+# ----------------------------------------------------------------------
+# Le site reconstruit une base « selon Cw » depuis une recette SAUVEGARDÉE,
+# quelle que soit sa méthode d'origine (frontend/src/lib/analyse-source.ts) :
+# Cw, Sr, Bw et Am de la recette ; Gs et w0 du résidu, Gs du granulat, liants
+# et constantes du calcul ; contenant « volume » égal au volume total de la
+# recette, 1 contenant, κ = 1. Au point de référence, le balayage doit redonner
+# TOUTES les grandeurs de la recette, masses et volumes compris. Une méthode
+# qui échouerait ici serait refusée par l'Analyse au lieu d'être approchée.
+
+from app.core.analyse import _etat  # noqa: E402
+from app.core.models import (  # noqa: E402
+    BalayageParam, GeneralInfo, ResidueProps, RpcEssaiAdjustment, RpcEssaiInputs,
+    RpcSlumpInputs, RpcWbInputs, RpgEssaiAdjustment, RpgEssaiInputs, SolverConstants,
+)
+from app.core.rpc_solver import solve_rpc_essai, solve_rpc_slump, solve_rpc_wb  # noqa: E402
+from app.core.rpg_solver import solve_rpg_cw, solve_rpg_essai  # noqa: E402
+from .test_excel_golden import _binder_system  # noqa: E402
+
+# Moules de laboratoire (10 x 10 x 20 cm), 6 par recette, κ = 1,1 : le volume
+# total de la recette n'est donc PAS celui d'un moule.
+_MOULES = dict(
+    general=GeneralInfo(container_type="longueur_largeur_hauteur", container_length=10.0,
+                        container_width=10.0, container_height=20.0),
+    containers_per_recipe=6, safety_factor=1.1,
+)
+_RESIDU = ResidueProps(specific_gravity=3.05, moisture_mass_pct=25.0)
+_LIANTS = _binder_system(BINDER_SPECS["GU20/Slag80"])
+# Conventions du site (store.tsx, completerConstantes).
+_CONSTANTES = SolverConstants(essai_gs_convention="recalcule", essai_binder_rule="residu_ajoute")
+_GS_GRANULAT = 2.65
+
+
+def _commun(num_recipes: int, sr: float = 100.0) -> dict:
+    return dict(_MOULES, residue=_RESIDU, binder_system=_LIANTS, constants=_CONSTANTES,
+                num_recipes=num_recipes, saturation_pct=sr)
+
+
+def _cw_rpc(sr=100.0):
+    return RpcCwInputs(category="RPC", solids_mass_pct=74.0, binder_mass_pct_recipes=[4.5, 6.0], **_commun(2, sr))
+
+
+def _wb_rpc():
+    return RpcWbInputs(category="RPC", binder_mass_pct_recipes=[4.5, 6.0], wc_ratio_recipes=[7.0, 8.5], **_commun(2))
+
+
+def _cw_rpg():
+    return RpgCwInputs(category="RPG", solids_mass_pct=78.0, binder_mass_pct_recipes=[4.0, 5.5],
+                       aggregate_fraction_pct=30.0, aggregate_specific_gravity=_GS_GRANULAT, **_commun(2))
+
+
+def _cas_calculs():
+    """(nom, recettes sauvegardées, catégorie, recette est-elle un essai-erreur)."""
+    cas = [
+        ("RPC selon Cw", solve_rpc_cw(_cw_rpc()).recipes, "RPC", False),
+        ("RPC selon Cw, Sr 90 %", solve_rpc_cw(_cw_rpc(90.0)).recipes, "RPC", False),
+        ("RPC selon E/L", solve_rpc_wb(_wb_rpc()).recipes, "RPC", False),
+        ("RPC modèle prédictif", solve_rpc_slump(RpcSlumpInputs(
+            category="RPC", cone_type="grand", slump_mm=180.0,
+            binder_mass_pct_recipes=[4.5, 6.0], **_commun(2))).recipes, "RPC", False),
+        ("RPG selon Cw", solve_rpg_cw(_cw_rpg()).recipes, "RPG", False),
+    ]
+    ajouts_rpc = [
+        RpcEssaiAdjustment(added_dry_residue_mass=0.5, added_wet_residue_mass=0.3, added_water_mass=0.2),
+        RpcEssaiAdjustment(added_dry_residue_mass=0.4, binder_rule="aucun"),
+    ]
+    cas.append(("RPC essai-erreur, base selon Cw", solve_rpc_essai(RpcEssaiInputs(
+        category="RPC", base_method="dosage_cw", base_inputs_cw=_cw_rpc(), adjustments=ajouts_rpc,
+        **_commun(2))).recipes, "RPC", True))
+    cas.append(("RPC essai-erreur, base selon E/L", solve_rpc_essai(RpcEssaiInputs(
+        category="RPC", base_method="wb", base_inputs_wb=_wb_rpc(),
+        adjustments=[RpcEssaiAdjustment(added_water_mass=0.3), RpcEssaiAdjustment(added_wet_residue_mass=0.6)],
+        **_commun(2))).recipes, "RPC", True))
+    cas.append(("RPG essai-erreur avec granulat", solve_rpg_essai(RpgEssaiInputs(
+        category="RPG", base_method="dosage_cw", base_inputs_cw=_cw_rpg(),
+        adjustments=[
+            RpgEssaiAdjustment(added_aggregate_mass=0.8, aggregate_moisture_mass_pct=2.0, added_water_mass=0.1),
+            RpgEssaiAdjustment(added_dry_residue_mass=0.5, added_aggregate_mass=0.3, binder_rule="aucun"),
+        ],
+        aggregate_fraction_pct=30.0, aggregate_specific_gravity=_GS_GRANULAT,
+        **_commun(2))).recipes, "RPG", True))
+    return cas
+
+
+def _base_reconstruite(recette, categorie):
+    """Ce que fait le site (analyse-source.ts + analyse-corps.ts)."""
+    sr = recette.saturation_pct
+    if 100.0 < sr <= 100.0 + 1e-6:
+        sr = 100.0  # bruit d'arrondi, ramené comme sur le site
+    commun = dict(
+        general=GeneralInfo(container_type="volume", container_volume_m3=recette.total_backfill_volume_m3),
+        residue=_RESIDU, binder_system=_LIANTS, constants=_CONSTANTES,
+        num_recipes=1, containers_per_recipe=1, safety_factor=1.0,
+        solids_mass_pct=recette.solids_mass_pct, saturation_pct=sr,
+        binder_mass_pct_recipes=[recette.bw_mass_pct],
+    )
+    if categorie == "RPC":
+        return RpcCwInputs(category="RPC", **commun), solve_rpc_cw
+    return RpgCwInputs(category="RPG", aggregate_fraction_pct=recette.aggregate_mass_pct,
+                       aggregate_specific_gravity=_GS_GRANULAT, **commun), solve_rpg_cw
+
+
+def _a_plat(etat) -> dict:
+    d = etat.model_dump()
+    composants = d.pop("components", None) or {}
+    d.update({f"components.{k}": v for k, v in composants.items()})
+    return d
+
+
+def _ecart(a, b) -> float:
+    if isinstance(a, list):
+        assert isinstance(b, list) and len(a) == len(b)
+        return max((_ecart(x, y) for x, y in zip(a, b)), default=0.0)
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return abs(a - b) / max(1.0, abs(a), abs(b))
+    return 0.0 if a == b else float("inf")
+
+
+@pytest.mark.parametrize("nom,recettes,categorie,essai", _cas_calculs(), ids=lambda v: v if isinstance(v, str) else "")
+def test_base_reconstruite_reproduit_la_recette_sauvegardee(nom, recettes, categorie, essai):
+    assert len(recettes) == 2
+    for i, recette in enumerate(recettes):
+        base, solve = _base_reconstruite(recette, categorie)
+        etat = _etat(base, solve, BalayageParam.BW, recette.bw_mass_pct)
+        assert etat is not None, f"{nom}, recette {i + 1} : point de référence non calculable"
+        attendu, obtenu = _a_plat(recette), _a_plat(etat)
+        assert attendu.keys() == obtenu.keys()
+        exclus = {"container_volume_m3"}
+        if essai:
+            exclus |= {k for k in attendu if k.startswith("components.binder") and "_to_add_" in k}
+        ecarts = {k: (attendu[k], obtenu[k]) for k in attendu
+                  if k not in exclus and _ecart(attendu[k], obtenu[k]) > 1e-9}
+        assert ecarts == {}, f"{nom}, recette {i + 1}"
+        # Le volume analysé est bien celui de la recette, pas celui d'un moule.
+        assert etat.total_backfill_volume_m3 == pytest.approx(recette.total_backfill_volume_m3, rel=1e-12)
