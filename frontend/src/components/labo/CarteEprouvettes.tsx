@@ -46,6 +46,8 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
   const [couleLe, setCouleLe] = useState(() => isoVersDateInput(gachee.creeLe));
   const [age, setAge] = useState<number | undefined>(28);
   const [nb, setNb] = useState<number | undefined>(1);
+  // Âge de cure < 1 j ou aucun réplicat : refusés à la saisie (audit 2026-10-25).
+  const [refusAjout, setRefusAjout] = useState<{ age?: string | null; nb?: string | null }>({});
   // Moule : un moule proposé (index), « autre » (texte libre) ou rien.
   const [mouleChoix, setMouleChoix] = useState<string>("");
   const [moule, setMoule] = useState("");
@@ -257,8 +259,14 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
         <div className="labo-ajout-corps">
           <div className="labo-grille-ajout">
             <Champ libelle="Date de coulée"><input type="date" className="field-input" value={couleLe} onChange={(e) => setCouleLe(e.target.value)} /></Champ>
-            <Champ libelle="Âge de cure" unite="j"><ChampNombre value={age} onChange={setAge} /></Champ>
-            <Champ libelle="Nombre (réplicats)"><ChampNombre value={nb} onChange={setNb} /></Champ>
+            <Champ libelle="Âge de cure" unite="j" erreur={refusAjout.age ?? undefined}>
+              <ChampNombre value={age} onChange={setAge} min={1} messageRefus="L'âge de cure est d'au moins 1 jour."
+                onRefus={(m) => setRefusAjout((r) => ({ ...r, age: m }))} />
+            </Champ>
+            <Champ libelle="Nombre (réplicats)" erreur={refusAjout.nb ?? undefined}>
+              <ChampNombre value={nb} onChange={setNb} min={1} messageRefus="Au moins une éprouvette."
+                onRefus={(m) => setRefusAjout((r) => ({ ...r, nb: m }))} />
+            </Champ>
             <Champ libelle="Moule (facultatif)">
               <select className="field-input" value={mouleChoix} onChange={(e) => setMouleChoix(e.target.value)}>
                 <option value="">Non précisé</option>

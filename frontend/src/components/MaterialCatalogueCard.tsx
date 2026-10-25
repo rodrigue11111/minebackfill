@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef } from "react";
+import { Fragment, useRef, useState } from "react";
 import { Carte } from "@/components/ui/Carte";
 import { Champ } from "@/components/ui/Champ";
 import ChampNombre from "@/components/ui/ChampNombre";
@@ -11,11 +11,28 @@ import { useStore } from "@/lib/store";
 import { completudeCaracterisation, estOfficiel, type ChampCaracterisation, type MaterialKind, type MaterialItem } from "@/lib/materials";
 import { materialsVersJson, materialsVersCsv, materialsDepuisFichier } from "@/lib/materials-io";
 
+/** Bornes physiques d'une valeur saisie : hors bornes, rien n'est écrit (ChampNombre). */
+export interface BorneSaisie {
+  min: number;
+  minExclusif?: boolean;
+  max?: number;
+  message: string;
+}
+
 export interface MaterialColumn {
   key: string;
   label: string;
   type: "text" | "number";
   flex?: number;
+  /** Colonne numérique : bornes physiques (audit des valeurs impossibles, 2026-10-25). */
+  borne?: BorneSaisie;
+}
+
+/** Caractérisation : un pourcentage est entre 0 et 100, une taille de grain est positive. */
+export function borneCaracterisation(ch: ChampCaracterisation): BorneSaisie | undefined {
+  if (ch.unite === "%") return { min: 0, max: 100, message: "Un pourcentage est compris entre 0 et 100 %." };
+  if (ch.unite === "µm" || ch.unite === "mm") return { min: 0, minExclusif: true, message: "Une taille de grain est strictement positive." };
+  return undefined;
 }
 
 const SLICE = {
@@ -44,6 +61,9 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, carac
   const store = useStore();
   const items = store[SLICE[kind]] as MaterialItem[];
   const fileRef = useRef<HTMLInputElement>(null);
+  // Saisie refusée en cours (valeur impossible), par « id:champ ».
+  const [refus, setRefus] = useState<Record<string, string | null>>({});
+  const surRefus = (cle: string) => (m: string | null) => setRefus((r) => ({ ...r, [cle]: m }));
   const gridCols = columns.map((c) => `${c.flex ?? 1}fr`).join(" ") + " auto";
 
   const onImport = async (f: File | undefined) => {
@@ -105,19 +125,22 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, carac
               style={{ gridTemplateColumns: gridCols, minWidth: 120 * columns.length + 90 }}
             >
               {columns.map((col) => (
-                <Champ key={col.key} libelle={col.label}>
-                  <input
-                    className="field-input"
-                    type={col.type === "number" ? "number" : "text"}
-                    step={col.type === "number" ? "any" : undefined}
-                    disabled={verrou}
-                    value={(rec[col.key] as string | number) ?? ""}
-                    onChange={(e) =>
-                      store.updateMaterial(kind, index, {
-                        [col.key]: col.type === "number" ? Number(e.target.value || 0) : e.target.value,
-                      } as Partial<MaterialItem>, adminMode)
-                    }
-                  />
+                <Champ key={col.key} libelle={col.label} erreur={refus[`${item.id}:${col.key}`] ?? undefined}>
+                  {col.type === "number" ? (
+                    // Virgule ou point acceptés ; une valeur hors bornes n'est pas écrite.
+                    <ChampNombre value={rec[col.key] as number | undefined} disabled={verrou} ariaLabel={`${col.label} : ${item.nom}`}
+                      min={col.borne?.min} minExclusif={col.borne?.minExclusif} max={col.borne?.max} messageRefus={col.borne?.message}
+                      onRefus={surRefus(`${item.id}:${col.key}`)}
+                      onChange={(n) => { if (n !== undefined) maj({ [col.key]: n }); }} />
+                  ) : (
+                    <input
+                      className="field-input"
+                      type="text"
+                      disabled={verrou}
+                      value={(rec[col.key] as string | number) ?? ""}
+                      onChange={(e) => maj({ [col.key]: e.target.value })}
+                    />
+                  )}
                 </Champ>
               ))}
               <div className="regl-ligne-fin">
@@ -137,10 +160,14 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, carac
                   Caractérisation <Pastille ton="neutre" title="Champs de caractérisation renseignés (facultatifs)">{fiche.renseignes}/{fiche.total}</Pastille>
                 </summary>
                 <div className="regl-caracterisation-grille">
-                  {caracterisation.map((ch) => (
-                    <Champ key={ch.cle} libelle={ch.libelle} unite={ch.unite}>
+                  {caracterisation.map((ch) => {
+                    const borne = borneCaracterisation(ch);
+                    return (
+                    <Champ key={ch.cle} libelle={ch.libelle} unite={ch.unite} erreur={refus[`${item.id}:${ch.cle}`] ?? undefined}>
                       {ch.type === "nombre" ? (
                         <ChampNombre value={rec[ch.cle] as number | undefined} disabled={verrou} ariaLabel={`${ch.libelle} : ${item.nom}`}
+                          min={borne?.min} minExclusif={borne?.minExclusif} max={borne?.max} messageRefus={borne?.message}
+                          onRefus={surRefus(`${item.id}:${ch.cle}`)}
                           onChange={(n) => maj({ [ch.cle]: n })} />
                       ) : (
                         <input className="field-input" type={ch.type === "date" ? "date" : "text"} disabled={verrou}
@@ -148,7 +175,8 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, carac
                           onChange={(e) => maj({ [ch.cle]: e.target.value.trim() === "" ? undefined : e.target.value })} />
                       )}
                     </Champ>
-                  ))}
+                    );
+                  })}
                 </div>
               </details>
             )}

@@ -99,6 +99,32 @@ function sansIdentite<T extends IdentiteMateriau>(snap: T | undefined): T | unde
   return Object.values(reste).some((v) => v !== undefined && v !== "") ? reste : undefined;
 }
 
+/**
+ * Mesure de la fiche, bornée (audit des valeurs impossibles, 2026-10-25) : une
+ * saisie hors bornes n'est pas enregistrée ; pendant la saisie, son message
+ * remplace l'aide de la ligne.
+ */
+function LigneMesure({ libelle, detail, id, value, onChange, min, minExclusif, max, message }: {
+  libelle: string;
+  detail?: string;
+  id: string;
+  value: number | undefined;
+  onChange: (n: number | undefined) => void;
+  min: number;
+  minExclusif?: boolean;
+  max?: number;
+  message: string;
+}) {
+  const [refus, setRefus] = useState<string | null>(null);
+  return (
+    <LigneListe libelle={libelle} htmlFor={id}
+      detail={refus ? <span className="ui-champ-erreur" role="alert">{refus}</span> : detail}>
+      <ChampNombre id={id} placeholder={TIRET} value={value} onChange={onChange}
+        min={min} minExclusif={minExclusif} max={max} messageRefus={message} onRefus={setRefus} />
+    </LigneListe>
+  );
+}
+
 const TYPES_AJOUT: { valeur: Ajustement["type"]; libelle: string }[] = [
   { valeur: "eau", libelle: "Eau" }, { valeur: "residu", libelle: "Résidu" },
   { valeur: "granulat", libelle: "Granulat" }, { valeur: "liant", libelle: "Liant" },
@@ -319,11 +345,15 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                 <LigneListe libelle="Lot de résidu" htmlFor="lot-residu"><input id="lot-residu" className="field-input" value={g.lotResidu ?? ""} onChange={(e) => onMaj({ lotResidu: e.target.value })} /></LigneListe>
                 <LigneListe libelle="Lot de granulat" htmlFor="lot-granulat"><input id="lot-granulat" className="field-input" value={g.lotGranulat ?? ""} onChange={(e) => onMaj({ lotGranulat: e.target.value })} /></LigneListe>
                 <LigneListe libelle="Lot de liant" htmlFor="lot-liant"><input id="lot-liant" className="field-input" value={g.lotLiant ?? ""} onChange={(e) => onMaj({ lotLiant: e.target.value })} /></LigneListe>
-                <LigneListe libelle="w₀ mesuré (%)" detail="Teneur en eau du résidu, mesure du jour" htmlFor="w0-mesure"><ChampNombre id="w0-mesure" placeholder={TIRET} value={g.w0MesurePct} onChange={(n) => onMaj({ w0MesurePct: n })} /></LigneListe>
-                <LigneListe libelle="Affaissement mesuré (mm)" detail="Cône d'Abrams, ASTM C143/C143M" htmlFor="affaissement"><ChampNombre id="affaissement" placeholder={TIRET} value={g.slumpMesureMm} onChange={(n) => onMaj({ slumpMesureMm: n })} /></LigneListe>
+                <LigneMesure libelle="w₀ mesuré (%)" detail="Teneur en eau du résidu, mesure du jour" id="w0-mesure" value={g.w0MesurePct} onChange={(n) => onMaj({ w0MesurePct: n })}
+                  min={0} max={100} message="w₀ est compris entre 0 et 100 %." />
+                <LigneMesure libelle="Affaissement mesuré (mm)" detail="Cône d'Abrams, ASTM C143/C143M" id="affaissement" value={g.slumpMesureMm} onChange={(n) => onMaj({ slumpMesureMm: n })}
+                  min={0} max={300} message="L'affaissement est compris entre 0 et 300 mm (hauteur du cône d'Abrams)." />
                 <LigneListe libelle="Température (°C)" htmlFor="temperature"><ChampNombre id="temperature" placeholder={TIRET} value={g.temperatureC} onChange={(n) => onMaj({ temperatureC: n })} /></LigneListe>
-                <LigneListe libelle="w mesuré (%)" htmlFor="w-mesure"><ChampNombre id="w-mesure" placeholder={TIRET} value={g.wMesurePct} onChange={(n) => onMaj({ wMesurePct: n })} /></LigneListe>
-                <LigneListe libelle="Cw mesuré (%)" htmlFor="cw-mesure"><ChampNombre id="cw-mesure" placeholder={TIRET} value={g.cwMesurePct} onChange={(n) => onMaj({ cwMesurePct: n })} /></LigneListe>
+                <LigneMesure libelle="w mesuré (%)" id="w-mesure" value={g.wMesurePct} onChange={(n) => onMaj({ wMesurePct: n })}
+                  min={0} message="Une teneur en eau ne peut pas être négative." />
+                <LigneMesure libelle="Cw mesuré (%)" id="cw-mesure" value={g.cwMesurePct} onChange={(n) => onMaj({ cwMesurePct: n })}
+                  min={0} minExclusif max={100} message="Cw est supérieur à 0 et au plus 100 %." />
                 {bibliotheque ? (
                   <LignesMateriau id="residu" libelle="Résidu" detail={detailResidu || "Choisi dans la bibliothèque, ou saisi librement"}
                     items={bibliotheque.residus} snap={residuSnap}
@@ -353,10 +383,9 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                 </LigneListe>
                 {g.materiaux?.adjuvant?.nom?.trim() && (
                   <>
-                    <LigneListe libelle="Dosage de l'adjuvant" htmlFor="adjuvant-dosage">
-                      <ChampNombre id="adjuvant-dosage" placeholder={TIRET} value={g.materiaux?.adjuvant?.dosage}
-                        onChange={(n) => majMateriaux({ adjuvant: { ...g.materiaux?.adjuvant, dosage: n, dosageUnite: g.materiaux?.adjuvant?.dosageUnite ?? "ml/100 kg" } })} />
-                    </LigneListe>
+                    <LigneMesure libelle="Dosage de l'adjuvant" id="adjuvant-dosage" value={g.materiaux?.adjuvant?.dosage}
+                      onChange={(n) => majMateriaux({ adjuvant: { ...g.materiaux?.adjuvant, dosage: n, dosageUnite: g.materiaux?.adjuvant?.dosageUnite ?? "ml/100 kg" } })}
+                      min={0} message="Un dosage ne peut pas être négatif." />
                     <LigneListe libelle="Unité du dosage" htmlFor="adjuvant-unite">
                       <select id="adjuvant-unite" className="field-input" value={g.materiaux?.adjuvant?.dosageUnite ?? "ml/100 kg"}
                         onChange={(e) => majMateriaux({ adjuvant: { ...g.materiaux?.adjuvant, dosageUnite: e.target.value as (typeof UNITES_DOSAGE_ADJUVANT)[number] } })}>
@@ -365,7 +394,8 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                     </LigneListe>
                   </>
                 )}
-                <LigneListe libelle="Durée de malaxage (min)" htmlFor="malaxage"><ChampNombre id="malaxage" placeholder={TIRET} value={g.malaxageDureeMin} onChange={(n) => onMaj({ malaxageDureeMin: n })} /></LigneListe>
+                <LigneMesure libelle="Durée de malaxage (min)" id="malaxage" value={g.malaxageDureeMin} onChange={(n) => onMaj({ malaxageDureeMin: n })}
+                  min={0} message="Une durée ne peut pas être négative." />
               </ListeGroupee>
               <ListeGroupee titre="Cure des éprouvettes"
                 pied={manquants ? `À compléter si vous les connaissez : ${manquants}. Rien n'est obligatoire.` : "Fiche d'essai complète."}>
@@ -377,7 +407,8 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                   </select>
                 </LigneListe>
                 <LigneListe libelle="Température de cure (°C)" htmlFor="cure-temperature"><ChampNombre id="cure-temperature" placeholder={TIRET} value={g.cure?.temperatureC} onChange={(n) => majCure({ temperatureC: n })} /></LigneListe>
-                <LigneListe libelle="Humidité relative (%)" htmlFor="cure-humidite"><ChampNombre id="cure-humidite" placeholder={TIRET} value={g.cure?.humiditePct} onChange={(n) => majCure({ humiditePct: n })} /></LigneListe>
+                <LigneMesure libelle="Humidité relative (%)" id="cure-humidite" value={g.cure?.humiditePct} onChange={(n) => majCure({ humiditePct: n })}
+                  min={0} max={100} message="L'humidité relative est comprise entre 0 et 100 %." />
                 <LigneListe libelle="Précision" htmlFor="cure-note"><input id="cure-note" className="field-input labo-champ-texte" value={g.cure?.note ?? ""} onChange={(e) => majCure({ note: e.target.value })} /></LigneListe>
               </ListeGroupee>
             </div>
