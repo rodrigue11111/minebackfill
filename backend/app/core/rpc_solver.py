@@ -574,7 +574,7 @@ def solve_rpc_essai(inputs: RpcEssaiInputs) -> MixDesignResult:
             delta_water=adj.added_water_mass,
             water_density=water_density,
             essai_gs_convention=constantes["essai_gs_convention"],
-            essai_binder_rule=constantes["essai_binder_rule"],
+            essai_binder_rule=adj.binder_rule or constantes["essai_binder_rule"],
             dose_binder_by_wc=adj.dose_binder_by_wc,
         )
 

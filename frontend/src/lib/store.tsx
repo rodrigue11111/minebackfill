@@ -14,6 +14,7 @@ import type { Revue } from "./revues";
 import { descriptorFor, type MethodResultKey, type MethodStateKey } from "./method-registry";
 import { EMPREINTE_INCONNUE, empreinteEntrees } from "./resultat-perime";
 import type { MesureLabo } from "./mesures";
+import type { RegleLiant } from "./essai-liant";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
 import type { CloudSession } from "./supabase";
 import {
@@ -242,6 +243,8 @@ export interface EssaiInputsState {
     ajout_residu_sec?: number;
     ajout_residu_humide?: number;
     ajout_eau?: number;
+    /** Liant pendant les ajouts (essai-liant.ts) ; absent : règle de la convention. */
+    regle_liant?: RegleLiant;
   }[];
   /** Mesures au laboratoire après la gâchée, par recette (affaissement, essai
    *  de teneur en eau). Sauvegardées avec le résultat ; jamais envoyées au calcul. */
@@ -250,6 +253,8 @@ export interface EssaiInputsState {
 
 export interface RpgEssaiAdjustment {
   ajout_residu_sec?: number;
+  /** Liant pendant les ajouts (essai-liant.ts) ; absent : règle de la convention. */
+  regle_liant?: RegleLiant;
   ajout_residu_humide?: number;
   ajout_agregat?: number;
   w0_agregat?: number;
@@ -629,6 +634,7 @@ interface AppState {
       ajout_residu_sec?: number;
       ajout_residu_humide?: number;
       ajout_eau?: number;
+      regle_liant?: RegleLiant;
     }
   ) => void;
   essaiResult: MixResult | null;

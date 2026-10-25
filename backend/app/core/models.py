@@ -412,6 +412,20 @@ class RpcSlumpInputs(BaseMixDesignInput):
 #  RPC: Essai-erreur (ajustements)
 # ======================================================================
 
+# Liant pendant les ajouts de l'essai-erreur, choisi par recette (2026-10-24) :
+#   solides_totaux : Bw maintenu sur tous les grains ajoutés (Intra 2017, D65) ;
+#   residu_ajoute  : liant pour le résidu ajouté seulement (feuille gramme, D65) ;
+#   aucun          : aucun liant versé, Bw dilué (absent des feuilles).
+# Absent (None) : règle de la convention (constantes.essai_binder_rule).
+RegleLiantEssai = Literal["solides_totaux", "residu_ajoute", "aucun"]
+DESCRIPTION_REGLE_LIANT = (
+    "Liant pendant les ajouts, pour cette recette : « solides_totaux » garde le Bw "
+    "(Intra 2017), « residu_ajoute » n'en verse que pour le résidu ajouté (feuille "
+    "gramme), « aucun » n'en verse pas (Bw dilué). Absent : règle de la convention. "
+    "Ignoré quand dose_binder_by_wc est actif."
+)
+
+
 def _verifier_dose_binder_by_wc(base, adjustments, num_recipes: int) -> None:
     """
     Garde-fou de l'option « dosage du liant par W/C » (Belem et al. 2018,
@@ -466,6 +480,7 @@ class RpcEssaiAdjustment(BaseModel):
             "du % de masse sèche. Exige Bw > 0 sur la recette de base."
         ),
     )
+    binder_rule: Optional[RegleLiantEssai] = Field(None, description=DESCRIPTION_REGLE_LIANT)
     # plus tard : ajout d'agrégats, etc.
 
 
@@ -661,6 +676,7 @@ class RpgEssaiAdjustment(BaseModel):
             "du % de masse sèche. Exige Bw > 0 sur la recette de base."
         ),
     )
+    binder_rule: Optional[RegleLiantEssai] = Field(None, description=DESCRIPTION_REGLE_LIANT)
 
 
 class RpgEssaiInputs(BaseMixDesignInput):

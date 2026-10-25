@@ -132,6 +132,16 @@ emploi avec le résidu humide. Tests : `test_unit_pipeline.py`
 Un essai-erreur sauvegardé avant cette date avec un ajout « sec » garde son
 résultat enregistré ; recalculé, il donne moins d'eau (de w₀ × l'ajout).
 
+**Liant pendant les ajouts** (2026-10-24) : choisi par recette dans le
+formulaire (`regle_liant`, `lib/essai-liant.ts`), envoyé dans `binder_rule` :
+« Garder le Bw » (`solides_totaux`, Intra 2017 D65), « Résidu seulement »
+(`residu_ajoute`, feuille en grammes D65 ; proposé en RPG seulement, identique
+en RPC), « Aucun liant » (`aucun`, absent des feuilles : Bw dilué, le Bw atteint
+est publié). Sans choix, la règle de la convention (`essai_binder_rule`)
+s'applique comme avant. L'option E/L de conception (RPG) prime et masque le
+choix. Tests : `test_api.py` (`test_essai_choix_du_liant_par_recette`),
+`essai-liant.test.ts`.
+
 **Pédagogie** (2026-10) : chaque méthode porte aussi `quand` (quand
 l'utiliser, une phrase), affichée sous le choix de méthode et lue par le
 Guide (`QUAND_METHODE`) : une seule source. Les plages usuelles des champs

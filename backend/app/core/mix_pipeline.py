@@ -300,6 +300,12 @@ def apply_essai_adjustments(*,
         wc_base = mw_base / mb_base
         mb_tot = mw_tot / wc_base
         mb_ad = mb_tot - mb_base
+    elif essai_binder_rule == "aucun":
+        # Choix de l'étudiant (2026-10-24, absent des feuilles) : aucun liant
+        # versé pendant les ajouts. Le Bw est dilué par tous les grains
+        # ajoutés ; le Bw ATTEINT [D89] le dit.
+        mb_ad = 0.0
+        mb_tot = mb_base
     elif essai_binder_rule == "residu_ajoute":
         # Feuille « gramme » [D65] : le liant AJOUTÉ ne répond qu'au RÉSIDU
         # ajouté (pas au granulat, ni à l'eau). mb_tot = base + Bw·(résidu ajouté).

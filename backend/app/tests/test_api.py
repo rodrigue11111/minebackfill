@@ -193,3 +193,47 @@ def test_offset_slump_negatif_rejete_422():
                                         "cone_type": "mini", "slump_mm": 180.0,
                                         "constants": {"slump_model_offset": -1.0}})
     assert r.status_code == 422
+
+
+def test_essai_choix_du_liant_par_recette():
+    """Liant pendant les ajouts, choisi par recette (2026-10-24) : sans choix, la
+    règle de la convention (Bw maintenu) ; « aucun » ne verse pas de liant et
+    dilue le Bw ; « residu_ajoute » n'en verse pas pour le granulat (RPG)."""
+    base_cw = {**BASE, "category": "RPC", "solids_mass_pct": 70.0}
+
+    def essai(regle):
+        adj = {"added_wet_residue_mass": 500_000.0, **({"binder_rule": regle} if regle else {})}
+        r = client.post("/rpc/essai", json={**base_cw, "base_method": "dosage_cw",
+                                             "base_inputs_cw": base_cw, "adjustments": [adj]})
+        assert r.status_code == 200, r.text
+        return r.json()["recipes"][0]
+
+    defaut, garder, aucun = essai(None), essai("solides_totaux"), essai("aucun")
+    bw_vise = base_cw["binder_mass_pct_recipes"][0]
+    assert abs(defaut["bw_mass_pct"] - bw_vise) < 1e-9
+    assert defaut["components"]["binder_to_add_mass_kg"] > 0
+    assert garder == defaut
+    assert aucun["components"]["binder_to_add_mass_kg"] == 0
+    assert aucun["bw_mass_pct"] < bw_vise - 0.01
+
+    base_rpg = {**BASE, "category": "RPG", "solids_mass_pct": 70.0,
+                "aggregate_fraction_pct": 30.0, "aggregate_specific_gravity": 2.8}
+
+    def essai_rpg(regle):
+        adj = {"added_aggregate_mass": 400_000.0, "binder_rule": regle}
+        r = client.post("/rpg/essai", json={**base_rpg, "base_method": "dosage_cw",
+                                             "base_inputs_cw": base_rpg, "adjustments": [adj]})
+        assert r.status_code == 200, r.text
+        return r.json()["recipes"][0]
+
+    residu_seul = essai_rpg("residu_ajoute")
+    assert residu_seul["components"]["binder_to_add_mass_kg"] == 0
+    assert residu_seul["bw_mass_pct"] < bw_vise - 0.01
+    assert abs(essai_rpg("solides_totaux")["bw_mass_pct"] - bw_vise) < 1e-9
+
+
+def test_essai_choix_du_liant_inconnu_refuse():
+    base_cw = {**BASE, "category": "RPC", "solids_mass_pct": 70.0}
+    r = client.post("/rpc/essai", json={**base_cw, "base_method": "dosage_cw", "base_inputs_cw": base_cw,
+                                         "adjustments": [{"added_water_mass": 1.0, "binder_rule": "moitie"}]})
+    assert r.status_code == 422
