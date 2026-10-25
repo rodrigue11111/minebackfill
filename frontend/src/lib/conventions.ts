@@ -43,11 +43,13 @@ export const CONVENTION_PACKS: ConventionPack[] = [
   },
   {
     id: "gramme",
-    label: "Feuille gramme (Belem 2016)",
-    solverVersion: "gramme-1.0",
+    label: "Feuille gramme (Belem 2016), Gs final recalculé",
+    // 1.1 (2026-10-25) : Gs de la composition finale après les ajouts de
+    // l'essai-erreur (Issues.md #6). En 1.0, le Gs de départ (feuille).
+    solverVersion: "gramme-1.1",
     constantes: {
       ...NOMBRES,
-      essai_gs_convention: "base",
+      essai_gs_convention: "recalcule",
       essai_binder_rule: "residu_ajoute",
       pack_id: "gramme",
     },
@@ -77,12 +79,37 @@ export function solverVersionActive(constantes: ConstantesCalcul): string {
  * calculé n'est PAS obsolète.
  */
 export function estVersionCourante(version: string | undefined): boolean {
-  if (!version) return false;
-  const base = version.endsWith("-personnalise")
-    ? version.slice(0, -"-personnalise".length)
-    : version;
-  return CONVENTION_PACKS.some((p) => p.solverVersion === base);
+  const base = sansPersonnalise(version);
+  if (!base) return false;
+  return CONVENTION_PACKS.some((p) => p.solverVersion === base) || VERSIONS_GS_DEPART.includes(base);
 }
+
+const sansPersonnalise = (version: string | undefined): string | undefined =>
+  version?.endsWith("-personnalise") ? version.slice(0, -"-personnalise".length) : version;
+
+/**
+ * Versions estampillées quand l'essai-erreur gardait le Gs de DÉPART après
+ * les ajouts (comme la feuille, avant le 2026-10-25). Hors essai-erreur, leurs
+ * chiffres sont ceux d'aujourd'hui : elles restent courantes.
+ */
+const VERSIONS_GS_DEPART = ["intra2017-1.0", "gramme-1.0"];
+
+export type EtatVersion = "courante" | "convention_revisee" | "obsolete";
+
+/**
+ * État d'un résultat enregistré, pour sa pastille : « obsolete » (anciennes
+ * formules), « convention_revisee » (essai-erreur calculé avec le Gs de
+ * départ : masses justes, e, n, Sr et ρ à recalculer) ou « courante ».
+ */
+export function etatVersion(version: string | undefined, methode: string | undefined): EtatVersion {
+  if (!estVersionCourante(version)) return "obsolete";
+  const base = sansPersonnalise(version) as string;
+  return methode === "essai" && VERSIONS_GS_DEPART.includes(base) ? "convention_revisee" : "courante";
+}
+
+/** Infobulle de la pastille « convention révisée ». */
+export const AIDE_CONVENTION_REVISEE =
+  "Essai-erreur calculé avec le Gs de départ, comme la feuille : masses justes, mais e, n, Sr et ρ ne suivent pas la composition finale. Rechargez-le et relancez le calcul.";
 
 /**
  * Affaissement équivalent au cône d'Abrams (grand cône) : une lecture au petit

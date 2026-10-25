@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONVENTION_PACKS, packById, solverVersionActive, estVersionCourante, slumpGrandConeMm } from "./conventions";
+import { CONVENTION_PACKS, packById, solverVersionActive, estVersionCourante, etatVersion, slumpGrandConeMm } from "./conventions";
 import type { ConstantesCalcul } from "./store";
 
 // Épingle le contenu des packs. Une dérive (côté frontend ou backend) doit
@@ -21,11 +21,11 @@ describe("conventions — packs", () => {
     });
   });
 
-  it("gramme : mêmes constantes physiques, règle du liant « residu_ajoute »", () => {
+  it("gramme : mêmes constantes physiques, règle du liant « residu_ajoute », Gs final recalculé (1.1)", () => {
     const p = packById("gramme")!;
-    expect(p.solverVersion).toBe("gramme-1.0");
+    expect(p.solverVersion).toBe("gramme-1.1");
     expect(p.constantes.essai_binder_rule).toBe("residu_ajoute");
-    expect(p.constantes.essai_gs_convention).toBe("base");
+    expect(p.constantes.essai_gs_convention).toBe("recalcule");
     expect(p.constantes.pack_id).toBe("gramme");
     // Constantes physiques identiques à intra2017.
     const intra = packById("intra2017")!.constantes;
@@ -39,7 +39,7 @@ describe("conventions — packs", () => {
   it("solverVersionActive suit le pack, sinon « personnalise » avec la FAMILLE réelle", () => {
     const base = packById("intra2017")!.constantes;
     expect(solverVersionActive(base)).toBe("intra2017-1.0");
-    expect(solverVersionActive(packById("gramme")!.constantes)).toBe("gramme-1.0");
+    expect(solverVersionActive(packById("gramme")!.constantes)).toBe("gramme-1.1");
     const perso: ConstantesCalcul = { ...base, pack_id: "personnalise" };
     expect(solverVersionActive(perso)).toBe("intra2017-1.0-personnalise");
     // Déviation partie du pack GRAMME (règle du liant conservée) : le préfixe
@@ -47,7 +47,7 @@ describe("conventions — packs", () => {
     const persoGramme: ConstantesCalcul = {
       ...packById("gramme")!.constantes, gravite_m_s2: 9.79, pack_id: "personnalise",
     };
-    expect(solverVersionActive(persoGramme)).toBe("gramme-1.0-personnalise");
+    expect(solverVersionActive(persoGramme)).toBe("gramme-1.1-personnalise");
   });
 
   it("estVersionCourante : packs actuels et -personnalise légitimes, le reste obsolète", () => {
@@ -56,10 +56,21 @@ describe("conventions — packs", () => {
     expect(estVersionCourante("gramme-1.0")).toBe(true);
     expect(estVersionCourante("intra2017-1.0-personnalise")).toBe(true);
     expect(estVersionCourante("gramme-1.0-personnalise")).toBe(true);
+    expect(estVersionCourante("gramme-1.1")).toBe(true);
     // Vraies anciennes sauvegardes : absentes ou versions inconnues.
     expect(estVersionCourante(undefined)).toBe(false);
     expect(estVersionCourante("modele-c1b-2005")).toBe(false);
     expect(estVersionCourante("intra2016-0.9")).toBe(false);
+  });
+
+  it("etatVersion : Gs de départ (versions 1.0) = « convention révisée » pour un essai-erreur seulement", () => {
+    expect(etatVersion("gramme-1.0", "essai")).toBe("convention_revisee");
+    expect(etatVersion("intra2017-1.0", "essai")).toBe("convention_revisee");
+    expect(etatVersion("gramme-1.0-personnalise", "essai")).toBe("convention_revisee");
+    expect(etatVersion("gramme-1.0", "dosage_cw")).toBe("courante");
+    expect(etatVersion("gramme-1.1", "essai")).toBe("courante");
+    expect(etatVersion("modele-c1b-2005", "essai")).toBe("obsolete");
+    expect(etatVersion(undefined, "dosage_cw")).toBe("obsolete");
   });
 
   it("les deux packs sont exposés", () => {

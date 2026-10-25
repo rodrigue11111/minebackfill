@@ -12,7 +12,7 @@ import { sessionActive, validerSessions, type Session } from "./sessions";
 import { migrerAnnotationV1, type Annotation } from "./annotations";
 import type { Revue } from "./revues";
 import { descriptorFor, type MethodResultKey, type MethodStateKey } from "./method-registry";
-import { EMPREINTE_INCONNUE, empreinteEntrees } from "./resultat-perime";
+import { EMPREINTE_CONVENTION_REVISEE, EMPREINTE_INCONNUE, empreinteEntrees } from "./resultat-perime";
 import type { MesureLabo } from "./mesures";
 import type { RegleLiant } from "./essai-liant";
 import { solverVersionActive, CONVENTION_PACKS } from "./conventions";
@@ -156,7 +156,6 @@ const CONSTANTES_NUM_KEYS = [
   "facteur_petit_cone_vers_grand_cone", "coefficient_modele_slump",
   "constante_modele_slump",
 ] as const;
-const ESSAI_GS_VALUES: EssaiGsConvention[] = ["base", "recalcule"];
 
 export interface LiantCatalogueItem {
   id: string;
@@ -812,13 +811,21 @@ const generalDefaut: GeneralInfo = {
 // au chargement (completerConstantes) et à chaque modification.
 const REGLE_LIANT_ESSAI: EssaiBinderRule = "residu_ajoute";
 
+// Gs après les ajouts de l'essai-erreur : celui de la composition FINALE
+// (2026-10-25, Issues.md #6). Les feuilles gardent le Gs de départ pour e et Sr
+// (D36) et se contredisent quand un ajout change la composition des grains ;
+// le calculateur garde « base » par défaut pour ses tests d'or, le site envoie
+// « recalcule ». Imposé comme la règle du liant (completerConstantes) ; un
+// essai-erreur sauvegardé sous l'ancienne convention est restauré périmé.
+const CONVENTION_GS_ESSAI: EssaiGsConvention = "recalcule";
+
 const constantesDefaut: ConstantesCalcul = {
   masse_volumique_eau_kg_m3: 1000.0,
   gravite_m_s2: 9.81,
   facteur_petit_cone_vers_grand_cone: 2.335,
   coefficient_modele_slump: 4.95e6,
   constante_modele_slump: 235.5122,
-  essai_gs_convention: "base",
+  essai_gs_convention: CONVENTION_GS_ESSAI,
   essai_binder_rule: REGLE_LIANT_ESSAI,
   pack_id: "gramme",
 };
@@ -899,7 +906,9 @@ function persistMaterials(kind: MaterialKind, items: MaterialItem[]) {
  * pré-P4, champ vidé) en un ConstantesCalcul valide :
  * - les 5 nombres doivent être finis et > 0, sinon défaut (un champ vidé dans
  *   Réglages persiste 0 — on ne bloque pas durablement les calculs en 422) ;
- * - les 2 drapeaux sont validés par liste blanche (absents = « intra2017 ») ;
+ * - les 2 drapeaux sont IMPOSÉS : règle du liant de la feuille gramme
+ *   (REGLE_LIANT_ESSAI) et Gs de la composition finale (CONVENTION_GS_ESSAI) ;
+ *   un résultat enregistré sous d'autres valeurs est restauré périmé ;
  * - `pack_id` absent (données pré-P4) n'est PAS présumé : on le DÉTECTE en
  *   comparant aux packs connus — des valeurs personnalisées d'avant P4 donnent
  *   « personnalise », pas une fausse étiquette « intra2017 ».
@@ -910,8 +919,8 @@ function completerConstantes(brut: Partial<ConstantesCalcul> | null | undefined)
     const v = brut?.[k];
     if (typeof v === "number" && Number.isFinite(v) && v > 0) c[k] = v;
   }
-  if (brut?.essai_gs_convention && ESSAI_GS_VALUES.includes(brut.essai_gs_convention))
-    c.essai_gs_convention = brut.essai_gs_convention;
+  // Gs après ajouts : TOUJOURS la composition finale (CONVENTION_GS_ESSAI).
+  c.essai_gs_convention = CONVENTION_GS_ESSAI;
   // Règle du liant en essai : TOUJOURS celle de la feuille gramme, même pour
   // des réglages ou un résultat enregistrés sous la feuille tonne. L'étiquette
   // se déduit des valeurs (gramme, ou « personnalise » si un nombre a changé).
@@ -1738,6 +1747,13 @@ export const useStore = create<AppState>((set, get) => ({
     // d'elle. Une sauvegarde sans base (antérieure à 2026-10) ne peut pas la
     // rendre : le résultat restauré est dit périmé (recalcul demandé).
     let baseInconnue = false;
+    // Essai-erreur calculé sous d'autres conventions que celles imposées
+    // aujourd'hui (Gs de départ, règle du liant « tonne ») : lues sur le
+    // snapshot BRUT, avant completerConstantes. Chiffres enregistrés affichés
+    // tels quels, mais périmés (recalcul avant sauvegarde ou export).
+    const conventionRevisee = entry.method === "essai"
+      && (entry.constantes?.essai_gs_convention !== CONVENTION_GS_ESSAI
+        || entry.constantes?.essai_binder_rule !== REGLE_LIANT_ESSAI);
     // État d'où viennent le Gs et le w₀ du résidu restaurés (partagés ensuite).
     let etatResidu: MethodStateKey | undefined;
     if (d) {
@@ -1762,7 +1778,8 @@ export const useStore = create<AppState>((set, get) => ({
     // saisie (partagerEntreMethodes) : sinon « Selon E/L » garderait l'ancien Gs.
     if (etatResidu) set((s) => partagerEntreMethodes(s, s[etatResidu] as ChampsPartages));
     // Le résultat restauré correspond aux entrées restaurées : nouvelle empreinte.
-    if (d) set((s) => avecEmpreinte(s, d.resultKey, s[d.resultKey], baseInconnue ? EMPREINTE_INCONNUE : undefined));
+    if (d) set((s) => avecEmpreinte(s, d.resultKey, s[d.resultKey],
+      baseInconnue ? EMPREINTE_INCONNUE : conventionRevisee ? EMPREINTE_CONVENTION_REVISEE : undefined));
     return true;
   },
   deleteSavedResult: (id) =>

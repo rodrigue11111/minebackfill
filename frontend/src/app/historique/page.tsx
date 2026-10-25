@@ -8,7 +8,7 @@ import AnnotationsDoc from "@/components/AnnotationsDoc";
 import { docsAvecNonLus } from "@/lib/annotations";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useStore, type SavedResult } from "@/lib/store";
-import { estVersionCourante } from "@/lib/conventions";
+import { AIDE_CONVENTION_REVISEE, etatVersion } from "@/lib/conventions";
 import { exporterResultat } from "@/lib/exports-resultat";
 import { fromStoreMass, MASS_LABELS } from "@/lib/units";
 import type { Recipe } from "@/lib/types";
@@ -98,9 +98,14 @@ export default function HistoriquePage() {
                       <span className="ui-ligne-textes">
                         <span className="hist-nom">
                           {sr.label}
-                          {!estVersionCourante(sr.solverVersion) && (
+                          {etatVersion(sr.solverVersion, sr.method) === "obsolete" && (
                             <span title="Résultat calculé avec une version antérieure des formules. Rechargez et relancez le calcul pour des valeurs à jour.">
                               <Pastille ton="alerte">anciennes formules</Pastille>
+                            </span>
+                          )}
+                          {etatVersion(sr.solverVersion, sr.method) === "convention_revisee" && (
+                            <span title={AIDE_CONVENTION_REVISEE}>
+                              <Pastille ton="neutre">convention révisée</Pastille>
                             </span>
                           )}
                           {nonLus.has(`resultat:${sr.id}`) && (
