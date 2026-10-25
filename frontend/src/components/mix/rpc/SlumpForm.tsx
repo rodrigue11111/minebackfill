@@ -15,6 +15,7 @@ import {
 import { fromStoreSlump, toStoreSlump, SLUMP_LABELS } from "@/lib/units";
 import { slumpGrandConeMm } from "@/lib/conventions";
 import { num } from "@/lib/format";
+import { messageHorsBornes } from "@/lib/plages";
 import { Field, CardSection, GrilleChamps, ChoixNombreRecettes, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
 
 const KAPPA_AIDE = "1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).";
@@ -79,8 +80,12 @@ export default function SlumpForm() {
 
   const numRecipes = slump.num_recipes || 1;
   const coneType = slump.cone_type ?? "mini";
-  // Petit cône : la lecture est convertie en grand cône par le calcul ; la plage
-  // usuelle (150 à 250 mm) s'applique à cet équivalent.
+  // Petit cône : la lecture est convertie en grand cône par le calcul ; la borne
+  // physique (> 0) s'applique à cet équivalent. Pas de plage usuelle sous ce
+  // champ : avec le modèle prédictif, 150 à 250 mm (plage du cours, gardée dans
+  // le Guide) donnent un Cw sous la plage usuelle d'un RPC pour la plupart des
+  // résidus (Gs 3,05 et Bw 4,5 % : 50 à 63 %), et les deux rappels se
+  // contredisaient (retour d'utilisation du 25 octobre 2026).
   const facteurCone = constantes.facteur_petit_cone_vers_grand_cone;
   const slumpGrandCone = slumpGrandConeMm(slump.slump_mm, coneType, facteurCone);
   const aideSlump = coneType === "mini" && slumpGrandCone !== undefined
@@ -100,7 +105,7 @@ export default function SlumpForm() {
           ]}
         />
         <GrilleChamps>
-          <Field label="Affaissement visé S" unit={slumpLabel} hint={aideSlump} plage="slump" valeur={slumpGrandCone}>
+          <Field label="Affaissement visé S" unit={slumpLabel} hint={aideSlump} erreur={messageHorsBornes("slump", slumpGrandCone)}>
             <ChampNombre placeholder="ex : 180" value={fromStoreSlump(slump.slump_mm, units.slump)} onChange={(n) => setSlump({ slump_mm: toStoreSlump(n, units.slump) ?? undefined })} />
           </Field>
           <Field plage="sr" valeur={slump.saturation_pct} label="Degré de saturation Sr" unit="%" hint="100 % = pâte saturée">

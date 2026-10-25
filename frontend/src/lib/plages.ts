@@ -2,7 +2,8 @@
 // Plages usuelles des paramètres des formulaires. SOURCE UNIQUE : le tableau
 // « Paramètres et unités » du Guide les affiche, les formulaires de Calculs
 // les rappellent sous chaque champ. Aucune valeur nouvelle : ce sont celles
-// que le Guide donnait déjà.
+// que le Guide donnait déjà. Exception : l'affaissement visé du modèle
+// prédictif n'affiche pas la sienne (voir SlumpForm.tsx).
 //
 // Une valeur hors plage n'est JAMAIS refusée : un avis doux invite à la
 // vérifier (un résidu peut sortir des valeurs usuelles).
