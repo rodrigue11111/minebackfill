@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useStore } from "@/lib/store";
 import {
   AGES_CURE_DEFAUT, MOULES_PROPOSES, contrainteKpa, dateCoulee, dateEcheance, ecrasementPrecoce, etiquettesHtml, genererCodeEprouvette,
-  libelleMoule, type Eprouvette, type EssaiUCS, type EtiquetteEprouvette,
+  choixMouleParDefaut, libelleMoule, type Eprouvette, type EssaiUCS, type EtiquetteEprouvette, type MouleCylindre,
 } from "@/lib/eprouvette";
 import type { Gachee } from "@/lib/gachee";
 import type { Annotation } from "@/lib/annotations";
@@ -31,8 +31,10 @@ import { lireCourbe } from "@/lib/classe-reseau";
 import { getSupabase } from "@/lib/supabase";
 import { dateCourteFr, imprimerHtml, isoJourMidi, isoVersDateInput, nouvelId } from "./outils";
 
-export default function CarteEprouvettes({ gachee, maintenant, onChange, idImport, inviterAjout = false, notes, connecte = false }: {
+export default function CarteEprouvettes({ gachee, maintenant, onChange, idImport, inviterAjout = false, notes, connecte = false, mouleFormulation }: {
   gachee: Gachee;
+  /** Moule tiré du contenant de la formulation (mouleDepuisContenant) : proposé par défaut. */
+  mouleFormulation?: MouleCylindre;
   maintenant: Date;
   onChange: (eprouvettes: Eprouvette[]) => void;
   /** Id du champ fichier de l'import de presse (le bouton de l'en-tête l'ouvre). */
@@ -48,8 +50,12 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
   const [nb, setNb] = useState<number | undefined>(1);
   // Âge de cure < 1 j ou aucun réplicat : refusés à la saisie (audit 2026-10-25).
   const [refusAjout, setRefusAjout] = useState<{ age?: string | null; nb?: string | null }>({});
-  // Moule : un moule proposé (index), « autre » (texte libre) ou rien.
-  const [mouleChoix, setMouleChoix] = useState<string>("");
+  // Moule : un moule proposé (index), celui du calcul (« calcul »), « autre »
+  // (texte libre) ou rien. Tant que l'utilisateur n'a pas choisi, le moule du
+  // contenant de la formulation est proposé (dérivé, pas d'effet : il suit la
+  // formulation si elle se charge après le premier rendu).
+  const [mouleChoixUtilisateur, setMouleChoix] = useState<string | null>(null);
+  const mouleChoix = mouleChoixUtilisateur ?? choixMouleParDefaut(mouleFormulation);
   const [moule, setMoule] = useState("");
   const [ouverte, setOuverte] = useState<string | null>(null);
   const uid = useStore((s) => s.session?.userId ?? null);
@@ -66,7 +72,8 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
     const nouvelles: Eprouvette[] = [];
     for (let i = 0; i < n; i++) {
       const code = genererCodeEprouvette(gachee.code, [...gachee.eprouvettes, ...nouvelles]);
-      const propose = mouleChoix !== "" && mouleChoix !== "autre" ? MOULES_PROPOSES[Number(mouleChoix)] : undefined;
+      const propose = mouleChoix === "calcul" ? mouleFormulation
+        : mouleChoix !== "" && mouleChoix !== "autre" ? MOULES_PROPOSES[Number(mouleChoix)] : undefined;
       nouvelles.push({
         id: nouvelId(), code, couleLe: iso, ageJours: a, statut: "en_cure",
         ...(propose
@@ -267,10 +274,14 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
               <ChampNombre value={nb} onChange={setNb} min={1} messageRefus="Au moins une éprouvette."
                 onRefus={(m) => setRefusAjout((r) => ({ ...r, nb: m }))} />
             </Champ>
-            <Champ libelle="Moule (facultatif)">
+            <Champ libelle="Moule (facultatif)"
+              aide={mouleFormulation && mouleChoix === choixMouleParDefaut(mouleFormulation) ? "Repris du contenant du calcul (Informations)." : undefined}>
               <select className="field-input" value={mouleChoix} onChange={(e) => setMouleChoix(e.target.value)}>
                 <option value="">Non précisé</option>
                 {MOULES_PROPOSES.map((m, i) => <option key={m.libelle} value={String(i)}>{m.libelle}</option>)}
+                {mouleFormulation && choixMouleParDefaut(mouleFormulation) === "calcul" && (
+                  <option value="calcul">{libelleMoule({ mouleDiametreMm: mouleFormulation.diametreMm, mouleHauteurMm: mouleFormulation.hauteurMm })} (calcul)</option>
+                )}
                 <option value="autre">Autre</option>
               </select>
             </Champ>

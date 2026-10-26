@@ -92,6 +92,36 @@ export const MOULES_PROPOSES: { libelle: string; diametreMm: number; hauteurMm: 
   { libelle: "Cylindre 100 × 200 mm", diametreMm: 100, hauteurMm: 200 },
 ];
 
+export interface MouleCylindre { diametreMm: number; hauteurMm: number }
+
+/**
+ * Moule des éprouvettes tiré du contenant de la formulation (page
+ * Informations, type « rayon et hauteur », en cm), pour ne pas le redemander
+ * (2026-10-26). Seul ce type est sans ambiguïté un cylindre : une section, des
+ * longueurs ou un volume ne disent pas la forme. Arrondi au centième de mm
+ * (un rayon de 3,81 cm donne 76,2 mm, pas 76,19999…).
+ */
+export function mouleDepuisContenant(
+  general: { container_type?: string | null; container_radius?: number | null; container_height?: number | null } | undefined,
+): MouleCylindre | undefined {
+  if (!general || general.container_type !== "rayon_hauteur") return undefined;
+  const r = general.container_radius, h = general.container_height;
+  if (!(typeof r === "number" && Number.isFinite(r) && r > 0 && typeof h === "number" && Number.isFinite(h) && h > 0)) return undefined;
+  const mm = (cm: number) => Math.round(cm * 1000) / 100;
+  return { diametreMm: mm(2 * r), hauteurMm: mm(h) };
+}
+
+/**
+ * Choix du moule proposé par défaut à l'ajout d'éprouvettes : le moule
+ * proposé de mêmes dimensions (à 0,05 mm près, son index), sinon le moule du
+ * calcul tel quel (« calcul »), sinon rien ("").
+ */
+export function choixMouleParDefaut(m: MouleCylindre | undefined): string {
+  if (!m) return "";
+  const i = MOULES_PROPOSES.findIndex((p) => Math.abs(p.diametreMm - m.diametreMm) <= 0.05 && Math.abs(p.hauteurMm - m.hauteurMm) <= 0.05);
+  return i >= 0 ? String(i) : "calcul";
+}
+
 export interface Eprouvette {
   id: string;
   code: string; // « G-AAAAMMJJ-NN-E01 »
