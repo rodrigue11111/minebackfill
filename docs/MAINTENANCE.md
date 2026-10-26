@@ -538,6 +538,37 @@ connexion enseignant). Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
   ordre ; un nouveau bloc crée SES comptes et ne change jamais le rôle de
   `PROF`.
 
+**Démonstration** (`/classe?demo=1`, 2026-10-26). La même page sur une classe
+FICTIVE de 6 étudiants, sans compte, pour montrer le tableau de bord au
+professeur sans créer de faux comptes dans la base réelle.
+- **Données** : `lib/classe-demo.ts`, `classeDemo(maintenant)`, déterministe
+  pour une date donnée, dates relatives à aujourd'hui. Les RECETTES viennent du
+  calculateur, figées dans `lib/classe-demo-recettes.json` par
+  `backend/scripts/recettes_demo_classe.py`. Après un changement des solveurs,
+  `test_demo_classe.py` échoue : relancer le script. Les MESURES UCS sont
+  inventées (modèle `UCS28` × `FACTEUR_AGE`, dispersion à graine fixe) et
+  annoncées comme telles. Chaque cas du tableau de bord y figure (groupes de
+  comparaison, médiane, une gâchée à environ −35 % de la médiane, valeur exclue, hors fenêtre, retard,
+  revues, réponse non lue, inactivité) : `classe-demo.test.ts` le garantit.
+- **Source** : toutes les lectures et écritures de la page et de l'onglet
+  Comptes passent par une `SourceClasse` (`lib/classe-source.ts`).
+  `sourceSupabase` délègue 1 pour 1 à `classe-reseau.ts`. `sourceDemo`
+  répond depuis la mémoire et SIMULE revues, commentaires et « lu ». Rôles et
+  blocage sont désactivés, comme les exports d'un calcul ouvert ; les courbes
+  de presse ne sont pas incluses. Un nouvel appel réseau de la page s'ajoute à
+  `SourceClasse`, jamais en direct.
+- **Garantie** : la démonstration ne déclenche aucun appel réseau et ne
+  persiste rien (ni store, ni localStorage, ni IndexedDB) ; pas de
+  `rafraichirReponsesNonLues`. `CloudSync` et `StoreHydrator` ne sont pas
+  suspendus : sur un navigateur connecté, ils continuent sur les seules données
+  réelles, qu'ils ne mélangent jamais aux données fictives.
+- **Changement de mode** : le tableau de bord est monté sous `key={mode}`, et
+  `lib/classe-chargement.ts` ignore toute réponse dépassée (testé dans les deux
+  sens).
+- **Exports** : chaque export de classe porte la mention dans son CONTENU
+  (`marquerCsvDemo`, `marquerJsonDemo`, `marquerRapportDemo`, option
+  `demonstration` de `icsClasse`), pas seulement « _demo » dans son nom.
+
 ### 13. Système de design (refonte « épurée », 2026-09-30)
 
 **Accessibilité (2026-10).** `Champ` pose `aria-invalid` et
