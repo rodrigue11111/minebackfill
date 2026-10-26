@@ -1,0 +1,496 @@
+{
+ "genere_par": "backend/scripts/recettes_demo_classe.py",
+ "note": "Recettes calculées par le calculateur MineBackfill pour la démonstration de la page Classe.",
+ "formulations": {
+  "laronde_bw5": {
+   "categorie": "RPC",
+   "methode": "dosage_cw",
+   "residu": {
+    "id": "res_laronde",
+    "nom": "Résidus LaRonde",
+    "gs": 3.1,
+    "w0_pct": 25.0
+   },
+   "liants": [
+    {
+     "id": "liant_cp10",
+     "code": "CP10",
+     "gs": 3.1543,
+     "fraction_pct": 20
+    },
+    {
+     "id": "liant_slag",
+     "code": "SLAG",
+     "gs": 2.8426,
+     "fraction_pct": 80
+    }
+   ],
+   "granulat": null,
+   "cw_pct": 75.0,
+   "bw_pct": [
+    5.0
+   ],
+   "el": null,
+   "moule": {
+    "container_type": "rayon_hauteur",
+    "container_radius": 3.81,
+    "container_height": 15.24
+   },
+   "nb_moules": 9,
+   "kappa": 1.1,
+   "recettes": [
+    {
+     "bulk_density_kg_m3": 2029.5074576588659,
+     "dry_density_kg_m3": 1522.1305932441494,
+     "solids_mass_pct": 75.0,
+     "saturation_pct": 100.0,
+     "wc_ratio": 6.999999999999999,
+     "bw_mass_pct": 5.0,
+     "bv_vol_pct": 5.344989020459128,
+     "cv_vol_pct": 49.26231355852837,
+     "w_mass_pct": 33.33333333333333,
+     "void_ratio": 1.029949321831797,
+     "porosity": 0.5073768644147163,
+     "theta_pct": 50.73768644147163,
+     "gs_binder": 2.8999124115447805,
+     "gs_backfill": 3.089847965495392,
+     "bulk_unit_weight_kN_m3": 19.909468159633473,
+     "dry_unit_weight_kN_m3": 14.932101119725106,
+     "container_volume_m3": 0.0006949999783301279,
+     "total_backfill_volume_m3": 0.006880499785468267,
+     "residue_volume_m3": 0.003217517425582505,
+     "binder_volume_m3": 0.00017197595312874408,
+     "water_volume_m3": 0.003491006406757018,
+     "solid_volume_m3": 0.003389493378711249,
+     "void_volume_m3": 0.003491006406757018,
+     "aggregate_volume_m3": 0.0,
+     "aggregate_vol_pct_of_residue": 0.0,
+     "aggregate_vol_pct_of_backfill": 0.0,
+     "aggregate_mass_pct": 0.0,
+     "components": {
+      "residue_dry_mass_kg": 9.974304019305766,
+      "residue_wet_mass_kg": 12.467880024132207,
+      "binder_total_mass_kg": 0.4987152009652883,
+      "binder_c1_mass_kg": 0.09974304019305767,
+      "binder_c2_mass_kg": 0.3989721607722307,
+      "binder_c3_mass_kg": 0.0,
+      "water_total_mass_kg": 3.491006406757018,
+      "water_to_add_mass_kg": 0.9974304019305764,
+      "aggregate_dry_mass_kg": 0.0,
+      "binder_to_add_mass_kg": 0.0,
+      "binder_c1_to_add_mass_kg": 0.0,
+      "binder_c2_to_add_mass_kg": 0.0,
+      "binder_c3_to_add_mass_kg": 0.0,
+      "binder_masses_kg": [
+       0.09974304019305767,
+       0.3989721607722307
+      ],
+      "binder_to_add_masses_kg": []
+     }
+    }
+   ]
+  },
+  "laronde_bw3": {
+   "categorie": "RPC",
+   "methode": "dosage_cw",
+   "residu": {
+    "id": "res_laronde",
+    "nom": "Résidus LaRonde",
+    "gs": 3.1,
+    "w0_pct": 25.0
+   },
+   "liants": [
+    {
+     "id": "liant_cp10",
+     "code": "CP10",
+     "gs": 3.1543,
+     "fraction_pct": 20
+    },
+    {
+     "id": "liant_slag",
+     "code": "SLAG",
+     "gs": 2.8426,
+     "fraction_pct": 80
+    }
+   ],
+   "granulat": null,
+   "cw_pct": 75.0,
+   "bw_pct": [
+    3.0
+   ],
+   "el": null,
+   "moule": {
+    "container_type": "rayon_hauteur",
+    "container_radius": 3.81,
+    "container_height": 15.24
+   },
+   "nb_moules": 9,
+   "kappa": 1.1,
+   "recettes": [
+    {
+     "bulk_density_kg_m3": 2030.779764286219,
+     "dry_density_kg_m3": 1523.0848232146643,
+     "solids_mass_pct": 75.0,
+     "saturation_pct": 100.0,
+     "wc_ratio": 11.444444444444441,
+     "bw_mass_pct": 3.0,
+     "bv_vol_pct": 3.2069934122754757,
+     "cv_vol_pct": 49.23050589284453,
+     "w_mass_pct": 33.33333333333333,
+     "void_ratio": 1.0312608653191724,
+     "porosity": 0.5076949410715547,
+     "theta_pct": 50.76949410715547,
+     "gs_binder": 2.8999124115447805,
+     "gs_backfill": 3.0937825959575176,
+     "bulk_unit_weight_kN_m3": 19.921949487647808,
+     "dry_unit_weight_kN_m3": 14.941462115735858,
+     "container_volume_m3": 0.0006949999783301279,
+     "total_backfill_volume_m3": 0.006880499785468267,
+     "residue_volume_m3": 0.003282049733598018,
+     "binder_volume_m3": 0.00010525511874409325,
+     "water_volume_m3": 0.003493194933126156,
+     "solid_volume_m3": 0.0033873048523421112,
+     "void_volume_m3": 0.0034931949331261556,
+     "aggregate_volume_m3": 0.0,
+     "aggregate_vol_pct_of_residue": 0.0,
+     "aggregate_vol_pct_of_backfill": 0.0,
+     "aggregate_mass_pct": 0.0,
+     "components": {
+      "residue_dry_mass_kg": 10.174354174153855,
+      "residue_wet_mass_kg": 12.717942717692319,
+      "binder_total_mass_kg": 0.30523062522461564,
+      "binder_c1_mass_kg": 0.06104612504492313,
+      "binder_c2_mass_kg": 0.2441845001796925,
+      "binder_c3_mass_kg": 0.0,
+      "water_total_mass_kg": 3.493194933126156,
+      "water_to_add_mass_kg": 0.9496063895876921,
+      "aggregate_dry_mass_kg": 0.0,
+      "binder_to_add_mass_kg": 0.0,
+      "binder_c1_to_add_mass_kg": 0.0,
+      "binder_c2_to_add_mass_kg": 0.0,
+      "binder_c3_to_add_mass_kg": 0.0,
+      "binder_masses_kg": [
+       0.06104612504492313,
+       0.2441845001796925
+      ],
+      "binder_to_add_masses_kg": []
+     }
+    }
+   ]
+  },
+  "laronde_rpg": {
+   "categorie": "RPG",
+   "methode": "dosage_cw",
+   "residu": {
+    "id": "res_laronde",
+    "nom": "Résidus LaRonde",
+    "gs": 3.1,
+    "w0_pct": 25.0
+   },
+   "liants": [
+    {
+     "id": "liant_cp10",
+     "code": "CP10",
+     "gs": 3.1543,
+     "fraction_pct": 20
+    },
+    {
+     "id": "liant_slag",
+     "code": "SLAG",
+     "gs": 2.8426,
+     "fraction_pct": 80
+    }
+   ],
+   "granulat": {
+    "id": "gra_laronde",
+    "gs": 2.8,
+    "am_pct": 30.0
+   },
+   "cw_pct": 78.0,
+   "bw_pct": [
+    4.0
+   ],
+   "el": null,
+   "moule": {
+    "container_type": "rayon_hauteur",
+    "container_radius": 3.81,
+    "container_height": 15.24
+   },
+   "nb_moules": 9,
+   "kappa": 1.1,
+   "recettes": [
+    {
+     "bulk_density_kg_m3": 2083.0854391945963,
+     "dry_density_kg_m3": 1624.8066425717852,
+     "solids_mass_pct": 78.0,
+     "saturation_pct": 100.0,
+     "wc_ratio": 7.333333333333331,
+     "bw_mass_pct": 4.0,
+     "bv_vol_pct": 4.142828860148251,
+     "cv_vol_pct": 54.1721203377189,
+     "w_mass_pct": 28.205128205128194,
+     "void_ratio": 0.8459679882674284,
+     "porosity": 0.458278796622811,
+     "theta_pct": 45.8278796622811,
+     "gs_binder": 2.8999124115447805,
+     "gs_backfill": 2.9993410493117927,
+     "bulk_unit_weight_kN_m3": 20.43506815849899,
+     "dry_unit_weight_kN_m3": 15.939353163629214,
+     "container_volume_m3": 0.0006949999783301279,
+     "total_backfill_volume_m3": 0.006880499785468267,
+     "residue_volume_m3": 0.0024273068328008085,
+     "binder_volume_m3": 0.00014827346709263704,
+     "water_volume_m3": 0.0031531871618479066,
+     "solid_volume_m3": 0.00372731262362036,
+     "void_volume_m3": 0.0031531871618479066,
+     "aggregate_volume_m3": 0.0011517323237269143,
+     "aggregate_vol_pct_of_residue": 32.17993079584775,
+     "aggregate_vol_pct_of_backfill": 16.739079422099433,
+     "aggregate_mass_pct": 30.0,
+     "components": {
+      "residue_dry_mass_kg": 7.524651181682507,
+      "residue_wet_mass_kg": 9.405813977103133,
+      "binder_total_mass_kg": 0.4299800675247147,
+      "binder_c1_mass_kg": 0.08599601350494294,
+      "binder_c2_mass_kg": 0.3439840540197718,
+      "binder_c3_mass_kg": 0.0,
+      "water_total_mass_kg": 3.1531871618479066,
+      "water_to_add_mass_kg": 1.27202436642728,
+      "aggregate_dry_mass_kg": 3.2248505064353603,
+      "binder_to_add_mass_kg": 0.0,
+      "binder_c1_to_add_mass_kg": 0.0,
+      "binder_c2_to_add_mass_kg": 0.0,
+      "binder_c3_to_add_mass_kg": 0.0,
+      "binder_masses_kg": [
+       0.08599601350494294,
+       0.3439840540197718
+      ],
+      "binder_to_add_masses_kg": []
+     }
+    }
+   ]
+  },
+  "casa_bw6": {
+   "categorie": "RPC",
+   "methode": "dosage_cw",
+   "residu": {
+    "id": "res_casa_berardi",
+    "nom": "Résidus Casa Berardi",
+    "gs": 3.05,
+    "w0_pct": 31.5789
+   },
+   "liants": [
+    {
+     "id": "liant_cp10",
+     "code": "CP10",
+     "gs": 3.1543,
+     "fraction_pct": 100
+    }
+   ],
+   "granulat": null,
+   "cw_pct": 70.0,
+   "bw_pct": [
+    6.0
+   ],
+   "el": null,
+   "moule": {
+    "container_type": "rayon_hauteur",
+    "container_radius": 3.81,
+    "container_height": 15.24
+   },
+   "nb_moules": 9,
+   "kappa": 1.1,
+   "recettes": [
+    {
+     "bulk_density_kg_m3": 1890.0782087652167,
+     "dry_density_kg_m3": 1323.0547461356516,
+     "solids_mass_pct": 70.0,
+     "saturation_pct": 100.0,
+     "wc_ratio": 7.571428571428574,
+     "bw_mass_pct": 6.0,
+     "bv_vol_pct": 5.8016041594014505,
+     "cv_vol_pct": 43.29765373704349,
+     "w_mass_pct": 42.85714285714286,
+     "void_ratio": 1.3095939703181787,
+     "porosity": 0.5670234626295652,
+     "theta_pct": 56.70234626295652,
+     "gs_binder": 3.1543000000000005,
+     "gs_backfill": 3.05571926407575,
+     "bulk_unit_weight_kN_m3": 18.54166722798678,
+     "dry_unit_weight_kN_m3": 12.979167059590743,
+     "container_volume_m3": 0.0006949999783301279,
+     "total_backfill_volume_m3": 0.006880499785468267,
+     "residue_volume_m3": 0.002815737054422865,
+     "binder_volume_m3": 0.00016335791806720482,
+     "water_volume_m3": 0.0039014048129781963,
+     "solid_volume_m3": 0.00297909497249007,
+     "void_volume_m3": 0.0039014048129781967,
+     "aggregate_volume_m3": 0.0,
+     "aggregate_vol_pct_of_residue": 0.0,
+     "aggregate_vol_pct_of_backfill": 0.0,
+     "aggregate_mass_pct": 0.0,
+     "components": {
+      "residue_dry_mass_kg": 8.587998015989738,
+      "residue_wet_mass_kg": 11.299993321461123,
+      "binder_total_mass_kg": 0.5152798809593843,
+      "binder_c1_mass_kg": 0.5152798809593843,
+      "binder_c2_mass_kg": 0.0,
+      "binder_c3_mass_kg": 0.0,
+      "water_total_mass_kg": 3.901404812978196,
+      "water_to_add_mass_kg": 1.189409507506813,
+      "aggregate_dry_mass_kg": 0.0,
+      "binder_to_add_mass_kg": 0.0,
+      "binder_c1_to_add_mass_kg": 0.0,
+      "binder_c2_to_add_mass_kg": 0.0,
+      "binder_c3_to_add_mass_kg": 0.0,
+      "binder_masses_kg": [
+       0.5152798809593843
+      ],
+      "binder_to_add_masses_kg": []
+     }
+    }
+   ]
+  },
+  "laronde_el": {
+   "categorie": "RPC",
+   "methode": "wb",
+   "residu": {
+    "id": "res_laronde",
+    "nom": "Résidus LaRonde",
+    "gs": 3.1,
+    "w0_pct": 25.0
+   },
+   "liants": [
+    {
+     "id": "liant_cp10",
+     "code": "CP10",
+     "gs": 3.1543,
+     "fraction_pct": 20
+    },
+    {
+     "id": "liant_slag",
+     "code": "SLAG",
+     "gs": 2.8426,
+     "fraction_pct": 80
+    }
+   ],
+   "granulat": null,
+   "cw_pct": null,
+   "bw_pct": [
+    4.0,
+    6.0
+   ],
+   "el": [
+    7.5,
+    6.0
+   ],
+   "moule": {
+    "container_type": "rayon_hauteur",
+    "container_radius": 3.81,
+    "container_height": 15.24
+   },
+   "nb_moules": 9,
+   "kappa": 1.1,
+   "recettes": [
+    {
+     "bulk_density_kg_m3": 2105.6794465394414,
+     "dry_density_kg_m3": 1634.2586749261338,
+     "solids_mass_pct": 77.61194029850746,
+     "saturation_pct": 100.0,
+     "wc_ratio": 7.5,
+     "bw_mass_pct": 4.0,
+     "bv_vol_pct": 4.275991216367301,
+     "cv_vol_pct": 52.85792283866924,
+     "w_mass_pct": 28.846153846153832,
+     "void_ratio": 0.8918639747766075,
+     "porosity": 0.47142077161330764,
+     "theta_pct": 47.14207716133076,
+     "gs_binder": 2.8999124115447805,
+     "gs_backfill": 3.0917951125589074,
+     "bulk_unit_weight_kN_m3": 20.65671537055192,
+     "dry_unit_weight_kN_m3": 16.032077601025374,
+     "container_volume_m3": 0.0006949999783301279,
+     "total_backfill_volume_m3": 0.006880499785468267,
+     "residue_volume_m3": 0.0034877532451082246,
+     "binder_volume_m3": 0.0001491360224093932,
+     "water_volume_m3": 0.0032436105179506477,
+     "solid_volume_m3": 0.003636889267517618,
+     "void_volume_m3": 0.003243610517950649,
+     "aggregate_volume_m3": 0.0,
+     "aggregate_vol_pct_of_residue": 0.0,
+     "aggregate_vol_pct_of_backfill": 0.0,
+     "aggregate_mass_pct": 0.0,
+     "components": {
+      "residue_dry_mass_kg": 10.812035059835496,
+      "residue_wet_mass_kg": 13.51504382479437,
+      "binder_total_mass_kg": 0.43248140239341987,
+      "binder_c1_mass_kg": 0.08649628047868398,
+      "binder_c2_mass_kg": 0.3459851219147359,
+      "binder_c3_mass_kg": 0.0,
+      "water_total_mass_kg": 3.2436105179506476,
+      "water_to_add_mass_kg": 0.5406017529917735,
+      "aggregate_dry_mass_kg": 0.0,
+      "binder_to_add_mass_kg": 0.0,
+      "binder_c1_to_add_mass_kg": 0.0,
+      "binder_c2_to_add_mass_kg": 0.0,
+      "binder_c3_to_add_mass_kg": 0.0,
+      "binder_masses_kg": [
+       0.08649628047868398,
+       0.3459851219147359
+      ],
+      "binder_to_add_masses_kg": []
+     }
+    },
+    {
+     "bulk_density_kg_m3": 2019.1365077611085,
+     "dry_density_kg_m3": 1507.2427452301235,
+     "solids_mass_pct": 74.64788732394368,
+     "saturation_pct": 100.0,
+     "wc_ratio": 6.0,
+     "bw_mass_pct": 6.0,
+     "bv_vol_pct": 6.4139868245509515,
+     "cv_vol_pct": 48.81062374690151,
+     "w_mass_pct": 33.96226415094337,
+     "void_ratio": 1.0487343189575198,
+     "porosity": 0.511893762530985,
+     "theta_pct": 51.189376253098494,
+     "gs_binder": 2.8999124115447805,
+     "gs_backfill": 3.0879399391526996,
+     "bulk_unit_weight_kN_m3": 19.807729141136473,
+     "dry_unit_weight_kN_m3": 14.786051330707512,
+     "container_volume_m3": 0.0006949999783301279,
+     "total_backfill_volume_m3": 0.006880499785468267,
+     "residue_volume_m3": 0.0031559900746209574,
+     "binder_volume_m3": 0.00020242478757032396,
+     "water_volume_m3": 0.003522084923276986,
+     "solid_volume_m3": 0.0033584148621912816,
+     "void_volume_m3": 0.0035220849232769852,
+     "aggregate_volume_m3": 0.0,
+     "aggregate_vol_pct_of_residue": 0.0,
+     "aggregate_vol_pct_of_backfill": 0.0,
+     "aggregate_mass_pct": 0.0,
+     "components": {
+      "residue_dry_mass_kg": 9.783569231324968,
+      "residue_wet_mass_kg": 12.22946153915621,
+      "binder_total_mass_kg": 0.5870141538794981,
+      "binder_c1_mass_kg": 0.11740283077589962,
+      "binder_c2_mass_kg": 0.4696113231035985,
+      "binder_c3_mass_kg": 0.0,
+      "water_total_mass_kg": 3.522084923276986,
+      "water_to_add_mass_kg": 1.076192615445744,
+      "aggregate_dry_mass_kg": 0.0,
+      "binder_to_add_mass_kg": 0.0,
+      "binder_c1_to_add_mass_kg": 0.0,
+      "binder_c2_to_add_mass_kg": 0.0,
+      "binder_c3_to_add_mass_kg": 0.0,
+      "binder_masses_kg": [
+       0.11740283077589962,
+       0.4696113231035985
+      ],
+      "binder_to_add_masses_kg": []
+     }
+    }
+   ]
+  }
+ }
+}
