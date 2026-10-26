@@ -7,9 +7,17 @@
 // filtrée par session) : rien n'est versé dans le stockage local de
 // l'enseignant, qui garde son propre travail intact. Un document ouvert en
 // entier est relu à la demande (lireDocComplet).
+//
+// Démonstration (/classe?demo=1, 2026-10-26) : la même page sur une classe
+// FICTIVE en mémoire (lib/classe-demo.ts), sans compte, sans appel réseau ni
+// rien d'enregistré. Toutes les lectures et écritures passent par une
+// SourceClasse (lib/classe-source.ts) : Supabase, ou la démonstration. Le
+// tableau de bord est monté sous une clé de mode, et un contrôleur de
+// chargement ignore toute réponse dépassée (lib/classe-chargement.ts).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { getSupabase, cloudConfigure } from "@/lib/supabase";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -20,10 +28,10 @@ import {
   avecFormulationsDeToutesSessions, cleLigne, eprouvettesAvecCourbe, exportClasse, regrouper, remplacerLigne,
   type EtudiantClasse, type LigneClasse, type ProfilClasse,
 } from "@/lib/classe";
-import {
-  ajouterAnnotation, estReponse, lireAnnotationsClasse, lireClasse, lireDocComplet, lireProfils, lireRevuesClasse, marquerAnnotationsLues,
-  lireCourbe, lireCourbesClasse, messageErreurClasse, poserRevue, retirerAnnotation, retirerRevue, type LigneAnnotation,
-} from "@/lib/classe-reseau";
+import { estReponse, messageErreurClasse, type LigneAnnotation } from "@/lib/classe-reseau";
+import { sourceSupabase, type SourceClasse } from "@/lib/classe-source";
+import { chargerClasse, creerControleur } from "@/lib/classe-chargement";
+import { classeDemo, marquerCsvDemo, marquerJsonDemo, marquerRapportDemo, MENTION_DEMO, sourceDemo } from "@/lib/classe-demo";
 import { decoderCourbe } from "@/lib/courbes";
 import { mentionHorsFenetre } from "@/lib/eprouvette";
 import { cleRevue, indexerRevues, infoRevue, type RevueClasse } from "@/lib/revues";
@@ -57,10 +65,25 @@ import { Icone } from "@/components/ui/Icones";
 
 type CleOnglet = "etudiants" | "echeancier" | "comparaison" | "comptes";
 
+// useSearchParams dans une page prérendue exige une frontière Suspense.
 export default function ClassePage() {
+  return (
+    <Suspense fallback={null}>
+      <ClasseSelonMode />
+    </Suspense>
+  );
+}
+
+/** Une instance par mode : passer de la classe réelle à la démonstration remonte tout l'état. */
+function ClasseSelonMode() {
+  const demo = useSearchParams().get("demo") === "1";
+  return <TableauClasse key={demo ? "demo" : "reel"} demo={demo} />;
+}
+
+function TableauClasse({ demo }: { demo: boolean }) {
   const monte = useHydrated();
   const session = useStore((s) => s.session);
-  const sessions = useStore((s) => s.sessions);
+  const sessionsStore = useStore((s) => s.sessions);
   const units = useStore((s) => s.units);
   const loadUnits = useStore((s) => s.loadUnits);
   // Catalogues de l'enseignant : décrivent les matériaux du jeu d'essais.
@@ -69,6 +92,23 @@ export default function ClassePage() {
   const catalogueLiants = useStore((s) => s.catalogue_liants);
   const ajouterMateriauOfficiel = useStore((s) => s.ajouterMateriauOfficiel);
   const maintenant = useAujourdhui();
+  // Démonstration : classe fictive et sa source en mémoire, créées une fois.
+  const [demoEtat] = useState(() => {
+    if (!demo) return null;
+    const donnees = classeDemo(maintenant);
+    return { donnees, source: sourceDemo(donnees) };
+  });
+  const sb = demoEtat ? null : getSupabase();
+  const source: SourceClasse | null = useMemo(
+    () => (demoEtat ? demoEtat.source : sb ? sourceSupabase(sb) : null),
+    [demoEtat, sb],
+  );
+  const [controleur] = useState(creerControleur);
+  // Une instance démontée (changement de mode) n'accepte plus aucune réponse.
+  useEffect(() => () => controleur.invalider(), [controleur]);
+  const sessions = demoEtat ? demoEtat.donnees.sessions : sessionsStore;
+  const moi = demoEtat ? demoEtat.donnees.moi : session?.userId ?? "";
+  const suffixe = demoEtat ? "_demo" : "";
   const [filtre, setFiltre] = useState<FiltreSessionValeur | null>(null);
   const [lignes, setLignes] = useState<LigneClasse[]>([]);
   const [profils, setProfils] = useState<ProfilClasse[]>([]);
@@ -98,36 +138,32 @@ export default function ClassePage() {
   useEffect(() => { loadUnits(); }, [loadUnits]);
 
   const charger = useCallback(async () => {
-    const sb = getSupabase();
-    if (!sb) return;
+    if (!source) return;
     setEtat("chargement");
     setErreur(null);
     setErreurRevues(null);
     try {
-      const [l, p, a, r] = await Promise.all([
-        lireClasse(sb, { complet: false, session: sessionServeur }),
-        lireProfils(sb),
-        lireAnnotationsClasse(sb),
-        // Revues en échec (autre chose qu'une base pas à jour, qui rend
-        // null) : la classe s'affiche quand même, sans revues.
-        lireRevuesClasse(sb).catch((e: unknown) => { setErreurRevues(messageErreurClasse(e)); return null; }),
-      ]);
-      setLignes(l);
-      setProfils(p);
-      setAnnotations(a);
-      setRevues(r === null ? null : indexerRevues(r));
-      setNouvelles(new Set(a.filter((x) => estReponse(x) && !x.lu_le).map((x) => x.id)));
+      // Revues en échec (autre chose qu'une base pas à jour, qui rend null) :
+      // la classe s'affiche quand même, sans revues. Réponse dépassée : null.
+      const r = await chargerClasse(source, { session: sessionServeur }, controleur);
+      if (!r) return;
+      if (r.erreurRevues) setErreurRevues(messageErreurClasse(r.erreurRevues));
+      setLignes(r.lignes);
+      setProfils(r.profils);
+      setAnnotations(r.annotations);
+      setRevues(r.revues === null ? null : indexerRevues(r.revues));
+      setNouvelles(new Set(r.annotations.filter((x) => estReponse(x) && !x.lu_le).map((x) => x.id)));
       setEtat("pret");
     } catch (e) {
       // Une lecture en échec n'est JAMAIS montrée comme une classe vide.
       setErreur(messageErreurClasse(e));
       setEtat("erreur");
     }
-  }, [sessionServeur]);
+  }, [source, sessionServeur, controleur]);
 
   useEffect(() => {
-    if (monte && estProf) void charger();
-  }, [monte, estProf, charger]);
+    if (monte && (demo || estProf)) void charger();
+  }, [monte, demo, estProf, charger]);
 
   const etudiants = useMemo(
     () => regrouper(lignes, profils, sessions, filtreEffectif),
@@ -152,27 +188,26 @@ export default function ClassePage() {
 
   /** Réponses d'étudiants affichées : accusé de lecture (l'étudiant voit « vu »). */
   const marquerLues = (ids: string[]) => {
-    const sb = getSupabase();
-    if (!sb || ids.length === 0) return;
-    marquerAnnotationsLues(sb, ids)
+    if (!source || ids.length === 0) return;
+    source.marquerAnnotationsLues(ids)
       .then((lus) => {
         const m = new Map(lus.map((x) => [x.id, x.luLe]));
         if (m.size > 0) setAnnotations((l) => l.map((a) => (m.has(a.id) ? { ...a, lu_le: m.get(a.id) } : a)));
-        void rafraichirReponsesNonLues();
+        // Compteur global de la barre : jamais en démonstration (rien de réel n'a changé).
+        if (!source.demonstration) void rafraichirReponsesNonLues();
       })
       .catch(() => { /* base pas à jour ou réseau : sans conséquence, réessayé à la prochaine ouverture */ });
   };
 
   /** Ouvre un document en entier : relu en ligne (la classe est allégée). */
   const ouvrirDoc = (ref: RefDoc) => {
-    const sb = getSupabase();
-    if (!sb) return;
+    if (!source) return;
     marquerLues(reponsesNonLues(annotations.filter((a) =>
       a.owner_id === ref.etudiantId && a.target_kind === ref.kind && a.target_id === ref.id)));
     const jeton = ++jetonDoc.current;
     setDoc({ ref, etat: "chargement" });
     document.querySelector(".ui-page")?.scrollTo({ top: 0 });
-    lireDocComplet(sb, ref.etudiantId, ref.kind, ref.id)
+    source.lireDocComplet(ref.etudiantId, ref.kind, ref.id)
       .then((d) => {
         // La version relue remplace celle de la classe : la revue, les CSV
         // et l'export « gâchées acceptées » portent alors sur cette version
@@ -189,10 +224,9 @@ export default function ClassePage() {
   const fermerDoc = () => { jetonDoc.current++; setDoc(null); };
 
   const annoter = (proprietaire: string) => async (a: NouvelleAnnotation): Promise<boolean> => {
-    const sb = getSupabase();
-    if (!sb || !session) return false;
+    if (!source || !moi) return false;
     try {
-      const cree = await ajouterAnnotation(sb, { ...a, ownerId: proprietaire, auteurId: session.userId });
+      const cree = await source.ajouterAnnotation({ ...a, ownerId: proprietaire, auteurId: moi });
       setAnnotations((l) => [...l, cree]);
       return true;
     } catch (e) {
@@ -202,31 +236,29 @@ export default function ClassePage() {
   };
   // Confirmé dans le fil (ConfirmationEnLigne), pas par window.confirm.
   const retirer = async (id: string) => {
-    const sb = getSupabase();
-    if (!sb) return;
+    if (!source) return;
     try {
-      await retirerAnnotation(sb, id);
+      await source.retirerAnnotation(id);
       setAnnotations((l) => l.filter((x) => x.id !== id));
     } catch (e) {
       window.alert(`Retrait impossible : ${messageErreurClasse(e)}`);
     }
   };
 
-  const ctx: ContexteFil = { moi: session?.userId ?? "", nouvelles, onLire: marquerLues, onRetirer: retirer };
+  const ctx: ContexteFil = { moi, nouvelles, onLire: marquerLues, onRetirer: retirer };
 
   const libelleSession = filtreEffectif === "toutes" ? "Toutes les sessions" : filtreEffectif === "sans" ? "Sans session"
     : sessions.find((x) => x.id === filtreEffectif)?.nom ?? filtreEffectif;
 
   const exporter = async () => {
-    const sb = getSupabase();
-    if (!sb) return;
+    if (!source) return;
     setExportEnCours(true);
     try {
-      const exportes = regrouper(await lireClasse(sb, { complet: true, session: sessionServeur }), profils, sessions, filtreEffectif);
-      const courbes = await lireCourbesClasse(sb, true, exportes.map((e) => e.id));
+      const exportes = regrouper(await source.lireClasse({ complet: true, session: sessionServeur }), profils, sessions, filtreEffectif);
+      const courbes = await source.lireCourbesClasse(true, exportes.map((e) => e.id));
       const donnees = exportClasse(exportes, filtreEffectif, new Date(), courbes, revues ? [...revues.values()] : undefined);
-      telechargerBlob(new Blob([JSON.stringify(donnees, null, 2)], { type: "application/json" }),
-        nomFichier(`MineBackfill_classe_${filtreEffectif}`, "json"));
+      telechargerBlob(new Blob([JSON.stringify(demoEtat ? marquerJsonDemo(donnees as object) : donnees, null, 2)], { type: "application/json" }),
+        nomFichier(`MineBackfill_classe${suffixe}_${filtreEffectif}`, "json"));
     } catch (e) {
       window.alert(`Export impossible : ${messageErreurClasse(e)}`);
     } finally {
@@ -237,7 +269,8 @@ export default function ClassePage() {
   /** CSV depuis la classe déjà lue (valeurs mesurées ; copies de conflit exclues). */
   const exporterCsv = (quoi: "eprouvettes" | "synthese") => {
     const lignesCsv = quoi === "eprouvettes" ? lignesCsvEprouvettes(etudiants, sessions, revueDe) : lignesCsvSynthese(etudiants, sessions, revueDe);
-    telechargerTexte(versCsv(lignesCsv), nomFichier(`MineBackfill_classe_${quoi}_${filtreEffectif}`, "csv"), "text/csv;charset=utf-8");
+    telechargerTexte(versCsv(demoEtat ? marquerCsvDemo(lignesCsv) : lignesCsv),
+      nomFichier(`MineBackfill_classe${suffixe}_${quoi}_${filtreEffectif}`, "csv"), "text/csv;charset=utf-8");
   };
 
   /**
@@ -248,16 +281,15 @@ export default function ClassePage() {
    * cette lecture fraîche.
    */
   const exporterJeuEssais = async (format: "csv" | "json", seulementAcceptees = false) => {
-    const sb = getSupabase();
-    if (!sb) return;
+    if (!source) return;
     setExportEnCours(true);
     try {
-      const complet = await lireClasse(sb, { complet: true, session: null });
+      const complet = await source.lireClasse({ complet: true, session: null });
       const exportes = avecFormulationsDeToutesSessions(
         regrouper(complet, profils, sessions, filtreEffectif), regrouper(complet, profils, sessions, "toutes"));
       // Qui a une courbe en ligne (colonne courbe_en_ligne) ; en échec, la
       // colonne reste vide plutôt que de bloquer l'export.
-      const courbesEnLigne = await lireCourbesClasse(sb, false, exportes.map((e) => e.id))
+      const courbesEnLigne = await source.lireCourbesClasse(false, exportes.map((e) => e.id))
         .then((l) => eprouvettesAvecCourbe(exportes, l), () => undefined);
       const jeu = construireJeuEssais({
         etudiants: exportes, sessions, sessionLibelle: libelleSession, courbesEnLigne,
@@ -265,11 +297,13 @@ export default function ClassePage() {
         catalogues: { residus: catalogueResidus, granulats: catalogueGranulats, liants: catalogueLiants },
         maintenant: new Date(), revueDe: revueSur(new Map(complet.map((l) => [cleLigne(l), l.rev]))), seulementAcceptees,
       });
-      const nom = nomFichier(`MineBackfill_jeu-essais${seulementAcceptees ? "-acceptees" : ""}_${filtreEffectif}`, format);
+      const nom = nomFichier(`MineBackfill_jeu-essais${seulementAcceptees ? "-acceptees" : ""}${suffixe}_${filtreEffectif}`, format);
       if (format === "json") {
-        telechargerBlob(new Blob([JSON.stringify(jeuEssaisJson(jeu), null, 2)], { type: "application/json" }), nom);
+        const json = jeuEssaisJson(jeu) as object;
+        telechargerBlob(new Blob([JSON.stringify(demoEtat ? marquerJsonDemo(json) : json, null, 2)], { type: "application/json" }), nom);
       } else {
-        telechargerTexte(versCsv(lignesCsvTable(jeu, "essais")), nom, "text/csv;charset=utf-8");
+        const lignesJeu = lignesCsvTable(jeu, "essais");
+        telechargerTexte(versCsv(demoEtat ? marquerCsvDemo(lignesJeu) : lignesJeu), nom, "text/csv;charset=utf-8");
       }
     } catch (e) {
       window.alert(`Export impossible : ${messageErreurClasse(e)}`);
@@ -283,10 +317,9 @@ export default function ClassePage() {
     // table des revues ; avec une erreur : autre panne, dite telle quelle.
     disponibilite: revues !== null ? { etat: "ok" } : erreurRevues ? { etat: "erreur", message: erreurRevues } : { etat: "base" },
     onPoser: async (d) => {
-      const sb = getSupabase();
-      if (!sb) return false;
+      if (!source) return false;
       try {
-        const r = await poserRevue(sb, { ownerId: ref.etudiantId, id: ref.id, rev, ...d });
+        const r = await source.poserRevue({ ownerId: ref.etudiantId, id: ref.id, rev, ...d });
         setRevues((m) => new Map(m ?? []).set(cleRevue(r.ownerId, r.id), r));
         return true;
       } catch (e) {
@@ -295,10 +328,9 @@ export default function ClassePage() {
       }
     },
     onRetirer: async () => {
-      const sb = getSupabase();
-      if (!sb) return false;
+      if (!source) return false;
       try {
-        await retirerRevue(sb, ref.etudiantId, ref.id);
+        await source.retirerRevue(ref.etudiantId, ref.id);
         setRevues((m) => {
           const n = new Map(m ?? []);
           n.delete(cleRevue(ref.etudiantId, ref.id));
@@ -317,31 +349,34 @@ export default function ClassePage() {
 
   const exporterIcs = () => {
     // Horodatage réel de l'export (dans un gestionnaire : pas de gel par le compilateur).
-    telechargerBlob(new Blob([icsClasse(echeances, new Date())], { type: "text/calendar;charset=utf-8" }),
-      nomFichier(`MineBackfill_classe_echeances_${filtreEffectif}`, "ics"));
+    telechargerBlob(new Blob([icsClasse(echeances, new Date(), { demonstration: !!demoEtat })], { type: "text/calendar;charset=utf-8" }),
+      nomFichier(`MineBackfill_classe${suffixe}_echeances_${filtreEffectif}`, "ics"));
   };
-  const exporterCsvEcheancier = () =>
+  const exporterCsvEcheancier = () => {
     // Même « maintenant » que l'écran : le fichier donne les mêmes jours restants, et le dit.
-    telechargerTexte(versCsv(lignesCsvEcheancier(echeances, maintenant)),
-      nomFichier(`MineBackfill_classe_echeances_${filtreEffectif}`, "csv", maintenant), "text/csv;charset=utf-8");
+    const l = lignesCsvEcheancier(echeances, maintenant);
+    telechargerTexte(versCsv(demoEtat ? marquerCsvDemo(l) : l),
+      nomFichier(`MineBackfill_classe${suffixe}_echeances_${filtreEffectif}`, "csv", maintenant), "text/csv;charset=utf-8");
+  };
 
   /** Rapport PDF (jsPDF chargé à la demande) : la classe, ou un étudiant. */
   const exporterPdf = async (e?: EtudiantClasse) => {
     const ctxRapport: ContexteRapport = {
       session: libelleSession,
-      genereLe: new Date(), alertes, comparaison, annotations, moi: session?.userId ?? "",
+      genereLe: new Date(), alertes, comparaison, annotations, moi,
     };
-    const d: DocumentRapport = e ? documentRapportEtudiant(e, ctxRapport) : documentRapportClasse(etudiants, ctxRapport);
+    const brut: DocumentRapport = e ? documentRapportEtudiant(e, ctxRapport) : documentRapportClasse(etudiants, ctxRapport);
+    const d = demoEtat ? marquerRapportDemo(brut) : brut;
     try {
       const { telechargerRapportPdf } = await import("@/lib/rapport-classe-pdf");
-      await telechargerRapportPdf(d, nomFichier(e ? `MineBackfill_rapport_${e.nom}` : `MineBackfill_rapport_classe_${filtreEffectif}`, "pdf"));
+      await telechargerRapportPdf(d, nomFichier(e ? `MineBackfill_rapport${suffixe}_${e.nom}` : `MineBackfill_rapport${suffixe}_classe_${filtreEffectif}`, "pdf"));
     } catch (err) {
       window.alert(`Rapport impossible : ${messageErreurClasse(err)}`);
     }
   };
 
   if (!monte) return null;
-  if (!cloudConfigure() || !estProf) {
+  if (!demo && (!cloudConfigure() || !estProf)) {
     return (
       <Page>
         <EnTetePage titre="Classe" />
@@ -349,6 +384,10 @@ export default function ClassePage() {
           <p className="classe-rien">
             Ce tableau de bord est réservé à l&apos;enseignant connecté.{" "}
             <Link href="/compte">Se connecter</Link>
+          </p>
+          <p className="classe-rien">
+            Pour voir ce qu&apos;il permet sans compte :{" "}
+            <Link href="/classe?demo=1">voir une démonstration (classe fictive)</Link>.
           </p>
         </Carte>
       </Page>
@@ -364,11 +403,11 @@ export default function ClassePage() {
         <VueDocument doc={doc} etudiant={etudiants.find((e) => e.id === doc.ref.etudiantId)}
           annotations={annotations} onAnnoter={annoter(doc.ref.etudiantId)} ctx={ctx}
           onRetour={fermerDoc} maintenant={maintenant} units={units}
-          catalogue={{ residus: catalogueResidus, granulats: catalogueGranulats, onAjouter: ajouterMateriauOfficiel }}
+          catalogue={demoEtat ? undefined : { residus: catalogueResidus, granulats: catalogueGranulats, onAjouter: ajouterMateriauOfficiel }}
+          demonstration={!!demoEtat}
           revue={doc.ref.kind === "gachee" ? revues?.get(cleRevue(doc.ref.etudiantId, doc.ref.id)) : undefined}
           chargerCourbe={async (e) => {
-            const sb = getSupabase();
-            const c = sb ? await lireCourbe(sb, doc.ref.etudiantId, e.id, e.essai?.sourcePresse?.importeLe) : null;
+            const c = source ? await source.lireCourbe(doc.ref.etudiantId, e.id, e.essai?.sourcePresse?.importeLe) : null;
             return c ? { points: decoderCourbe(c.courbe), origineNonVerifiee: c.origineNonVerifiee } : null;
           }}
           actionsRevue={doc.ref.kind === "gachee" ? actionsRevue(doc.ref, doc.etat === "pret" ? doc.doc.rev : null) : undefined} />
@@ -376,14 +415,16 @@ export default function ClassePage() {
         <>
           <EnTetePage
             titre="Classe"
-            sousTitre="Le travail sauvegardé en ligne par chaque étudiant, en lecture seule. Vos commentaires apparaissent chez l'étudiant concerné, et chez lui seulement."
+            sousTitre={demoEtat
+              ? "Démonstration sur une classe fictive : le tableau de bord tel que l'enseignant le voit."
+              : "Le travail sauvegardé en ligne par chaque étudiant, en lecture seule. Vos commentaires apparaissent chez l'étudiant concerné, et chez lui seulement."}
             actions={
               <>
                 <FiltreSession sessions={sessions} valeur={filtreEffectif} onChange={(v) => { setFiltre(v); setSelId(null); }} />
                 <Menu
                   className="btn-secondary"
                   declencheur={<>{exportEnCours ? "Export…" : "Exporter"} <span className="ui-chevron-bas"><Icone nom="chevron" taille={11} epaisseur={2.4} /></span></>}
-                  titre="Données d'étudiants : à ranger hors de GitHub"
+                  titre={demoEtat ? "Démonstration : chaque fichier porte la mention des données fictives" : "Données d'étudiants : à ranger hors de GitHub"}
                   elements={[
                     { libelle: "Éprouvettes (CSV)", detail: "Une ligne par éprouvette (valeurs mesurées), pour Excel", desactive: etat !== "pret", onSelect: () => exporterCsv("eprouvettes") },
                     { libelle: "Synthèse (CSV)", detail: "Par gâchée et par âge : n, moyenne, écart-type, CV", desactive: etat !== "pret", onSelect: () => exporterCsv("synthese") },
@@ -408,6 +449,13 @@ export default function ClassePage() {
             }
           />
 
+          {demoEtat && (
+            <Bandeau ton="info" titre="Démonstration : classe fictive de 6 étudiants.">
+              {MENTION_DEMO} Rien n&apos;est enregistré : vos revues et commentaires disparaissent au rechargement.
+              Non inclus : courbes de presse, changements de rôle et blocage de comptes, exports d&apos;un calcul.{" "}
+              <Link href="/classe">Quitter la démonstration</Link>
+            </Bandeau>
+          )}
           {etat === "erreur" && (
             <Bandeau ton="danger" role="alert">
               Lecture de la classe impossible : {erreur}. Rien n&apos;est affiché plutôt qu&apos;une classe vide trompeuse ; réessayez avec « Actualiser ».
@@ -459,7 +507,7 @@ export default function ClassePage() {
                 <OngletEcheancier echeances={echeances} onOuvrir={ouvrirDoc} onIcs={exporterIcs} onCsv={exporterCsvEcheancier} />
               )}
               {onglet === "comparaison" && <OngletComparaison comparaison={comparaison} onOuvrir={ouvrirDoc} />}
-              {onglet === "comptes" && <OngletComptes moi={session.userId} onChangement={() => void charger()} />}
+              {onglet === "comptes" && <OngletComptes moi={moi} source={source} onChangement={() => void charger()} />}
             </>
           )}
         </>
