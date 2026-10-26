@@ -41,14 +41,18 @@ export function echeancierClasse(etudiants: EtudiantClasse[], maintenant: Date):
     || a.etudiant.localeCompare(b.etudiant, "fr") || a.eprouvetteCode.localeCompare(b.eprouvetteCode));
 }
 
-/** Calendrier .ics : un événement d'une journée par éprouvette à écraser. */
-export function icsClasse(l: EcheanceClasse[], horodatage: Date): string {
+/**
+ * Calendrier .ics : un événement d'une journée par éprouvette à écraser. En
+ * démonstration (classe fictive), chaque titre commence par « [Démonstration] ».
+ */
+export function icsClasse(l: EcheanceClasse[], horodatage: Date, o: { demonstration?: boolean } = {}): string {
+  const prefixe = o.demonstration ? "[Démonstration] " : "";
   return construireIcs(l.map((x) => ({
     // Unique même si deux étudiants avaient le même id d'éprouvette.
     uid: `${x.etudiantId}.${x.eprouvetteId}@minebackfill`,
     date: x.echeance,
-    titre: `Écraser ${x.eprouvetteCode} (${x.etudiant})`,
-    description: `${x.etudiant} · gâchée ${x.gacheeCode} · ${x.formulation} · ${x.ageJours} j de cure`,
+    titre: `${prefixe}Écraser ${x.eprouvetteCode} (${x.etudiant})`,
+    description: `${prefixe}${x.etudiant} · gâchée ${x.gacheeCode} · ${x.formulation} · ${x.ageJours} j de cure`,
   })), horodatage);
 }
 

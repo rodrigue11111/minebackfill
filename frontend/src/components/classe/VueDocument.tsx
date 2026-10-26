@@ -25,7 +25,7 @@ export type EtatDoc =
   | { ref: RefDoc; etat: "absent" }
   | { ref: RefDoc; etat: "erreur"; message: string };
 
-export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx, onRetour, maintenant, units, catalogue, revue, actionsRevue, chargerCourbe }: {
+export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx, onRetour, maintenant, units, catalogue, revue, actionsRevue, chargerCourbe, demonstration = false }: {
   doc: EtatDoc;
   etudiant: EtudiantClasse | undefined;
   annotations: LigneAnnotation[];
@@ -35,6 +35,8 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
   onRetour: () => void;
   maintenant: Date;
   units: UnitPreferences;
+  /** Classe fictive de démonstration : exports d'un calcul désactivés. */
+  demonstration?: boolean;
   /** Catalogue de l'enseignant (ajout d'un matériau au catalogue officiel). */
   catalogue?: CatalogueEnseignant;
   /** Revue de cette gâchée (décision de l'enseignant), et ses actions. */
@@ -87,7 +89,7 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
         <CarteRevue key={gachee.id} gachee={gachee} actions={actionsRevue}
           revue={revue ? { ...revue, perimee: revuePerimee(revue, revOuverte), aRafraichir: revueEnAvance(revue, revOuverte) } : undefined} />
       )}
-      {resultat && <ResultatLecture resultat={resultat} units={units} />}
+      {resultat && <ResultatLecture resultat={resultat} units={units} demonstration={demonstration} />}
 
       {contenu !== null && (
         <Carte titre="Commentaires" aside="visibles par cet étudiant seulement">

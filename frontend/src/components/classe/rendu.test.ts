@@ -21,6 +21,9 @@ import CarteAlertes from "./CarteAlertes";
 import OngletEcheancier from "./OngletEcheancier";
 import { echeancierClasse } from "@/lib/classe-echeancier";
 import CarteRevue from "./CarteRevue";
+import OngletComptes, { AIDE_COMPTES_DEMO } from "./OngletComptes";
+import { AIDE_EXPORTS_DEMO } from "./ResultatLecture";
+import { classeDemo, sourceDemo } from "@/lib/classe-demo";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";
 const profils: ProfilClasse[] = [{ id: A, email: "alice@x.ca", display_name: "Alice Tremblay", role: "etudiant" }];
@@ -268,5 +271,34 @@ describe("revue de l'enseignant : rendu", () => {
     expect(decide).toContain("Revue : acceptée");
     expect(decide).toContain("modifiée depuis");
     expect(rendu(createElement(DetailEtudiant, base))).not.toContain("À revoir");
+  });
+});
+
+describe("démonstration de la page Classe (classe fictive)", () => {
+  const MAINT = new Date(2026, 9, 26, 12);
+  const dd = classeDemo(MAINT);
+  const et = regrouper(dd.lignes, dd.profils, dd.sessions, dd.sessions[0].id);
+
+  it("onglet Comparaison : 3 groupes, la médiane de repère, l'écart du groupe en rouge", () => {
+    const html = rendu(createElement(OngletComparaison, { comparaison: comparerClasse(et), onOuvrir: () => {} }));
+    expect((html.match(/Écart à la médiane/g) ?? []).length).toBe(3);
+    expect(html).toContain("Repère de dispersion à 28 j : médiane");
+    expect(html).toContain("David Côté");
+    expect(html).toContain("var(--hors-tolerance-texte)");
+    // L'onglet s'ouvre à 28 j : l'éprouvette écrasée à 31 j y est signalée.
+    expect(html).toContain("hors fenêtre d&#x27;âge");
+  });
+
+  it("onglet Comptes : explication visible que les actions sont désactivées", () => {
+    const html = rendu(createElement(OngletComptes, { moi: dd.moi, source: sourceDemo(dd), onChangement: () => {} }));
+    expect(html).toContain(AIDE_COMPTES_DEMO.replace(/'/g, "&#x27;"));
+  });
+
+  it("calcul ouvert en démonstration : exports désactivés, avec leur explication", () => {
+    const sr = et[0].resultats[0];
+    const html = rendu(createElement(ResultatLecture, { resultat: sr, units: DEFAULT_UNITS, demonstration: true }));
+    expect(html).toContain(`>${AIDE_EXPORTS_DEMO.replace(/'/g, "&#x27;")}</p>`);
+    expect((html.match(/disabled=""/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(rendu(createElement(ResultatLecture, { resultat: sr, units: DEFAULT_UNITS }))).not.toContain("Démonstration : les exports");
   });
 });

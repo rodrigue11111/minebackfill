@@ -4,8 +4,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getSupabase } from "@/lib/supabase";
-import { bloquerCompte, definirRole, lireComptes, messageErreurClasse, type CompteClasse } from "@/lib/classe-reseau";
+import { messageErreurClasse, type CompteClasse } from "@/lib/classe-reseau";
+import type { SourceClasse } from "@/lib/classe-source";
 import { dateCourte, Pastille, td, th } from "./commun";
 import { Carte } from "@/components/ui/Carte";
 import { Bandeau } from "@/components/ui/Bandeau";
@@ -34,8 +34,13 @@ export function confirmationAction(action: "nommer" | "retirer" | "bloquer" | "d
   }
 }
 
-export default function OngletComptes({ moi, onChangement }: {
+/** Pourquoi les actions sur les comptes sont désactivées en démonstration. */
+export const AIDE_COMPTES_DEMO = "Démonstration : nommer ou retirer un enseignant et bloquer un compte sont désactivés ; aucun compte réel n'est concerné.";
+
+export default function OngletComptes({ moi, source, onChangement }: {
   moi: string;
+  /** Classe réelle (Supabase) ou démonstration ; null : pas de source, rien à lire. */
+  source: SourceClasse | null;
   /** Un rôle a changé : la classe doit être relue (un étudiant nommé la quitte). */
   onChangement: () => void;
 }) {
@@ -44,30 +49,29 @@ export default function OngletComptes({ moi, onChangement }: {
   const [erreur, setErreur] = useState<string | null>(null);
   const [occupe, setOccupe] = useState<string | null>(null);
 
+  const demonstration = source?.demonstration ?? false;
   const charger = useCallback(async () => {
-    const sb = getSupabase();
-    if (!sb) return;
+    if (!source) return;
     setEtat("chargement");
     try {
-      setComptes(await lireComptes(sb));
+      setComptes(await source.lireComptes());
       setEtat("pret");
     } catch (e) {
       setErreur(messageErreurClasse(e));
       setEtat("erreur");
     }
-  }, []);
+  }, [source]);
   useEffect(() => { void charger(); }, [charger]);
 
   const agir = async (c: CompteClasse, action: "nommer" | "retirer" | "bloquer" | "debloquer") => {
-    const sb = getSupabase();
-    if (!sb || !window.confirm(confirmationAction(action, nomDe(c)))) return;
+    if (!source || demonstration || !window.confirm(confirmationAction(action, nomDe(c)))) return;
     setOccupe(c.id);
     try {
       if (action === "nommer" || action === "retirer") {
-        await definirRole(sb, c.id, action === "nommer" ? "prof" : "etudiant");
+        await source.definirRole(c.id, action === "nommer" ? "prof" : "etudiant");
         onChangement();
       } else {
-        await bloquerCompte(sb, c.id, action === "bloquer");
+        await source.bloquerCompte(c.id, action === "bloquer");
       }
       await charger();
     } catch (e) {
@@ -79,7 +83,8 @@ export default function OngletComptes({ moi, onChangement }: {
 
   const bouton = (c: CompteClasse, action: "nommer" | "retirer" | "bloquer" | "debloquer", libelle: string, desactive = false) => (
     <button type="button" className="btn-secondary" style={{ fontSize: 13, minHeight: 30, padding: "0 12px" }}
-      disabled={occupe !== null || desactive} onClick={() => void agir(c, action)}>{libelle}</button>
+      disabled={occupe !== null || desactive || demonstration} title={demonstration ? AIDE_COMPTES_DEMO : undefined}
+      onClick={() => void agir(c, action)}>{libelle}</button>
   );
 
   return (
@@ -88,6 +93,7 @@ export default function OngletComptes({ moi, onChangement }: {
         Tous les comptes inscrits. Un enseignant voit le travail de toute la classe : ne nommez que des
         personnes de confiance. Bloquer refuse la connexion sans rien effacer.
       </p>
+      {demonstration && <Bandeau ton="info">{AIDE_COMPTES_DEMO}</Bandeau>}
       {etat === "erreur" && (
         <Bandeau ton="danger" role="alert">Lecture des comptes impossible : {erreur}.</Bandeau>
       )}

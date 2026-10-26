@@ -100,6 +100,16 @@ Communiquer ce mot de passe temporaire en personne ; l'étudiant le change
 aussitôt depuis « Compte ». **Son travail n'est jamais en danger** : il reste
 dans son navigateur, et en ligne dans son compte.
 
+### Montrer le tableau de bord de la classe sans compte
+Adresse : `/classe?demo=1` (par exemple
+`https://minebackfill.progicielbelem.com/classe?demo=1`), ou le lien « voir une
+démonstration » de la page Classe. Elle affiche une classe FICTIVE de 6
+étudiants : recettes calculées par le calculateur, mesures UCS inventées, sans
+valeur expérimentale. Rien n'est enregistré et aucune donnée réelle n'est lue ;
+les revues et commentaires faits pendant la démonstration disparaissent au
+rechargement. Utile pour présenter la page au professeur ou à un nouvel
+enseignant avant l'ouverture des comptes.
+
 ### Revoir les gâchées terminées (accepter, refuser)
 Quand un étudiant marque une gâchée « terminée », elle compte dans la tuile
 **« Gâchées à revoir »** de la page Classe et porte la pastille « À revoir »

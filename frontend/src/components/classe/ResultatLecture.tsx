@@ -17,7 +17,15 @@ import { TuilesChiffres } from "@/components/ui/Chiffres";
 import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
 import { Pastille } from "./commun";
 
-export default function ResultatLecture({ resultat: sr, units }: { resultat: SavedResult; units: UnitPreferences }) {
+/** Pourquoi les exports d'un calcul sont désactivés en démonstration. */
+export const AIDE_EXPORTS_DEMO = "Démonstration : les exports d'un calcul (Excel, PDF, feuille labo) sont désactivés ; ils ne porteraient pas la mention des données fictives.";
+
+export default function ResultatLecture({ resultat: sr, units, demonstration = false }: {
+  resultat: SavedResult;
+  units: UnitPreferences;
+  /** Classe fictive : exports désactivés, avec leur explication. */
+  demonstration?: boolean;
+}) {
   const massLabel = MASS_LABELS[units.mass] ?? "kg";
   const toMass = (kg: number | null | undefined) => fromStoreMass(kg, units.mass);
   // Nom du liant n : le catalogue FIGÉ avec le résultat (celui de l'étudiant
@@ -39,14 +47,15 @@ export default function ResultatLecture({ resultat: sr, units }: { resultat: Sav
         aside={sr.solverVersion ? `formules ${sr.solverVersion}` : undefined}
         actions={
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button type="button" className="btn-contour" onClick={() => void exporterResultat(sr, "excel", units)}>Excel</button>
-            <button type="button" className="btn-contour" onClick={() => void exporterResultat(sr, "pdf", units)}>PDF</button>
+            <button type="button" className="btn-contour" disabled={demonstration} title={demonstration ? AIDE_EXPORTS_DEMO : undefined} onClick={() => void exporterResultat(sr, "excel", units)}>Excel</button>
+            <button type="button" className="btn-contour" disabled={demonstration} title={demonstration ? AIDE_EXPORTS_DEMO : undefined} onClick={() => void exporterResultat(sr, "pdf", units)}>PDF</button>
             {sr.category !== "RRC" && (
-              <button type="button" className="btn-contour" onClick={() => void exporterResultat(sr, "feuille", units)}>Feuille labo</button>
+              <button type="button" className="btn-contour" disabled={demonstration} title={demonstration ? AIDE_EXPORTS_DEMO : undefined} onClick={() => void exporterResultat(sr, "feuille", units)}>Feuille labo</button>
             )}
           </div>
         }
       >
+        {demonstration && <p className="ui-liste-pied" style={{ margin: 0 }}>{AIDE_EXPORTS_DEMO}</p>}
         {etatVersion(sr.solverVersion, sr.method) === "obsolete" && (
           <div>
             <Pastille ton="ambre" title="Calculé avec une version antérieure des formules : les masses peuvent être incorrectes.">anciennes formules</Pastille>
