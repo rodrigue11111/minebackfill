@@ -205,7 +205,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
               <thead>
                 <tr>
-                  {["Éprouvette", "Âge cible", "Coulée", "Échéance", "Essai", "Âge réel", "Charge (kN)", "Diam. (mm)", "Masse (g)", "Vitesse", "UCS (kPa)", "Rupture"].map((t, i) => (
+                  {["Éprouvette", "Âge cible", "Coulée", "Échéance", "Essai", "Âge réel", "Charge (kN)", "Diam. (mm)", "Masse (g)", "Vitesse de chargement", "UCS (kPa)", "Mode de rupture"].map((t, i) => (
                     <th key={t} style={i >= 5 && i <= 10 ? { ...th, textAlign: "right" } : th}>{t}</th>
                   ))}
                 </tr>

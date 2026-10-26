@@ -103,6 +103,9 @@ describe("vues de l'enseignant — rendu", () => {
     expect(html).toContain("Eau de procédé");
     expect(html).toContain("Chambre humide");
     expect(html).toContain("Cylindre 50 × 100 mm");
+    // En-têtes complets : « Rupture » se lisait comme une valeur à la rupture (l'UCS).
+    expect(html).toContain(">Vitesse de chargement<");
+    expect(html).toContain(">Mode de rupture<");
     expect(html).toContain("1 mm/min");
     expect(html).toContain("Cônes aux deux extrémités : cône");
     expect(html).toContain("Non renseigné : ");
