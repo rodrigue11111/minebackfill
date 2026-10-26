@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import EditeurGachee from "./EditeurGachee";
+import CarteEprouvettes from "./CarteEprouvettes";
 import FormEssaiUCS from "./FormEssaiUCS";
 import CourbeContrainteDeformation from "./CourbeContrainteDeformation";
 import type { Gachee } from "@/lib/gachee";
@@ -244,5 +245,28 @@ describe("mesures du jour : valeur visée, écart, w de la pâte déduit de Cw (
     const html = avecMesures({ wMesurePct: 31.2, cwMesurePct: undefined });
     expect(html).toContain("31,2");
     expect(html).toContain("Saisi dans une version précédente.");
+  });
+});
+
+describe("éprouvettes : moule repris du contenant du calcul (2026-10-26)", () => {
+  const vierge = { ...gachee, eprouvettes: [] } as Gachee;
+  const carte = (mouleFormulation?: { diametreMm: number; hauteurMm: number }) => renderToStaticMarkup(createElement(CarteEprouvettes, {
+    gachee: vierge, maintenant: new Date(2026, 9, 7, 9), onChange: () => {}, idImport: "import", mouleFormulation,
+  }));
+
+  it("moule de mêmes dimensions qu'un moule proposé : sélectionné, avec sa provenance", () => {
+    const html = carte({ diametreMm: 76.2, hauteurMm: 152.4 });
+    expect(html).toMatch(/<option value="1" selected="">Cylindre 76,2 × 152,4 mm<\/option>/);
+    expect(html).toContain("Repris du contenant du calcul (Informations).");
+  });
+
+  it("autre cylindre : proposé comme « moule du calcul »", () => {
+    expect(carte({ diametreMm: 38, hauteurMm: 76 })).toMatch(/<option value="calcul" selected="">Cylindre 38 × 76 mm \(calcul\)<\/option>/);
+  });
+
+  it("sans moule dans le calcul : « Non précisé », comme avant", () => {
+    const html = carte();
+    expect(html).toMatch(/<option value="" selected="">Non précisé<\/option>/);
+    expect(html).not.toContain("Repris du contenant du calcul");
   });
 });

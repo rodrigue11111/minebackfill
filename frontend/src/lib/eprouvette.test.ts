@@ -278,3 +278,26 @@ describe("fenêtre d'âge à l'essai (gardé dans la moyenne, signalé)", () => 
     expect(mentionHorsFenetre(0)).toBe("");
   });
 });
+
+describe("moule repris du contenant de la formulation (2026-10-26)", () => {
+  it("rayon et hauteur en cm : cylindre en mm, arrondi au centième", async () => {
+    const { mouleDepuisContenant } = await import("./eprouvette");
+    expect(mouleDepuisContenant({ container_type: "rayon_hauteur", container_radius: 3.81, container_height: 15.24 })).toEqual({ diametreMm: 76.2, hauteurMm: 152.4 });
+    expect(mouleDepuisContenant({ container_type: "rayon_hauteur", container_radius: 1.9, container_height: 7.6 })).toEqual({ diametreMm: 38, hauteurMm: 76 });
+  });
+
+  it("autres contenants, dimensions absentes ou nulles : rien (la forme n'est pas sûre)", async () => {
+    const { mouleDepuisContenant } = await import("./eprouvette");
+    expect(mouleDepuisContenant({ container_type: "section_hauteur", container_radius: 3.81, container_height: 15.24 })).toBeUndefined();
+    expect(mouleDepuisContenant({ container_type: "volume" })).toBeUndefined();
+    expect(mouleDepuisContenant({ container_type: "rayon_hauteur", container_radius: 0, container_height: 15 })).toBeUndefined();
+    expect(mouleDepuisContenant(undefined)).toBeUndefined();
+  });
+
+  it("choix par défaut : le moule proposé de mêmes dimensions, sinon le moule du calcul, sinon rien", async () => {
+    const { choixMouleParDefaut, MOULES_PROPOSES } = await import("./eprouvette");
+    expect(MOULES_PROPOSES[Number(choixMouleParDefaut({ diametreMm: 76.2, hauteurMm: 152.4 }))].libelle).toBe("Cylindre 76,2 × 152,4 mm");
+    expect(choixMouleParDefaut({ diametreMm: 38, hauteurMm: 76 })).toBe("calcul");
+    expect(choixMouleParDefaut(undefined)).toBe("");
+  });
+});

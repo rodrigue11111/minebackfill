@@ -15,7 +15,7 @@ import {
 } from "@/lib/gachee";
 import { completudeGachee, listeManquants } from "@/lib/completude";
 import type { Annotation } from "@/lib/annotations";
-import { agregerParAge, mentionHorsFenetre } from "@/lib/eprouvette";
+import { agregerParAge, mentionHorsFenetre, type MouleCylindre } from "@/lib/eprouvette";
 import { avisMasseHorsLabo, masseHorsLabo } from "@/lib/contenant";
 import { ancresGachee, repartirAnnotations } from "@/lib/ancres";
 import { EnTetePage } from "@/components/ui/Page";
@@ -131,9 +131,11 @@ const TYPES_AJOUT: { valeur: Ajustement["type"]; libelle: string }[] = [
   { valeur: "granulat", libelle: "Granulat" }, { valeur: "liant", libelle: "Liant" },
 ];
 
-export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null, parametres }: {
+export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null, parametres, mouleFormulation }: {
   gachee: Gachee;
   maintenant: Date;
+  /** Moule tiré du contenant de la formulation : proposé à l'ajout d'éprouvettes. */
+  mouleFormulation?: MouleCylindre;
   /** Paramètres VISÉS de la formulation (parametresEffectifs) : Cw visé à côté du Cw mesuré. */
   parametres?: ParametresFormulation;
   /** Décision de l'enseignant sur cette gâchée (lue en ligne), s'il y en a une. */
@@ -311,7 +313,7 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
           </Carte>
 
           <div data-section="eprouvettes">
-            <CarteEprouvettes key={g.id} gachee={g} maintenant={maintenant} onChange={(eprouvettes) => onMaj({ eprouvettes })}
+            <CarteEprouvettes key={g.id} gachee={g} maintenant={maintenant} mouleFormulation={mouleFormulation} onChange={(eprouvettes) => onMaj({ eprouvettes })}
               idImport={idImport} inviterAjout={inviterAjout} notes={parAncre} connecte={connecte} />
           </div>
 
