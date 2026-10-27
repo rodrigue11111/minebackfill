@@ -450,7 +450,7 @@ function TableauClasse({ demo }: { demo: boolean }) {
           />
 
           {demoEtat && (
-            <Bandeau ton="info" titre="Démonstration : classe fictive de 6 étudiants.">
+            <Bandeau ton="info" titre="Démonstration : classe fictive de 7 étudiants.">
               {MENTION_DEMO} Rien n&apos;est enregistré : vos revues et commentaires disparaissent au rechargement.
               Non inclus : courbes de presse, changements de rôle et blocage de comptes, exports d&apos;un calcul.{" "}
               <Link href="/classe">Quitter la démonstration</Link>
@@ -494,8 +494,8 @@ function TableauClasse({ demo }: { demo: boolean }) {
                       <TableauEtudiants etudiants={etudiants} annotations={annotations} selId={selId} onChoisir={setSelId}
                         couleurDe={couleurDe} alertesParEtudiant={alertesParEtudiant} />
                       {sel && (
-                        <DetailEtudiant etudiant={sel} annotations={annotations} lignes={lignes}
-                          onAnnoter={annoter(sel.id)} ctx={ctx} onOuvrir={ouvrirDoc} onRapport={() => void exporterPdf(sel)}
+                        <DetailEtudiant etudiant={sel} annotations={annotations}
+                          onOuvrir={ouvrirDoc} onRapport={() => void exporterPdf(sel)}
                           revueDe={revueDe ? (id) => revueDe(sel.id, id) : undefined} />
                       )}
                     </div>
