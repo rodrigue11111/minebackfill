@@ -8,7 +8,9 @@
 import {
   loadGacheesFromStorage, persistGachees,
   loadProtocolesFromStorage, persistProtocoles,
+  loadMoulesFromStorage, persistMoules,
 } from "./store";
+import { fusionnerMoules } from "./moules";
 import type { Gachee } from "./gachee";
 import type { Protocole } from "./protocole";
 import { ecrireLocal } from "./persisted";
@@ -38,6 +40,7 @@ const CLES = {
   gachees: "minebackfill_gachees",
   protocoles: "minebackfill_protocoles",
   sessions: "minebackfill_sessions",
+  moules: "minebackfill_moules",
 } as const;
 
 // Clés du laboratoire : elles ne passent PAS par lire()/ecrireLocal().
@@ -45,7 +48,8 @@ const CLES = {
 // renverrait l'enveloppe, donc `Array.isArray` serait faux et la fusion par id
 // impossible. On passe par les accesseurs du store, qui rendent des données
 // DÉJÀ MIGRÉES, et le fichier porte alors des tableaux nus.
-const CLES_LABO = ["gachees", "protocoles"] as const;
+// Les moules enregistrés (v7) sont dans le même cas.
+const CLES_LABO = ["gachees", "protocoles", "moules"] as const;
 type CleLabo = (typeof CLES_LABO)[number];
 function estCleLabo(nom: string): nom is CleLabo {
   return (CLES_LABO as readonly string[]).includes(nom);
@@ -74,9 +78,11 @@ function deballer(x: unknown): unknown[] | null {
 //      l'import, comme les protocoles).
 // v6 : courbes de presse rangées HORS des gâchées (IndexedDB) : le fichier
 //      les porte dans `courbes` (par id d'éprouvette, en colonnes).
+// v7 : moules enregistrés (2026-10-26) ; à l'import, fusion par id, le local
+//      gagne (comme les gâchées), jamais un remplacement.
 // Une sauvegarde d'une version antérieure reste importable — les clés absentes
 // sont simplement ignorées (voir importerDonnees).
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 interface Backup {
   application: string;
@@ -119,7 +125,7 @@ export async function exporterDonnees(magasin: MagasinCourbes | null = magasinCo
       Object.entries(CLES).map(([nom, cle]) => [
         nom,
         estCleLabo(nom)
-          ? (nom === "gachees" ? loadGacheesFromStorage() : loadProtocolesFromStorage())
+          ? (nom === "gachees" ? loadGacheesFromStorage() : nom === "moules" ? loadMoulesFromStorage() : loadProtocolesFromStorage())
           : lire(cle),
       ]),
     ),
@@ -141,9 +147,9 @@ export interface ResultatImport {
 
 /**
  * Importe un fichier de sauvegarde.
- * - listes avec id (résultats, journal, gâchées de labo) : fusion — les
- *   entrées importées s'ajoutent, les id déjà présents sont conservés tels
- *   quels ;
+ * - listes avec id (résultats, journal, gâchées de labo, moules
+ *   enregistrés) : fusion — les entrées importées s'ajoutent, les id déjà
+ *   présents sont conservés tels quels ;
  * - réglages (prix, unités, catalogue de liants, constantes, projet,
  *   protocoles de labo) : remplacés par le contenu du fichier.
  * Recharger les données dans le store après import (loadSavedResults,
@@ -206,6 +212,11 @@ export async function importerDonnees(
           nouveaux = resoudreCourbesImportees(nouveaux, courbesFichier, enregistrees);
           ecrireOuEchouer(persistGachees([...nouveaux, ...existant]));
           fusionnes += nouveaux.length;
+        } else if (nom === "moules") {
+          // Moules enregistrés : fusion par id, l'entrée locale gagne.
+          const f = fusionnerMoules(loadMoulesFromStorage(), items);
+          ecrireOuEchouer(persistMoules(f.moules));
+          fusionnes += f.ajoutes;
         } else {
           // Les protocoles sont des procédures décidées par l'enseignant :
           // remplacement, comme les autres réglages.

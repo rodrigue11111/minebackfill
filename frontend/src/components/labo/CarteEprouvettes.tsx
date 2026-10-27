@@ -36,6 +36,7 @@ import { FilEtudiant } from "@/components/AnnotationsDoc";
 import ImportPresse from "./ImportPresse";
 import FormEssaiUCS from "./FormEssaiUCS";
 import { lireCourbe } from "@/lib/classe-reseau";
+import { cylindreDe } from "@/lib/moules";
 import { getSupabase } from "@/lib/supabase";
 import { dateCourteFr, imprimerHtml, isoVersDateInput, nouvelId } from "./outils";
 
@@ -65,6 +66,15 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
   const [mouleChoixUtilisateur, setMouleChoix] = useState<string | null>(null);
   const mouleChoix = mouleChoixUtilisateur ?? choixMouleParDefaut(mouleFormulation);
   const [moule, setMoule] = useState("");
+  // Moules enregistrés de forme cylindrique (2026-10-26), sauf ceux déjà
+  // proposés (usuels, ou moule du calcul).
+  const memesDimensions = (a: MouleCylindre, b: MouleCylindre) =>
+    Math.abs(a.diametreMm - b.diametreMm) <= 0.05 && Math.abs(a.hauteurMm - b.hauteurMm) <= 0.05;
+  const moulesEnregistres = useStore((s) => s.moules)
+    .map((m) => ({ m, c: cylindreDe(m) }))
+    .filter((x): x is { m: typeof x.m; c: MouleCylindre } => !!x.c
+      && !MOULES_PROPOSES.some((p) => memesDimensions(p, x.c!))
+      && !(mouleFormulation && memesDimensions(mouleFormulation, x.c!)));
   const [ouverte, setOuverte] = useState<string | null>(null);
   const uid = useStore((s) => s.session?.userId ?? null);
 
@@ -106,7 +116,8 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
     for (let i = 0; i < n; i++) {
       const code = genererCodeEprouvette(gachee.code, [...gachee.eprouvettes, ...nouvelles]);
       const propose = mouleChoix === "calcul" ? mouleFormulation
-        : mouleChoix !== "" && mouleChoix !== "autre" ? MOULES_PROPOSES[Number(mouleChoix)] : undefined;
+        : mouleChoix.startsWith("perso:") ? moulesEnregistres.find((x) => `perso:${x.m.id}` === mouleChoix)?.c
+          : mouleChoix !== "" && mouleChoix !== "autre" ? MOULES_PROPOSES[Number(mouleChoix)] : undefined;
       nouvelles.push({
         id: nouvelId(), code, couleLe: iso, ageJours: a, statut: "en_cure",
         ...(propose
@@ -340,6 +351,9 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                 {mouleFormulation && choixMouleParDefaut(mouleFormulation) === "calcul" && (
                   <option value="calcul">{libelleMoule({ mouleDiametreMm: mouleFormulation.diametreMm, mouleHauteurMm: mouleFormulation.hauteurMm })} (calcul)</option>
                 )}
+                {moulesEnregistres.map(({ m, c }) => (
+                  <option key={m.id} value={`perso:${m.id}`}>{m.nom} ({libelleMoule({ mouleDiametreMm: c.diametreMm, mouleHauteurMm: c.hauteurMm })})</option>
+                ))}
                 <option value="autre">Autre</option>
               </select>
             </Champ>

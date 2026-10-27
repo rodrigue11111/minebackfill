@@ -69,11 +69,11 @@ async function exporte(m: MagasinCourbes | null = null): Promise<{ schema: numbe
   return JSON.parse(texteExporte);
 }
 
-describe("backup — export du laboratoire (schémas 4 à 6)", () => {
+describe("backup — export du laboratoire (schémas 4 à 7)", () => {
   it("le fichier porte les gâchées et les protocoles", async () => {
     localStorage.setItem("minebackfill_gachees", JSON.stringify({ v: 2, data: [gachee("g1")] }));
     const b = await exporte();
-    expect(b.schema).toBe(6);
+    expect(b.schema).toBe(7);
     expect(Array.isArray(b.data.gachees)).toBe(true);
     expect((b.data.gachees as { id: string }[])[0].id).toBe("g1");
     // Les protocoles sont semés par défaut quand la clé est absente.
@@ -270,5 +270,35 @@ describe("backup — revues de l'enseignant", () => {
     localStorage.setItem("minebackfill_revues", JSON.stringify({ v: 1, data: [{ kind: "gachee", id: "g1", decision: "acceptee" }] }));
     const b = await exporte();
     expect(JSON.stringify(b)).not.toContain("acceptee");
+  });
+});
+
+describe("backup — moules enregistrés (schéma 7, 2026-10-26)", () => {
+  const cyl = (id: string, nom: string, rCm: number) =>
+    ({ id, nom, geometrie: { container_type: "rayon_hauteur", container_radius: rCm, container_height: 15.24 } });
+
+  it("le fichier porte les moules, en tableau nu", async () => {
+    localStorage.setItem("minebackfill_moules", JSON.stringify({ v: 1, data: [cyl("m1", "Mon moule", 3.81)] }));
+    const b = await exporte();
+    expect(b.data.moules).toEqual([cyl("m1", "Mon moule", 3.81)]);
+  });
+
+  it("restauration : fusion par id, le local gagne, les absents s'ajoutent", async () => {
+    localStorage.setItem("minebackfill_moules", JSON.stringify({ v: 1, data: [cyl("m1", "Renommé ici", 3.81)] }));
+    const res = await importerDonnees(fichier({
+      application: "MineBackfill", schema: 7, exportedAt: "x",
+      data: { moules: [cyl("m1", "Ancien nom", 3.81), cyl("m2", "Petit moule", 2.5), { id: "casse", nom: "sans géométrie" }] },
+    }));
+    expect(res.ok).toBe(true);
+    const lus = JSON.parse(localStorage.getItem("minebackfill_moules")!);
+    expect(lus.v).toBe(1);
+    expect(lus.data.map((m: { id: string; nom: string }) => [m.id, m.nom])).toEqual([["m1", "Renommé ici"], ["m2", "Petit moule"]]);
+  });
+
+  it("une sauvegarde au schéma 6, sans moules, reste importable et ne touche pas aux moules", async () => {
+    localStorage.setItem("minebackfill_moules", JSON.stringify({ v: 1, data: [cyl("m1", "Mon moule", 3.81)] }));
+    const res = await importerDonnees(fichier({ application: "MineBackfill", schema: 6, exportedAt: "x", data: { gachees: [gachee("g9")] } }));
+    expect(res.ok).toBe(true);
+    expect(JSON.parse(localStorage.getItem("minebackfill_moules")!).data).toHaveLength(1);
   });
 });
