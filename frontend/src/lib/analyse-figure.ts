@@ -8,26 +8,26 @@
 // et le rechargement d'un fichier ne gardait que la première courbe. Ici :
 //   - une figure porte SA provenance et SON empreinte, prises au départ de la
 //     requête ; une réponse ne les reçoit jamais d'ailleurs ;
-//   - chaque requête a un numéro (`seq`) ; changer de calcul ou de recette,
-//     effacer, ou recharger un fichier fait passer au numéro suivant, et la
-//     réponse d'un numéro dépassé est ignorée ;
-//   - le fichier rechargé restitue toutes ses variantes.
+//   - chaque requête a un numéro (`seq`) ; changer de calcul ou de recette, ou
+//     effacer, fait passer au numéro suivant, et la réponse d'un numéro
+//     dépassé est ignorée.
+// 2026-10-26 : le rechargement d'un balayage exporté (.json) est retiré, à la
+// demande de l'utilisateur (usage rare, source de confusion). L'export JSON
+// reste ; lireArtefact (analyse-artefact.ts) en valide toujours le format.
 
-import type { Artefact, BalayageArtefact } from "./analyse-artefact";
+import type { BalayageArtefact } from "./analyse-artefact";
 import type { InstantaneAnalyse } from "./analyse-instantane";
-import { TIRETS_VARIANTE, type VarianteAffichee } from "./analyse-variantes";
-import { RECIPE_COLORS } from "./recipe-theme";
+import type { VarianteAffichee } from "./analyse-variantes";
 
 export interface FigureCourbes {
   /** Un résultat par variante (un seul hors comparaison), la recette analysée d'abord. */
   resultats: BalayageArtefact[];
   /** Variantes dessinées, alignées sur `resultats` ; null : une seule courbe. */
   variantes: VarianteAffichee[] | null;
-  /** Provenance prise AU DÉPART de la requête (ou celle du fichier). */
+  /** Provenance prise AU DÉPART de la requête. */
   instantane: InstantaneAnalyse;
-  /** Empreinte des entrées au départ ; null : figure d'un fichier, jamais périmée. */
+  /** Empreinte des entrées au départ ; null : inconnue, la figure n'est jamais dite périmée. */
   empreinte: string | null;
-  rechargee: boolean;
 }
 
 export interface EtatFigure {
@@ -51,9 +51,7 @@ export type ActionFigure =
   | { type: "annuler"; seq: number }
   /** Changement de paramètre ou d'exemple : la figure est retirée. */
   | { type: "effacer"; seq: number }
-  /** Fichier rechargé : il remplace la figure et toute requête en cours. */
-  | { type: "charger"; seq: number; figure: FigureCourbes }
-  /** Message seul (fichier illisible, changement de mode) : la figure est gardée. */
+  /** Message seul (changement de mode) : la figure est gardée. */
   | { type: "message"; erreur: string | null };
 
 export function reduireFigure(e: EtatFigure, a: ActionFigure): EtatFigure {
@@ -63,7 +61,6 @@ export function reduireFigure(e: EtatFigure, a: ActionFigure): EtatFigure {
     case "echec": return a.seq !== e.seq ? e : { ...e, enCours: false, figure: null, erreur: a.message };
     case "annuler": return { ...e, seq: a.seq, enCours: false };
     case "effacer": return { ...e, seq: a.seq, enCours: false, figure: null, erreur: null };
-    case "charger": return { seq: a.seq, enCours: false, figure: a.figure, erreur: null };
     case "message": return { ...e, erreur: a.erreur };
   }
 }
@@ -71,23 +68,6 @@ export function reduireFigure(e: EtatFigure, a: ActionFigure): EtatFigure {
 /** La figure a-t-elle été calculée avec d'autres entrées que les entrées actuelles ? */
 export function figurePerimee(figure: FigureCourbes | null, empreinteCourante: string | null): boolean {
   return !!figure && figure.empreinte !== null && figure.empreinte !== empreinteCourante;
-}
-
-/** Variante d'un fichier : couleur de SA recette quand le fichier la donne, sinon de sa position. */
-function varianteDeFichier(recette: number | null, label: string, i: number): VarianteAffichee {
-  const n = recette ?? i + 1;
-  return { recette, label, couleur: RECIPE_COLORS[(n - 1) % RECIPE_COLORS.length], tirets: TIRETS_VARIANTE[i % TIRETS_VARIANTE.length] };
-}
-
-/** Figure d'un fichier rechargé : TOUTES ses variantes, sa provenance, jamais périmée. */
-export function figureDepuisArtefact(a: Artefact): FigureCourbes {
-  const variantes = a.resultats.length > 1
-    ? a.resultats.map((_, i) => {
-        const d = a.variantesDetail[i];
-        return varianteDeFichier(d?.recette ?? null, d?.label || a.variantes[i] || `Variante ${i + 1}`, i);
-      })
-    : null;
-  return { resultats: a.resultats, variantes, instantane: a.instantane, empreinte: null, rechargee: true };
 }
 
 /** Contenu du fichier JSON exporté (format /2, `variantesDetail` en plus). */

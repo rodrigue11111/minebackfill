@@ -33,13 +33,13 @@ import {
 } from "@/lib/analyse-series";
 import PanneauVariation from "@/components/analyse/PanneauVariation";
 import { estParamCle, valeurReference } from "@/lib/analyse-fixe";
-import { bornerPoints, lireArtefact, POINTS_MAX, POINTS_MIN, type BalayageArtefact } from "@/lib/analyse-artefact";
+import { bornerPoints, POINTS_MAX, POINTS_MIN, type BalayageArtefact } from "@/lib/analyse-artefact";
 import { corpsBalayage, empreinteBalayage, type EntreesBalayage } from "@/lib/analyse-corps";
 import {
   baseDepuisCalcul, calculsAnalysables, choisirCalcul, instantaneDepuisSource, lireValeursRecette, notesSource,
 } from "@/lib/analyse-source";
 import {
-  artefactDepuisFigure, ETAT_FIGURE_INITIAL, figureDepuisArtefact, figurePerimee, reduireFigure,
+  artefactDepuisFigure, ETAT_FIGURE_INITIAL, figurePerimee, reduireFigure,
 } from "@/lib/analyse-figure";
 import {
   variantesDepuisRecettes, comparaisonPossible, construireTracesVariantes,
@@ -147,7 +147,6 @@ function AnalyseContenu() {
   // survenu, et elle garde la provenance prise à son départ.
   const [etat, dispatch] = useReducer(reduireFigure, ETAT_FIGURE_INITIAL);
   const seq = useRef(0);
-  const fichierRef = useRef<HTMLInputElement>(null);
 
   const choisir = (id: string) => {
     setIdChoisi(id);
@@ -239,33 +238,15 @@ function AnalyseContenu() {
       }));
       dispatch({
         type: "reponse", seq: mien,
-        figure: { resultats: reponses, variantes: variantesDepart, instantane, empreinte: empreinteDepart, rechargee: false },
+        figure: { resultats: reponses, variantes: variantesDepart, instantane, empreinte: empreinteDepart },
       });
     } catch (e) {
       echouer(e instanceof TypeError ? messageErreurReseau() : e instanceof Error ? e.message : "Erreur inconnue");
     }
   }
 
-  /**
-   * Recharge un balayage exporté précédemment, avec TOUTES ses variantes. La
-   * provenance affichée reste celle du FICHIER : la réécrire avec le calcul
-   * sélectionné donnerait une figure ancienne portant une provenance neuve,
-   * c'est-à-dire une provenance fausse. Un tracé en cours est abandonné.
-   */
-  async function rechargerArtefact(f: File | undefined) {
-    if (!f) return;
-    const lu = lireArtefact(await f.text());
-    if (!lu.ok) { dispatch({ type: "message", erreur: lu.erreur }); return; }
-    const fig = figureDepuisArtefact(lu.artefact);
-    dispatch({ type: "charger", seq: ++seq.current, figure: fig });
-    // Contrôles alignés sur le fichier.
-    setParam(fig.resultats[0].param);
-    const p = lu.artefact.instantane.parametre;
-    if (p) { setXMin(p.min); setXMax(p.max); setSteps(bornerPoints(p.points)); }
-  }
-
-  // ── Figure affichée : ses libellés viennent d'ELLE (un fichier rechargé
-  //    garde sa catégorie et son paramètre), pas des contrôles. ──
+  // ── Figure affichée : ses libellés viennent d'ELLE (sa catégorie et son
+  //    paramètre au départ de la requête), pas des contrôles. ──
   const res = figure?.resultats[0] ?? null;
   const figCategorie: CategorieAnalyse = res?.category === "RPG" ? "RPG" : "RPC";
   const figParam = res?.param ?? paramActif;
@@ -460,25 +441,12 @@ function AnalyseContenu() {
                     title={lecture && !lecture.ok ? lecture.raison : !lecture ? "Aucun calcul sauvegardé à analyser." : undefined}>
                     {etat.enCours ? "Calcul en cours…" : "Tracer la courbe"}
                   </button>
-                  <button type="button" onClick={() => fichierRef.current?.click()} className="btn-secondary"
-                    title="Rouvre un balayage exporté en JSON, avec sa provenance d'origine">
-                    Recharger un balayage (.json)
-                  </button>
-                  <input ref={fichierRef} type="file" accept="application/json,.json" style={{ display: "none" }}
-                    onChange={(e) => { void rechargerArtefact(e.target.files?.[0]); e.target.value = ""; }} />
                 </div>
               </div>
             </Carte>
 
             {figure && res && (
               <Carte titre="Courbe de réponse">
-                {figure.rechargee && (
-                  <Bandeau ton="info">
-                    Balayage <strong>rechargé depuis un fichier</strong>. Le bloc de provenance ci-dessous
-                    est celui d&apos;origine, pas celui du calcul sélectionné.
-                    Relancez « Tracer la courbe » pour repartir du calcul sélectionné.
-                  </Bandeau>
-                )}
                 {perime && (
                   <Bandeau ton="alerte" role="status" titre="Courbe périmée.">
                     Les entrées ont changé depuis ce tracé (paramètre, plage, calcul ou recette) :
