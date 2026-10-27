@@ -85,7 +85,7 @@ describe("analyse-fixe — tenuFixe", () => {
 
   it("omet le contenant quand l'instantané est ancien (champs absents)", () => {
     const labels = tenuFixe(inst(), "binder_mass_pct").map((x) => x.label);
-    expect(labels).not.toContain("Contenant");
+    expect(labels).not.toContain("Moule");
     expect(labels).not.toContain("Facteur de perte κ");
   });
 
@@ -94,8 +94,8 @@ describe("analyse-fixe — tenuFixe", () => {
       inst({ contenant: { type: "rayon_hauteur" }, contenants: 3, facteurSecurite: 1.1 }),
       "binder_mass_pct",
     );
-    expect(t.find((x) => x.label === "Contenant")?.valeur).toBe("Rayon et hauteur");
-    expect(t.find((x) => x.label === "Nombre de contenants")?.valeur).toBe("3");
+    expect(t.find((x) => x.label === "Moule")?.valeur).toBe("Rayon et hauteur");
+    expect(t.find((x) => x.label === "Nombre de moules")?.valeur).toBe("3");
   });
 
   it("chaque ligne porte un libellé et une valeur non vides", () => {
@@ -115,8 +115,8 @@ describe("analyse-fixe — tenuFixe, analyse partie d'un calcul sauvegardé", ()
     const val = (label: string) => avec.find((l) => l.label === label)?.valeur;
     expect(val("Recette analysée")).toBe("2 sur 3 du calcul « Essai A » (Dosage selon E/L)");
     expect(val("Volume analysé")).toBe("12,3 L");
-    expect(val("Version des formules de l'analyse")).toBe("gramme-1.1");
-    expect(val("Version du calcul d'origine")).toBe("intra2017-1.0");
+    expect(val("Version des formules de l'analyse")).toBe("1.1, convention actuelle");
+    expect(val("Version du calcul d'origine")).toBe("1.0, convention d'origine");
     expect(avec.some((l) => l.label === "Recettes")).toBe(false);
     expect(tenuFixe(inst(), "binder_mass_pct").find((l) => l.label === "Recettes")?.valeur).toBe("1 (la première de la base)");
   });

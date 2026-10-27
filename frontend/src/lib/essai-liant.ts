@@ -20,12 +20,12 @@ export const OPTIONS_REGLE_LIANT: OptionRegleLiant[] = [
   {
     valeur: "solides_totaux",
     libelle: "Garder le Bw",
-    detail: "Du liant est versé pour tous les grains ajoutés (résidu et granulat) : le Bw ne change pas. Feuille Intra 2017.",
+    detail: "Du liant est versé pour tous les grains ajoutés (résidu et granulat) : le Bw ne change pas.",
   },
   {
     valeur: "residu_ajoute",
     libelle: "Résidu seulement",
-    detail: "Du liant est versé pour le résidu ajouté seulement : un ajout de granulat dilue le Bw. Feuille en grammes.",
+    detail: "Du liant est versé pour le résidu ajouté seulement : un ajout de granulat dilue le Bw.",
   },
   {
     valeur: "aucun",

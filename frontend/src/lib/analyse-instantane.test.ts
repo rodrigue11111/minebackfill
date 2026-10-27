@@ -20,7 +20,7 @@ describe("lignesResume", () => {
   const texte = L.join("\n");
   it("contient la provenance essentielle", () => {
     expect(texte).toContain("Catégorie : RPG");
-    expect(texte).toContain("Version du solveur : intra2017-1.0");
+    expect(texte).toContain("Version du solveur : 1.0, convention d'origine");
     expect(texte).toContain("Pack de conventions : Intra 2017");
     expect(texte).toContain("Taux massique de liant Bw");
     expect(texte).toContain("Gs granulat 2,8"); // décimale française
@@ -59,7 +59,7 @@ describe("analyse-instantane — champs ajoutés (contenant, sorties)", () => {
   it("un instantané sans les nouveaux champs reste lisible", () => {
     const t = lignesResume(base()).join("\n");
     expect(t).toContain("Version du solveur");
-    expect(t).not.toContain("Contenant :");
+    expect(t).not.toContain("Moule :");
     expect(t).not.toContain("Grandeurs tracées");
   });
 
@@ -68,7 +68,7 @@ describe("analyse-instantane — champs ajoutés (contenant, sorties)", () => {
       ...base(), contenant: { type: "rayon_hauteur" }, contenants: 3, facteurSecurite: 1.1,
     }).join("\n");
     expect(t).toContain("Rayon et hauteur"); // libellé lisible, plus le code brut
-    expect(t).toContain("3 contenant(s)");
+    expect(t).toContain("3 moule(s)");
     expect(t).toContain("facteur de perte κ");
   });
 
@@ -120,7 +120,7 @@ describe("lignesResume : analyse partie d'un calcul sauvegardé (2026-10-25)", (
     expect(t).toContain("Catégorie : RPC · Analyse : Balayage selon la méthode Cw");
     expect(t).toContain("Valeurs de départ : ");
     expect(t).toContain("Volume analysé : 12,3 L (volume total de la recette sauvegardée)");
-    expect(t).toContain("Version des formules de l'analyse : gramme-1.1 · du calcul d'origine : intra2017-1.0");
+    expect(t).toContain("Version des formules de l'analyse : 1.1, convention actuelle · du calcul d'origine : 1.0, convention d'origine");
     expect(t).toContain("Valeurs reconstituées : Constantes absentes");
     expect(t).not.toContain("Version du solveur");
   });

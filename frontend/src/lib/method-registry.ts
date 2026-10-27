@@ -80,7 +80,7 @@ export const METHOD_REGISTRY: MethodDescriptor[] = [
   },
   {
     category: "RPC", method: "slump",
-    labels: { long: "Modèle prédictif (affaissement)", court: "Modèle prédictif", fichier: "modele-predictif", telephone: "Prédictif" },
+    labels: { long: "Dosage selon le slump", court: "Selon le slump", fichier: "selon-slump", telephone: "Slump" },
     description: "Cw prédit à partir de l'affaissement visé",
     quand: QUAND_SLUMP,
     endpoint: "/rpc/slump", stateKey: "slump", resultKey: "slumpResult",
@@ -92,7 +92,7 @@ export const METHOD_REGISTRY: MethodDescriptor[] = [
     quand: QUAND_ESSAI,
     endpoint: "/rpc/essai", stateKey: "essai", resultKey: "essaiResult",
   },
-  // ── RPG (pas de modèle prédictif : il est calé sur le RPC) ──
+  // ── RPG (pas de dosage selon le slump : le modèle est calé sur le RPC) ──
   {
     category: "RPG", method: "dosage_cw",
     labels: { long: "Dosage selon Cw", court: "Selon Cw", fichier: "dosage-Cw", telephone: "Cw" },

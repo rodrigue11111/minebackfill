@@ -275,7 +275,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                 onRefus={(m) => setRefusAjout((r) => ({ ...r, nb: m }))} />
             </Champ>
             <Champ libelle="Moule (facultatif)"
-              aide={mouleFormulation && mouleChoix === choixMouleParDefaut(mouleFormulation) ? "Repris du contenant du calcul (Informations)." : undefined}>
+              aide={mouleFormulation && mouleChoix === choixMouleParDefaut(mouleFormulation) ? "Repris des dimensions des moules du calcul (Informations)." : undefined}>
               <select className="field-input" value={mouleChoix} onChange={(e) => setMouleChoix(e.target.value)}>
                 <option value="">Non précisé</option>
                 {MOULES_PROPOSES.map((m, i) => <option key={m.libelle} value={String(i)}>{m.libelle}</option>)}

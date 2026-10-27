@@ -4,6 +4,7 @@ import { useState } from "react";
 import { empreinteAuDepart, useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import ChampNombre from "@/components/ui/ChampNombre";
+import { KAPPA_AIDE } from "@/lib/contenant";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
 import type { ResiduItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
@@ -14,11 +15,9 @@ import {
 } from "@/lib/rpc_payload";
 import { fromStoreSlump, toStoreSlump, SLUMP_LABELS } from "@/lib/units";
 import { slumpGrandConeMm } from "@/lib/conventions";
-import { num } from "@/lib/format";
 import { messageHorsBornes } from "@/lib/plages";
 import { Field, CardSection, GrilleChamps, ChoixNombreRecettes, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
 
-const KAPPA_AIDE = "1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).";
 
 export default function SlumpForm() {
   const {
@@ -133,7 +132,10 @@ export default function SlumpForm() {
       <CardSection title="Paramètres du mélange">
         <GrilleChamps>
           <Field label="Nombre de moules par recette">
-            <input type="number" className="field-input" min={1} value={slump.desired_qty ?? 1} onChange={(e) => setSlump({ desired_qty: num(e.target.value) })} />
+            {/* ChampNombre, pas <input type="number"> : vidé puis retapé, ce
+                champ affichait « 03 » (2026-10-26). Vide ou 0 : rien n'est écrit. */}
+            <ChampNombre placeholder="1" min={1} messageRefus="Au moins un moule par recette."
+              value={slump.desired_qty ?? 1} onChange={(n) => { if (n !== undefined) setSlump({ desired_qty: n }); }} />
           </Field>
           <Field plage="kappa" valeur={slump.safety_factor} label="Facteur de perte κ" hint={KAPPA_AIDE}>
             <ChampNombre placeholder="1" value={slump.safety_factor} onChange={(n) => setSlump({ safety_factor: n })} />

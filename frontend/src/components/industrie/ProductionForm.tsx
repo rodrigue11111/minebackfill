@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useStore, prixPourLiant, lireBinders, patchBinders, MAX_BINDERS } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
+import ChampNombre from "@/components/ui/ChampNombre";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
 import type { ResiduItem, GranulatItem } from "@/lib/materials";
 import { messageErreurApi } from "@/lib/api-error";
@@ -228,14 +229,17 @@ export default function ProductionForm() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           {(industrie.bw_levels || []).map((bw: number, i: number) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <input
-                type="number"
-                step="0.5"
+              {/* ChampNombre : un champ vidé puis retapé ne garde pas de « 0 » devant (2026-10-26). */}
+              <ChampNombre
+                className=""
                 style={{ ...inputStyle, width: 72, textAlign: "center" }}
+                min={0}
+                ariaLabel={`Niveau de Bw ${i + 1} (%)`}
                 value={bw}
-                onChange={(e) => {
+                onChange={(n) => {
+                  if (n === undefined) return;
                   const arr = [...industrie.bw_levels];
-                  arr[i] = num(e.target.value);
+                  arr[i] = n;
                   setIndustrie({ bw_levels: arr });
                 }}
               />
@@ -348,12 +352,12 @@ export default function ProductionForm() {
       <CardSection title="Paramètres du mélange">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
           <Field label="Quantité (nb. de moules)">
-            <input type="number" style={inputStyle} min={1} value={industrie.desired_qty ?? 1}
-              onChange={(e) => setIndustrie({ desired_qty: num(e.target.value) })} />
+            <ChampNombre className="" style={inputStyle} min={1} messageRefus="Au moins un moule." value={industrie.desired_qty ?? 1}
+              onChange={(n) => { if (n !== undefined) setIndustrie({ desired_qty: n }); }} />
           </Field>
           <Field label="Facteur de sécurité (multiplicateur)">
-            <input type="number" step="any" style={inputStyle} min={1} value={industrie.safety_factor ?? 1}
-              onChange={(e) => setIndustrie({ safety_factor: num(e.target.value) })} />
+            <ChampNombre className="" style={inputStyle} min={1} messageRefus="Le facteur vaut au moins 1." value={industrie.safety_factor ?? 1}
+              onChange={(n) => { if (n !== undefined) setIndustrie({ safety_factor: n }); }} />
           </Field>
         </div>
       </CardSection>

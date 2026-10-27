@@ -75,7 +75,7 @@ export const ESSAIS_NORMALISES: { essai: string; normes: Norme[]; usage: string 
   {
     essai: "Teneur en eau massique",
     normes: [NORMES_REF.D2216],
-    usage: "Séchage à l'étuve (110 ± 5 °C selon la norme). Pour un remblai cimenté, les feuilles de calcul du professeur indiquent 50 °C pendant 48 h ou 105 °C pendant 24 h.",
+    usage: "Séchage à l'étuve (110 ± 5 °C selon la norme). Pour un remblai cimenté, les documents de l'enseignant indiquent 50 °C pendant 48 h ou 105 °C pendant 24 h.",
   },
   {
     essai: "Densité relative des grains du résidu (Gs)",
@@ -165,10 +165,12 @@ export const GLOSSAIRE: EntreeGlossaire[] = [
   { cle: "bws", categorie: "Liants", terme: "Teneur massique de liant", symbole: "Bws", unite: "%", definition: "Masse de liant rapportée à la masse des solides (résidus et granulat, plus le liant). Notée aussi cc.", source: `${COURS}, dia 13-14` },
   { cle: "cb", categorie: "Liants", terme: "Pourcentage massique de liant", symbole: "Cb", unite: "%", definition: "Masse de liant rapportée à la masse totale du remblai (à ne pas confondre avec Bw).", source: `${COURS}, dia 13-14` },
   { cle: "bv", categorie: "Liants", terme: "Taux volumique de liant", symbole: "Bv", unite: "%", definition: "Volume de liant rapporté au volume de résidus (et de granulat pour le RPG).", source: `${COURS}, dia 16 à 18` },
-  { cle: "el", categorie: "Liants", terme: "Rapport eau/liant", symbole: "E/L", definition: "Masse d'eau rapportée à la masse de liant. Le cours l'écrit aussi E/C (eau/ciment), W/C ou w/b ; « eau/liant » reste exact pour un liant composé.", synonymes: ["E/C", "W/C", "w/b"], source: `${COURS}, dia 29-30, 58 et 67 ; classeur Intra 2017 (« Eau/Liant initial ou W/C initial »)` },
-  { cle: "gu", categorie: "Liants", terme: "Ciment Portland GU (usage général)", definition: "Ciment Portland courant ; l'ancien type 10 (« CP10 »).", normes: [NORMES_REF.A3001], source: `${COURS}, dia 37 et 42 ; feuilles de calcul (« (T10) GU »)` },
-  { cle: "hs", categorie: "Liants", terme: "Ciment Portland HS (haute résistance aux sulfates)", definition: "L'ancien type 50 (« CP50 »).", normes: [NORMES_REF.A3001], source: `${COURS}, dia 37 et 42 ; feuilles de calcul (« (T50) HS »)` },
-  { cle: "he", categorie: "Liants", terme: "Ciment Portland HE (haute résistance initiale)", definition: "L'ancien type 30.", normes: [NORMES_REF.A3001], source: `${COURS}, dia 42 ; feuilles de calcul (« (T30) HE »)` },
+  // Origine exacte de la source « documents de l'enseignant » : classeur Intra 2017 (« Eau/Liant initial ou W/C initial »).
+  { cle: "el", categorie: "Liants", terme: "Rapport eau/liant", symbole: "E/L", definition: "Masse d'eau rapportée à la masse de liant. Le cours l'écrit aussi E/C (eau/ciment), W/C ou w/b ; « eau/liant » reste exact pour un liant composé.", synonymes: ["E/C", "W/C", "w/b"], source: `${COURS}, dia 29-30, 58 et 67 ; documents de l'enseignant (« Eau/Liant initial ou W/C initial »)` },
+  // GU, HS, HE : « documents de l'enseignant » = ses feuilles de calcul (« (T10) GU », « (T50) HS », « (T30) HE »).
+  { cle: "gu", categorie: "Liants", terme: "Ciment Portland GU (usage général)", definition: "Ciment Portland courant ; l'ancien type 10 (« CP10 »).", normes: [NORMES_REF.A3001], source: `${COURS}, dia 37 et 42 ; documents de l'enseignant (« (T10) GU »)` },
+  { cle: "hs", categorie: "Liants", terme: "Ciment Portland HS (haute résistance aux sulfates)", definition: "L'ancien type 50 (« CP50 »).", normes: [NORMES_REF.A3001], source: `${COURS}, dia 37 et 42 ; documents de l'enseignant (« (T50) HS »)` },
+  { cle: "he", categorie: "Liants", terme: "Ciment Portland HE (haute résistance initiale)", definition: "L'ancien type 30.", normes: [NORMES_REF.A3001], source: `${COURS}, dia 42 ; documents de l'enseignant (« (T30) HE »)` },
   { cle: "laitier", categorie: "Liants", terme: "Laitier de haut fourneau granulé broyé", definition: "Ajout cimentaire à hydratation latente, activé par le ciment Portland.", synonymes: ["slag", "GGBFS"], normes: [NORMES_REF.C989, NORMES_REF.A3001], source: `${COURS}, dia 37 et 42 (« Slag (GGBFS) »)` },
   { cle: "cendres", categorie: "Liants", terme: "Cendres volantes", definition: "Ajout cimentaire pouzzolanique (classes F et C).", synonymes: ["fly ash (FA)"], normes: [NORMES_REF.C618, NORMES_REF.A3001], source: `${COURS}, dia 37 et 42 (« FA (types C, F) »)` },
 
@@ -178,14 +180,16 @@ export const GLOSSAIRE: EntreeGlossaire[] = [
   { cle: "eprouvette", categorie: "Essais", terme: "Éprouvette", definition: "Cylindre de remblai moulé, curé puis écrasé ; plusieurs répliques par âge.", normes: [NORMES_REF.C192, NORMES_REF.C470], source: "Protocoles du laboratoire" },
   { cle: "age-cure", categorie: "Essais", terme: "Âge de cure", symbole: "t", unite: "j", definition: "Durée entre la coulée et l'écrasement (7, 14, 28, 56, 91 jours usuels).", source: "Écrans du programme du professeur (« Durée de cure t »)" },
   { cle: "module-young", categorie: "Essais", terme: "Module de Young", symbole: "E", unite: "kPa", definition: "Pente de la partie linéaire de la courbe contrainte-déformation, relevée par la presse.", source: "Export de la presse URSTM" },
-  { cle: "gachee", categorie: "Essais", terme: "Gâchée", definition: "Quantité de remblai préparée en une fois au laboratoire, dont on tire les éprouvettes.", synonymes: ["batch"], source: "Classeurs du professeur (« # Batch »)" },
+  // Origine exacte : classeurs du professeur (colonne « # Batch »).
+  { cle: "gachee", categorie: "Essais", terme: "Gâchée", definition: "Quantité de remblai préparée en une fois au laboratoire, dont on tire les éprouvettes.", synonymes: ["batch"], source: "Documents de l'enseignant (« # Batch »)" },
 
   // Méthodes
   { cle: "dosage-cw", categorie: "Méthodes", terme: "Dosage selon Cw", definition: "Recette calculée pour un pourcentage solide massique fixé.", source: "Programme du professeur (onglet « Dosage selon Cw% »)" },
   { cle: "dosage-el", categorie: "Méthodes", terme: "Dosage selon E/L", definition: "Recette calculée pour un rapport eau/liant fixé.", source: "Programme du professeur (onglet « Dosage selon w/c »)" },
-  { cle: "modele-predictif", categorie: "Méthodes", terme: "Modèle prédictif (affaissement)", definition: "Cw prédit à partir de l'affaissement visé, puis recette selon Cw.", source: "Programme du professeur (onglet « Modèle prédictif ») ; formule F103" },
+  { cle: "modele-predictif", categorie: "Méthodes", terme: "Dosage selon le slump", definition: "Cw prédit à partir de l'affaissement visé (slump), puis recette selon Cw.", synonymes: ["modèle prédictif"], source: "Programme du professeur (onglet « Modèle prédictif ») ; formule F103" },
   { cle: "essai-erreur", categorie: "Méthodes", terme: "Méthode essai-erreur", definition: "Recette de base corrigée par les ajouts réels (eau, résidu, liant) faits après mesure de l'affaissement.", source: "Programme du professeur (onglet « Méthode essai-erreur »)" },
-  { cle: "kappa", categorie: "Méthodes", terme: "Facteur de perte", symbole: "κ", definition: "Multiplicateur des masses (supérieur à 1, souvent 1,25) qui compense les pertes au malaxage et au moulage. Appelé « facteur de sécurité » dans les feuilles de calcul.", source: `${COURS}, dia 39 et 41 ; feuilles de calcul, dia 47 et 63` },
+  // Origine exacte : cours, dia 39 et 41 ; feuilles de calcul du professeur, montrées aux dia 47 et 63.
+  { cle: "kappa", categorie: "Méthodes", terme: "Facteur de perte", symbole: "κ", definition: "Multiplicateur des masses (supérieur à 1, souvent 1,25) qui compense les pertes au malaxage et au moulage. Aussi appelé « facteur de sécurité ».", source: `${COURS}, dia 39 et 41 ; documents de l'enseignant (dia 47 et 63)` },
 ];
 
 /** Entrées d'une catégorie, dans l'ordre du glossaire. */

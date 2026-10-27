@@ -85,7 +85,7 @@ describe("messageErreurApi", () => {
       ],
     };
     const msg = messageErreurApi(data, 422);
-    expect(msg).toContain("hauteur du contenant");
+    expect(msg).toContain("hauteur du moule");
     expect(msg).toContain("pourcentage solide massique Cw");
   });
   it("réponse vide -> repli générique avec le code HTTP", () => {

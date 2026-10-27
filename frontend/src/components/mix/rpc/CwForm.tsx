@@ -4,6 +4,7 @@ import { useState } from "react";
 import { empreinteAuDepart, useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import ChampNombre from "@/components/ui/ChampNombre";
+import { KAPPA_AIDE } from "@/lib/contenant";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
 import type { ResiduItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
@@ -12,10 +13,8 @@ import {
   construireGeneralPayload,
   construireSystemeLiant,
 } from "@/lib/rpc_payload";
-import { num } from "@/lib/format";
 import { Field, CardSection, GrilleChamps, ChoixNombreRecettes, PiedFormulaire, PointRecette } from "@/components/mix/champs";
 
-const KAPPA_AIDE = "1 = aucun surplus ; 1,05 = +5 %. Appelé « facteur de sécurité » dans les feuilles de calcul (FS % = FS/100 + 1).";
 
 export default function CwForm() {
   const {
@@ -109,8 +108,10 @@ export default function CwForm() {
       <CardSection title="Paramètres du mélange">
         <GrilleChamps>
           <Field label="Nombre de moules par recette">
-            <input type="number" className="field-input" min={1}
-              value={cw.desired_qty ?? 1} onChange={(e) => setCw({ desired_qty: num(e.target.value) })} />
+            {/* ChampNombre, pas <input type="number"> : vidé puis retapé, ce
+                champ affichait « 03 » (2026-10-26). Vide ou 0 : rien n'est écrit. */}
+            <ChampNombre placeholder="1" min={1} messageRefus="Au moins un moule par recette."
+              value={cw.desired_qty ?? 1} onChange={(n) => { if (n !== undefined) setCw({ desired_qty: n }); }} />
           </Field>
           <Field plage="kappa" valeur={cw.safety_factor} label="Facteur de perte κ" hint={KAPPA_AIDE}>
             <ChampNombre placeholder="1" value={cw.safety_factor} onChange={(n) => setCw({ safety_factor: n })} />

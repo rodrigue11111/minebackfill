@@ -150,7 +150,7 @@ export default function GuidePage() {
           </ul>
           <InfoBox type="info">
             <strong>Contexte du module 1 :</strong> les calculs couvrent le dosage selon Cw, le dosage selon
-            E/L, le modèle prédictif de l&apos;affaissement, la méthode essai-erreur, le remblai en pâte
+            E/L, le dosage selon le slump (affaissement visé), la méthode essai-erreur, le remblai en pâte
             granulaire et le remblai rocheux cimenté. Les modules suivants (transport, mise en place)
             viendront dans des versions futures.
           </InfoBox>
@@ -167,17 +167,17 @@ export default function GuidePage() {
           </Para>
 
           <Step n={1} title="Configurer les informations générales (page Informations)">
-            Renseignez l&apos;identification du projet (opérateur, nom, résidu, date), la géométrie du
-            contenant de moulage (section, rayon ou dimensions) et l&apos;agent liant : un ou plusieurs
+            Renseignez l&apos;identification du projet (opérateur, nom, résidu, date), les dimensions
+            des moules (section, rayon ou dimensions) et l&apos;agent liant : un ou plusieurs
             composants (ciment Portland, laitier, cendres volantes…) avec leurs fractions massiques. Ces
             informations apparaissent dans l&apos;en-tête des exports.
           </Step>
 
           <Step n={2} title="Vérifier les réglages (page Réglages, facultatif)">
             La page Réglages permet de modifier les constantes physiques (masse volumique de l&apos;eau,
-            gravité, constantes du modèle prédictif) et les catalogues de matériaux (densité relative Gs
-            de chaque liant, résidu ou granulat). Les valeurs par défaut sont celles des feuilles de
-            calcul de l&apos;enseignant.
+            gravité, constantes de la méthode selon le slump) et les catalogues de matériaux (densité
+            relative Gs de chaque liant, résidu ou granulat). Les valeurs par défaut sont celles de
+            l&apos;enseignant.
           </Step>
 
           <Step n={3} title="Choisir la catégorie et la méthode (page Calculs)">
@@ -247,11 +247,11 @@ export default function GuidePage() {
               {
                 code: "RPC", nom: "Remblai en pâte cimenté", couleur: "var(--accent)",
                 texte: "Résidus miniers épaissis, agent liant et eau, mis en place sous forme de pâte. Toutes les méthodes sont disponibles.",
-                methodes: "Selon Cw · selon E/L · modèle prédictif · essai-erreur",
+                methodes: "Selon Cw · selon E/L · selon le slump · essai-erreur",
               },
               {
                 code: "RPG", nom: "Remblai en pâte granulaire", couleur: "var(--succes-texte)",
-                texte: "Remblai en pâte auquel on ajoute un granulat (roche concassée, sable). Deux paramètres de plus : la fraction massique de granulat Am et la densité relative Gs du granulat. Le modèle prédictif, calé sur le RPC, n'est pas proposé.",
+                texte: "Remblai en pâte auquel on ajoute un granulat (roche concassée, sable). Deux paramètres de plus : la fraction massique de granulat Am et la densité relative Gs du granulat. Le dosage selon le slump, calé sur le RPC, n'est pas proposé.",
                 methodes: "Selon Cw · selon E/L · essai-erreur",
               },
               {
@@ -311,7 +311,7 @@ export default function GuidePage() {
           />
 
           <Method
-            badge="Modèle prédictif (RPC seulement)"
+            badge="Selon le slump (RPC seulement)"
             title="Cw prédit à partir de l'affaissement visé"
             when={QUAND_METHODE.slump}
             inputs={[
@@ -382,7 +382,7 @@ export default function GuidePage() {
                   ["Gs du granulat (RPG)", TIRET, PLAGES.gsGranulat.texte, "Densité relative du granulat (sable ou roche concassée). Valeur typique d'un sable siliceux : 2,65."],
                   ["S", "mm", PLAGES.slump.texte, "Affaissement au cône d'Abrams (ASTM C143/C143M). 178 mm (7 po) sert de référence de consistance."],
                   ["Nombre de moules", TIRET, "1 à plus de 200", "Nombre de moules par recette. Détermine le volume total à préparer."],
-                  ["κ (facteur de perte)", TIRET, PLAGES.kappa.texte, "Multiplie les masses pour compenser les pertes au malaxage et au moulage. κ = 1 : aucun surplus ; le cours retient souvent 1,25. Appelé « facteur de sécurité » dans les feuilles de calcul."],
+                  ["κ (facteur de perte)", TIRET, PLAGES.kappa.texte, "Multiplie les masses pour compenser les pertes au malaxage et au moulage. κ = 1 : aucun surplus ; le cours retient souvent 1,25. Aussi appelé « facteur de sécurité »."],
                 ].map(([param, unit, range, desc]) => (
                   <tr key={param as string}>
                     <td><strong>{param}</strong></td>

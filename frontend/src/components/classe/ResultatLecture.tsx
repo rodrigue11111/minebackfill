@@ -5,7 +5,7 @@
 
 import { lireBinders, type SavedResult } from "@/lib/store";
 import { nomLiant } from "@/lib/liants";
-import { AIDE_CONVENTION_REVISEE, etatVersion } from "@/lib/conventions";
+import { AIDE_CONVENTION_REVISEE, etatVersion, libelleVersion } from "@/lib/conventions";
 import { methodLabel } from "@/lib/method-registry";
 import type { ReportCtx } from "@/lib/report-schema";
 import { DENSITY_LABELS, fromStoreMass, MASS_LABELS, VOLUME_LABELS, type UnitPreferences } from "@/lib/units";
@@ -44,7 +44,7 @@ export default function ResultatLecture({ resultat: sr, units, demonstration = f
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Carte
         titre={methodLabel(sr.category, sr.method, "long")}
-        aside={sr.solverVersion ? `formules ${sr.solverVersion}` : undefined}
+        aside={sr.solverVersion ? `formules ${libelleVersion(sr.solverVersion)}` : undefined}
         actions={
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button type="button" className="btn-contour" disabled={demonstration} title={demonstration ? AIDE_EXPORTS_DEMO : undefined} onClick={() => void exporterResultat(sr, "excel", units)}>Excel</button>

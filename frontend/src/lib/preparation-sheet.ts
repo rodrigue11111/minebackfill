@@ -121,7 +121,7 @@ export async function exportPreparationPdf(
       ["Opérateur", general.operator_name || "________________________"],
       ["Date de mélange", general.mix_date || "____________"],
       ["Résidu", general.residue_id || "____________"],
-      ["Contenant", contenant()],
+      ["Moule", contenant()],
       ["Volume du moule", `${fmtNum(val(r.container_volume_m3) * 1000, 3)} L`],
     ];
     info.forEach(([k, v]) => {

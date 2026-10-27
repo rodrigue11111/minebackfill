@@ -71,6 +71,9 @@ export function equivalentM3(m3: number, unite: string): string {
   return ` (${m3.toLocaleString("fr-CA", { maximumSignificantDigits: 6 })} m³)`;
 }
 
+/** Aide du facteur de perte κ, commune aux formulaires de Calculs (une seule source). */
+export const KAPPA_AIDE = "1 = aucun surplus ; 1,05 = +5 %. Aussi appelé « facteur de sécurité » (FS % = FS/100 + 1).";
+
 /** Libellé d'un type de contenant (Informations, Analyse, feuille de préparation) : une seule source. */
 export const LIBELLES_CONTENANT: Record<string, string> = {
   section_hauteur: "Section et hauteur",
@@ -110,5 +113,5 @@ export function masseHorsLabo(composants: { cibleKg: number }[] | undefined): nu
 /** Avis commun (Labo, vue de l'enseignant) pour une gâchée de taille chantier. */
 export function avisMasseHorsLabo(totalKg: number): string {
   const kg = Math.round(totalKg).toLocaleString("fr-CA");
-  return `Cette gâchée demande de peser ${kg} kg au total : ce sont les masses d'un chantier, pas d'une gâchée de laboratoire (quelques litres). Refaites le calcul avec le volume de vos moules (Informations, Contenant de moulage), puis créez une nouvelle gâchée.`;
+  return `Cette gâchée demande de peser ${kg} kg au total : ce sont les masses d'un chantier, pas d'une gâchée de laboratoire (quelques litres). Refaites le calcul avec le volume de vos moules (Informations, Dimensions des moules), puis créez une nouvelle gâchée.`;
 }

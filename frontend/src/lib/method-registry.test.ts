@@ -19,7 +19,8 @@ describe("method-registry — changement de catégorie", () => {
 
 describe("method-registry — libellés", () => {
   it("noms des méthodes du programme du professeur", () => {
-    expect(methodLabel("RPC", "slump", "long")).toBe("Modèle prédictif (affaissement)");
+    expect(methodLabel("RPC", "slump", "long")).toBe("Dosage selon le slump");
+    expect(methodLabel("RPC", "slump", "court")).toBe("Selon le slump");
     expect(methodLabel("RPC", "wb", "long")).toBe("Dosage selon E/L");
     expect(methodLabel("RRC", "rrc", "long")).toBe("Dosage selon Bw et E/L du coulis");
   });
