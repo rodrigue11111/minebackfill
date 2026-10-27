@@ -55,6 +55,31 @@ alter table public.code_enseignant   enable row level security;
 alter table public.prof_a_promouvoir enable row level security;
 revoke all on public.code_enseignant, public.prof_a_promouvoir from anon, authenticated;
 
+-- ----------------------------------------------------------------------
+--  Inscription « enseignant » SANS code (décision de l'utilisateur,
+--  2026-10-26, « pour le moment ») : un compte créé avec « Je suis
+--  l'enseignant » (métadonnée enseignant = 'oui') devient « prof » TANT QUE
+--  l'interrupteur est ouvert.
+--  RISQUE, tant qu'il est ouvert : n'importe qui peut se déclarer enseignant,
+--  voir les noms, courriels et travaux de tous les étudiants, changer des
+--  rôles et bloquer des comptes ; un faux enseignant pourrait même retirer
+--  le rôle du vrai (definir_role), qui se rétablit alors dans SQL Editor.
+--  À FERMER dès que le compte du professeur existe :
+--    update public.inscription_reglage set enseignant_libre = false, maj = now();
+--  Fermer n'enlève AUCUN rôle déjà accordé : relire alors les comptes
+--  enseignants (docs/OPERATIONS.md). L'état vit dans une TABLE remplie une
+--  seule fois : réexécuter ce schéma ne rouvre jamais un interrupteur fermé.
+-- ----------------------------------------------------------------------
+create table if not exists public.inscription_reglage (
+  id               boolean primary key default true check (id),
+  enseignant_libre boolean not null,
+  maj              timestamptz not null default now()
+);
+insert into public.inscription_reglage (id, enseignant_libre) values (true, true)
+  on conflict (id) do nothing;
+alter table public.inscription_reglage enable row level security;
+revoke all on public.inscription_reglage from anon, authenticated;
+
 -- À exécuter dans SQL Editor (jamais depuis l'application).
 create or replace function public.definir_code_enseignant(p_code text, p_utilisations integer default 1)
 returns void language plpgsql security definer set search_path = '' as $$
@@ -69,14 +94,17 @@ begin
 end $$;
 revoke execute on function public.definir_code_enseignant(text, integer) from public, anon, authenticated;
 
--- AVANT l'insertion du compte : vérifie le code, puis le RETIRE des
--- métadonnées (il ne doit pas rester stocké avec le compte).
+-- AVANT l'insertion du compte : vérifie le code, ou la demande « enseignant »
+-- quand l'inscription libre est ouverte (inscription_reglage), puis RETIRE
+-- les deux clés des métadonnées (rien qui touche au rôle ne reste stocké
+-- avec le compte).
 create or replace function public.verifier_code_enseignant() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare v_code text := new.raw_user_meta_data ->> 'code_enseignant';
+        v_enseignant boolean := coalesce(new.raw_user_meta_data ->> 'enseignant', '') = 'oui';
 begin
+  new.raw_user_meta_data := new.raw_user_meta_data - 'code_enseignant' - 'enseignant';
   if v_code is not null then
-    new.raw_user_meta_data := new.raw_user_meta_data - 'code_enseignant';
     update public.code_enseignant c
        set utilisations_restantes = c.utilisations_restantes - 1, maj = now()
      where c.utilisations_restantes > 0
@@ -84,6 +112,9 @@ begin
     if found then
       insert into public.prof_a_promouvoir (user_id) values (new.id) on conflict do nothing;
     end if;
+  end if;
+  if v_enseignant and exists (select 1 from public.inscription_reglage r where r.enseignant_libre) then
+    insert into public.prof_a_promouvoir (user_id) values (new.id) on conflict do nothing;
   end if;
   return new;
 end $$;
@@ -96,7 +127,9 @@ create trigger on_auth_user_code
 -- Création automatique du profil à l'inscription.
 -- raw_user_meta_data est SAISI PAR L'UTILISATEUR : on n'en lit QUE le nom
 -- affiché, jamais un rôle. Le rôle « prof » ne vient que d'un code vérifié
--- par le serveur (ci-dessus), ou de la commande SQL de l'enseignant.
+-- par le serveur, de l'inscription enseignant libre tant qu'elle est ouverte
+-- (les deux ci-dessus, par prof_a_promouvoir), ou de la commande SQL de
+-- l'enseignant.
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as
 $$ declare v_prof boolean;
