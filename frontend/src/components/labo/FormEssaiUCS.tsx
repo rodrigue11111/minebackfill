@@ -1,7 +1,8 @@
 "use client";
 
 // Saisie de l'essai de compression uniaxiale (UCS, ASTM C39/C39M) d'une
-// éprouvette écrasée : charge et diamètre (contrainte F / A), ou contrainte
+// éprouvette (en cure ou écrasée : une mesure positive la passe en écrasée,
+// appliquerSaisieEssai) : charge et diamètre (contrainte F / A), ou contrainte
 // mesurée directe, avec ce que la presse apporte à l'import.
 
 import { useState } from "react";
@@ -207,11 +208,15 @@ export default function FormEssaiUCS({ eprouvette, onChange, onVitessePourToutes
         <CourbeEprouvette code={eprouvette.code} nbPoints={pointsLocaux} charger={chargerCourbeAffichee} enLigne={pointsLocaux === 0} />
       )}
 
-      <label className="mix-case">
-        <input type="checkbox" checked={!!es.exclu} onChange={(e) => onChange({ exclu: e.target.checked || undefined })} />
-        Exclure cette éprouvette de la moyenne (valeur aberrante)
-      </label>
-      {es.exclu && (
+      {/* Exclure n'a de sens que pour une éprouvette écrasée (2026-10-26 : le
+          formulaire s'affiche aussi pour une éprouvette en cure). */}
+      {eprouvette.statut === "ecrase" && (
+        <label className="mix-case">
+          <input type="checkbox" checked={!!es.exclu} onChange={(e) => onChange({ exclu: e.target.checked || undefined })} />
+          Exclure cette éprouvette de la moyenne (valeur aberrante)
+        </label>
+      )}
+      {eprouvette.statut === "ecrase" && es.exclu && (
         <Champ libelle="Justification de l'exclusion (obligatoire)"
           erreur={!es.justificationExclusion ? "Exclusion non documentée : la valeur est déjà écartée de la moyenne, mais indiquez pourquoi (rigueur scientifique)." : undefined}>
           <input className="field-input" placeholder="ex. défaut de surfaçage, rupture prématurée sur bulle…"

@@ -270,3 +270,36 @@ describe("éprouvettes : moule repris du contenant du calcul (2026-10-26)", () =
     expect(html).not.toContain("Repris des dimensions des moules du calcul");
   });
 });
+
+describe("éprouvettes rangées par âge de cure, suppression en tête (2026-10-26)", () => {
+  it("un groupe par âge, avec son échéance, son avancement et sa moyenne", () => {
+    const html = rendu();
+    expect(html).toContain("7 j · échéance 6 oct.");
+    expect(html).toContain("2 éprouvettes, 2 écrasées · moyenne 405 kPa");
+    expect(html).toContain("28 j · échéance 27 oct.");
+    expect(html).toContain("1 éprouvette, 0 écrasée");
+  });
+
+  it("le groupe encore en cure est ouvert, le groupe déjà écrasé est replié", () => {
+    const html = rendu();
+    expect(html).toMatch(/aria-expanded="false"[^>]*><span class="ui-ligne-chevron"[^>]*>.*?<\/span><span class="labo-groupe-titre">7 j/);
+    expect(html).toMatch(/aria-expanded="true"[^>]*><span class="ui-ligne-chevron"[^>]*>.*?<\/span><span class="labo-groupe-titre">28 j/);
+    expect(html).toContain("G-20260929-01-E03");
+    expect(html).not.toContain("G-20260929-01-E01</span>");
+  });
+
+  it("« Supprimer la gâchée » est dans l'en-tête, plus en bas de la colonne", () => {
+    const html = rendu();
+    expect(html).toContain("Supprimer la gâchée");
+    expect(html).not.toContain("Supprimer cette gâchée");
+    expect(html.indexOf("Supprimer la gâchée")).toBeLessThan(html.indexOf("Cure des éprouvettes"));
+  });
+
+  it("formulaire d'essai d'une éprouvette en cure : pas de case d'exclusion", () => {
+    const html = renderToStaticMarkup(createElement(FormEssaiUCS, { eprouvette: gachee.eprouvettes[2], onChange: () => {} }));
+    expect(html).toContain("Charge à la rupture");
+    expect(html).not.toContain("Exclure cette éprouvette");
+    const ecrasee = renderToStaticMarkup(createElement(FormEssaiUCS, { eprouvette: gachee.eprouvettes[0], onChange: () => {} }));
+    expect(ecrasee).toContain("Exclure cette éprouvette");
+  });
+});
