@@ -63,8 +63,9 @@ export interface ReportRow {
   bold?: boolean;
   /** Condition d'affichage (remplace les gardes isRpg/isEssai/bcount). */
   when?: (ctx: ReportCtx) => boolean;
-  /** Formules liées (popover de l'écran). */
-  formulaIds?: string[];
+  /** Formules liées (popover de l'écran) : une liste fixe, ou une fonction quand
+   *  elles dépendent du contexte (catégorie, essai-erreur). Lire par formulesDeLigne. */
+  formulaIds?: string[] | ((ctx: ReportCtx) => string[]);
   /**
    * Rang dans le tableau RÉSUMÉ de la page Calculs (1 = en tête). Absent : la
    * ligne n'apparaît que dans le rapport complet. Les exports Excel et PDF
@@ -87,6 +88,18 @@ export const REPORT_SECTIONS: {
 ];
 
 const cst = (s: string) => () => s;
+
+/**
+ * Formules des masses Mr, Mb et Mw (2026-10-26 : l'étudiant ne voyait pas d'où
+ * elles venaient). Règle : une formule de DOSAGE dont chaque symbole est
+ * substitué par la fiche, et SANS κ dans la forme affichée : le V_T du résultat
+ * contient déjà κ (V_moule × n × κ), une forme en κ·ρ·V_T le compterait deux
+ * fois (F072 et F073 sont donc écartés). En essai-erreur, ces masses sont la
+ * base plus les ajouts : aucune formule de dosage ne les décrit, aucune n'est
+ * attachée. Vérifié par formula-masses.test.ts sur des recettes du calculateur.
+ */
+const formulesMasse = (rpc: string, rpg: string) => (c: ReportCtx): string[] =>
+  c.isEssai ? [] : [c.isRpg ? rpg : rpc];
 const sansUnite = () => "";
 const masse = (c: ReportCtx) => c.massLabel;
 const volume = (c: ReportCtx) => c.volLabel;
@@ -98,11 +111,11 @@ export const REPORT_ROWS: ReportRow[] = [
   // Intra 2017, dilué par un ajout de granulat sous la règle « gramme ».
   { section: 1, label: (c) => (c.isEssai ? `${libelle("bw")} atteint` : libelle("bw")), unit: cst("%"), getter: (r) => r.bw_mass_pct, digits: 2, bold: true, formulaIds: ["F016"], resume: 1 },
   { section: 1, label: cst(libelle("bv")), unit: cst("%"), getter: (r) => r.bv_vol_pct, digits: 2, formulaIds: ["F022"] },
-  { section: 1, label: (c) => (c.isEssai ? "Résidu sec total Mr" : "Résidu sec Mr"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_dry_mass_kg, c.units.mass), digits: 3, bold: true, resume: 9 },
+  { section: 1, label: (c) => (c.isEssai ? "Résidu sec total Mr" : "Résidu sec Mr"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_dry_mass_kg, c.units.mass), digits: 3, bold: true, formulaIds: formulesMasse("F070", "F048"), resume: 9 },
   { section: 1, label: cst("Granulat sec Ma"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.aggregate_dry_mass_kg, c.units.mass), digits: 3, bold: true, when: (c) => c.isRpg, resume: 10 },
-  { section: 1, label: (c) => (c.isEssai ? "Liant total Mb" : "Liant Mb"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_total_mass_kg, c.units.mass), digits: 3, bold: true, resume: 7 },
+  { section: 1, label: (c) => (c.isEssai ? "Liant total Mb" : "Liant Mb"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_total_mass_kg, c.units.mass), digits: 3, bold: true, formulaIds: formulesMasse("F040", "F051"), resume: 7 },
   { section: 1, label: cst("Résidu humide Mr-hum"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_wet_mass_kg, c.units.mass), digits: 3 },
-  { section: 1, label: cst("Eau totale Mw"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_total_mass_kg, c.units.mass), digits: 3, resume: 8 },
+  { section: 1, label: cst("Eau totale Mw"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_total_mass_kg, c.units.mass), digits: 3, formulaIds: formulesMasse("F014", "F014"), resume: 8 },
   { section: 1, label: cst("Eau à ajouter/retirer Mw-aj"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_to_add_mass_kg, c.units.mass), digits: 3 },
   // Masses par composant de liant (N composants) — générées par index.
   ...Array.from({ length: MAX_BINDER_ROWS }, (_, i): ReportRow => ({
@@ -224,12 +237,17 @@ export function formulesDuRapportRrc(): string[] {
   return [...new Set(RRC_ROWS.flatMap((r) => r.formulaIds ?? []))];
 }
 
+/** Formules d'une ligne pour ce contexte (liste fixe, ou selon la catégorie et l'essai). */
+export function formulesDeLigne(row: ReportRow, ctx: ReportCtx): string[] {
+  return typeof row.formulaIds === "function" ? row.formulaIds(ctx) : row.formulaIds ?? [];
+}
+
 /** Formules du rapport pour ce contexte, sans doublon, dans l'ordre du rapport
  *  (« Formules utilisées pour ce résultat »). */
 export function formulesDuRapport(ctx: ReportCtx): string[] {
   const vues = new Set<string>();
   for (const s of REPORT_SECTIONS) {
-    for (const row of rowsForSection(s.id, ctx)) for (const id of row.formulaIds ?? []) vues.add(id);
+    for (const row of rowsForSection(s.id, ctx)) for (const id of formulesDeLigne(row, ctx)) vues.add(id);
   }
   return [...vues];
 }

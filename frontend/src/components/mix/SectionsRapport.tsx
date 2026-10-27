@@ -4,7 +4,7 @@
 // et la lecture d'un résultat d'étudiant par l'enseignant (/classe).
 // Présentation « à filets » : titres de section, tableaux sans cadre.
 
-import { REPORT_SECTIONS, rowsForSection, RRC_ROWS, type ReportCtx, type ReportRow } from "@/lib/report-schema";
+import { formulesDeLigne, REPORT_SECTIONS, rowsForSection, RRC_ROWS, type ReportCtx, type ReportRow } from "@/lib/report-schema";
 import { fmtGroupe } from "@/lib/format";
 import type { Recipe, RrcRecipe } from "@/lib/types";
 
@@ -49,7 +49,7 @@ export function DataRow({
   digits?: number;
   bold?: boolean;
   formulaIds?: string[];
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, ancre: HTMLElement) => void;
   /** Colonne de la recette choisie (mise en valeur). */
   choisie?: number;
 }) {
@@ -69,7 +69,7 @@ export function DataRow({
           <td key={i} className={[hasFormula ? "mix-valeur-formule" : "", i === choisie ? "mix-col-choisie" : ""].filter(Boolean).join(" ") || undefined}>
             {hasFormula ? (
               <button type="button" className="mix-valeur-bouton" aria-label={`${label}, recette ${i + 1} : ${valeur}. Voir la formule`}
-                onClick={(e) => onFormulaClick!(formulaIds!, r, e.currentTarget.getBoundingClientRect())}>
+                onClick={(e) => onFormulaClick!(formulaIds!, r, e.currentTarget)}>
                 {valeur}
               </button>
             ) : valeur}
@@ -86,27 +86,30 @@ export function TableauLignes({ lignes, recipes, ctx, choisie, onFormulaClick }:
   recipes: Recipe[];
   ctx: ReportCtx;
   choisie?: number;
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, ancre: HTMLElement) => void;
 }) {
   return (
     <div className="mix-tableau-defilant">
       <table className="result-table">
         <thead><tr><RecipeHeaders activeCount={recipes.length} choisie={choisie} /></tr></thead>
         <tbody>
-          {lignes.map((row) => (
-            <DataRow
-              key={row.label(ctx)}
-              label={row.label(ctx)}
-              unit={row.unit(ctx) || undefined}
-              getter={(r) => row.getter(r, ctx)}
-              recipes={recipes}
-              digits={row.digits}
-              bold={row.bold}
-              formulaIds={row.formulaIds}
-              onFormulaClick={row.formulaIds ? onFormulaClick : undefined}
-              choisie={choisie}
-            />
-          ))}
+          {lignes.map((row) => {
+            const formules = formulesDeLigne(row, ctx);
+            return (
+              <DataRow
+                key={row.label(ctx)}
+                label={row.label(ctx)}
+                unit={row.unit(ctx) || undefined}
+                getter={(r) => row.getter(r, ctx)}
+                recipes={recipes}
+                digits={row.digits}
+                bold={row.bold}
+                formulaIds={formules}
+                onFormulaClick={formules.length > 0 ? onFormulaClick : undefined}
+                choisie={choisie}
+              />
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -118,7 +121,7 @@ export function SectionsRapport({ recipes, ctx, grille = false, onFormulaClick, 
   recipes: Recipe[];
   ctx: ReportCtx;
   grille?: boolean;
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, ancre: HTMLElement) => void;
   choisie?: number;
 }) {
   return (
@@ -140,7 +143,7 @@ export function TableauRrc({ recipes, massLabel, toMass, choisie, onFormulaClick
   toMass: (kg: number | null | undefined) => number | null;
   choisie?: number;
   /** Fiche de la formule d'une ligne (sans valeurs : la fiche lit les recettes RPC/RPG). */
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, ancre: HTMLElement) => void;
 }) {
   return (
     <section className="mix-rapport-section">
@@ -165,7 +168,7 @@ export function TableauRrc({ recipes, massLabel, toMass, choisie, onFormulaClick
                       <td key={ci} className={[formule ? "mix-valeur-formule" : "", ci === choisie ? "mix-col-choisie" : ""].filter(Boolean).join(" ") || undefined}>
                         {formule ? (
                           <button type="button" className="mix-valeur-bouton" aria-label={`${row.label(massLabel)}, recette ${ci + 1} : ${valeur}. Voir la formule`}
-                            onClick={(e) => onFormulaClick!(formule, undefined, e.currentTarget.getBoundingClientRect())}>
+                            onClick={(e) => onFormulaClick!(formule, undefined, e.currentTarget)}>
                             {valeur}
                           </button>
                         ) : valeur}
