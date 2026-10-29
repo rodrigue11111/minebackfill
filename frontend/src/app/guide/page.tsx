@@ -231,8 +231,8 @@ export default function GuidePage() {
           </Step>
 
           <InfoBox type="tip">
-            <strong>Astuce :</strong> le mode Plein écran des résultats affiche les tableaux sur deux
-            colonnes, plus lisibles avec plusieurs recettes.
+            <strong>Astuce :</strong> le mode Plein écran des résultats (bouton aux quatre coins, à droite
+            des actions) affiche les tableaux sur deux colonnes, plus lisibles avec plusieurs recettes.
           </InfoBox>
         </Card>
 

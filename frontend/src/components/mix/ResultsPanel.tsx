@@ -13,7 +13,6 @@ import { fromStoreMass, MASS_LABELS, VOLUME_LABELS, DENSITY_LABELS, type UnitPre
 import FormulaPopover from "@/components/mix/FormulaPopover";
 import CarteResultats, { type DonneesResultats } from "@/components/mix/CarteResultats";
 import Sauvegarder from "@/components/mix/Sauvegarder";
-import Menu from "@/components/ui/Menu";
 import { Icone } from "@/components/ui/Icones";
 import { nomLiant } from "@/lib/liants";
 import { descriptorFor, methodLabel } from "@/lib/method-registry";
@@ -34,10 +33,10 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
   const [formulaPopover, setFormulaPopover] = useState<{
     formulaIds: string[];
     recipe: Recipe | undefined;
-    anchorRect: DOMRect;
+    ancre: HTMLElement;
   } | null>(null);
-  const handleFormulaClick = useCallback((formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => {
-    setFormulaPopover({ formulaIds, recipe, anchorRect: rect });
+  const handleFormulaClick = useCallback((formulaIds: string[], recipe: Recipe | undefined, ancre: HTMLElement) => {
+    setFormulaPopover({ formulaIds, recipe, ancre });
   }, []);
 
   const store = useStore();
@@ -92,9 +91,16 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
     </Bandeau>
   ) : undefined;
 
-  const pleinEcranMenu = onBasculerPleinEcran
-    ? { libelle: pleinEcran ? "Quitter le plein écran" : "Plein écran", detail: pleinEcran ? undefined : "Rapport complet sur deux colonnes", onSelect: onBasculerPleinEcran }
-    : null;
+  // Toutes les actions sur une ligne, sans menu « … » (2026-10-26, demande de
+  // l'utilisateur) : le plein écran devient un bouton icône. Sous 720 px, la
+  // ligne passe à la ligne (.mix-actions-resultats), sans rien cacher.
+  const libellePleinEcran = pleinEcran ? "Quitter le plein écran" : "Plein écran";
+  const boutonPleinEcran = onBasculerPleinEcran ? (
+    <button type="button" className="ui-bouton-icone" aria-label={libellePleinEcran} aria-pressed={pleinEcran}
+      title={pleinEcran ? libellePleinEcran : "Plein écran : rapport complet sur deux colonnes"} onClick={onBasculerPleinEcran}>
+      <Icone nom="pleinEcran" taille={18} epaisseur={2} />
+    </button>
+  ) : null;
 
   /* ── RRC : formules du RRC, pas de MixState ── */
   if (category === "RRC") {
@@ -120,14 +126,12 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
               Feuille labo
             </button>
             <Sauvegarder desactive={vide} onSave={(nom, remplacer) => store.saveCurrentResult(nom, remplacer)} nomParDefaut={nomParDefautAvecHeure("RRC", new Date())} nomsExistants={nomsSauvegardes} />
-            {pleinEcranMenu && (
-              <Menu className="ui-bouton-icone" ariaLabel="Autres actions" declencheur={<Icone nom="plus" taille={18} epaisseur={2} />} elements={[pleinEcranMenu]} />
-            )}
+            {boutonPleinEcran}
           </>
         }
       />
       {formulaPopover && (
-        <FormulaPopover formulaIds={formulaPopover.formulaIds} recipe={formulaPopover.recipe} anchorRect={formulaPopover.anchorRect} onClose={() => setFormulaPopover(null)} />
+        <FormulaPopover formulaIds={formulaPopover.formulaIds} recipe={formulaPopover.recipe} ancre={formulaPopover.ancre} onClose={() => setFormulaPopover(null)} />
       )}
       </>
     );
@@ -182,21 +186,12 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
               onClick={async () => { const { exportToPdf } = await import("@/lib/pdf-report"); exportToPdf(recipes, general, binderName, category, method, units, mesuresEssai); }}>
               PDF
             </button>
+            <button type="button" className="btn-contour" disabled={vide || perime} title="Feuille labo (PDF) : masses à peser, cases à cocher, mesures après la gâchée"
+              onClick={async () => { const { exportPreparationPdf } = await import("@/lib/preparation-sheet"); exportPreparationPdf(recipes, general, binderName, category, method, units); }}>
+              Feuille labo
+            </button>
             <Sauvegarder desactive={vide || perime} onSave={(nom, remplacer) => store.saveCurrentResult(nom, remplacer)} nomParDefaut={nomParDefautAvecHeure(`${category} ${methodLabel(category, method)}`, new Date())} nomsExistants={nomsSauvegardes} />
-            <Menu
-              className="ui-bouton-icone"
-              ariaLabel="Autres actions"
-              declencheur={<Icone nom="plus" taille={18} epaisseur={2} />}
-              elements={[
-                {
-                  libelle: "Feuille labo (PDF)",
-                  detail: "Masses à peser, cases à cocher, mesures après la gâchée",
-                  desactive: vide || perime,
-                  onSelect: async () => { const { exportPreparationPdf } = await import("@/lib/preparation-sheet"); exportPreparationPdf(recipes, general, binderName, category, method, units); },
-                },
-                ...(pleinEcranMenu ? [pleinEcranMenu] : []),
-              ]}
-            />
+            {boutonPleinEcran}
           </>
         }
       />
@@ -204,7 +199,7 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
         <FormulaPopover
           formulaIds={formulaPopover.formulaIds}
           recipe={formulaPopover.recipe}
-          anchorRect={formulaPopover.anchorRect}
+          ancre={formulaPopover.ancre}
           onClose={() => setFormulaPopover(null)}
         />
       )}

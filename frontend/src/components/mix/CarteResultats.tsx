@@ -88,7 +88,7 @@ export function chiffresRrc(r: RrcRecipe | undefined, massLabel: string, toMass:
 function FormulesUtilisees({ ids, recipe, onFormulaClick }: {
   ids: string[];
   recipe: Recipe | undefined;
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, ancre: HTMLElement) => void;
 }) {
   if (ids.length === 0) return null;
   return (
@@ -97,7 +97,7 @@ function FormulesUtilisees({ ids, recipe, onFormulaClick }: {
       <span className="mix-formules-liste">
         {ids.map((id) => (onFormulaClick ? (
           <button key={id} type="button" className="mix-formule" title={FORMULA_MAP.get(id)?.title ?? id}
-            onClick={(e) => onFormulaClick([id], recipe, e.currentTarget.getBoundingClientRect())}>{id}</button>
+            onClick={(e) => onFormulaClick([id], recipe, e.currentTarget)}>{id}</button>
         ) : (
           <span key={id} className="mix-formule" title={FORMULA_MAP.get(id)?.title ?? id}>{id}</span>
         )))}
@@ -137,7 +137,7 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
   /** null : aucun résultat encore (tuiles vides). */
   donnees: DonneesResultats | null;
   pleinEcran?: boolean;
-  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, rect: DOMRect) => void;
+  onFormulaClick?: (formulaIds: string[], recipe: Recipe | undefined, ancre: HTMLElement) => void;
 }) {
   const [choix, setChoix] = useState(0);
   const [rapportOuvert, setRapportOuvert] = useState(false);
