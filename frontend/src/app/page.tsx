@@ -263,35 +263,6 @@ export default function GeneralInfoPage() {
                 )}
               </select>
             </Champ>
-            <div className="info-moules-actions">
-              {nomNouveau === null ? (
-                <>
-                  <button type="button" className="btn-secondary" disabled={!geoActuelle || !!mouleAffiche}
-                    title={!geoActuelle ? "Saisissez d'abord toutes les dimensions." : mouleAffiche ? `Déjà enregistré : ${mouleAffiche.nom}` : undefined}
-                    onClick={() => geoActuelle && setNomNouveau(nomPropose(geoActuelle))}>
-                    Enregistrer ces dimensions
-                  </button>
-                  {mouleAffichePerso && (
-                    <button type="button" className="btn-discret btn-danger"
-                      onClick={() => {
-                        if (window.confirm(`Retirer le moule « ${mouleAffichePerso.nom} » de la liste ? Les calculs et les éprouvettes qui ont ces dimensions les gardent.`)) {
-                          retirerMoule(mouleAffichePerso.id);
-                        }
-                      }}>
-                      Retirer ce moule
-                    </button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <input className="field-input" aria-label="Nom du moule" maxLength={60} value={nomNouveau} autoFocus
-                    onChange={(e) => setNomNouveau(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); enregistrerNouveau(); } if (e.key === "Escape") setNomNouveau(null); }} />
-                  <button type="button" className="btn-primary" onClick={enregistrerNouveau}>Enregistrer</button>
-                  <button type="button" className="btn-discret" onClick={() => setNomNouveau(null)}>Annuler</button>
-                </>
-              )}
-            </div>
           </div>
 
           {!general.container_type ? (
@@ -334,6 +305,42 @@ export default function GeneralInfoPage() {
               )}
               {store.category === "RRC" && " En RRC, la quantité vient de la page Calculs (volume du chantier ou masse totale), pas du moule."}
             </p>
+          )}
+
+          {/* Enregistrer : SOUS les valeurs qu'il enregistre (2026-10-29,
+              retour de l'utilisateur), en pied de carte, à droite. */}
+          {general.container_type && (
+            <div className="info-moules-pied">
+              {nomNouveau !== null ? (
+                <>
+                  <input className="field-input" aria-label="Nom du moule" maxLength={60} value={nomNouveau} autoFocus
+                    onChange={(e) => setNomNouveau(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); enregistrerNouveau(); } if (e.key === "Escape") setNomNouveau(null); }} />
+                  <button type="button" className="btn-primary" onClick={enregistrerNouveau}>Enregistrer</button>
+                  <button type="button" className="btn-discret" onClick={() => setNomNouveau(null)}>Annuler</button>
+                </>
+              ) : mouleAffiche ? (
+                <>
+                  <span className="info-moules-etat">Moule enregistré : {mouleAffiche.nom}</span>
+                  {mouleAffichePerso && (
+                    <button type="button" className="btn-discret btn-danger"
+                      onClick={() => {
+                        if (window.confirm(`Retirer le moule « ${mouleAffichePerso.nom} » de la liste ? Les calculs et les éprouvettes qui ont ces dimensions les gardent.`)) {
+                          retirerMoule(mouleAffichePerso.id);
+                        }
+                      }}>
+                      Retirer ce moule
+                    </button>
+                  )}
+                </>
+              ) : (
+                <button type="button" className="btn-secondary" disabled={!geoActuelle}
+                  title={!geoActuelle ? "Saisissez d'abord toutes les dimensions." : "Garder ces dimensions pour les choisir plus tard"}
+                  onClick={() => geoActuelle && setNomNouveau(nomPropose(geoActuelle))}>
+                  Enregistrer ces dimensions
+                </button>
+              )}
+            </div>
           )}
         </Carte>
 

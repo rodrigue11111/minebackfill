@@ -1205,8 +1205,10 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .info-unite { max-width: 420px; }
 .info-moules { display: flex; align-items: flex-end; gap: 10px 14px; flex-wrap: wrap; }
 .info-moules > .ui-champ { flex: 1 1 280px; max-width: 420px; }
-.info-moules-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 2px; }
-.info-moules-actions .field-input { width: 260px; max-width: 100%; }
+/* Pied de la carte : enregistrer les dimensions saisies juste au-dessus. */
+.info-moules-pied { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--filet); }
+.info-moules-pied .field-input { width: 260px; max-width: 100%; }
+.info-moules-etat { font-size: 13.5px; color: var(--texte-2); }
 .info-composants { display: flex; flex-direction: column; gap: 12px; }
 .info-composant { background: var(--fond); border-radius: var(--rayon-bloc); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
 .info-composant .field-input { background: var(--surface); }
