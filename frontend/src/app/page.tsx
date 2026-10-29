@@ -6,7 +6,8 @@ import { equivalentM3, parametresVolume, volumeMouleM3, volumeTotalM3, LIBELLES_
 import { chiffresSignificatifs, fmt } from "@/lib/format";
 import Parcours from "@/components/ui/Parcours";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { geometrieDe, memeGeometrie, moulesUsuels, nomPropose, patchMoule } from "@/lib/moules";
 import { useStore, lireBinders, patchBinders, MAX_BINDERS } from "@/lib/store";
 import type { BinderRef, LiantCatalogueItem } from "@/lib/store";
 import {
@@ -43,6 +44,21 @@ export default function GeneralInfoPage() {
   // par la conversion d'unité), ce qui évite le bruit d'arrondi du type
   // 310 po -> 787,4 cm -> 309,9999... et laisse saisir les décimales.
   const [draftNum, setDraftNum] = useState<Record<string, string>>({});
+
+  // Moules enregistrés (2026-10-26) : choisir un moule remplit ses dimensions ;
+  // « Enregistrer ces dimensions » garde celles affichées sous un nom.
+  const { moules, enregistrerMoule, retirerMoule } = store;
+  const usuels = useMemo(() => moulesUsuels(), []);
+  const tousLesMoules = [...usuels, ...moules];
+  const geoActuelle = geometrieDe(general);
+  const mouleAffiche = tousLesMoules.find((m) => memeGeometrie(m.geometrie, geoActuelle));
+  const mouleAffichePerso = mouleAffiche && moules.some((m) => m.id === mouleAffiche.id) ? mouleAffiche : undefined;
+  const [nomNouveau, setNomNouveau] = useState<string | null>(null);
+  const enregistrerNouveau = () => {
+    if (nomNouveau === null || !geoActuelle) return;
+    enregistrerMoule(nomNouveau, geoActuelle);
+    setNomNouveau(null);
+  };
 
   useEffect(() => { loadUnits(); }, [loadUnits]);
 
@@ -224,6 +240,58 @@ export default function GeneralInfoPage() {
               onChange={(v) => setGeneral({ container_type: v as (typeof CONTAINER_TYPES)[number]["value"] })}
               options={CONTAINER_TYPES.map((ct) => ({ valeur: ct.value, libelle: ct.label, libelleCourt: ct.court }))}
             />
+          </div>
+
+          <div className="info-moules">
+            <Champ libelle="Moules enregistrés sur cet appareil"
+              aide="Choisir un moule remplit ses dimensions. Vos moules restent dans ce navigateur, et la sauvegarde de Mes calculs les garde.">
+              <select className="field-input" value={mouleAffiche?.id ?? ""}
+                onChange={(e) => {
+                  const m = tousLesMoules.find((x) => x.id === e.target.value);
+                  if (!m) return;
+                  setDraftNum({});
+                  setGeneral(patchMoule(m));
+                }}>
+                <option value="">Choisir un moule…</option>
+                <optgroup label="Moules usuels">
+                  {usuels.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+                </optgroup>
+                {moules.length > 0 && (
+                  <optgroup label="Mes moules">
+                    {moules.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+                  </optgroup>
+                )}
+              </select>
+            </Champ>
+            <div className="info-moules-actions">
+              {nomNouveau === null ? (
+                <>
+                  <button type="button" className="btn-secondary" disabled={!geoActuelle || !!mouleAffiche}
+                    title={!geoActuelle ? "Saisissez d'abord toutes les dimensions." : mouleAffiche ? `Déjà enregistré : ${mouleAffiche.nom}` : undefined}
+                    onClick={() => geoActuelle && setNomNouveau(nomPropose(geoActuelle))}>
+                    Enregistrer ces dimensions
+                  </button>
+                  {mouleAffichePerso && (
+                    <button type="button" className="btn-discret btn-danger"
+                      onClick={() => {
+                        if (window.confirm(`Retirer le moule « ${mouleAffichePerso.nom} » de la liste ? Les calculs et les éprouvettes qui ont ces dimensions les gardent.`)) {
+                          retirerMoule(mouleAffichePerso.id);
+                        }
+                      }}>
+                      Retirer ce moule
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <input className="field-input" aria-label="Nom du moule" maxLength={60} value={nomNouveau} autoFocus
+                    onChange={(e) => setNomNouveau(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); enregistrerNouveau(); } if (e.key === "Escape") setNomNouveau(null); }} />
+                  <button type="button" className="btn-primary" onClick={enregistrerNouveau}>Enregistrer</button>
+                  <button type="button" className="btn-discret" onClick={() => setNomNouveau(null)}>Annuler</button>
+                </>
+              )}
+            </div>
           </div>
 
           {!general.container_type ? (

@@ -27,6 +27,7 @@ export default function StoreHydrator() {
     loadSessions,
     loadAnnotations,
     loadRevues,
+    loadMoules,
   } = useStore();
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export default function StoreHydrator() {
     loadSessions();
     loadAnnotations();
     loadRevues();
+    loadMoules();
     // Courbes de presse encore rangées dans les gâchées (imports antérieurs) :
     // déplacées dans IndexedDB, ce qui libère le stockage local. Sans effet
     // si elles le sont déjà, ou si le navigateur n'a pas IndexedDB.
@@ -63,6 +65,7 @@ export default function StoreHydrator() {
     loadSessions,
     loadAnnotations,
     loadRevues,
+    loadMoules,
   ]);
 
   // Brouillon des formulaires de Calculs (brouillon-calculs.ts) : relu une
@@ -96,6 +99,7 @@ export default function StoreHydrator() {
         case "minebackfill_saved_results": loadSavedResults(); break;
         case "minebackfill_gachees": loadGachees(); break;
         case "minebackfill_protocoles": loadProtocoles(); break;
+        case "minebackfill_moules": loadMoules(); break;
         case "minebackfill_sessions": loadSessions(); break;
         case "minebackfill_annotations": loadAnnotations(); break;
         case "minebackfill_revues": loadRevues(); break;
@@ -126,6 +130,7 @@ export default function StoreHydrator() {
     loadSessions,
     loadAnnotations,
     loadRevues,
+    loadMoules,
   ]);
 
   return null;

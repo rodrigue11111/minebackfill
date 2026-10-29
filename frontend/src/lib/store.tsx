@@ -17,6 +17,7 @@ import type { MesureLabo } from "./mesures";
 import type { RegleLiant } from "./essai-liant";
 import { solverVersionActive, CONVENTION_PACKS, CONVENTION_GS_ESSAI, REGLE_LIANT_ESSAI, essaiConventionRevisee } from "./conventions";
 import { ANCIENS_NOMS_LIANTS_EXEMPLE, MOULE_EXEMPLE, NOMS_LIANTS_EXEMPLE } from "./exemple";
+import { moulesValides, type GeometrieMoule, type MouleEnregistre } from "./moules";
 import type { CloudSession } from "./supabase";
 import {
   type MaterialOrigine, type MaterialKind, type MaterialItem,
@@ -456,6 +457,17 @@ export function persistProtocoles(items: Protocole[]): boolean {
   return persistVersioned(PROTOCOLES_KEY, PROTOCOLES_VERSION, items);
 }
 
+// ── Moules enregistrés (personnels, sur cet appareil ; moules.ts) ──
+export const MOULES_KEY = "minebackfill_moules";
+const MOULES_VERSION = 1;
+
+export function loadMoulesFromStorage(): MouleEnregistre[] {
+  return loadVersioned<MouleEnregistre[]>(MOULES_KEY, MOULES_VERSION, (d) => moulesValides(d), []);
+}
+export function persistMoules(items: MouleEnregistre[]): boolean {
+  return persistVersioned(MOULES_KEY, MOULES_VERSION, items);
+}
+
 // ── Sessions de cours (publiées par l'enseignant ; sessions.ts) ──
 const SESSIONS_KEY = "minebackfill_sessions";
 const SESSIONS_VERSION = 1;
@@ -704,6 +716,13 @@ interface AppState {
   loadSessions: () => void;
   /** Remplace la liste (édition par l'enseignant, ou copie publiée reçue). */
   definirSessions: (items: Session[]) => void;
+
+  // Moules enregistrés (personnels, sur cet appareil ; moules.ts).
+  moules: MouleEnregistre[];
+  loadMoules: () => void;
+  /** Enregistre les dimensions données sous ce nom ; rend le moule créé. */
+  enregistrerMoule: (nom: string, geometrie: GeometrieMoule) => MouleEnregistre;
+  retirerMoule: (id: string) => void;
 
   // Protocoles de laboratoire (éditables, figés par gâchée).
   protocoles: Protocole[];
@@ -1542,6 +1561,22 @@ export const useStore = create<AppState>((set, get) => ({
       const valides = validerSessions(items);
       persistSessions(valides);
       return { sessions: valides };
+    }),
+
+  moules: [],
+  loadMoules: () => set({ moules: loadMoulesFromStorage() }),
+  enregistrerMoule: (nom, geometrie) => {
+    const m: MouleEnregistre = { id: `moule-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`, nom: nom.trim() || "Moule", geometrie };
+    const updated = [...loadMoulesFromStorage(), m];
+    persistMoules(updated);
+    set({ moules: updated });
+    return m;
+  },
+  retirerMoule: (id) =>
+    set(() => {
+      const updated = loadMoulesFromStorage().filter((m) => m.id !== id);
+      persistMoules(updated);
+      return { moules: updated };
     }),
 
   protocoles: protocolesDefaut(),
