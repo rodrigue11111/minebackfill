@@ -1227,6 +1227,27 @@ export default function FormulaLibraryPage() {
     []
   );
 
+  // Fluidité (2026-10-26, mesurée) : pendant le défilement, le survol des
+  // cartes est ignoré (data-defile sur .ui-page, retiré 150 ms après le
+  // dernier défilement) : les cartes qui passent sous le curseur ne repeignent
+  // plus leur contour à chaque image. Le survol revient dès l'arrêt.
+  useEffect(() => {
+    const page = document.querySelector<HTMLElement>(".ui-page");
+    if (!page) return;
+    let minuteur = 0;
+    const surDefilement = () => {
+      if (page.dataset.defile !== "oui") page.dataset.defile = "oui";
+      window.clearTimeout(minuteur);
+      minuteur = window.setTimeout(() => { delete page.dataset.defile; }, 150);
+    };
+    page.addEventListener("scroll", surDefilement, { passive: true });
+    return () => {
+      page.removeEventListener("scroll", surDefilement);
+      window.clearTimeout(minuteur);
+      delete page.dataset.defile;
+    };
+  }, []);
+
   // "/" keyboard shortcut to focus search
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
