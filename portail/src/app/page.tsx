@@ -82,7 +82,6 @@ export default function PortailPage() {
   const [email, setEmail] = useState("");
   const [nom, setNom] = useState("");
   const [enseignant, setEnseignant] = useState(false);
-  const [code, setCode] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -114,13 +113,16 @@ export default function PortailPage() {
       if (mode === "inscription") {
         // Même compte que MineBackfill : le nom affiché est celui que voit
         // l'enseignant. Le serveur ne lit QUE ce champ des métadonnées.
-        // Code enseignant : vérifié par le SERVEUR, jamais conservé sur le compte.
+        // « Je suis l'enseignant » (2026-10-26, plus de code) : le SERVEUR
+        // décide (interrupteur inscription_reglage) et retire la demande du
+        // compte. Interrupteur fermé : un compte étudiant.
         const donnees: Record<string, string> = { display_name: nom.trim() };
-        if (enseignant && code.trim()) donnees.code_enseignant = code.trim();
+        if (enseignant) donnees.enseignant = "oui";
         const { error } = await sb.auth.signUp({ email, password: motDePasse, options: { data: donnees } });
         if (error) throw error;
-        setInfo("Compte créé. Vous pouvez vous connecter.");
+        setInfo(enseignant ? "Compte enseignant créé. Vous pouvez vous connecter." : "Compte créé. Vous pouvez vous connecter.");
         setMode("connexion");
+        setEnseignant(false);
       } else {
         const { error } = await sb.auth.signInWithPassword({ email, password: motDePasse });
         if (error) throw error;
@@ -213,6 +215,8 @@ export default function PortailPage() {
                     setMode(m);
                     setErreur(null);
                     setInfo(null);
+                    // Le mode enseignant ne survit pas à un changement d'onglet.
+                    setEnseignant(false);
                   }}
                 >
                   {m === "connexion" ? "Connexion" : "Inscription"}
@@ -232,18 +236,6 @@ export default function PortailPage() {
                       autoComplete="name"
                       onChange={(e) => setNom(e.target.value)}
                       placeholder="Prénom Nom"
-                    />
-                  </label>
-                )}
-                {mode === "inscription" && enseignant && (
-                  <label className="p-ligne">
-                    <span className="p-ligne-libelle">Code enseignant</span>
-                    <input
-                      type="password"
-                      value={code}
-                      autoComplete="off"
-                      onChange={(e) => setCode(e.target.value)}
-                      placeholder="Requis"
                     />
                   </label>
                 )}
@@ -271,10 +263,17 @@ export default function PortailPage() {
                 </label>
               </div>
               {mode === "inscription" && (
+                // Plus de code enseignant (2026-10-26) ; on peut toujours revenir en arrière.
                 <p className="p-note">
                   Le prénom et le nom sont visibles par l&apos;enseignant.{" "}
-                  {enseignant && "Le code enseignant est fourni par l'administrateur du site."}
-                  {!enseignant && (
+                  {enseignant ? (
+                    <>
+                      <strong>Inscription enseignant</strong> : votre compte aura accès au tableau de bord de la classe.{" "}
+                      <button type="button" className="btn-discret" style={{ padding: 0, fontSize: 13 }} onClick={() => setEnseignant(false)}>
+                        Je suis étudiant
+                      </button>
+                    </>
+                  ) : (
                     <button type="button" className="btn-discret" style={{ padding: 0, fontSize: 13 }} onClick={() => setEnseignant(true)}>
                       Je suis l&apos;enseignant
                     </button>
@@ -284,7 +283,7 @@ export default function PortailPage() {
               {erreur && <div className="p-bandeau p-bandeau-danger" role="alert">{erreur}</div>}
               {info && <div className="p-bandeau p-bandeau-succes" role="status">{info}</div>}
               <button type="submit" className="btn-primary p-soumettre" disabled={loading}>
-                {loading ? "…" : mode === "connexion" ? "Se connecter" : "Créer le compte"}
+                {loading ? "…" : mode === "connexion" ? "Se connecter" : enseignant ? "Créer le compte enseignant" : "Créer le compte"}
               </button>
               {mode === "connexion" && (
                 // Mêmes comptes que MineBackfill : la réinitialisation s'y fait

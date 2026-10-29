@@ -177,10 +177,13 @@ describe("vues de l'enseignant — rendu", () => {
     expect(tableau).toContain("Essais valides");
     expect(tableau).toMatch(/<td[^>]*>1<\/td>/); // un seul essai valide (E02 est exclue)
     expect(tableau).toContain("1 réponse non lue");
-    const detail = rendu(createElement(DetailEtudiant, { etudiant: etudiants[0], annotations, lignes: [], onAnnoter: async () => true, ctx, onOuvrir: () => {} }));
+    const detail = rendu(createElement(DetailEtudiant, { etudiant: etudiants[0], annotations, onOuvrir: () => {} }));
     expect(detail).toContain("Ouvrir");
-    expect(detail).toContain("Commentaires (3 · 1 nouvelle réponse)"); // fil replié
-    expect(detail).toContain("1/3 essai(s) valide(s)");
+    // 2026-10-26 : plus de fil ni de « + Commenter » ici ; le nombre de
+    // commentaires et de réponses non lues, un clic ouvre le document.
+    expect(detail).toContain("3 commentaires · 1 nouvelle réponse");
+    expect(detail).not.toContain("Commenter");
+    expect(detail).toContain(">1/3<"); // essais valides de la gâchée
     const figure = rendu(createElement(FigureClasse, { etudiants, couleurDe }));
     expect(figure).toContain("UCS mesurée de la classe");
     // Une seule gâchée (Bw 5 %) : message, et un axe d'au moins 2 points de % (plus 4,94 à 5,06).
@@ -264,7 +267,7 @@ describe("revue de l'enseignant : rendu", () => {
   });
 
   it("détail de l'étudiant : « À revoir » ou décision par gâchée ; rien quand les revues sont indisponibles", () => {
-    const base = { etudiant: e, annotations: [], lignes: [], onAnnoter: async () => true, ctx, onOuvrir: () => {} };
+    const base = { etudiant: e, annotations: [], onOuvrir: () => {} };
     expect(rendu(createElement(DetailEtudiant, { ...base, revueDe: () => undefined }))).toContain("À revoir");
     const decide = rendu(createElement(DetailEtudiant, { ...base,
       revueDe: () => ({ decision: "acceptee" as const, motif: null, ecartees: [], maj: "m", perimee: true, aRafraichir: false }) }));

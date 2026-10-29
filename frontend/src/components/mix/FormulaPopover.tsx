@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FORMULA_MAP, type Formula } from "@/lib/formulas-data";
 import type { Recipe } from "@/lib/types";
 import { TIRET, fmt, fmtGroupe } from "@/lib/format";
+import { placerPopover, type RectAncre, type Vue } from "@/lib/placer-popover";
 
 /* ── Value substitution: map formula variable symbols to recipe fields ──
    Exporté pour un test d'invariant : chaque clé doit correspondre au `symbol`
@@ -14,9 +15,19 @@ export const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
   "M_b": (r) => r.components?.binder_total_mass_kg ?? null,
   "M_t": (r) => r.components?.residue_dry_mass_kg ?? null,
   "M_{ag}": (r) => r.components?.aggregate_dry_mass_kg ?? 0,
+  // Masses de dosage (2026-10-26, formules des lignes Mr, Mb et Mw) :
+  "M_{t\\text{-secs}}": (r) => r.components?.residue_dry_mass_kg ?? null,
+  "A_m": (r) => {
+    const mr = r.components?.residue_dry_mass_kg ?? 0;
+    const ma = r.components?.aggregate_dry_mass_kg ?? 0;
+    return mr + ma > 0 ? ma / (mr + ma) : null;
+  },
 
   // Cw / Cv
   "C_w": (r) => r.solids_mass_pct != null ? r.solids_mass_pct / 100 : null,
+  // Cw final du remblai (méthode 2) et Cw du PAF (RPG) : le Cw de la recette.
+  "C_{wf}": (r) => r.solids_mass_pct != null ? r.solids_mass_pct / 100 : null,
+  "C_{w\\text{-PAF}}": (r) => r.solids_mass_pct != null ? r.solids_mass_pct / 100 : null,
   "C_v": (r) => r.cv_vol_pct != null ? r.cv_vol_pct / 100 : null,
   "M_s": (r) => {
     const mr = r.components?.residue_dry_mass_kg ?? 0;
@@ -25,6 +36,14 @@ export const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
     return mr + ma + mb;
   },
   "M": (r) => {
+    const mr = r.components?.residue_dry_mass_kg ?? 0;
+    const ma = r.components?.aggregate_dry_mass_kg ?? 0;
+    const mb = r.components?.binder_total_mass_kg ?? 0;
+    const mw = r.components?.water_total_mass_kg ?? 0;
+    return mr + ma + mb + mw;
+  },
+  // Masse totale à produire (méthode 2, PAF) : la même masse totale.
+  "M_T": (r) => {
     const mr = r.components?.residue_dry_mass_kg ?? 0;
     const ma = r.components?.aggregate_dry_mass_kg ?? 0;
     const mb = r.components?.binder_total_mass_kg ?? 0;
@@ -107,7 +126,8 @@ export const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
   },
 };
 
-function getFormulaValues(formula: Formula, recipe: Recipe | undefined): { symbol: string; description: string; unit: string | null; value: number | null }[] {
+/** Valeurs des variables d'une formule pour une recette (exportée pour le test des masses). */
+export function getFormulaValues(formula: Formula, recipe: Recipe | undefined): { symbol: string; description: string; unit: string | null; value: number | null }[] {
   return formula.variables.map((v) => {
     // Sans recette RPC/RPG (RRC), pas de valeur : des getters « ?? 0 » afficheraient des zéros.
     const value = recipe ? (SYMBOL_TO_RECIPE[v.symbol]?.(recipe) ?? null) : null;
@@ -145,12 +165,41 @@ interface FormulaPopoverProps {
   formulaIds: string[];
   /** Recette dont on lit les valeurs ; absente pour le RRC (fiche sans valeurs). */
   recipe?: Recipe;
-  anchorRect: DOMRect;
+  /** Valeur cliquée : la fiche se place contre elle et la suit au défilement. */
+  ancre: HTMLElement;
   onClose: () => void;
 }
 
-export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose }: FormulaPopoverProps) {
+const lireRect = (el: HTMLElement): RectAncre => {
+  const r = el.getBoundingClientRect();
+  return { top: r.top, bottom: r.bottom, left: r.left };
+};
+const lireVue = (): Vue => ({ largeur: window.innerWidth, hauteur: window.innerHeight });
+
+export default function FormulaPopover({ formulaIds, recipe, ancre, onClose }: FormulaPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
+  // Position relue au défilement et au redimensionnement (2026-10-26) : la page
+  // défile dans `.ui-page`, pas dans le document ; on écoute donc le défilement
+  // EN CAPTURE, où qu'il ait lieu, et la fiche suit la valeur cliquée.
+  const [rect, setRect] = useState<RectAncre>(() => lireRect(ancre));
+  const [vue, setVue] = useState<Vue>(lireVue);
+  useEffect(() => {
+    let image = 0;
+    const suivre = () => {
+      cancelAnimationFrame(image);
+      image = requestAnimationFrame(() => {
+        if (ancre.isConnected) setRect(lireRect(ancre));
+        setVue(lireVue());
+      });
+    };
+    document.addEventListener("scroll", suivre, true);
+    window.addEventListener("resize", suivre);
+    return () => {
+      cancelAnimationFrame(image);
+      document.removeEventListener("scroll", suivre, true);
+      window.removeEventListener("resize", suivre);
+    };
+  }, [ancre]);
 
   // Clavier et lecteur d'écran : le focus entre dans la fiche à l'ouverture et
   // revient sur la valeur (ou la pastille) cliquée à la fermeture.
@@ -177,16 +226,12 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
     };
   }, [onClose]);
 
-  // Position: below the anchor, clamped to viewport
   const formulas = formulaIds.map((id) => FORMULA_MAP.get(id)).filter(Boolean) as Formula[];
   if (formulas.length === 0) return null;
 
-  const popoverW = Math.min(420, typeof window !== "undefined" ? window.innerWidth - 24 : 420);
-  const left = Math.min(
-    Math.max(anchorRect.left, 8),
-    window.innerWidth - popoverW - 8,
-  );
-  const top = anchorRect.bottom + 6;
+  // Sous la valeur s'il y a la place, sinon au-dessus ; toujours entière à
+  // l'écran, le contenu défile à l'intérieur (lib/placer-popover.ts).
+  const place = placerPopover(rect, vue);
 
   return (
     <div
@@ -197,11 +242,13 @@ export default function FormulaPopover({ formulaIds, recipe, anchorRect, onClose
       tabIndex={-1}
       style={{
         position: "fixed",
-        left,
-        top: Math.min(top, window.innerHeight - 200),
-        width: popoverW,
-        maxHeight: "70vh",
+        left: place.left,
+        top: place.top,
+        bottom: place.bottom,
+        width: place.width,
+        maxHeight: place.maxHeight,
         overflowY: "auto",
+        overscrollBehavior: "contain",
         background: "var(--surface)",
         border: "1px solid var(--filet-fort)",
         borderRadius: 10,

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { lienDocument } from "@/lib/liens-commentaires";
 import { useSyncExternalStore } from "react";
 import { useStore } from "@/lib/store";
 import type { Avis } from "@/lib/sync-moteur";
@@ -97,21 +98,26 @@ export default function BandeauSynchro() {
   if (nonLues.length > 0) {
     const n = nonLues.length;
     const docs = [...new Map(nonLues.map((a) => [`${a.cibleKind}:${a.cibleId}`, a])).values()];
-    const noms = docs.slice(0, 3).map((a) =>
-      a.cibleKind === "resultat"
-        ? `le résultat « ${resultats.find((r) => r.id === a.cibleId)?.label ?? a.cibleId} »`
-        : `la gâchée ${gachees.find((g) => g.id === a.cibleId)?.code ?? a.cibleId}`);
-    const reste = docs.length - noms.length;
-    if (reste > 0) noms.push(`${reste} autre${reste > 1 ? "s" : ""} document${reste > 1 ? "s" : ""}`);
-    const liste = noms.length > 1 ? `${noms.slice(0, -1).join(", ")} et ${noms[noms.length - 1]}` : noms[0];
+    // Chaque document est un lien qui l'ouvre directement (2026-10-26) : la
+    // gâchée au Labo, sur l'onglet de la note ; le résultat dans Mes calculs.
+    const liens: React.ReactNode[] = docs.slice(0, 3).map((a) => (
+      <span key={`${a.cibleKind}:${a.cibleId}`}>
+        {a.cibleKind === "resultat" ? "le résultat " : "la gâchée "}
+        <Link href={lienDocument(a.cibleKind, a.cibleId)} style={{ color: "inherit", fontWeight: 700 }}>
+          {a.cibleKind === "resultat"
+            ? `« ${resultats.find((r) => r.id === a.cibleId)?.label ?? a.cibleId} »`
+            : gachees.find((g) => g.id === a.cibleId)?.code ?? a.cibleId}
+        </Link>
+      </span>
+    ));
+    const reste = docs.length - liens.length;
+    if (reste > 0) liens.push(<span key="reste">{reste} autre{reste > 1 ? "s" : ""} document{reste > 1 ? "s" : ""}</span>);
+    const liste = liens.flatMap((l, i) => (i === 0 ? [l] : [i === liens.length - 1 ? " et " : ", ", l]));
     elements.push(
       <div key="annotations" role="status" style={boite("#F0ECFB", "#5B3CC4")}>
         <span>
           L&apos;enseignant a laissé {n} commentaire{n > 1 ? "s" : ""} non lu{n > 1 ? "s" : ""} sur{" "}
-          {liste}.
-          Ouvrez vos gâchées dans le <Link href="/labo" style={{ color: "inherit", fontWeight: 700 }}>Labo</Link>{" "}
-          et vos résultats dans l&apos;<Link href="/historique" style={{ color: "inherit", fontWeight: 700 }}>Historique</Link> :
-          vous pourrez y répondre.
+          {liste}. {docs.length > 1 ? "Ouvrez-les" : "Ouvrez-le"} pour lire et répondre.
         </span>
         <button type="button" className="btn-secondary" style={bouton} onClick={() => fermerBandeauCommentaires(nonLues.map((a) => a.id))}>Fermer</button>
       </div>,

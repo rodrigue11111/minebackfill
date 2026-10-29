@@ -512,3 +512,125 @@ ${cartes}
 </div>
 </body></html>`;
 }
+
+/* ── Saisie directe de l'essai et regroupement (2026-10-26) ──────────────────
+   Demandes de l'utilisateur : une éprouvette s'ouvre directement sur son
+   essai, sans étape « Marquer écrasée » ; la liste se range par âge de cure. */
+
+/** Midi local du jour de `d` (même convention que la coulée : aucun décalage de jour). */
+const midiLocal = (d: Date): string => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).toISOString();
+
+/**
+ * Date d'essai proposée à l'écrasement : aujourd'hui, sauf si la coulée est
+ * après aujourd'hui. Un essai ne peut pas précéder la coulée ; la date reste
+ * alors vide, à saisir (avisDateEssai le dit).
+ */
+export function dateEssaiParDefaut(e: Eprouvette, maintenant: Date): string | undefined {
+  return jourLocal(maintenant).getTime() < dateCoulee(e).getTime() ? undefined : midiLocal(maintenant);
+}
+
+/** Écrasement : date du jour si elle manque et qu'elle est possible, diamètre du moule s'il manque. */
+export function completerEssaiEcrasement(e: Eprouvette, essai: EssaiUCS, maintenant: Date): EssaiUCS {
+  const date = essai.date ?? dateEssaiParDefaut(e, maintenant);
+  return {
+    ...essai,
+    ...(date ? { date } : {}),
+    ...(e.mouleDiametreMm && !essai.diametreMm ? { diametreMm: e.mouleDiametreMm } : {}),
+  };
+}
+
+/**
+ * Une modification de l'essai déclare-t-elle l'éprouvette écrasée ? Seulement
+ * une charge ou une contrainte STRICTEMENT positive. Un champ vidé (undefined),
+ * une valeur 0 ou un autre champ (date, masse, vitesse, presse, rupture) ne
+ * suffisent pas. Les champs n'écrivent qu'une valeur acceptée : une saisie
+ * refusée (négative, illisible) n'arrive jamais ici.
+ */
+export function mesureEcrasement(patch: Partial<EssaiUCS>): boolean {
+  const positif = (x: unknown) => typeof x === "number" && Number.isFinite(x) && x > 0;
+  return positif(patch.chargeKn) || positif(patch.contrainteKpaSaisie);
+}
+
+/**
+ * Applique une modification de l'essai. Une éprouvette en cure qui reçoit une
+ * mesure (mesureEcrasement) passe en « écrasée », avec la date et le diamètre
+ * complétés. Effacer ensuite la mesure ne la remet pas en cure : le rond de
+ * la ligne le fait.
+ */
+export function appliquerSaisieEssai(e: Eprouvette, patch: Partial<EssaiUCS>, maintenant: Date): Eprouvette {
+  const essai = { ...(e.essai ?? {}), ...patch };
+  if (e.statut === "ecrase" || !mesureEcrasement(patch)) return { ...e, essai };
+  return { ...e, statut: "ecrase", essai: completerEssaiEcrasement(e, essai, maintenant) };
+}
+
+/** Rond de la ligne : bascule cure ⇄ écrasée (l'essai est gardé en remettant en cure). */
+export function basculerEcrasement(e: Eprouvette, maintenant: Date): Eprouvette {
+  if (e.statut === "ecrase") return { ...e, statut: "en_cure" };
+  return { ...e, statut: "ecrase", essai: completerEssaiEcrasement(e, e.essai ?? {}, maintenant) };
+}
+
+/** Écrasée sans date d'essai : quoi faire (coulée future : la vérifier). null si rien à dire. */
+export function avisDateEssai(e: Eprouvette, maintenant: Date): string | null {
+  if (e.statut !== "ecrase" || e.essai?.date) return null;
+  const coulee = dateCoulee(e);
+  if (jourLocal(maintenant).getTime() < coulee.getTime()) {
+    const jour = coulee.toLocaleDateString("fr-CA", { day: "numeric", month: "long", year: "numeric" });
+    return `Date de coulée le ${jour}, après aujourd'hui : vérifiez-la, puis indiquez la date d'essai.`;
+  }
+  return "Indiquez la date d'essai.";
+}
+
+/** Confirmation avant de retirer une éprouvette. */
+export function messageRetraitEprouvette(e: Eprouvette): string {
+  const mesuree = contrainteKpa(e.essai) !== null || e.essai?.chargeKn !== undefined || !!e.essai?.courbeInfo;
+  return mesuree ? `Retirer l'éprouvette ${e.code} ? Ses mesures seront perdues.` : `Retirer l'éprouvette ${e.code} ?`;
+}
+
+export interface GroupeEprouvettes {
+  /** Âge visé + jour de coulée. */
+  cle: string;
+  ageJours: number;
+  coulee: Date;
+  echeance: Date;
+  /** Triées par code. */
+  eprouvettes: Eprouvette[];
+  ecrasees: number;
+  /** Moyenne des essais retenus (agregerParAge), null sans essai. */
+  moyenneKpa: number | null;
+}
+
+/** Éprouvettes rangées par âge de cure et jour de coulée, groupes triés par échéance. */
+export function grouperEprouvettes(eprouvettes: Eprouvette[]): GroupeEprouvettes[] {
+  const groupes = new Map<string, Eprouvette[]>();
+  for (const e of eprouvettes) {
+    const cle = `${e.ageJours}|${dateCoulee(e).getTime()}`;
+    groupes.set(cle, [...(groupes.get(cle) ?? []), e]);
+  }
+  return [...groupes.entries()]
+    .map(([cle, liste]) => {
+      const tries = [...liste].sort((a, b) => a.code.localeCompare(b.code, "fr", { numeric: true }));
+      return {
+        cle,
+        ageJours: tries[0].ageJours,
+        coulee: dateCoulee(tries[0]),
+        echeance: dateEcheance(tries[0]),
+        eprouvettes: tries,
+        ecrasees: tries.filter((e) => e.statut === "ecrase").length,
+        moyenneKpa: agregerParAge(tries)[0]?.moyenneKpa ?? null,
+      };
+    })
+    .sort((a, b) => a.echeance.getTime() - b.echeance.getTime() || a.ageJours - b.ageJours);
+}
+
+/**
+ * Groupes ouverts par défaut : le premier qui a encore des éprouvettes en
+ * cure, ceux qui portent une note de l'enseignant, et le groupe unique.
+ */
+export function groupesOuvertsParDefaut(groupes: GroupeEprouvettes[], codesAvecNote: Set<string> = new Set()): Set<string> {
+  const ouverts = new Set<string>();
+  if (groupes.length === 1) ouverts.add(groupes[0].cle);
+  const prochain = groupes.find((g) => g.ecrasees < g.eprouvettes.length);
+  if (prochain) ouverts.add(prochain.cle);
+  for (const g of groupes) if (g.eprouvettes.some((e) => codesAvecNote.has(e.code))) ouverts.add(g.cle);
+  return ouverts;
+}

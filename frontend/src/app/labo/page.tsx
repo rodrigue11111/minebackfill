@@ -7,19 +7,21 @@
 // éprouvettes et essais UCS. Auto-sauvegarde : chaque saisie est persistée
 // immédiatement (localStorage). Les parties sont dans components/labo.
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { nomLiant } from "@/lib/liants";
 import { materiauxDepuisFormulation } from "@/lib/gachee-materiaux";
 import FiltreSession from "@/components/FiltreSession";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useHydrated } from "@/lib/use-hydrated";
-import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, type Gachee } from "@/lib/gachee";
+import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, messageSuppressionGachee, type Gachee } from "@/lib/gachee";
 import { snapshotProtocoles } from "@/lib/protocole";
 import { mouleDepuisContenant } from "@/lib/eprouvette";
 import { volumeHorsLabo } from "@/lib/contenant";
 import { useAujourdhui } from "@/lib/use-aujourdhui";
 import { annotationsDe, docsAvecNonLus } from "@/lib/annotations";
+import { vuePourNonLues } from "@/lib/liens-commentaires";
 import { libelleRevue } from "@/lib/revues";
 import { clesCourbes, courbesAOublier } from "@/lib/courbes";
 import { oublierCourbes } from "@/lib/courbes-client";
@@ -40,13 +42,29 @@ import { dateHeureSauvegarde, dateLongue, nouvelId } from "@/components/labo/out
 
 type Vue = "gachees" | "resultats" | "protocoles";
 
+// useSearchParams exige une frontière Suspense (comme app/analyse/page.tsx).
 export default function LaboPage() {
+  return <Suspense fallback={null}><LaboContenu /></Suspense>;
+}
+
+function LaboContenu() {
   const monte = useHydrated();
   const { gachees, ajouterGachee, modifierGachee, supprimerGachee, savedResults,
     protocoles, ajouterProtocole, modifierProtocole, supprimerProtocole, reinitialiserProtocoles } = useStore();
   const annotations = useStore((s) => s.annotations);
   const connecte = useStore((s) => s.session !== null);
-  const [selId, setSelId] = useState<string | null>(null);
+  // Gâchée ouverte : choisie dans la page, sinon demandée par l'adresse
+  // (?gachee=, lien direct du bandeau des commentaires). undefined : pas
+  // encore de choix, l'adresse décide ; null : la liste.
+  const demande = useSearchParams().get("gachee");
+  const [selId, setSelId] = useState<string | null | undefined>(undefined);
+  const actif = selId === undefined ? demande : selId;
+  const viaLien = selId === undefined && demande !== null;
+  // Revenir à la liste retire ?gachee= : recharger la page ne rouvre pas la gâchée.
+  const fermer = () => {
+    setSelId(null);
+    if (demande !== null) window.history.replaceState(null, "", "/labo");
+  };
   const [nouvelle, setNouvelle] = useState(false);
   const [formId, setFormId] = useState<string>("");
   const [recIndex, setRecIndex] = useState(0);
@@ -67,7 +85,7 @@ export default function LaboPage() {
 
   const nonLus = docsAvecNonLus(annotations);
   const formulations = savedResults.filter((s) => (s.recipes?.length ?? 0) > 0);
-  const selection = gachees.find((g) => g.id === selId) ?? null;
+  const selection = gachees.find((g) => g.id === actif) ?? null;
 
   function creer() {
     const trouvee = formulations.find((s) => s.id === formId) ?? formulations[0];
@@ -114,7 +132,10 @@ export default function LaboPage() {
     return (
       <Page>
         <EditeurGachee
+          key={g.id}
           gachee={g}
+          vueInitiale={viaLien ? vuePourNonLues(annotationsDe(annotations, "gachee", g.id), g.eprouvettes.map((e) => e.code)) : undefined}
+          allerAuNonLu={viaLien}
           parametres={parametresEffectifs(g, formulations)}
           mouleFormulation={mouleDepuisContenant(formulations.find((f) => f.id === g.formulationId)?.general)}
           maintenant={maintenant}
@@ -124,12 +145,12 @@ export default function LaboPage() {
           bibliotheque={{ residus: catalogueResidus, granulats: catalogueGranulats }}
           revue={revueDe.get(g.id)}
           revEnLigne={revEnLigne(g.id)}
-          onRetour={() => setSelId(null)}
+          onRetour={fermer}
           onSupprimer={() => {
-            if (window.confirm(`Supprimer la gâchée ${g.code} ?`)) {
+            if (window.confirm(messageSuppressionGachee(g))) {
               oublierCourbes(courbesAOublier(clesCourbes(g), gachees.filter((x) => x.id !== g.id)));
               supprimerGachee(g.id);
-              setSelId(null);
+              fermer();
             }
           }}
         />

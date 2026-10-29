@@ -375,3 +375,13 @@ export function etapesGachee(g: Pick<Gachee, "composants" | "eprouvettes">, ucsM
   const courante = faites.findIndex((f) => !f);
   return libelles.map((libelle, i) => ({ n: i + 1, libelle, etat: faites[i] ? "faite" : i === courante ? "en_cours" : "a_venir" }));
 }
+
+/**
+ * Confirmation avant de supprimer une gâchée (2026-10-26 : le bouton est
+ * désormais en tête de l'éditeur, il doit dire ce qui part avec elle).
+ */
+export function messageSuppressionGachee(g: Pick<Gachee, "code" | "eprouvettes">): string {
+  const n = g.eprouvettes.length;
+  const ce = n === 0 ? "" : ` Ses ${n} éprouvette${n > 1 ? "s" : ""} et leurs mesures seront supprimées, aussi en ligne si votre compte est relié.`;
+  return `Supprimer la gâchée ${g.code} ?${ce} Action définitive.`;
+}

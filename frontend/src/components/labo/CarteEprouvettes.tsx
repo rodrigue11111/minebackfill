@@ -4,11 +4,19 @@
 // éprouvette (rond coché quand elle est écrasée, code, âge, échéance, UCS) ;
 // la ligne s'ouvre sur l'essai. Ajout d'éprouvettes, import de presse,
 // étiquettes. Mise en cure et écrasement selon ASTM C192/C192M et C39/C39M.
+//
+// 2026-10-26 (demandes de l'utilisateur) : la ligne s'ouvre DIRECTEMENT sur
+// le formulaire d'essai, sans étape « Marquer écrasée » (une charge ou une
+// contrainte positive la passe en « écrasée », appliquerSaisieEssai) ; la
+// liste est rangée par âge de cure, en groupes repliables ; ouvrir une ligne
+// garde la ligne cliquée à sa place à l'écran (le panneau refermé au-dessus
+// ne la fait plus remonter sous le curseur).
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import {
   AGES_CURE_DEFAUT, MOULES_PROPOSES, contrainteKpa, dateCoulee, dateEcheance, ecrasementPrecoce, etiquettesHtml, genererCodeEprouvette,
+  appliquerSaisieEssai, avisDateEssai, basculerEcrasement, grouperEprouvettes, groupesOuvertsParDefaut, messageRetraitEprouvette,
   choixMouleParDefaut, libelleMoule, type Eprouvette, type EssaiUCS, type EtiquetteEprouvette, type MouleCylindre,
 } from "@/lib/eprouvette";
 import type { Gachee } from "@/lib/gachee";
@@ -28,8 +36,9 @@ import { FilEtudiant } from "@/components/AnnotationsDoc";
 import ImportPresse from "./ImportPresse";
 import FormEssaiUCS from "./FormEssaiUCS";
 import { lireCourbe } from "@/lib/classe-reseau";
+import { cylindreDe } from "@/lib/moules";
 import { getSupabase } from "@/lib/supabase";
-import { dateCourteFr, imprimerHtml, isoJourMidi, isoVersDateInput, nouvelId } from "./outils";
+import { dateCourteFr, imprimerHtml, isoVersDateInput, nouvelId } from "./outils";
 
 export default function CarteEprouvettes({ gachee, maintenant, onChange, idImport, inviterAjout = false, notes, connecte = false, mouleFormulation }: {
   gachee: Gachee;
@@ -57,12 +66,46 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
   const [mouleChoixUtilisateur, setMouleChoix] = useState<string | null>(null);
   const mouleChoix = mouleChoixUtilisateur ?? choixMouleParDefaut(mouleFormulation);
   const [moule, setMoule] = useState("");
+  // Moules enregistrés de forme cylindrique (2026-10-26), sauf ceux déjà
+  // proposés (usuels, ou moule du calcul).
+  const memesDimensions = (a: MouleCylindre, b: MouleCylindre) =>
+    Math.abs(a.diametreMm - b.diametreMm) <= 0.05 && Math.abs(a.hauteurMm - b.hauteurMm) <= 0.05;
+  const moulesEnregistres = useStore((s) => s.moules)
+    .map((m) => ({ m, c: cylindreDe(m) }))
+    .filter((x): x is { m: typeof x.m; c: MouleCylindre } => !!x.c
+      && !MOULES_PROPOSES.some((p) => memesDimensions(p, x.c!))
+      && !(mouleFormulation && memesDimensions(mouleFormulation, x.c!)));
   const [ouverte, setOuverte] = useState<string | null>(null);
   const uid = useStore((s) => s.session?.userId ?? null);
 
   const eprouvettes = [...gachee.eprouvettes].sort(
     (a, b) => dateEcheance(a).getTime() - dateEcheance(b).getTime(),
   );
+  // Groupes par âge de cure : ouverts ou fermés par l'utilisateur, sinon
+  // selon groupesOuvertsParDefaut (prochain groupe à écraser, notes).
+  const groupes = grouperEprouvettes(gachee.eprouvettes);
+  const ouvertsDefaut = groupesOuvertsParDefaut(groupes, new Set(notes?.keys() ?? []));
+  const [groupesChoisis, setGroupesChoisis] = useState<Record<string, boolean>>({});
+  const groupeOuvert = (cle: string) => groupesChoisis[cle] ?? ouvertsDefaut.has(cle);
+
+  // Ouvrir une ligne referme la précédente : si elle était au-dessus, tout ce
+  // qui suit remontait de sa hauteur, sous le curseur. On note la position de
+  // l'élément cliqué AVANT le changement, puis on compense le défilement de
+  // `.ui-page` APRÈS le rendu, avant l'affichage (useLayoutEffect).
+  const ancrage = useRef<{ el: HTMLElement; top: number } | null>(null);
+  const garderEnPlace = (el: Element | null) => {
+    if (el instanceof HTMLElement) ancrage.current = { el, top: el.getBoundingClientRect().top };
+  };
+  useLayoutEffect(() => {
+    const a = ancrage.current;
+    ancrage.current = null;
+    if (!a || !a.el.isConnected) return;
+    const ecart = a.el.getBoundingClientRect().top - a.top;
+    if (Math.abs(ecart) < 1) return;
+    const defilant = a.el.closest(".ui-page");
+    if (defilant) defilant.scrollTop += ecart;
+    else window.scrollBy(0, ecart);
+  });
 
   const ajouter = () => {
     const n = Math.max(1, Math.round(nb ?? 1));
@@ -73,7 +116,8 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
     for (let i = 0; i < n; i++) {
       const code = genererCodeEprouvette(gachee.code, [...gachee.eprouvettes, ...nouvelles]);
       const propose = mouleChoix === "calcul" ? mouleFormulation
-        : mouleChoix !== "" && mouleChoix !== "autre" ? MOULES_PROPOSES[Number(mouleChoix)] : undefined;
+        : mouleChoix.startsWith("perso:") ? moulesEnregistres.find((x) => `perso:${x.m.id}` === mouleChoix)?.c
+          : mouleChoix !== "" && mouleChoix !== "autre" ? MOULES_PROPOSES[Number(mouleChoix)] : undefined;
       nouvelles.push({
         id: nouvelId(), code, couleLe: iso, ageJours: a, statut: "en_cure",
         ...(propose
@@ -86,8 +130,10 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
 
   const majEprouvette = (id: string, patch: Partial<Eprouvette>) =>
     onChange(gachee.eprouvettes.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  // Une charge ou une contrainte positive passe l'éprouvette en « écrasée »
+  // (date du jour si possible, diamètre du moule) : lib/eprouvette.ts.
   const majEssai = (id: string, patch: Partial<EssaiUCS>) =>
-    onChange(gachee.eprouvettes.map((e) => (e.id === id ? { ...e, essai: { ...(e.essai ?? {}), ...patch } } : e)));
+    onChange(gachee.eprouvettes.map((e) => (e.id === id ? appliquerSaisieEssai(e, patch, maintenant) : e)));
 
   // Courbe de presse : rangée ici (magasin, ou encore dans la gâchée), sinon
   // cherchée en ligne (envoyée depuis un autre appareil), puis rangée ici.
@@ -119,6 +165,8 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
   };
   const retirer = (id: string) => {
     const e = gachee.eprouvettes.find((x) => x.id === id);
+    // Confirmation (2026-10-26) : retirer efface aussi les mesures.
+    if (e && typeof window !== "undefined" && !window.confirm(messageRetraitEprouvette(e))) return;
     onChange(gachee.eprouvettes.filter((x) => x.id !== id));
     if (e) oublierCourbes(courbesAOublier(clesCourbesEprouvette(e), useStore.getState().gachees.filter((x) => x.id !== gachee.id)));
   };
@@ -128,13 +176,12 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
   const diametreDuMoule = (e: Eprouvette, essai: EssaiUCS | undefined): Partial<EssaiUCS> =>
     e.mouleDiametreMm && !essai?.diametreMm ? { diametreMm: e.mouleDiametreMm } : {};
 
-  // Bascule cure <-> écrasée : à l'écrasement, on initialise la date d'essai au
-  // jour même (et le diamètre depuis le moule).
-  const basculerStatut = (e: Eprouvette) => {
-    majEprouvette(e.id, e.statut === "ecrase"
-      ? { statut: "en_cure" }
-      : { statut: "ecrase", essai: { date: isoJourMidi(new Date()), ...(e.essai ?? {}), ...diametreDuMoule(e, e.essai) } });
-    if (e.statut !== "ecrase") setOuverte(e.id);
+  // Rond de la ligne : bascule cure <-> écrasée. À l'écrasement, la date
+  // d'essai est celle du jour (sauf coulée future) et le diamètre vient du moule.
+  const basculerStatut = (e: Eprouvette, el: Element | null) => {
+    const b = basculerEcrasement(e, maintenant);
+    majEprouvette(e.id, { statut: b.statut, essai: b.essai });
+    if (e.statut !== "ecrase") { garderEnPlace(el); setOuverte(e.id); }
   };
 
   // La vitesse de chargement est la même pour une campagne : l'appliquer d'un coup.
@@ -195,67 +242,89 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
       {eprouvettes.length === 0 ? (
         <p className="labo-vide">Aucune éprouvette. Choisissez un âge de cure et un nombre de réplicats, puis cliquez sur « Ajouter ».</p>
       ) : (
-        <div className="ui-liste">
-          {eprouvettes.map((e) => {
-            const b = badgeEcheance(e, maintenant);
-            const ucs = e.statut === "ecrase" ? contrainteKpa(e.essai) : null;
-            const ouvert = ouverte === e.id;
-            const notesE = notes?.get(e.code) ?? [];
+        <div className="labo-groupes">
+          {groupes.map((gr) => {
+            const ouvertG = groupeOuvert(gr.cle);
+            const idListe = `groupe-${gachee.id}-${gr.cle.replace(/\W/g, "-")}`;
             return (
-              <div key={e.id} className="labo-eprouvette">
-                <div className="labo-eprouvette-ligne">
-                  <button type="button" className={e.statut === "ecrase" ? "labo-rond labo-rond-plein" : "labo-rond"}
-                    aria-pressed={e.statut === "ecrase"}
-                    aria-label={e.statut === "ecrase" ? `${e.code} écrasée : remettre en cure` : `Marquer ${e.code} écrasée`}
-                    title={e.statut === "ecrase" ? "Remettre en cure" : "Marquer écrasée"}
-                    onClick={() => basculerStatut(e)}>
-                    {e.statut === "ecrase" && <Icone nom="coche" taille={12} epaisseur={3} />}
-                  </button>
-                  <button type="button" className="labo-eprouvette-corps" aria-expanded={ouvert} onClick={() => setOuverte(ouvert ? null : e.id)}>
-                    <span className="labo-eprouvette-textes">
-                      <span className="labo-eprouvette-code">{e.code}</span>
-                      <span className="labo-eprouvette-detail">
-                        {e.ageJours} j · échéance {dateCourteFr(dateEcheance(e))}
-                        {libelleMoule(e) ? ` · ${libelleMoule(e)}` : ""}
-                        {e.essai?.exclu ? " · exclue de la moyenne" : ""}
-                      </span>
-                    </span>
-                    <span className="labo-eprouvette-droite">
-                      {ucs !== null
-                        ? <strong className="labo-ucs">{Math.round(ucs).toLocaleString("fr-CA")} kPa</strong>
-                        : <span style={{ color: b.couleur, fontWeight: 600 }}>{b.texte}</span>}
-                      {notesE.length > 0 && <span className="ui-point ui-point-accent" title="Note de l'enseignant" />}
-                      <span className="ui-ligne-chevron" style={{ transform: ouvert ? "rotate(90deg)" : undefined }}><Icone nom="chevron" taille={14} epaisseur={2.2} /></span>
-                    </span>
-                  </button>
-                </div>
-                {notesE.length > 0 && (
-                  <FilEtudiant kind="gachee" id={gachee.id} liste={notesE} connecte={connecte} ancre={e.code} />
-                )}
-                {ouvert && (
-                  <div className="labo-eprouvette-ouverte">
-                    {ecrasementPrecoce(e) && (
-                      // Avis, jamais un blocage : la date d'essai peut être juste.
-                      <Bandeau ton="alerte" titre="Écrasée avant l'échéance.">
-                        Âge réel : {ecrasementPrecoce(e)!.ageReel} j pour un âge visé de {ecrasementPrecoce(e)!.ageVise} j. Les moyennes suivent l&apos;âge visé :
-                        vérifiez la date d&apos;essai, ou notez la raison dans les observations.
-                      </Bandeau>
-                    )}
-                    {e.statut === "ecrase" && (
-                      <FormEssaiUCS eprouvette={e} onChange={(patch) => majEssai(e.id, patch)}
-                        chargerCourbe={chargerCourbe(e)} chercherCourbeEnLigne={connecte && uid ? chercherEnLigne(e) : undefined}
-                        idImport={idImport}
-                        onVitessePourToutes={gachee.eprouvettes.filter((x) => x.statut === "ecrase").length > 1 ? vitessePourToutes : undefined} />
-                    )}
-                    <div className="labo-actions">
-                      <button type="button" onClick={() => basculerStatut(e)} className="btn-secondary">
-                        {e.statut === "ecrase" ? "Remettre en cure" : "Marquer écrasée"}
-                      </button>
-                      <button type="button" onClick={() => retirer(e.id)} className="btn-discret btn-danger">Retirer l&apos;éprouvette</button>
-                    </div>
+              <section key={gr.cle} className="labo-groupe" aria-label={`Éprouvettes à ${gr.ageJours} j`}>
+                <button type="button" className="labo-groupe-tete" aria-expanded={ouvertG} aria-controls={idListe}
+                  onClick={(ev) => { garderEnPlace(ev.currentTarget); setGroupesChoisis((c) => ({ ...c, [gr.cle]: !ouvertG })); }}>
+                  <span className="ui-ligne-chevron" style={{ transform: ouvertG ? "rotate(90deg)" : undefined }}><Icone nom="chevron" taille={14} epaisseur={2.2} /></span>
+                  <span className="labo-groupe-titre">{gr.ageJours} j · échéance {dateCourteFr(gr.echeance)}</span>
+                  <span className="labo-groupe-detail">
+                    {gr.eprouvettes.length} éprouvette{gr.eprouvettes.length > 1 ? "s" : ""}, {gr.ecrasees} écrasée{gr.ecrasees > 1 ? "s" : ""}
+                    {gr.moyenneKpa !== null ? ` · moyenne ${Math.round(gr.moyenneKpa).toLocaleString("fr-CA")} kPa` : ""}
+                  </span>
+                </button>
+                {ouvertG && (
+                  <div className="ui-liste labo-liste-eprouvettes" id={idListe}>
+                    {gr.eprouvettes.map((e) => {
+                      const b = badgeEcheance(e, maintenant);
+                      const ucs = e.statut === "ecrase" ? contrainteKpa(e.essai) : null;
+                      const ouvert = ouverte === e.id;
+                      const notesE = notes?.get(e.code) ?? [];
+                      const avisDate = avisDateEssai(e, maintenant);
+                      return (
+                        <div key={e.id} className="labo-eprouvette">
+                          <div className="labo-eprouvette-ligne">
+                            <button type="button" className={e.statut === "ecrase" ? "labo-rond labo-rond-plein" : "labo-rond"}
+                              aria-pressed={e.statut === "ecrase"}
+                              aria-label={e.statut === "ecrase" ? `${e.code} écrasée : remettre en cure` : `Marquer ${e.code} écrasée`}
+                              title={e.statut === "ecrase" ? "Remettre en cure" : "Marquer écrasée"}
+                              onClick={(ev) => basculerStatut(e, ev.currentTarget.closest(".labo-eprouvette"))}>
+                              {e.statut === "ecrase" && <Icone nom="coche" taille={12} epaisseur={3} />}
+                            </button>
+                            <button type="button" className="labo-eprouvette-corps" aria-expanded={ouvert}
+                              onClick={(ev) => { garderEnPlace(ev.currentTarget.closest(".labo-eprouvette")); setOuverte(ouvert ? null : e.id); }}>
+                              <span className="labo-eprouvette-textes">
+                                <span className="labo-eprouvette-code">{e.code}</span>
+                                <span className="labo-eprouvette-detail">
+                                  {e.ageJours} j · échéance {dateCourteFr(dateEcheance(e))}
+                                  {libelleMoule(e) ? ` · ${libelleMoule(e)}` : ""}
+                                  {e.essai?.exclu ? " · exclue de la moyenne" : ""}
+                                </span>
+                              </span>
+                              <span className="labo-eprouvette-droite">
+                                {ucs !== null
+                                  ? <strong className="labo-ucs">{Math.round(ucs).toLocaleString("fr-CA")} kPa</strong>
+                                  : <span style={{ color: b.couleur, fontWeight: 600 }}>{b.texte}</span>}
+                                {notesE.length > 0 && <span className="ui-point ui-point-accent" title="Note de l'enseignant" />}
+                                <span className="ui-ligne-chevron" style={{ transform: ouvert ? "rotate(90deg)" : undefined }}><Icone nom="chevron" taille={14} epaisseur={2.2} /></span>
+                              </span>
+                            </button>
+                          </div>
+                          {notesE.length > 0 && (
+                            <FilEtudiant kind="gachee" id={gachee.id} liste={notesE} connecte={connecte} ancre={e.code} />
+                          )}
+                          {ouvert && (
+                            <div className="labo-eprouvette-ouverte">
+                              {ecrasementPrecoce(e) && (
+                                // Avis, jamais un blocage : la date d'essai peut être juste.
+                                <Bandeau ton="alerte" titre="Écrasée avant l'échéance.">
+                                  Âge réel : {ecrasementPrecoce(e)!.ageReel} j pour un âge visé de {ecrasementPrecoce(e)!.ageVise} j. Les moyennes suivent l&apos;âge visé :
+                                  vérifiez la date d&apos;essai, ou notez la raison dans les observations.
+                                </Bandeau>
+                              )}
+                              {avisDate && <Bandeau ton="alerte" role="status">{avisDate}</Bandeau>}
+                              {e.statut !== "ecrase" && (
+                                <p className="labo-aide-essai">Saisissez la charge ou la contrainte : l&apos;éprouvette passe en « écrasée ».</p>
+                              )}
+                              <FormEssaiUCS eprouvette={e} onChange={(patch) => majEssai(e.id, patch)}
+                                chargerCourbe={chargerCourbe(e)} chercherCourbeEnLigne={connecte && uid ? chercherEnLigne(e) : undefined}
+                                idImport={idImport}
+                                onVitessePourToutes={e.statut === "ecrase" && gachee.eprouvettes.filter((x) => x.statut === "ecrase").length > 1 ? vitessePourToutes : undefined} />
+                              <div className="labo-actions">
+                                <button type="button" onClick={() => retirer(e.id)} className="btn-discret btn-danger">Retirer l&apos;éprouvette</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-              </div>
+              </section>
             );
           })}
         </div>
@@ -282,6 +351,9 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                 {mouleFormulation && choixMouleParDefaut(mouleFormulation) === "calcul" && (
                   <option value="calcul">{libelleMoule({ mouleDiametreMm: mouleFormulation.diametreMm, mouleHauteurMm: mouleFormulation.hauteurMm })} (calcul)</option>
                 )}
+                {moulesEnregistres.map(({ m, c }) => (
+                  <option key={m.id} value={`perso:${m.id}`}>{m.nom} ({libelleMoule({ mouleDiametreMm: c.diametreMm, mouleHauteurMm: c.hauteurMm })})</option>
+                ))}
                 <option value="autre">Autre</option>
               </select>
             </Champ>

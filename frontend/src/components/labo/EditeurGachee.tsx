@@ -8,7 +8,7 @@
 // échanges. Téléphone : un segmenté Pesées | Éprouvettes | Échanges n'affiche
 // qu'une partie (CSS seulement, attribut data-vue).
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MODES_CURE, TYPES_EAU, UNITES_DOSAGE_ADJUVANT, groupeSansVide, materiauxSansVide,
   type Ajustement, type CureGachee, type Gachee, type MateriauxGachee, type ParametresFormulation,
@@ -36,10 +36,11 @@ import FilGachee from "./FilGachee";
 import { dateLongue, nouvelId } from "./outils";
 import { fmt, nombreFr, TIRET } from "@/lib/format";
 import { libelleVersion } from "@/lib/conventions";
+import type { VueEditeur } from "@/lib/liens-commentaires";
 import { ecartPoints, effetEcartW0, texteVise, wPateMesuree } from "@/lib/mesures-pate";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
 
-type VueTelephone = "pesees" | "eprouvettes" | "echanges";
+type VueTelephone = VueEditeur;
 
 /** Identité d'un matériau de la fiche (le reste de l'instantané, Gs et w₀ du
  *  calcul, n'est jamais touché par un choix dans la bibliothèque). */
@@ -132,8 +133,12 @@ const TYPES_AJOUT: { valeur: Ajustement["type"]; libelle: string }[] = [
   { valeur: "granulat", libelle: "Granulat" }, { valeur: "liant", libelle: "Liant" },
 ];
 
-export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null, parametres, mouleFormulation }: {
+export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null, parametres, mouleFormulation, vueInitiale, allerAuNonLu = false }: {
   gachee: Gachee;
+  /** Onglet ouvert d'emblée sur téléphone (lien direct vers une note : vuePourNonLues). */
+  vueInitiale?: VueTelephone;
+  /** Ouverte par un lien direct : faire défiler jusqu'à la première note non lue. */
+  allerAuNonLu?: boolean;
   maintenant: Date;
   /** Moule tiré du contenant de la formulation : proposé à l'ajout d'éprouvettes. */
   mouleFormulation?: MouleCylindre;
@@ -153,7 +158,15 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
   onRetour: () => void;
   onSupprimer: () => void;
 }) {
-  const [vue, setVue] = useState<VueTelephone>("pesees");
+  const [vue, setVue] = useState<VueTelephone>(vueInitiale ?? "pesees");
+  const racine = useRef<HTMLDivElement>(null);
+  // Lien direct (2026-10-26) : la note non lue est mise en vue, une fois.
+  useEffect(() => {
+    if (!allerAuNonLu) return;
+    const image = requestAnimationFrame(() =>
+      racine.current?.querySelector('[data-non-lu="oui"]')?.scrollIntoView({ block: "center" }));
+    return () => cancelAnimationFrame(image);
+  }, [allerAuNonLu]);
   const [inviterAjout, setInviterAjout] = useState(false);
   const idImport = `import-presse-${g.id}`;
 
@@ -202,7 +215,7 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
     : null;
 
   return (
-    <div className="labo-editeur" data-vue={vue}>
+    <div className="labo-editeur" data-vue={vue} ref={racine}>
       <EnTetePage
         retour={{ onClick: onRetour, libelle: "Gâchées" }}
         taille="moyen"
@@ -243,6 +256,10 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
             <button type="button" className="btn-sombre" onClick={() => onMaj({ statut: g.statut === "terminee" ? "brouillon" : "terminee" })}>
               {g.statut === "terminee" ? "Rouvrir" : "Marquer terminée"}
             </button>
+            {/* En tête, visible sur tous les onglets et sur téléphone (2026-10-26) :
+                il était tout en bas de la colonne de droite, caché hors de
+                l'onglet Échanges sur téléphone. Confirmation : labo/page.tsx. */}
+            <button type="button" onClick={onSupprimer} className="btn-discret btn-danger">Supprimer la gâchée</button>
           </>
         }
       />
@@ -440,7 +457,6 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
           </Carte>
 
           <div data-section="echanges" className="labo-supprimer">
-            <button type="button" onClick={onSupprimer} className="btn-discret btn-danger">Supprimer cette gâchée</button>
             <button type="button" onClick={onRetour} className="btn-discret">Toutes les gâchées</button>
           </div>
         </aside>

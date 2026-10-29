@@ -1017,6 +1017,7 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .labo-pesee { display: flex; flex-direction: column; gap: 10px; padding: 14px 0; border-top: 1px solid var(--filet); }
 .labo-pesees > .labo-pesee:first-child { border-top: none; padding-top: 2px; }
 .labo-pesee-ligne { display: grid; grid-template-columns: 170px minmax(0, 1fr) 118px 150px; gap: 16px; align-items: center; }
+.labo-pesee-cible-seule { grid-template-columns: minmax(0, 1fr); }
 .labo-pesee-nom { display: flex; flex-direction: column; font-size: 15px; }
 .labo-pesee-cible { font-size: 12.5px; color: var(--texte-2); }
 .labo-pesee-saisie { display: flex; align-items: center; gap: 6px; }
@@ -1055,6 +1056,18 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .labo-eprouvette-droite { display: flex; align-items: center; gap: 10px; flex-shrink: 0; font-size: 14px; }
 .labo-ucs { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--texte); }
 .labo-eprouvette-ouverte { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 10px 36px; }
+/* Groupes par âge de cure (2026-10-26). overflow-anchor : la compensation du
+   défilement est faite par CarteEprouvettes (garderEnPlace), pas doublée par
+   l'ancrage automatique du navigateur. */
+.labo-groupes { display: flex; flex-direction: column; overflow-anchor: none; }
+.labo-groupe { border-top: 1px solid var(--filet); }
+.labo-groupe:first-child { border-top: none; }
+.labo-groupe-tete { width: 100%; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 10px 0; border: none; background: none; font-family: inherit; text-align: left; cursor: pointer; color: var(--texte); }
+.labo-groupe-tete .ui-ligne-chevron { align-self: center; }
+.labo-groupe-titre { font-size: 15px; font-weight: 600; }
+.labo-groupe-detail { font-size: 13px; color: var(--texte-2); }
+.labo-liste-eprouvettes { padding: 0 0 6px 24px; }
+.labo-aide-essai { margin: 0; font-size: 13.5px; color: var(--texte-2); }
 .labo-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .labo-essai { display: flex; flex-direction: column; gap: 14px; padding: 14px 16px; border-radius: var(--rayon-bloc); background: var(--fond); }
 .labo-essai .field-input { background: var(--surface); }
@@ -1120,6 +1133,7 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
   .labo-ajustement { grid-template-columns: minmax(0, 1fr) 100px auto; }
   .labo-ajustement input[placeholder^="Note"] { grid-column: 1 / -1; grid-row: 2; }
   .labo-eprouvette-ouverte { padding-left: 0; }
+  .labo-liste-eprouvettes { padding-left: 0; }
   .labo-liste-gachees, .labo-liste-champs { padding: 0 18px 6px; }
   .labo-liste-champs .ui-ligne-droite { width: 44%; }
   .labo-pastilles { max-width: 55%; }
@@ -1169,6 +1183,19 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .classe-documents { display: flex; flex-direction: column; }
 .classe-document { padding: 12px 0; border-top: 1px solid var(--filet); }
 .classe-documents > .classe-document:first-child { border-top: none; }
+/* Fiche de l'étudiant rangée par calcul (DetailEtudiant, 2026-10-26). */
+.classe-synthese { margin: 0 0 6px; font-size: 14px; color: var(--texte-2); }
+.classe-bloc { border-top: 1px solid var(--filet); }
+.classe-bloc-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding: 10px 0; }
+.classe-bloc-bascule { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; border: none; background: none; padding: 0; font-family: inherit; font-size: 15px; text-align: left; cursor: pointer; color: var(--texte); }
+.classe-bloc-bascule .ui-ligne-chevron { align-self: center; }
+.classe-bloc-detail { font-size: 13px; color: var(--texte-2); }
+.classe-bloc-actions { display: inline-flex; align-items: baseline; gap: 14px; flex-wrap: wrap; font-size: 13.5px; }
+.classe-bloc-corps { padding: 0 0 12px 22px; }
+.classe-tableau-bloc { overflow-x: auto; }
+.classe-ucs-ages { display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.classe-document-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap; }
+@media (max-width: 720px) { .classe-bloc-corps { padding-left: 0; } }
 @media (max-width: 720px) {
   .classe-tableau { padding: 0 18px 8px; }
 }
@@ -1176,6 +1203,10 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 /* ── Page Informations ── */
 .info-formulaire { display: flex; flex-direction: column; gap: 24px; }
 .info-unite { max-width: 420px; }
+.info-moules { display: flex; align-items: flex-end; gap: 10px 14px; flex-wrap: wrap; }
+.info-moules > .ui-champ { flex: 1 1 280px; max-width: 420px; }
+.info-moules-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 2px; }
+.info-moules-actions .field-input { width: 260px; max-width: 100%; }
 .info-composants { display: flex; flex-direction: column; gap: 12px; }
 .info-composant { background: var(--fond); border-radius: var(--rayon-bloc); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
 .info-composant .field-input { background: var(--surface); }
@@ -1269,13 +1300,26 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .frm-filtre-compte { font-size: 12px; color: var(--texte-3); flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .frm-filtre[aria-pressed="true"] .frm-filtre-compte { color: inherit; }
 .frm-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+/* Fluidité (2026-10-26, mesurée : processeur ralenti ×4, 25 % des images au-delà
+   de 33 ms en défilant, 0,3 % après) : pas de transition au survol (les ~104
+   cartes qui passent sous le curseur repeignaient leur contour animé), et
+   content-visibility: auto (une carte hors écran n'est ni mise en page ni
+   peinte ; la recherche dans la page la trouve toujours). La fiche ouverte
+   (.frm-voile, position fixe) est rendue HORS des cartes : leur confinement
+   ne la touche pas. Réserve : la hauteur du CONTENU d'une carte usuelle
+   (environ 177 px moins 2 × 16 px de marge intérieure ; mesurée à 1366, 1024
+   et 390 px : la hauteur de défilement varie de moins de 3 %), puis la
+   dernière hauteur mesurée (auto). */
 .frm-carte {
   --frm-bord: var(--filet-fort);
   background: var(--surface); border-radius: var(--rayon-bloc); box-shadow: var(--ombre-carte);
   padding: 16px 18px; cursor: pointer; display: flex; flex-direction: column; gap: 10px;
-  outline: 1.5px solid transparent; transition: outline-color 0.15s, box-shadow 0.15s;
+  outline: 1.5px solid transparent;
+  content-visibility: auto; contain-intrinsic-size: auto 148px;
 }
 .frm-carte:hover { outline-color: var(--frm-bord); }
+/* Pendant le défilement (data-defile, app/formulas/page.tsx) : pas de survol. */
+.ui-page[data-defile="oui"] .frm-carte { pointer-events: none; }
 .frm-carte:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .frm-carte-active, .frm-carte-active:hover { background: var(--accent-pale); outline-color: var(--accent); }
 .frm-recherche-pied { margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; color: var(--texte-2); }

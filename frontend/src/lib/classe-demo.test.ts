@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { regrouperParCalcul } from "./classe-detail";
 import { classeDemo, marquerCsvDemo, marquerJsonDemo, MENTION_DEMO, sourceDemo, ID_PROF_DEMO } from "./classe-demo";
 import { cleLigne, regrouper, type EtudiantClasse } from "./classe";
 import { comparerClasse } from "./classe-comparaison";
@@ -20,9 +21,9 @@ const gachees = etudiants.flatMap((e) => e.gachees.map((g) => ({ e, g })));
 const gacheeDe = (etu: string, cle: string) => gachees.find((x) => x.g.id === `demo-${etu}-${cle}-gachee`)!.g;
 
 describe("classe fictive", () => {
-  it("déterministe pour une date donnée ; 6 étudiants, l'enseignant à part", () => {
+  it("déterministe pour une date donnée ; 7 étudiants, l'enseignant à part", () => {
     expect(JSON.stringify(classeDemo(MAINTENANT))).toBe(JSON.stringify(d));
-    expect(etudiants.map((e) => e.nom)).toEqual(["Alice Tremblay", "Bruno Gagnon", "Chloé Roy", "David Côté", "Émilie Bouchard", "Félix Gauthier"]);
+    expect(etudiants.map((e) => e.nom)).toEqual(["Alice Tremblay", "Bruno Gagnon", "Chloé Roy", "David Côté", "Émilie Bouchard", "Félix Gauthier", "Gabriel Lavoie"]);
     expect(d.profils.find((p) => p.id === ID_PROF_DEMO)?.role).toBe("prof");
     expect(etudiants.every((e) => e.email?.endsWith("@demo.invalid"))).toBe(true);
   });
@@ -35,8 +36,21 @@ describe("classe fictive", () => {
       expect(g.composants.map((c) => [c.cle, c.cibleKg])).toEqual(
         composantsDepuisRecette(recette, nomLiant(res.general, res.catalogue_liants ?? [])).map((c) => [c.cle, c.cibleKg]));
     }
-    expect(gachees).toHaveLength(10);
+    expect(gachees).toHaveLength(15);
     expect(Object.keys(RECETTES.formulations)).toHaveLength(5);
+  });
+});
+
+describe("un étudiant chargé, pour la fiche rangée par calcul (2026-10-26)", () => {
+  it("Gabriel : 2 calculs, 5 gâchées des deux recettes, ids uniques, chacune sous son calcul", () => {
+    const gabriel = etudiants.find((e) => e.nom === "Gabriel Lavoie")!;
+    expect(gabriel.resultats).toHaveLength(2);
+    expect(gabriel.gachees).toHaveLength(5);
+    expect(new Set(gachees.map(({ g }) => g.id)).size).toBe(gachees.length);
+    expect(new Set(gabriel.gachees.map((g) => g.recetteIndex))).toEqual(new Set([0, 1]));
+    const f = regrouperParCalcul(gabriel);
+    expect(f.blocs.map((b) => b.gachees.length).sort()).toEqual([2, 3]);
+    expect(f.gacheesSansCalcul).toHaveLength(0);
   });
 });
 

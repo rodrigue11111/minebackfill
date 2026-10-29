@@ -39,23 +39,48 @@ travail des étudiants : ne nommer que des personnes de confiance. « Retirer le
 rôle enseignant » fait l'inverse (jamais sur soi-même : il reste toujours un
 enseignant).
 
-**Le premier enseignant, automatiquement, avec un code** : supabase.com → SQL Editor →
+**Inscription « Je suis l'enseignant », sans code (depuis le 2026-10-26,
+« pour le moment »)** : page « Compte » ou portail → Inscription → « Je suis
+l'enseignant » (« Je suis étudiant » pour revenir en arrière). Tant que
+l'interrupteur est **ouvert**, le compte est « prof » d'emblée.
+
+> **Risque, tant qu'il est ouvert.** N'importe qui peut se déclarer
+> enseignant : il voit les noms, courriels et travaux de tous les étudiants,
+> peut changer des rôles et bloquer des comptes. Un faux enseignant pourrait
+> même retirer le rôle du vrai (puis le bloquer) ; le rétablir passe alors
+> par le SQL « Compte déjà créé » ci-dessous, et
+> `update auth.users set banned_until = null where email = 'SON_EMAIL';`.
+> **Fermer l'interrupteur dès que le compte du professeur existe.**
+
+Fermer (SQL Editor) ; réexécuter `schema.sql` ne le rouvre pas :
 ```sql
-select public.definir_code_enseignant('UN_CODE_DIFFICILE_A_DEVINER');
+update public.inscription_reglage set enseignant_libre = false, maj = now();
 ```
-puis la personne s'inscrit (page « Compte » → Inscription → « Je suis
-l'enseignant ») avec ce code : son compte est « prof » d'emblée. Le code ne
-sert qu'**une fois** ; pour un nouvel enseignant, en poser un nouveau. Ne
-jamais l'écrire dans le dépôt GitHub (public), ni un code qui se devine (nom
-de l'enseignant, du cours) : quiconque le trouve avant l'enseignant lirait
-tout le travail des étudiants.
+Le rouvrir : même commande avec `true`. État actuel :
+`select enseignant_libre, maj from public.inscription_reglage;`
+
+**Fermer n'enlève aucun rôle déjà accordé.** Relire alors la liste des
+enseignants, et retirer le rôle de toute personne inconnue (Classe → Comptes
+→ « Retirer le rôle enseignant », ou le SQL ci-dessous avec `'etudiant'`) :
+```sql
+select email, display_name, created_at from public.profiles
+ where role = 'prof' order by created_at;
+```
+Interrupteur fermé, une inscription « Je suis l'enseignant » donne un compte
+étudiant, que le professeur nomme enseignant dans Classe → Comptes.
+
+**Avec un code (ancienne méthode, toujours acceptée par le serveur, plus
+demandée par les pages)** : `select public.definir_code_enseignant('…');`
+reste utilisable par un client qui envoie `code_enseignant`. Ne jamais écrire
+un code dans le dépôt GitHub (public).
 
 **Compte déjà créé** : SQL Editor →
 ```sql
 update public.profiles set role = 'prof' where email = 'SON_EMAIL';
 ```
 Elle se déconnecte/reconnecte. (Le rôle ne se change QUE par ce SQL, un code
-vérifié par le serveur, ou un enseignant dans Classe → Comptes — aucun
+vérifié par le serveur, l'inscription « enseignant » tant que l'interrupteur
+est ouvert, ou un enseignant dans Classe → Comptes. Interrupteur fermé, aucun
 étudiant ne peut se promouvoir.)
 
 ### Bloquer un compte

@@ -11,7 +11,7 @@ beforeAll(() => {
 describe("fiche de formule : dialogue accessible", () => {
   it("role=dialog nommé par la formule, focusable, bouton Fermer", () => {
     const html = renderToStaticMarkup(createElement(FormulaPopover, {
-      formulaIds: ["F009"], anchorRect: { left: 10, bottom: 20 } as DOMRect, onClose: () => {},
+      formulaIds: ["F009"], ancre: { getBoundingClientRect: () => ({ top: 0, left: 10, bottom: 20 }), isConnected: true } as unknown as HTMLElement, onClose: () => {},
     }));
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-modal="false"');
