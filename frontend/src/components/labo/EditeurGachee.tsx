@@ -35,6 +35,7 @@ import CarteEprouvettes from "./CarteEprouvettes";
 import FilGachee from "./FilGachee";
 import { dateLongue, nouvelId } from "./outils";
 import { fmt, nombreFr, TIRET } from "@/lib/format";
+import { libelleVersion } from "@/lib/conventions";
 import { ecartPoints, effetEcartW0, texteVise, wPateMesuree } from "@/lib/mesures-pate";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
 
@@ -218,7 +219,7 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
         sousTitre={[
           g.formulationLabel, g.categorie, `recette ${(g.recetteIndex ?? 0) + 1}`,
           coulee ? `coulée le ${dateLongue(coulee)}` : `créée le ${dateLongue(new Date(g.creeLe))}`,
-          g.solverVersion ? `formules ${g.solverVersion}` : null,
+          g.solverVersion ? `formules ${libelleVersion(g.solverVersion)}` : null,
         ].filter(Boolean).join(" · ")}
         actions={
           <>

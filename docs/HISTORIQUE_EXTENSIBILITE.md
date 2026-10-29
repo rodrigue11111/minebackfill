@@ -199,6 +199,10 @@ les vrais noms des essais normalisés. Décisions :
   (`terminologie.test.ts`) échoue si un libellé retiré revient. Les symboles
   du catalogue de formules ne bougent pas : la fenêtre « fx » les relie aux
   valeurs par `SYMBOL_TO_RECIPE`.
+  Le 2026-10-26, à la demande de l'utilisateur, la méthode s'affiche
+  « Selon le slump » (« Dosage selon le slump » en long), comme « Selon Cw »
+  et « Selon E/L » ; « modèle prédictif » reste un synonyme du glossaire et
+  la clé enregistrée reste `slump` (aucune migration).
 - **Normes citées, mais à confirmer.** Le cours ne cite aucune norme d'essai.
   Celles retenues (ASTM C39/C39M pour l'UCS, décision de l'utilisateur ;
   C143/C143M, C192/C192M, D2216, D854, C188, CSA A3001…) sont les normes

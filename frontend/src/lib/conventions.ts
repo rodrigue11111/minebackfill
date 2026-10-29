@@ -59,7 +59,8 @@ const NOMBRES = {
 export const CONVENTION_PACKS: ConventionPack[] = [
   {
     id: "intra2017",
-    label: "Feuille tonne (Intra 2017)",
+    // Feuille tonne du professeur (Intra 2017) : nom gardé ici, pas à l'écran.
+    label: "Convention d'origine (Gs de départ, liant sur tous les solides)",
     solverVersion: "intra2017-1.0",
     constantes: {
       ...NOMBRES,
@@ -70,7 +71,8 @@ export const CONVENTION_PACKS: ConventionPack[] = [
   },
   {
     id: "gramme",
-    label: "Feuille gramme (Belem 2016), Gs final recalculé",
+    // Feuille gramme (Belem 2016), Gs final recalculé : nom gardé ici, pas à l'écran.
+    label: "Convention actuelle (Gs final recalculé, liant sur le résidu ajouté)",
     // 1.1 (2026-10-25) : Gs de la composition finale après les ajouts de
     // l'essai-erreur (Issues.md #6). En 1.0, le Gs de départ (feuille).
     solverVersion: "gramme-1.1",
@@ -134,9 +136,24 @@ export function etatVersion(version: string | undefined, methode: string | undef
   return methode === "essai" && VERSIONS_GS_DEPART.includes(base) ? "convention_revisee" : "courante";
 }
 
+/**
+ * Version estampillée, lisible à l'écran : « 1.1, convention actuelle » au
+ * lieu de « gramme-1.1 » (2026-10-26 : les noms des classeurs ne s'affichent
+ * plus). L'identifiant brut reste dans les données et les exports lus par une
+ * machine (JSON, jeu d'essais, diagnostic copié) : la traçabilité ne change pas.
+ * Une version inconnue est rendue telle quelle.
+ */
+export function libelleVersion(version: string): string {
+  const base = sansPersonnalise(version) ?? version;
+  const m = /^(intra2017|gramme)-(\d+(?:\.\d+)*)$/.exec(base);
+  if (!m) return version;
+  const famille = m[1] === "intra2017" ? "convention d'origine" : "convention actuelle";
+  return `${m[2]}, ${famille}${base !== version ? ", personnalisée" : ""}`;
+}
+
 /** Infobulle de la pastille « convention révisée ». */
 export const AIDE_CONVENTION_REVISEE =
-  "Essai-erreur calculé avec le Gs de départ, comme la feuille : masses justes, mais e, n, Sr et ρ ne suivent pas la composition finale. Rechargez-le et relancez le calcul.";
+  "Essai-erreur calculé avec le Gs de départ : masses justes, mais e, n, Sr et ρ ne suivent pas la composition finale. Rechargez-le et relancez le calcul.";
 
 /**
  * Affaissement équivalent au cône d'Abrams (grand cône) : une lecture au petit

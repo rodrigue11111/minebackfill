@@ -28,7 +28,7 @@ const EXEMPTES = [
 const RETIRES: [RegExp, string][] = [
   [/Rapport E\/C/, "Rapport eau/liant E/L"],
   [/rapport eau\/ciment/i, "rapport eau/liant"],
-  [/Ajustement pour slump/, "Modèle prédictif (affaissement)"],
+  [/Ajustement pour slump/, "Dosage selon le slump"],
   [/Slump (mesuré|cible)|Cible de slump|Affaissement slump/, "Affaissement mesuré / visé"],
   [/[aA]grégat(?!ion)/, "granulat"],
   [/Mix Design Tool/, "Formulation des remblais"],

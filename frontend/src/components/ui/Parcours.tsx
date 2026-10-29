@@ -1,4 +1,4 @@
-// Parcours d'un calcul (lib/parcours.ts) : les cinq étapes du Guide, l'étape
+// Parcours d'un calcul (lib/parcours.ts) : les quatre étapes du Guide, l'étape
 // en cours marquée. Les étapes passées et à venir restent des liens.
 
 import Link from "next/link";

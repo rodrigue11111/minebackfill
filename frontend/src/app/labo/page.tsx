@@ -218,7 +218,7 @@ export default function LaboPage() {
                     <Bandeau ton="alerte" role="status">
                       Cette recette vise {volumeChantier.toLocaleString("fr-CA", { maximumFractionDigits: 3 })} m³ de remblai, un volume
                       de chantier : une gâchée de laboratoire en fait quelques litres (moules de 0,2 à 1,6 L). Refaites le calcul avec le
-                      volume de vos moules (Informations, Contenant de moulage), ou créez quand même.
+                      volume de vos moules (Informations, Dimensions des moules), ou créez quand même.
                     </Bandeau>
                   )}
                   <div>

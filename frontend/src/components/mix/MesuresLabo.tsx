@@ -76,7 +76,7 @@ export default function MesuresLabo({
   return (
     <CardSection
       title="Paramètres mesurés au laboratoire"
-      subtitle={<>Après la gâchée : affaissement mesuré (ASTM C143/C143M) et teneur en eau massique (ASTM D2216 ; masses en grammes, comme la feuille de référence).
+      subtitle={<>Après la gâchée : affaissement mesuré (ASTM C143/C143M) et teneur en eau massique (ASTM D2216 ; masses en grammes).
         w mesuré = (m_h − m_s)/(m_s − tare) ; Cw mesuré = (m_s − tare)/(m_h − tare).</>}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

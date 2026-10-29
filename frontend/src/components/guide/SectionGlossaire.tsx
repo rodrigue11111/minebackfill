@@ -8,8 +8,8 @@ export default function SectionGlossaire() {
   return (
     <div className="lecture-pile">
       <p>
-        Les termes employés dans l&apos;application sont ceux du cours (chapitre 4) et des feuilles de
-        calcul de l&apos;enseignant ; chaque entrée indique sa source (« dia » = numéro de diapositive).
+        Les termes employés dans l&apos;application sont ceux du cours (chapitre 4) et des documents
+        de l&apos;enseignant ; chaque entrée indique sa source (« dia » = numéro de diapositive).
         Le cours ne cite pas de norme d&apos;essai : celles indiquées ici sont les normes usuelles de la
         pratique nord-américaine (ASTM, CSA) et restent à confirmer par l&apos;enseignant pour le
         laboratoire.

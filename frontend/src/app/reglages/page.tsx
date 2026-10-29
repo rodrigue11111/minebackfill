@@ -140,15 +140,15 @@ export default function ReglagesPage() {
       <Carte titre="Constantes de calcul"
         actions={isProf ? <button type="button" className="btn-primary" onClick={publierConstantes}>Publier les constantes</button> : undefined}>
         <p className="classe-intro">
-          Ces valeurs sont globales ; elles servent au dosage selon Cw, au dosage selon E/L, au modèle prédictif et à la méthode essai-erreur.
+          Ces valeurs sont globales ; elles servent au dosage selon Cw, au dosage selon E/L, au dosage selon le slump et à la méthode essai-erreur.
         </p>
         <div className="grille-2">
           {champConstante("Masse volumique de l'eau ρw", "kg/m³", constantes.masse_volumique_eau_kg_m3, (n) => setConstantes({ masse_volumique_eau_kg_m3: n }), undefined, true)}
           {champConstante("Accélération de la pesanteur g", "m/s²", constantes.gravite_m_s2, (n) => setConstantes({ gravite_m_s2: n }), undefined, true)}
           {champConstante("Facteur petit cône vers cône d'Abrams", undefined, constantes.facteur_petit_cone_vers_grand_cone, (n) => setConstantes({ facteur_petit_cone_vers_grand_cone: n }),
             "Convertit l'affaissement lu au petit cône (non normalisé) en affaissement au cône d'Abrams (ASTM C143/C143M).", true)}
-          {champConstante("Coefficient du modèle prédictif (affaissement)", undefined, constantes.coefficient_modele_slump, (n) => setConstantes({ coefficient_modele_slump: n }))}
-          {champConstante("Constante du modèle prédictif (affaissement)", undefined, constantes.constante_modele_slump, (n) => setConstantes({ constante_modele_slump: n }))}
+          {champConstante("Coefficient du dosage selon le slump", undefined, constantes.coefficient_modele_slump, (n) => setConstantes({ coefficient_modele_slump: n }))}
+          {champConstante("Constante du dosage selon le slump", undefined, constantes.constante_modele_slump, (n) => setConstantes({ constante_modele_slump: n }))}
         </div>
       </Carte>
 

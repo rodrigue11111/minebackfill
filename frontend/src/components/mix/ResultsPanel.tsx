@@ -85,7 +85,7 @@ export default function ResultsPanel({ pleinEcran = false, onBasculerPleinEcran 
   const avisPerime = perime ? (
     <Bandeau ton="alerte" role="status" titre="Résultats périmés.">
       {cleResultat && store.empreintesCalcul[cleResultat] === EMPREINTE_CONVENTION_REVISEE
-        ? <>Ce résultat a été calculé avec une ancienne convention (Gs de départ après les ajouts, comme la feuille) :
+        ? <>Ce résultat a été calculé avec une ancienne convention (Gs de départ après les ajouts) :
           les masses restent justes, mais e, n, Sr et ρ ne suivent pas la composition finale. Cliquez sur</>
         : <>Les entrées ont changé depuis ce calcul : ces résultats ne leur correspondent plus. Cliquez sur</>}
       <strong> Calculer</strong> pour les mettre à jour avant de les sauvegarder ou de les exporter.

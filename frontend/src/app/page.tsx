@@ -164,7 +164,7 @@ export default function GeneralInfoPage() {
       <EnTetePage
         surtitre="Étape 1 : configuration du projet"
         titre="Informations"
-        sousTitre="Identification du projet, contenant de moulage et agent liant. Ces informations apparaissent dans les exports."
+        sousTitre="Identification du projet, dimensions des moules et agent liant. Ces informations apparaissent dans les exports."
         actions={
           <>
             <Link href="/guide" className="btn-discret">Guide d&apos;utilisation</Link>
@@ -197,14 +197,14 @@ export default function GeneralInfoPage() {
           </div>
         </Carte>
 
-        {/* ── 2. Contenant ── */}
-        <Carte titre="Contenant de moulage">
-          {/* Unité de mesure — un seul choix pour tout le contenant. L'aire
+        {/* ── 2. Dimensions des moules ── */}
+        <Carte titre="Dimensions des moules">
+          {/* Unité de mesure — un seul choix pour tout le moule. L'aire
               (section) est son carré et le volume (saisie directe ET résultats)
               son cube : aucune unité de volume à choisir séparément. */}
           <div className="info-unite">
             <Champ libelle="Unité de mesure"
-              aide={<>Un seul choix pour tout le contenant : les dimensions en {lengthLabel}, la section en{" "}
+              aide={<>Un seul choix pour tout le moule : les dimensions en {lengthLabel}, la section en{" "}
                 {areaLabel}, et le volume (saisie directe comme résultats) automatiquement en{" "}
                 {VOLUME_LABELS[volumeUnit]}.</>}>
               <select className="field-input" value={units.length}
@@ -219,7 +219,7 @@ export default function GeneralInfoPage() {
           <div className="ui-champ">
             <span className="ui-champ-libelle" style={{ marginBottom: 6 }}>Géométrie</span>
             <Segmente
-              ariaLabel="Géométrie du contenant"
+              ariaLabel="Géométrie du moule"
               valeur={general.container_type ?? ""}
               onChange={(v) => setGeneral({ container_type: v as (typeof CONTAINER_TYPES)[number]["value"] })}
               options={CONTAINER_TYPES.map((ct) => ({ valeur: ct.value, libelle: ct.label, libelleCourt: ct.court }))}
@@ -250,7 +250,7 @@ export default function GeneralInfoPage() {
                 </>
               )}
               {general.container_type === "volume" &&
-                champDim("container_volume_m3", "Volume du contenant", VOLUME_LABELS[volumeUnit], fromStoreVolume(general.container_volume_m3, volumeUnit), "Ex. : 1.65")}
+                champDim("container_volume_m3", "Volume d'un moule", VOLUME_LABELS[volumeUnit], fromStoreVolume(general.container_volume_m3, volumeUnit), "Ex. : 1.65")}
             </div>
           )}
           {volumeMoule !== null && (
@@ -347,7 +347,7 @@ export default function GeneralInfoPage() {
               if (!confirmerExemple()) return;
               try { fillTestData(); setTestLoaded(true); setTimeout(() => setTestLoaded(false), 4000); } catch (e) { console.error("[fillTestData] error:", e); }
             }}
-            title="Charge les valeurs du classeur de référence Intra 2017 (après confirmation)"
+            title="Charge un exemple complet à l'échelle du laboratoire (après confirmation)"
           >
             {testLoaded ? "Exemple chargé" : LIBELLE_EXEMPLE}
           </button>

@@ -22,6 +22,7 @@
 import type { Gachee, ParametresFormulation } from "./gachee";
 import { parametresEffectifs } from "./gachee";
 import { agregerParAge } from "./eprouvette";
+import { libelleVersion } from "./conventions";
 import type { Recipe } from "./types";
 import { libelle } from "./glossaire";
 import { SANS_UNITE, libelleAvecUnite } from "./format";
@@ -165,7 +166,7 @@ export function lignesProvenanceLabo(
       `${g.code}`,
       g.formulationLabel,
       g.categorie,
-      g.solverVersion ? `solveur ${g.solverVersion}` : null,
+      g.solverVersion ? `solveur ${libelleVersion(g.solverVersion)}` : null,
       lots ? `lots ${lots}` : null,
       `tolérance ${g.tolerancePct} %`,
       g.protocolesSnapshot?.length ? `protocoles : ${g.protocolesSnapshot.map((p) => p.titre).join(", ")}` : null,

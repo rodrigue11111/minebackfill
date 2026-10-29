@@ -17,7 +17,7 @@
 
 import type { BaseAnalyse, LiantResolu, MateriauxAnalyse, ValeursRecette } from "./analyse-corps";
 import type { InstantaneAnalyse } from "./analyse-instantane";
-import { CONVENTION_GS_ESSAI, CONVENTION_PACKS, REGLE_LIANT_ESSAI, essaiConventionRevisee, etatVersion, packById, solverVersionActive } from "./conventions";
+import { CONVENTION_GS_ESSAI, CONVENTION_PACKS, REGLE_LIANT_ESSAI, essaiConventionRevisee, etatVersion, libelleVersion, packById, solverVersionActive } from "./conventions";
 import { nombreFr } from "./format";
 import { methodLabel } from "./method-registry";
 import { trouverLiant } from "./rpc_payload";
@@ -96,8 +96,8 @@ const NOMS_CONSTANTES: [keyof ConstantesCalcul & string, string][] = [
   ["masse_volumique_eau_kg_m3", "masse volumique de l'eau"],
   ["gravite_m_s2", "gravité"],
   ["facteur_petit_cone_vers_grand_cone", "facteur du petit cône"],
-  ["coefficient_modele_slump", "coefficient du modèle prédictif"],
-  ["constante_modele_slump", "constante du modèle prédictif"],
+  ["coefficient_modele_slump", "coefficient du dosage selon le slump"],
+  ["constante_modele_slump", "constante du dosage selon le slump"],
 ];
 
 /**
@@ -270,12 +270,12 @@ export function notesSource(categorie: "RPC" | "RPG", source: InfoSource, param:
   if (source.methodeCle === "wb") {
     notes.push({ ton: "info", texte: "Calcul d'origine selon E/L : E/L n'est pas imposé pendant le balayage, il est recalculé à chaque point." });
   } else if (source.methodeCle === "slump") {
-    notes.push({ ton: "info", texte: "Calcul d'origine par le modèle prédictif : l'affaissement visé n'est pas maintenu pendant le balayage, la courbe ne repasse pas par ce modèle." });
+    notes.push({ ton: "info", texte: "Calcul d'origine selon le slump : l'affaissement visé n'est pas maintenu pendant le balayage, la courbe ne repasse pas par ce modèle." });
   } else if (source.methodeCle === "essai") {
     notes.push({ ton: "info", texte: "Calcul d'origine en essai-erreur : les ajouts ne sont pas rejoués. L'analyse part de la composition finale (Cw, Sr, Bw atteint" + (categorie === "RPG" ? ", Am" : "") + ") et du volume final de l'essai." });
   }
   if (etatVersion(source.versionCalcul, source.methodeCle) === "obsolete") {
-    notes.push({ ton: "alerte", texte: `Calcul enregistré avec d'anciennes formules (version ${source.versionCalcul ?? "inconnue"}) : la courbe utilise les formules actuelles, ses valeurs peuvent différer de celles enregistrées.` });
+    notes.push({ ton: "alerte", texte: `Calcul enregistré avec d'anciennes formules (version ${source.versionCalcul ? libelleVersion(source.versionCalcul) : "inconnue"}) : la courbe utilise les formules actuelles, ses valeurs peuvent différer de celles enregistrées.` });
   }
   for (const r of source.reconstitutions) notes.push({ ton: "alerte", texte: r });
   return notes;

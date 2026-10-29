@@ -6,6 +6,7 @@
 
 import { libelleContenant } from "./contenant";
 import { nombreFr } from "./format";
+import { libelleVersion } from "./conventions";
 
 export interface InstantaneAnalyse {
   date: string; // ISO
@@ -106,13 +107,13 @@ export function lignesResume(inst: InstantaneAnalyse): string[] {
   );
   const c = inst.constantes;
   lignes.push(`Pack de conventions : ${c.packLabel} · convention Gs « ${c.conventionGs} » · règle liant « ${c.regleLiant} »`);
-  lignes.push(`Constantes : ρ_eau ${f(c.masseVolEau, 0)} · g ${f(c.gravite)} · facteur cône ${f(c.facteurCone)} · coeff. du modèle prédictif ${f(c.coeffSlump, 0)} · constante du modèle prédictif ${f(c.constSlump)}`);
+  lignes.push(`Constantes : ρ_eau ${f(c.masseVolEau, 0)} · g ${f(c.gravite)} · facteur cône ${f(c.facteurCone)} · coeff. du dosage selon le slump ${f(c.coeffSlump, 0)} · constante du dosage selon le slump ${f(c.constSlump)}`);
   if (inst.contenant) {
     const geo = [libelleContenant(inst.contenant.type)];
     if (inst.contenant.description) geo.push(inst.contenant.description);
-    if (inst.contenants !== undefined) geo.push(`${f(inst.contenants, 0)} contenant(s)`);
+    if (inst.contenants !== undefined) geo.push(`${f(inst.contenants, 0)} moule(s)`);
     if (inst.facteurSecurite !== undefined) geo.push(`facteur de perte κ ${f(inst.facteurSecurite)}`);
-    lignes.push(`Contenant : ${geo.join(" · ")}`);
+    lignes.push(`Moule : ${geo.join(" · ")}`);
   }
   if (inst.variantes?.length) {
     lignes.push(`Recettes comparées : ${inst.variantes.join(" · ")}`);
@@ -128,8 +129,8 @@ export function lignesResume(inst: InstantaneAnalyse): string[] {
   }
   if (s?.reconstitutions?.length) lignes.push(`Valeurs reconstituées : ${s.reconstitutions.join(" ")}`);
   lignes.push(s
-    ? `Version des formules de l'analyse : ${inst.versionSolveur} · du calcul d'origine : ${s.versionCalcul ?? "inconnue"}`
-    : `Version du solveur : ${inst.versionSolveur}`);
+    ? `Version des formules de l'analyse : ${libelleVersion(inst.versionSolveur)} · du calcul d'origine : ${s.versionCalcul ? libelleVersion(s.versionCalcul) : "inconnue"}`
+    : `Version du solveur : ${libelleVersion(inst.versionSolveur)}`);
   return lignes;
 }
 

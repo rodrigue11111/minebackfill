@@ -257,7 +257,7 @@ describe("éprouvettes : moule repris du contenant du calcul (2026-10-26)", () =
   it("moule de mêmes dimensions qu'un moule proposé : sélectionné, avec sa provenance", () => {
     const html = carte({ diametreMm: 76.2, hauteurMm: 152.4 });
     expect(html).toMatch(/<option value="1" selected="">Cylindre 76,2 × 152,4 mm<\/option>/);
-    expect(html).toContain("Repris du contenant du calcul (Informations).");
+    expect(html).toContain("Repris des dimensions des moules du calcul (Informations).");
   });
 
   it("autre cylindre : proposé comme « moule du calcul »", () => {
@@ -267,6 +267,6 @@ describe("éprouvettes : moule repris du contenant du calcul (2026-10-26)", () =
   it("sans moule dans le calcul : « Non précisé », comme avant", () => {
     const html = carte();
     expect(html).toMatch(/<option value="" selected="">Non précisé<\/option>/);
-    expect(html).not.toContain("Repris du contenant du calcul");
+    expect(html).not.toContain("Repris des dimensions des moules du calcul");
   });
 });

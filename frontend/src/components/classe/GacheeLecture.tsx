@@ -15,6 +15,7 @@ import {
 import { badgeEcheance, fmtDate } from "@/lib/echeance-affichage";
 import { avisMasseHorsLabo, masseHorsLabo } from "@/lib/contenant";
 import { fmt, TIRET } from "@/lib/format";
+import { libelleVersion } from "@/lib/conventions";
 import { wPateMesuree } from "@/lib/mesures-pate";
 import type { Recipe } from "@/lib/types";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
@@ -139,7 +140,7 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
           <Info label="E/L" valeur={nombre(p?.wcRatio, 3)} />
           <Info label="Bw (%)" valeur={nombre(p?.bwPct, 2)} />
           <Info label="w (%)" valeur={nombre(p?.wPct, 2)} />
-          <Info label="Version des formules" valeur={g.solverVersion ?? TIRET} />
+          <Info label="Version des formules" valeur={g.solverVersion ? libelleVersion(g.solverVersion) : TIRET} />
         </div>
         {!p && (
           <p style={{ fontSize: 12, color: "var(--alerte-texte)", margin: "10px 0 0" }}>

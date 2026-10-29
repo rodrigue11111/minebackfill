@@ -51,7 +51,7 @@ export default function MixPage() {
     loadGeneral();
   }, [loadGeneral]);
 
-  // Dimensions du contenant : requises par tous les calculs, saisies sur
+  // Dimensions des moules : requises par tous les calculs, saisies sur
   // la page Informations. Sans elles, l'API renvoie une erreur de validation.
   const dimensionsManquantes = (() => {
     const g = general || {};
@@ -143,7 +143,7 @@ export default function MixPage() {
         {!pleinEcran && (
           <Carte titre="Paramètres" aside={methodLabel(category, method, "long")} className="mix-carte-parametres" aria-label="Paramètres">
             {dimensionsManquantes && category !== "RRC" && (
-              <Bandeau ton="alerte" titre="Dimensions du contenant manquantes.">
+              <Bandeau ton="alerte" titre="Dimensions des moules manquantes.">
                 Renseignez le type et les dimensions du moule sur la page{" "}
                 <Link href="/" style={{ color: "inherit", fontWeight: 600 }}>Informations</Link> avant de lancer un calcul.
               </Bandeau>
@@ -151,9 +151,9 @@ export default function MixPage() {
             {Formulaire ? (
               <Formulaire />
             ) : category === "RPG" && method === "slump" ? (
-              // Combinaison inexistante (ex. modèle prédictif en RPG) : message dédié.
+              // Combinaison inexistante (ex. dosage selon le slump en RPG) : message dédié.
               <Bandeau ton="alerte" titre="Méthode non disponible pour le RPG">
-                Le modèle prédictif (affaissement) est calé sur le <strong>RPC</strong>.
+                Le dosage selon le slump (affaissement visé) est calé sur le <strong>RPC</strong>.
                 Utilisez la <strong>méthode essai-erreur</strong> pour entrer les ajouts réels en RPG.
               </Bandeau>
             ) : (

@@ -13,6 +13,7 @@
 
 import { libelleContenant } from "./contenant";
 import { nombreFr } from "./format";
+import { libelleVersion } from "./conventions";
 import type { InstantaneAnalyse } from "./analyse-instantane";
 import { libelle } from "./glossaire";
 
@@ -92,8 +93,8 @@ export function tenuFixe(inst: InstantaneAnalyse, param: ParamCle): LigneFixe[] 
       : "aucun",
   });
 
-  if (inst.contenant) l.push({ label: "Contenant", valeur: libelleContenant(inst.contenant.type) });
-  if (inst.contenants !== undefined) l.push({ label: "Nombre de contenants", valeur: f(inst.contenants, 0) });
+  if (inst.contenant) l.push({ label: "Moule", valeur: libelleContenant(inst.contenant.type) });
+  if (inst.contenants !== undefined) l.push({ label: "Nombre de moules", valeur: f(inst.contenants, 0) });
   if (inst.facteurSecurite !== undefined) l.push({ label: "Facteur de perte κ", valeur: f(inst.facteurSecurite) });
 
   if (inst.volumeM3 !== undefined) {
@@ -111,10 +112,10 @@ export function tenuFixe(inst: InstantaneAnalyse, param: ParamCle): LigneFixe[] 
 
   l.push({ label: "Pack de conventions", valeur: inst.constantes.packLabel });
   if (s) {
-    l.push({ label: "Version des formules de l'analyse", valeur: inst.versionSolveur });
-    l.push({ label: "Version du calcul d'origine", valeur: s.versionCalcul ?? "inconnue" });
+    l.push({ label: "Version des formules de l'analyse", valeur: libelleVersion(inst.versionSolveur) });
+    l.push({ label: "Version du calcul d'origine", valeur: s.versionCalcul ? libelleVersion(s.versionCalcul) : "inconnue" });
   } else {
-    l.push({ label: "Version du solveur", valeur: inst.versionSolveur });
+    l.push({ label: "Version du solveur", valeur: libelleVersion(inst.versionSolveur) });
   }
   return l;
 }

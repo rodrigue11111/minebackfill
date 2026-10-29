@@ -5,12 +5,12 @@
 //  - autre / vide              (repli générique avec le code HTTP)
 
 const NOMS_CHAMPS: Record<string, string> = {
-  container_type: "type de contenant",
-  container_section: "section du contenant",
-  container_height: "hauteur du contenant",
-  container_radius: "rayon du contenant",
-  container_length: "longueur du contenant",
-  container_width: "largeur du contenant",
+  container_type: "géométrie des moules",
+  container_section: "section du moule",
+  container_height: "hauteur du moule",
+  container_radius: "rayon du moule",
+  container_length: "longueur du moule",
+  container_width: "largeur du moule",
   solids_mass_pct: "pourcentage solide massique Cw",
   saturation_pct: "saturation Sr",
   binder_mass_pct_recipes: "taux massique de liant Bw des recettes",
@@ -19,7 +19,7 @@ const NOMS_CHAMPS: Record<string, string> = {
   aggregate_specific_gravity: "Gs du granulat",
   specific_gravity: "Gs",
   moisture_mass_pct: "teneur en eau",
-  container_volume_m3: "volume du contenant",
+  container_volume_m3: "volume d'un moule",
   containers_per_recipe: "nombre de moules par recette",
   safety_factor: "facteur de perte κ",
   num_recipes: "nombre de recettes",

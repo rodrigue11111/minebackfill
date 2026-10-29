@@ -99,3 +99,25 @@ describe("essaiConventionRevisee : même règle pour la restauration et l'Analys
     expect(essaiConventionRevisee({ method: "wb", constantes: { ...gramme, essai_gs_convention: "base" } })).toBe(false);
   });
 });
+
+describe("libelleVersion : version lisible, sans nom de classeur (2026-10-26)", () => {
+  it("traduit les estampilles connues", async () => {
+    const { libelleVersion } = await import("./conventions");
+    expect(libelleVersion("intra2017-1.0")).toBe("1.0, convention d'origine");
+    expect(libelleVersion("gramme-1.1")).toBe("1.1, convention actuelle");
+    expect(libelleVersion("gramme-1.0")).toBe("1.0, convention actuelle");
+    expect(libelleVersion("gramme-1.1-personnalise")).toBe("1.1, convention actuelle, personnalisée");
+  });
+
+  it("rend telle quelle une version inconnue", async () => {
+    const { libelleVersion } = await import("./conventions");
+    expect(libelleVersion("1.0.0")).toBe("1.0.0");
+    expect(libelleVersion("")).toBe("");
+  });
+
+  it("libellés des packs : description de la convention, sans classeur", async () => {
+    const { CONVENTION_PACKS } = await import("./conventions");
+    for (const p of CONVENTION_PACKS) expect(p.label).not.toMatch(/Intra|Belem|Feuille/);
+    expect(CONVENTION_PACKS.find((p) => p.id === "gramme")?.label).toContain("Gs final recalculé");
+  });
+});

@@ -16,6 +16,7 @@ import { EMPREINTE_CONVENTION_REVISEE, EMPREINTE_INCONNUE, empreinteEntrees } fr
 import type { MesureLabo } from "./mesures";
 import type { RegleLiant } from "./essai-liant";
 import { solverVersionActive, CONVENTION_PACKS, CONVENTION_GS_ESSAI, REGLE_LIANT_ESSAI, essaiConventionRevisee } from "./conventions";
+import { ANCIENS_NOMS_LIANTS_EXEMPLE, MOULE_EXEMPLE, NOMS_LIANTS_EXEMPLE } from "./exemple";
 import type { CloudSession } from "./supabase";
 import {
   type MaterialOrigine, type MaterialKind, type MaterialItem,
@@ -1386,10 +1387,14 @@ export const useStore = create<AppState>((set, get) => ({
 
   fillTestData: () =>
     set((state) => {
-      // Jeu de valeurs DÉTERMINISTE : le « Mélange 1 » du classeur de référence
-      // du professeur (Feuille calculs mélanges_tonne, Intra 2017). Avec ces
-      // entrées, l'application reproduit le classeur cellule par cellule
-      // (mêmes valeurs que les 215 tests d'or du backend).
+      // Jeu de valeurs DÉTERMINISTE : matériaux et rapports du « Mélange 1 » du
+      // classeur de référence du professeur (Feuille calculs mélanges_tonne,
+      // Intra 2017), ceux des tests d'or du backend (Cw, Bw, E/L, Gs, w0).
+      // Échelle du LABORATOIRE depuis le 2026-10-26 (demande de l'utilisateur :
+      // les 11 000 m³ du classeur ne ressemblent pas à une gâchée) : moule
+      // cylindrique 76,2 × 152,4 mm, 9 moules par recette, κ = 1,1, soit
+      // environ 6,9 L. Les rapports ne changent pas ; seules les masses suivent
+      // le volume. Aucun nom de classeur n'est affiché.
       const gs = 3.05;                       // Gs résidus (Casa Berardi)
       const w0 = 31.5789;                    // teneur en eau = 1/0.76 - 1 (% solide humide 76 %)
       const cwPct = 70;                      // Cw initial
@@ -1402,26 +1407,28 @@ export const useStore = create<AppState>((set, get) => ({
       // On les AJOUTE au catalogue s'ils n'existent pas (sans toucher aux
       // entrées existantes de l'utilisateur). Pas les entrées officielles CP10
       // et SLAG : leurs Gs (3,1543 et 2,8426) ne sont pas ceux de la feuille,
-      // et l'exemple ne la reproduirait plus. Le nom dit d'où ils viennent.
+      // et l'exemple ne la reproduirait plus. Le nom dit qu'ils viennent de
+      // l'exemple. Une entrée qui porte encore l'ancien nom de l'exemple
+      // (avant le 2026-10-26) est renommée ; un nom choisi par l'utilisateur
+      // n'est jamais touché.
       const catalogue = [...state.catalogue_liants];
-      const upsert = (code: string, nom: string, gsLiant: number) => {
-        if (!catalogue.some((l) => l.code === code)) {
-          catalogue.push({ id: `liant_${code.toLowerCase()}`, code, nom, gs: gsLiant });
-        }
+      const upsert = (code: string, nom: string, gsLiant: number, ancienNom: string) => {
+        const i = catalogue.findIndex((l) => l.code === code);
+        if (i < 0) catalogue.push({ id: `liant_${code.toLowerCase()}`, code, nom, gs: gsLiant });
+        else if (catalogue[i].nom === ancienNom) catalogue[i] = { ...catalogue[i], nom };
       };
-      upsert("GU", "Ciment GU (exemple Intra 2017)", 3.15);
-      upsert("GGBFS", "Laitier GGBFS (exemple Intra 2017)", 2.9);
+      upsert("GU", NOMS_LIANTS_EXEMPLE.GU, 3.15, ANCIENS_NOMS_LIANTS_EXEMPLE.GU);
+      upsert("GGBFS", NOMS_LIANTS_EXEMPLE.GGBFS, 2.9, ANCIENS_NOMS_LIANTS_EXEMPLE.GGBFS);
 
       const newGeneral: GeneralInfo = {
-        operator_name: "Démo Intra 2017",
-        project_name: "Feuille de référence",
+        operator_name: "Exemple",
+        project_name: "Exemple complet",
         residue_id: "Casa Berardi",
         mix_date: new Date().toISOString().slice(0, 10),
-        // 55 m x 20 m x 10 m = 11 000 m³ (le « contenant » de la feuille)
-        container_type: "longueur_largeur_hauteur",
-        container_length: 5500,
-        container_width: 2000,
-        container_height: 1000,
+        // Moule cylindrique 76,2 × 152,4 mm (store en cm : rayon 3,81, hauteur 15,24).
+        container_type: "rayon_hauteur",
+        container_radius: MOULE_EXEMPLE.rayonCm,
+        container_height: MOULE_EXEMPLE.hauteurCm,
         binder_count: 2,
         binder1_type: "GU",
         binder2_type: "GGBFS",
@@ -1435,11 +1442,11 @@ export const useStore = create<AppState>((set, get) => ({
         binder2_fraction_pct: 80,
         binder3_fraction_pct: 0,
       };
-      const newCw: CwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [...bwLevels] };
-      const newWb: WbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [...bwLevels], wc_ratio: [...wcLevels] };
-      const newSlump: SlumpState = { cone_type: "mini", slump_mm: 180, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [...bwLevels] };
-      const newRpgCw: RpgCwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [...bwLevels] };
-      const newRpgWb: RpgWbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: 1, desired_qty: 1, safety_factor: 1, binder_pct: [...bwLevels], wc_ratio: [...wcLevels] };
+      const newCw: CwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: 1, desired_qty: MOULE_EXEMPLE.moules, safety_factor: MOULE_EXEMPLE.kappa, binder_pct: [...bwLevels] };
+      const newWb: WbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: 1, desired_qty: MOULE_EXEMPLE.moules, safety_factor: MOULE_EXEMPLE.kappa, binder_pct: [...bwLevels], wc_ratio: [...wcLevels] };
+      const newSlump: SlumpState = { cone_type: "mini", slump_mm: 180, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, num_recipes: 1, desired_qty: MOULE_EXEMPLE.moules, safety_factor: MOULE_EXEMPLE.kappa, binder_pct: [...bwLevels] };
+      const newRpgCw: RpgCwState = { solid_mass_pct: cwPct, saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: 1, desired_qty: MOULE_EXEMPLE.moules, safety_factor: MOULE_EXEMPLE.kappa, binder_pct: [...bwLevels] };
+      const newRpgWb: RpgWbState = { saturation_pct: 100, residue_sg: gs, residue_w_pct: w0, aggregate_sg: aggSg, aggregate_fraction_pct: aggPct, num_recipes: 1, desired_qty: MOULE_EXEMPLE.moules, safety_factor: MOULE_EXEMPLE.kappa, binder_pct: [...bwLevels], wc_ratio: [...wcLevels] };
       const newIndustrie: IndustrieState = {
         category: "RPC",
         residue_sg: gs,
