@@ -539,7 +539,7 @@ connexion enseignant). Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
   `PROF`.
 
 **Démonstration** (`/classe?demo=1`, 2026-10-26). La même page sur une classe
-FICTIVE de 6 étudiants, sans compte, pour montrer le tableau de bord au
+FICTIVE de 7 étudiants, sans compte, pour montrer le tableau de bord au
 professeur sans créer de faux comptes dans la base réelle.
 - **Données** : `lib/classe-demo.ts`, `classeDemo(maintenant)`, déterministe
   pour une date donnée, dates relatives à aujourd'hui. Les RECETTES viennent du

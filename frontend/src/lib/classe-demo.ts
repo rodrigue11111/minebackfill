@@ -102,6 +102,10 @@ const ETUDIANTS = [
   { id: "demo-etu-david", nom: "David Côté", courriel: "david.cote@demo.invalid" },
   { id: "demo-etu-emilie", nom: "Émilie Bouchard", courriel: "emilie.bouchard@demo.invalid" },
   { id: "demo-etu-felix", nom: "Félix Gauthier", courriel: "felix.gauthier@demo.invalid" },
+  // 2026-10-26 : un étudiant plus chargé (2 calculs, 5 gâchées), pour voir la
+  // fiche rangée par calcul ; ses gâchées, tirées de la formulation selon E/L
+  // que personne d'autre ne gâche, ne forment aucun groupe de comparaison.
+  { id: "demo-etu-gabriel", nom: "Gabriel Lavoie", courriel: "gabriel.lavoie@demo.invalid" },
 ] as const;
 type IdEtudiant = (typeof ETUDIANTS)[number]["id"];
 
@@ -113,8 +117,8 @@ const LIBELLES: Record<CleFormulation, string> = {
   laronde_el: "LaRonde selon E/L",
 };
 
-/** Un calcul sauvegardé de l'étudiant, à partir d'une formulation figée. */
-function resultatDemo(etu: IdEtudiant, cle: CleFormulation, savedAt: string): SavedResult {
+/** Un calcul sauvegardé de l'étudiant, à partir d'une formulation figée (variante : un 2e calcul de la même formulation). */
+function resultatDemo(etu: IdEtudiant, cle: CleFormulation, savedAt: string, variante?: string): SavedResult {
   const f: Formulation = RECETTES.formulations[cle];
   const liants = f.liants.map((l) => ({ id: l.id, code: l.code, fraction_pct: l.fraction_pct }));
   const general: GeneralInfo = {
@@ -138,9 +142,9 @@ function resultatDemo(etu: IdEtudiant, cle: CleFormulation, savedAt: string): Sa
   if (f.el) inputs.wc_ratio = f.el;
   if (f.granulat) { inputs.aggregate_fraction_pct = f.granulat.am_pct; inputs.aggregate_sg = f.granulat.gs; }
   return {
-    id: `demo-${etu}-${cle}`,
+    id: `demo-${etu}-${cle}${variante ? `-${variante}` : ""}`,
     savedAt,
-    label: LIBELLES[cle],
+    label: variante ? `${LIBELLES[cle]} (${variante})` : LIBELLES[cle],
     category: f.categorie as SavedResult["category"],
     method: f.methode as SavedResult["method"],
     general,
@@ -170,6 +174,10 @@ interface AgeDemo {
 interface GacheeDemoSpec {
   etu: IdEtudiant;
   cle: CleFormulation;
+  /** Calcul d'une variante (RESULTATS.variante) ; absent : le calcul principal. */
+  variante?: string;
+  /** Recette du calcul (index) ; 0 par défaut. */
+  recette?: number;
   /** Jours avant aujourd'hui (négatif) de la coulée. */
   coulee: number;
   ages: AgeDemo[];
@@ -199,10 +207,16 @@ const SPECS: GacheeDemoSpec[] = [
   { etu: "demo-etu-felix", cle: "laronde_rpg", coulee: -30, statut: "brouillon", ages: [{ age: 7, facteurs: [0.75, 1, 1.3] }, { age: 56 }] },
   // Hors groupe : Casa Berardi, Cw 70 %, Bw 6 %.
   { etu: "demo-etu-emilie", cle: "casa_bw6", coulee: -35, statut: "terminee", peseeHorsTolerance: true, ficheIncomplete: true, ages: [{ age: 7 }, { age: 28 }] },
+  // Étudiant chargé : 2 calculs selon E/L, 5 gâchées (hors groupe : seul à les gâcher).
+  { etu: "demo-etu-gabriel", cle: "laronde_el", coulee: -48, statut: "terminee", ages: [{ age: 7 }, { age: 28 }] },
+  { etu: "demo-etu-gabriel", cle: "laronde_el", recette: 1, coulee: -47, statut: "terminee", ages: [{ age: 7 }, { age: 28 }] },
+  { etu: "demo-etu-gabriel", cle: "laronde_el", coulee: -40, statut: "brouillon", ages: [{ age: 7 }, { age: 28 }, { age: 56 }] },
+  { etu: "demo-etu-gabriel", cle: "laronde_el", variante: "reprise", coulee: -18, statut: "brouillon", ages: [{ age: 7 }, { age: 28 }] },
+  { etu: "demo-etu-gabriel", cle: "laronde_el", variante: "reprise", recette: 1, coulee: -15, statut: "brouillon", ages: [{ age: 7 }, { age: 28 }] },
 ];
 
 /** Calculs sauvegardés (jours avant aujourd'hui), dont un sans gâchée (selon E/L). */
-const RESULTATS: { etu: IdEtudiant; cle: CleFormulation; jour: number }[] = [
+const RESULTATS: { etu: IdEtudiant; cle: CleFormulation; jour: number; variante?: string }[] = [
   { etu: "demo-etu-alice", cle: "laronde_bw5", jour: -62 },
   { etu: "demo-etu-alice", cle: "laronde_bw3", jour: -32 },
   { etu: "demo-etu-bruno", cle: "laronde_bw5", jour: -60 },
@@ -214,13 +228,15 @@ const RESULTATS: { etu: IdEtudiant; cle: CleFormulation; jour: number }[] = [
   { etu: "demo-etu-emilie", cle: "casa_bw6", jour: -37 },
   { etu: "demo-etu-felix", cle: "laronde_rpg", jour: -32 },
   { etu: "demo-etu-felix", cle: "laronde_el", jour: -40 },
+  { etu: "demo-etu-gabriel", cle: "laronde_el", jour: -50 },
+  { etu: "demo-etu-gabriel", cle: "laronde_el", jour: -20, variante: "reprise" },
 ];
 
 const RUPTURES: CodeRupture[] = ["cone", "cone_fendage", "colonnaire", "diagonale"];
 
 function gachee(maintenant: Date, s: GacheeDemoSpec, res: SavedResult, existantes: Gachee[]): { g: Gachee; maj: string; rev: number } {
   const alea = hasard(`${s.etu}|${s.cle}|${s.coulee}`);
-  const recette = res.recipes[0];
+  const recette = res.recipes[s.recette ?? 0];
   const couleLe = jour(maintenant, s.coulee);
   const code = genererCode(existantes, new Date(couleLe));
   const facteurGachee = (s.facteur ?? 1) * autour(alea, 0.08);
@@ -272,15 +288,17 @@ function gachee(maintenant: Date, s: GacheeDemoSpec, res: SavedResult, existante
     }
   }
   const complet = !s.ficheIncomplete;
+  // Id : la 1re gâchée d'un calcul garde la forme d'origine (tests, revues).
+  const deCeCalcul = existantes.filter((x) => x.formulationId === res.id).length;
   const g: Gachee = {
-    id: `${res.id}-gachee`,
+    id: deCeCalcul === 0 ? `${res.id}-gachee` : `${res.id}-gachee-${deCeCalcul + 1}`,
     code,
     creeLe: couleLe,
     statut: s.statut,
     formulationLabel: res.label,
     formulationId: res.id,
     categorie: res.category,
-    recetteIndex: 0,
+    recetteIndex: s.recette ?? 0,
     solverVersion: res.solverVersion,
     composants,
     tolerancePct: 2,
@@ -320,14 +338,14 @@ export function classeDemo(maintenant: Date): DonneesDemo {
   const lignes: LigneClasse[] = [];
   const resultats = new Map<string, SavedResult>();
   for (const r of RESULTATS) {
-    const sr = resultatDemo(r.etu, r.cle, jour(maintenant, r.jour));
-    resultats.set(`${r.etu}|${r.cle}`, sr);
+    const sr = resultatDemo(r.etu, r.cle, jour(maintenant, r.jour), r.variante);
+    resultats.set(`${r.etu}|${r.cle}|${r.variante ?? ""}`, sr);
     lignes.push({ proprietaire: r.etu, kind: "resultat", id: sr.id, rev: 1, maj: sr.savedAt, cree: sr.savedAt, supprime: false, contenu: sr });
   }
   const gachees = new Map<string, Gachee[]>();
   const revs = new Map<string, number>();
   for (const s of SPECS) {
-    const res = resultats.get(`${s.etu}|${s.cle}`)!;
+    const res = resultats.get(`${s.etu}|${s.cle}|${s.variante ?? ""}`)!;
     const deja = gachees.get(s.etu) ?? [];
     const { g, maj, rev } = gachee(maintenant, s, res, deja);
     gachees.set(s.etu, [...deja, g]);

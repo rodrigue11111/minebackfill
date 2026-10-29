@@ -8,6 +8,11 @@
 // Unité de saisie au choix (g ou kg, mémorisée dans les préférences d'unités) :
 // la cible, la tolérance et le champ la suivent ; la gâchée garde ses masses
 // en kg. Une masse négative est refusée.
+//
+// Lecture seule (enseignant, 2026-10-26) : les pesées sont FACULTATIVES. Sans
+// aucune pesée saisie, une seule ligne le dit et seules les cibles restent ;
+// une pesée manquante se lit « non saisie », jamais « pas encore pesé » (qui
+// laissait croire à un oubli de l'étudiant).
 
 import { useState } from "react";
 import { cibleLisible, masseLisible, peseeVersSaisie, plageTolerance, saisieVersPesee, type Gachee, type UnitePesee } from "@/lib/gachee";
@@ -52,6 +57,8 @@ export default function Pesees({ gachee: g, onPesee, onTolerance, notes, connect
   // Message de la saisie refusée en cours, par composant.
   const [refus, setRefus] = useState<Record<string, string | null>>({});
   const [refusTolerance, setRefusTolerance] = useState<string | null>(null);
+  // Enseignant : aucune pesée saisie, les cibles seules (les pesées sont facultatives).
+  const aucunePesee = lectureSeule && (g.composants ?? []).length > 0 && g.composants.every((c) => c.peseeKg === undefined);
   const choixUnite = (
     <Segmente ariaLabel="Unité des pesées" taille="compact" valeur={unite}
       onChange={(u) => setUnits({ masseLabo: u })}
@@ -80,6 +87,29 @@ export default function Pesees({ gachee: g, onPesee, onTolerance, notes, connect
     >
       {(g.composants ?? []).length === 0 ? (
         <p className="labo-vide">Aucune pesée enregistrée.</p>
+      ) : aucunePesee ? (
+        <div className="labo-pesees">
+          <p className="labo-vide">Aucune pesée saisie (les pesées sont facultatives). Masses cibles :</p>
+          {g.composants.map((c) => {
+            const notesC = notes?.get(ancrePesee(c.label)) ?? [];
+            return (
+              <div key={c.cle} className="labo-pesee">
+                <div className="labo-pesee-ligne labo-pesee-cible-seule">
+                  <span className="labo-pesee-nom">
+                    {c.label}
+                    <span className="labo-pesee-cible">
+                      cible {masseLisible(c.cibleKg)}
+                      {tol ? <> ; tolérance {plageTolerance(c.cibleKg, tol, Math.abs(c.cibleKg) < 1 ? "g" : "kg")}</> : null}
+                    </span>
+                  </span>
+                </div>
+                {notesC.length > 0 && (
+                  <FilEtudiant kind="gachee" id={g.id} liste={notesC} connecte={connecte} ancre={ancrePesee(c.label)} />
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="labo-pesees">
           {g.composants.map((c) => {
@@ -97,7 +127,7 @@ export default function Pesees({ gachee: g, onPesee, onTolerance, notes, connect
                   </span>
                   <BandeTolerance position={geo.position} bande={geo.bande} hors={geo.horsTolerance} />
                   {lectureSeule ? (
-                    <span className="labo-pesee-valeur">{c.peseeKg === undefined ? TIRET : masseLisible(c.peseeKg)}</span>
+                    <span className="labo-pesee-valeur">{c.peseeKg === undefined ? "non saisie" : masseLisible(c.peseeKg)}</span>
                   ) : (
                     <span className="labo-pesee-saisie">
                       <ChampNombre ariaLabel={`Masse pesée : ${c.label} (${unite})`} placeholder={unite}
@@ -109,7 +139,7 @@ export default function Pesees({ gachee: g, onPesee, onTolerance, notes, connect
                     </span>
                   )}
                   <span className={geo.horsTolerance ? "labo-pesee-ecart labo-hors" : "labo-pesee-ecart"}>
-                    {libelleEcart(geo)}
+                    {lectureSeule && !geo.ecart ? TIRET : libelleEcart(geo)}
                     {geo.horsEchelle && <span className="labo-hors-echelle"> (hors échelle)</span>}
                   </span>
                 </div>

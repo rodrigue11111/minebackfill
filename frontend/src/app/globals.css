@@ -1017,6 +1017,7 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .labo-pesee { display: flex; flex-direction: column; gap: 10px; padding: 14px 0; border-top: 1px solid var(--filet); }
 .labo-pesees > .labo-pesee:first-child { border-top: none; padding-top: 2px; }
 .labo-pesee-ligne { display: grid; grid-template-columns: 170px minmax(0, 1fr) 118px 150px; gap: 16px; align-items: center; }
+.labo-pesee-cible-seule { grid-template-columns: minmax(0, 1fr); }
 .labo-pesee-nom { display: flex; flex-direction: column; font-size: 15px; }
 .labo-pesee-cible { font-size: 12.5px; color: var(--texte-2); }
 .labo-pesee-saisie { display: flex; align-items: center; gap: 6px; }
@@ -1182,6 +1183,19 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .classe-documents { display: flex; flex-direction: column; }
 .classe-document { padding: 12px 0; border-top: 1px solid var(--filet); }
 .classe-documents > .classe-document:first-child { border-top: none; }
+/* Fiche de l'étudiant rangée par calcul (DetailEtudiant, 2026-10-26). */
+.classe-synthese { margin: 0 0 6px; font-size: 14px; color: var(--texte-2); }
+.classe-bloc { border-top: 1px solid var(--filet); }
+.classe-bloc-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding: 10px 0; }
+.classe-bloc-bascule { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; border: none; background: none; padding: 0; font-family: inherit; font-size: 15px; text-align: left; cursor: pointer; color: var(--texte); }
+.classe-bloc-bascule .ui-ligne-chevron { align-self: center; }
+.classe-bloc-detail { font-size: 13px; color: var(--texte-2); }
+.classe-bloc-actions { display: inline-flex; align-items: baseline; gap: 14px; flex-wrap: wrap; font-size: 13.5px; }
+.classe-bloc-corps { padding: 0 0 12px 22px; }
+.classe-tableau-bloc { overflow-x: auto; }
+.classe-ucs-ages { display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.classe-document-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap; }
+@media (max-width: 720px) { .classe-bloc-corps { padding-left: 0; } }
 @media (max-width: 720px) {
   .classe-tableau { padding: 0 18px 8px; }
 }
