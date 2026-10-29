@@ -1055,6 +1055,18 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .labo-eprouvette-droite { display: flex; align-items: center; gap: 10px; flex-shrink: 0; font-size: 14px; }
 .labo-ucs { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--texte); }
 .labo-eprouvette-ouverte { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 10px 36px; }
+/* Groupes par âge de cure (2026-10-26). overflow-anchor : la compensation du
+   défilement est faite par CarteEprouvettes (garderEnPlace), pas doublée par
+   l'ancrage automatique du navigateur. */
+.labo-groupes { display: flex; flex-direction: column; overflow-anchor: none; }
+.labo-groupe { border-top: 1px solid var(--filet); }
+.labo-groupe:first-child { border-top: none; }
+.labo-groupe-tete { width: 100%; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 10px 0; border: none; background: none; font-family: inherit; text-align: left; cursor: pointer; color: var(--texte); }
+.labo-groupe-tete .ui-ligne-chevron { align-self: center; }
+.labo-groupe-titre { font-size: 15px; font-weight: 600; }
+.labo-groupe-detail { font-size: 13px; color: var(--texte-2); }
+.labo-liste-eprouvettes { padding: 0 0 6px 24px; }
+.labo-aide-essai { margin: 0; font-size: 13.5px; color: var(--texte-2); }
 .labo-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .labo-essai { display: flex; flex-direction: column; gap: 14px; padding: 14px 16px; border-radius: var(--rayon-bloc); background: var(--fond); }
 .labo-essai .field-input { background: var(--surface); }
@@ -1120,6 +1132,7 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
   .labo-ajustement { grid-template-columns: minmax(0, 1fr) 100px auto; }
   .labo-ajustement input[placeholder^="Note"] { grid-column: 1 / -1; grid-row: 2; }
   .labo-eprouvette-ouverte { padding-left: 0; }
+  .labo-liste-eprouvettes { padding-left: 0; }
   .labo-liste-gachees, .labo-liste-champs { padding: 0 18px 6px; }
   .labo-liste-champs .ui-ligne-droite { width: 44%; }
   .labo-pastilles { max-width: 55%; }

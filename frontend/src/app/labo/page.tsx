@@ -14,7 +14,7 @@ import { materiauxDepuisFormulation } from "@/lib/gachee-materiaux";
 import FiltreSession from "@/components/FiltreSession";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useHydrated } from "@/lib/use-hydrated";
-import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, type Gachee } from "@/lib/gachee";
+import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, messageSuppressionGachee, type Gachee } from "@/lib/gachee";
 import { snapshotProtocoles } from "@/lib/protocole";
 import { mouleDepuisContenant } from "@/lib/eprouvette";
 import { volumeHorsLabo } from "@/lib/contenant";
@@ -126,7 +126,7 @@ export default function LaboPage() {
           revEnLigne={revEnLigne(g.id)}
           onRetour={() => setSelId(null)}
           onSupprimer={() => {
-            if (window.confirm(`Supprimer la gâchée ${g.code} ?`)) {
+            if (window.confirm(messageSuppressionGachee(g))) {
               oublierCourbes(courbesAOublier(clesCourbes(g), gachees.filter((x) => x.id !== g.id)));
               supprimerGachee(g.id);
               setSelId(null);

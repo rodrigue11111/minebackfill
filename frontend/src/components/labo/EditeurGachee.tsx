@@ -243,6 +243,10 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
             <button type="button" className="btn-sombre" onClick={() => onMaj({ statut: g.statut === "terminee" ? "brouillon" : "terminee" })}>
               {g.statut === "terminee" ? "Rouvrir" : "Marquer terminée"}
             </button>
+            {/* En tête, visible sur tous les onglets et sur téléphone (2026-10-26) :
+                il était tout en bas de la colonne de droite, caché hors de
+                l'onglet Échanges sur téléphone. Confirmation : labo/page.tsx. */}
+            <button type="button" onClick={onSupprimer} className="btn-discret btn-danger">Supprimer la gâchée</button>
           </>
         }
       />
@@ -440,7 +444,6 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
           </Carte>
 
           <div data-section="echanges" className="labo-supprimer">
-            <button type="button" onClick={onSupprimer} className="btn-discret btn-danger">Supprimer cette gâchée</button>
             <button type="button" onClick={onRetour} className="btn-discret">Toutes les gâchées</button>
           </div>
         </aside>
