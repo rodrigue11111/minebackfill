@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 import FiltreSession from "@/components/FiltreSession";
 import AnnotationsDoc from "@/components/AnnotationsDoc";
 import { docsAvecNonLus } from "@/lib/annotations";
@@ -25,7 +25,12 @@ import { fmt } from "@/lib/format";
 const nbRecettes = (sr: SavedResult) =>
   sr.category === "RRC" ? sr.rrc?.result.recipes.length ?? 0 : sr.recipes.length;
 
+// useSearchParams exige une frontière Suspense (comme app/analyse/page.tsx).
 export default function HistoriquePage() {
+  return <Suspense fallback={null}><HistoriqueContenu /></Suspense>;
+}
+
+function HistoriqueContenu() {
   const router = useRouter();
   const { savedResults, loadSavedResults, deleteSavedResult, restoreSavedResult, units, loadUnits } = useStore();
 
@@ -36,7 +41,13 @@ export default function HistoriquePage() {
   const exporterPdf = (sr: SavedResult) => exporterResultat(sr, "pdf", units);
   const exporterFeuilleLabo = (sr: SavedResult) => exporterResultat(sr, "feuille", units);
   const massLabel = MASS_LABELS[units?.mass as keyof typeof MASS_LABELS] ?? "kg";
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Résultat déplié : choisi dans la page, sinon demandé par l'adresse
+  // (?resultat=, lien direct du bandeau des commentaires, 2026-10-26).
+  // undefined : pas encore de choix, l'adresse décide.
+  const demande = useSearchParams().get("resultat");
+  const [choixId, setExpandedId] = useState<string | null | undefined>(undefined);
+  const expandedId = choixId === undefined ? demande : choixId;
+  const dejaMisEnVue = useRef(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const sessions = useStore((s) => s.sessions);
   const nonLus = docsAvecNonLus(useStore((s) => s.annotations));
@@ -48,6 +59,14 @@ export default function HistoriquePage() {
     loadSavedResults();
     loadUnits();
   }, [loadSavedResults, loadUnits]);
+
+  // Lien direct : le résultat demandé est mis en vue une fois chargé.
+  const demandeTrouvee = demande !== null && savedResults.some((sr) => sr.id === demande);
+  useEffect(() => {
+    if (!demandeTrouvee || dejaMisEnVue.current) return;
+    dejaMisEnVue.current = true;
+    requestAnimationFrame(() => document.getElementById(`resultat-${demande}`)?.scrollIntoView({ block: "start" }));
+  }, [demandeTrouvee, demande]);
 
   const handleDelete = (id: string) => {
     deleteSavedResult(id);
@@ -91,7 +110,7 @@ export default function HistoriquePage() {
               const timeStr = date.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" });
 
               return (
-                <div key={sr.id} className={isExpanded ? "hist-element hist-ouvert" : "hist-element"}>
+                <div key={sr.id} id={`resultat-${sr.id}`} className={isExpanded ? "hist-element hist-ouvert" : "hist-element"}>
                   <div className="hist-ligne">
                     <button type="button" className="hist-ligne-bouton" aria-expanded={isExpanded}
                       onClick={() => setExpandedId(isExpanded ? null : sr.id)}>

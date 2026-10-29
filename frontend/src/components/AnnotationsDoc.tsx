@@ -65,7 +65,8 @@ export function FilEtudiant({ kind, id, liste, connecte, ancre = null }: {
   };
 
   return (
-    <div className={ancre ? "fil fil-contexte" : "fil"}>
+    // data-non-lu : un lien direct (?gachee=, ?resultat=) fait défiler jusqu'ici.
+    <div className={ancre ? "fil fil-contexte" : "fil"} data-non-lu={aMarquer ? "oui" : undefined}>
       {!ancre && <div className="fil-titre">Échanges avec l&apos;enseignant</div>}
       <div className="fil-liste">
         {liste.map((a) => {

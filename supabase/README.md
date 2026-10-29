@@ -32,16 +32,20 @@ aujourd'hui (le lien « Compte » est masqué, aucun appel réseau).
    - `frontend/.env.local` (développement) — voir `frontend/.env.example` ;
    - les variables d'environnement du projet Vercel (production), **puis
      redéployer** : les `NEXT_PUBLIC_*` sont inlinées au build.
-5. **SQL Editor** — poser le **code enseignant** (jamais écrit dans le dépôt,
-   qui est public : seule son empreinte est gardée en base) :
+5. **Inscription de l'enseignant (sans code depuis le 2026-10-26).** Tant que
+   l'interrupteur `public.inscription_reglage.enseignant_libre` est ouvert
+   (c'est l'état d'un projet neuf), un compte créé avec « Je suis
+   l'enseignant » (page `/compte` ou portail) est « prof » d'emblée.
+   **Risque** : pendant ce temps, n'importe qui peut se déclarer enseignant et
+   voir tout le travail des étudiants. Le fermer dès que le compte du
+   professeur existe (voir `docs/OPERATIONS.md`, « Nommer un enseignant ») :
    ```sql
-   select public.definir_code_enseignant('UN_CODE_DIFFICILE_A_DEVINER');
+   update public.inscription_reglage set enseignant_libre = false, maj = now();
    ```
-   Il ne sert qu'**une fois** (2e argument pour plus, ex. `, 2`).
-6. L'enseignant s'inscrit sur la page `/compte` → Inscription → « Je suis
-   l'enseignant » → saisit le code : son compte est « prof » d'emblée. Un
-   mauvais code donne simplement un compte étudiant. Compte déjà créé sans
-   le code :
+   Réexécuter `schema.sql` ne le rouvre pas. Le code enseignant
+   (`definir_code_enseignant`) reste accepté par le serveur, mais les pages
+   ne le demandent plus.
+6. Compte déjà créé comme étudiant :
    ```sql
    update public.profiles set role = 'prof' where email = 'VOTRE_EMAIL';
    ```

@@ -13,6 +13,7 @@ import { Page, EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
 import { Champ } from "@/components/ui/Champ";
 import { Bandeau } from "@/components/ui/Bandeau";
+import { donneesInscription } from "@/lib/inscription";
 import { Pastille, type TonPastille } from "@/components/ui/Pastille";
 import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
 import Segmente from "@/components/ui/Segmente";
@@ -201,7 +202,6 @@ export default function ComptePage() {
   const [email, setEmail] = useState("");
   const [nom, setNom] = useState("");
   const [enseignant, setEnseignant] = useState(false);
-  const [code, setCode] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -213,6 +213,8 @@ export default function ComptePage() {
     setMode(m);
     setErreur(null);
     setInfo(null);
+    // Le mode enseignant ne survit pas à un changement d'onglet (2026-10-26).
+    setEnseignant(false);
     if (m !== "oubli" && window.location.search.includes("oubli")) {
       window.history.replaceState(null, "", window.location.pathname);
     }
@@ -242,14 +244,15 @@ export default function ComptePage() {
       } else if (mode === "inscription") {
         // Le nom part dans les métadonnées d'inscription ; le serveur n'en lit
         // QUE ce champ (handle_new_user), jamais un rôle.
-        // Code enseignant : vérifié par le SERVEUR (empreinte en base), puis
-        // retiré du compte. Un mauvais code donne simplement un compte étudiant.
-        const donnees: Record<string, string> = { display_name: nom.trim() };
-        if (enseignant && code.trim()) donnees.code_enseignant = code.trim();
+        // « Je suis l'enseignant » (2026-10-26, plus de code) : le SERVEUR
+        // décide (interrupteur inscription_reglage de schema.sql) et retire la
+        // demande du compte. Interrupteur fermé : un compte étudiant.
+        const donnees = donneesInscription(nom, enseignant);
         const { error } = await sb.auth.signUp({ email, password: motDePasse, options: { data: donnees } });
         if (error) throw error;
-        setInfo("Compte créé. Vous pouvez vous connecter.");
+        setInfo(enseignant ? "Compte enseignant créé. Vous pouvez vous connecter." : "Compte créé. Vous pouvez vous connecter.");
         setMode("connexion");
+        setEnseignant(false);
       } else {
         const { error } = await sb.auth.signInWithPassword({ email, password: motDePasse });
         if (error) throw error;
@@ -348,15 +351,17 @@ export default function ComptePage() {
                     <input type="text" required maxLength={80} className="field-input" value={nom}
                       autoComplete="name" onChange={(e) => setNom(e.target.value)} placeholder="Prénom Nom" />
                   </Champ>
+                  {/* Plus de code enseignant (2026-10-26) ; on peut toujours revenir en arrière. */}
                   {!enseignant ? (
                     <button type="button" className="btn-discret" style={{ alignSelf: "flex-start" }} onClick={() => setEnseignant(true)}>
                       Je suis l&apos;enseignant
                     </button>
                   ) : (
-                    <Champ libelle="Code enseignant (fourni par l'administrateur du site)">
-                      <input type="password" className="field-input" value={code} autoComplete="off"
-                        onChange={(e) => setCode(e.target.value)} placeholder="Code enseignant" />
-                    </Champ>
+                    <Bandeau ton="info" titre="Inscription enseignant." actions={
+                      <button type="button" className="btn-discret" onClick={() => setEnseignant(false)}>Je suis étudiant</button>
+                    }>
+                      Votre compte aura accès au tableau de bord de la classe.
+                    </Bandeau>
                   )}
                 </>
               )}
@@ -380,7 +385,7 @@ export default function ComptePage() {
               {erreur && <Bandeau ton="danger" role="alert">{erreur}</Bandeau>}
               {info && <Bandeau ton="succes" role="status">{info}</Bandeau>}
               <button type="submit" className="btn-primary compte-soumettre" disabled={loading}>
-                {loading ? "…" : mode === "connexion" ? "Se connecter" : mode === "oubli" ? "Envoyer le lien" : "Créer le compte"}
+                {loading ? "…" : mode === "connexion" ? "Se connecter" : mode === "oubli" ? "Envoyer le lien" : enseignant ? "Créer le compte enseignant" : "Créer le compte"}
               </button>
               {mode === "oubli" && (
                 <button type="button" className="btn-discret" style={{ alignSelf: "center" }} onClick={() => changerMode("connexion")}>

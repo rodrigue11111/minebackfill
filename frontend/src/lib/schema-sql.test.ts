@@ -141,6 +141,7 @@ describe("schema.sql : droits explicites (Supabase, projets neufs après le 2026
     expect(auth.official_catalogs).toBe("INSERT,SELECT,UPDATE");
     expect(auth.code_enseignant).toBeUndefined();
     expect(auth.prof_a_promouvoir).toBeUndefined();
+    expect(auth.inscription_reglage).toBeUndefined();
     // L'anonyme ne lit que les catalogues officiels.
     expect(await droits("anon")).toEqual({ official_catalogs: "SELECT" });
   });
@@ -182,6 +183,63 @@ describe("schema.sql — code enseignant", () => {
       await expect(comme(qui, "select public.definir_code_enseignant('Nouveau-Code-99')")).rejects.toMatchObject({ code: "42501" });
     }
     await expect(db.query("select public.definir_code_enseignant('court')")).rejects.toMatchObject({ code: "22023" });
+  });
+});
+
+describe("schema.sql : inscription enseignant sans code (2026-10-26)", () => {
+  const role = async (id: string) => (await db.query<{ role: string }>(
+    "select role from public.profiles where id = $1", [id])).rows[0]?.role;
+  const meta = async (id: string) => (await db.query<{ m: Record<string, unknown> }>(
+    "select raw_user_meta_data as m from auth.users where id = $1", [id])).rows[0].m;
+  const libre = async () => (await db.query<{ v: boolean }>(
+    "select enseignant_libre as v from public.inscription_reglage")).rows[0].v;
+  const ouvrir = (v: boolean) => db.query("update public.inscription_reglage set enseignant_libre = $1, maj = now()", [v]);
+  const I1 = "00000000-0000-4000-8000-000000000ae1";
+  const I2 = "00000000-0000-4000-8000-000000000ae2";
+  const I3 = "00000000-0000-4000-8000-000000000ae3";
+  const I4 = "00000000-0000-4000-8000-000000000ae4";
+
+  it("interrupteur ouvert par défaut : « enseignant » donne « prof », la clé ne reste pas", async () => {
+    expect(await libre()).toBe(true);
+    await creerCompte(I1, "i1@exemple.ca", { display_name: "Prof libre", enseignant: "oui" });
+    expect(await role(I1)).toBe("prof");
+    expect(await meta(I1)).toEqual({ display_name: "Prof libre" });
+  });
+
+  it("seule la valeur « oui » compte ; un rôle glissé dans les métadonnées reste ignoré", async () => {
+    await creerCompte(I2, "i2@exemple.ca", { enseignant: "true", role: "prof" });
+    expect(await role(I2)).toBe("etudiant");
+    expect(await meta(I2)).not.toHaveProperty("enseignant");
+  });
+
+  it("fermé : « enseignant » donne un compte étudiant ; les rôles déjà accordés restent", async () => {
+    await ouvrir(false);
+    try {
+      await creerCompte(I3, "i3@exemple.ca", { enseignant: "oui" });
+      expect(await role(I3)).toBe("etudiant");
+      expect(await role(I1)).toBe("prof");
+    } finally {
+      await ouvrir(true);
+    }
+  });
+
+  it("fermé, puis schéma réexécuté : l'interrupteur reste fermé", async () => {
+    await ouvrir(false);
+    try {
+      await db.exec(SCHEMA);
+      expect(await libre()).toBe(false);
+      await creerCompte(I4, "i4@exemple.ca", { enseignant: "oui" });
+      expect(await role(I4)).toBe("etudiant");
+    } finally {
+      await ouvrir(true);
+    }
+  });
+
+  it("ni l'application ni un anonyme ne lisent ou ne changent l'interrupteur", async () => {
+    for (const qui of [A, PROF, null]) {
+      await expect(comme(qui, "select * from public.inscription_reglage")).rejects.toMatchObject({ code: "42501" });
+      await expect(comme(qui, "update public.inscription_reglage set enseignant_libre = true")).rejects.toMatchObject({ code: "42501" });
+    }
   });
 });
 
