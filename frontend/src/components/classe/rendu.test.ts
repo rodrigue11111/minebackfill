@@ -178,7 +178,11 @@ describe("vues de l'enseignant — rendu", () => {
     expect(tableau).toMatch(/<td[^>]*>1<\/td>/); // un seul essai valide (E02 est exclue)
     expect(tableau).toContain("1 réponse non lue");
     const detail = rendu(createElement(DetailEtudiant, { etudiant: etudiants[0], annotations, onOuvrir: () => {} }));
-    expect(detail).toContain("Ouvrir");
+    // 2026-10-29 : le code de la gâchée est le lien qui l'ouvre ; plus de bouton « Ouvrir » en bout de ligne.
+    expect(detail).toMatch(/<button type="button" class="classe-lien-doc classe-code-gachee"[^>]*aria-label="Ouvrir la gâchée [^"]+">/);
+    expect(detail).not.toMatch(/>Ouvrir<\/button>/);
+    expect(detail).not.toContain("Ouvrir le calcul</button>");
+    expect(detail).toMatch(/<button type="button" class="classe-lien-doc classe-bloc-titre" title="Ouvrir le calcul">/);
     // 2026-10-26 : plus de fil ni de « + Commenter » ici ; le nombre de
     // commentaires et de réponses non lues, un clic ouvre le document.
     expect(detail).toContain("3 commentaires · 1 nouvelle réponse");
