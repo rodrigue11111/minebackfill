@@ -198,6 +198,20 @@ les vrais noms des essais normalisés. Décisions :
   publication reçue (dernière version valide, jamais effacée par une panne) et
   l'équation du calculateur. La fiche fx d'un résultat montre donc TOUJOURS la
   version du cours : une fiche modifiée contredirait les chiffres du calcul.
+- **Teneur en eau de la pâte : dans la gâchée, plus dans Calculs**
+  (2026-10-30). Le bloc « Paramètres mesurés au laboratoire » de
+  l'essai-erreur reprenait la feuille Intra 2017 du professeur (lignes 72 à
+  77 : affaissement, tare, m_h, m_s). Mais m_s se pèse après environ 24 h
+  d'étuve, quand le calcul est fini et la gâchée créée. Calculs garde
+  l'affaissement (mesuré juste après le malaxage) ; tare, m_h et m_s vont
+  dans la gâchée (`Gachee.etuvePate`), où elles fixent Cw mesuré
+  (`majEtuve`, mêmes formules que la feuille). Les masses saisies dans
+  Calculs auparavant restent lues et imprimées dans les rapports.
+- **État affiché d'une gâchée** (2026-10-30) : le statut enregistré reste
+  « brouillon » ou « terminée » ; l'écran affiche « En attente
+  d'écrasement » dès qu'il y a des éprouvettes en cure (`etatGachee`). Le
+  code d'une gâchée prend la date LOCALE : en UTC, une gâchée créée un soir
+  recevait le code du lendemain.
 - **Vocabulaire : une source, sourcée, gardée.** `lib/glossaire.ts` porte les
   libellés (`T`), le glossaire (chaque entrée cite le cours, un classeur ou le
   programme) et les normes. Corrections de fond : la méthode « Ajustement

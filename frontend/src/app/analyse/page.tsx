@@ -56,6 +56,8 @@ import ChampNombre from "@/components/ui/ChampNombre";
 
 type Mode = "courbes" | "composition";
 const DEFAUT_SORTIES = ["wc_ratio", "void_ratio"];
+/** Hauteur (unités du viewBox, largeur 760) d'une courbe agrandie : plus haute que sur la page. */
+const HAUTEUR_AGRANDIE = 430;
 
 
 function fmtStat(v: number, unite: string): string {
@@ -283,6 +285,17 @@ function AnalyseContenu() {
   const ecartToutNul =
     tracesEcart.length > 0 &&
     tracesEcart.every((t) => t.valeurs.every((v) => v === null || !Number.isFinite(v)));
+  // Légende de la figure des écarts, sur la page et dans sa vue agrandie.
+  const legendeEcart = (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 6 }}>
+      {traces.map((t) => (
+        <span key={t.cle} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--texte)" }}>
+          <span style={{ width: 14, height: 3, background: t.couleur, borderRadius: 2 }} />
+          {t.label}
+        </span>
+      ))}
+    </div>
+  );
 
   // ── Exports (les données brutes, pleine précision ; l'en-tête porte la
   //    provenance figée au calcul -> figure traçable et reproductible). ──
@@ -487,25 +500,31 @@ function AnalyseContenu() {
                           if (!meta) return null;
                           const tv = construireTracesVariantes(figure.resultats, cle, variantesFigure)
                             .map((t, i) => ({ ...t, unite: meta.unite, tirets: variantesFigure[i]?.tirets }));
+                          const legende = (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 4 }}>
+                              {variantesFigure.map((v, i) => (
+                                <span key={`${v.recette ?? "p"}-${i}`} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--texte-2)" }}>
+                                  <svg width={20} height={6} aria-hidden="true">
+                                    <line x1={0} y1={3} x2={20} y2={3} stroke={v.couleur} strokeWidth={2}
+                                      strokeDasharray={v.tirets || undefined} />
+                                  </svg>
+                                  {v.label}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                          const reference = refDansPlage ? referenceX! : undefined;
                           return (
                             <div key={cle} className="analyse-figure">
                               <div style={{ fontSize: 14, fontWeight: 600, color: "var(--texte)", marginBottom: 4 }}>
                                 {libelleAvecUnite(meta.label, meta.unite)}
                               </div>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 4 }}>
-                                {variantesFigure.map((v, i) => (
-                                  <span key={`${v.recette ?? "p"}-${i}`} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--texte-2)" }}>
-                                    <svg width={20} height={6} aria-hidden="true">
-                                      <line x1={0} y1={3} x2={20} y2={3} stroke={v.couleur} strokeWidth={2}
-                                        strokeDasharray={v.tirets || undefined} />
-                                    </svg>
-                                    {v.label}
-                                  </span>
-                                ))}
-                              </div>
-                              <FigurePng nom={`analyse-${figCategorie}-${cle}-variantes`} desactive={perime} motif={motifPerime}>
+                              {legende}
+                              <FigurePng nom={`analyse-${figCategorie}-${cle}-variantes`} desactive={perime} motif={motifPerime}
+                                titre={libelleAvecUnite(meta.label, meta.unite)} ratio={760 / HAUTEUR_AGRANDIE}
+                                agrandi={<>{legende}<CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={tv} reference={reference} hauteur={HAUTEUR_AGRANDIE} /></>}>
                                 <CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={tv}
-                                  reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
+                                  reference={reference} hauteur={300} />
                               </FigurePng>
                             </div>
                           );
@@ -520,7 +539,9 @@ function AnalyseContenu() {
                               <div style={{ fontSize: 14, fontWeight: 600, color: t.couleur, marginBottom: 2 }}>
                                 {libelleAvecUnite(t.label, t.unite)}
                               </div>
-                              <FigurePng nom={`analyse-${figCategorie}-${t.cle}`} desactive={perime} motif={motifPerime}>
+                              <FigurePng nom={`analyse-${figCategorie}-${t.cle}`} desactive={perime} motif={motifPerime}
+                                titre={libelleAvecUnite(t.label, t.unite)} ratio={760 / HAUTEUR_AGRANDIE}
+                                agrandi={<CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={[t]} reference={refDansPlage ? referenceX! : undefined} hauteur={HAUTEUR_AGRANDIE} />}>
                                 <CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={[t]} reference={refDansPlage ? referenceX! : undefined} hauteur={300} />
                               </FigurePng>
                               {s && (
@@ -541,15 +562,10 @@ function AnalyseContenu() {
                       </div>
                     ) : (
                       <>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 6 }}>
-                          {traces.map((t) => (
-                            <span key={t.cle} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--texte)" }}>
-                              <span style={{ width: 14, height: 3, background: t.couleur, borderRadius: 2 }} />
-                              {t.label}
-                            </span>
-                          ))}
-                        </div>
-                        <FigurePng nom={`analyse-${figCategorie}-ecart`} desactive={perime} motif={motifPerime}>
+                        {legendeEcart}
+                        <FigurePng nom={`analyse-${figCategorie}-ecart`} desactive={perime} motif={motifPerime}
+                          titre="Écart % par rapport à la référence" ratio={760 / 430}
+                          agrandi={<>{legendeEcart}<CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} /></>}>
                           <CourbeSvg x={res.x} xLabel={xLabel} xSymbole={paramCourt} series={tracesEcart} reference={refDansPlage ? referenceX! : undefined} />
                         </FigurePng>
                         <p className="ui-liste-pied" style={{ marginTop: 6 }}>

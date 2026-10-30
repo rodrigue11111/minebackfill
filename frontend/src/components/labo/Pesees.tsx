@@ -130,7 +130,7 @@ export default function Pesees({ gachee: g, onPesee, onTolerance, notes, connect
                     <span className="labo-pesee-valeur">{c.peseeKg === undefined ? "non saisie" : masseLisible(c.peseeKg)}</span>
                   ) : (
                     <span className="labo-pesee-saisie">
-                      <ChampNombre ariaLabel={`Masse pesée : ${c.label} (${unite})`} placeholder={unite}
+                      <ChampNombre ariaLabel={`Masse pesée : ${c.label} (${unite})`} placeholder={TIRET}
                         min={0} messageRefus="Une masse ne peut pas être négative."
                         value={peseeVersSaisie(c.peseeKg, unite)}
                         onChange={(n) => onPesee?.(c.cle, n === undefined ? undefined : saisieVersPesee(n, unite))}

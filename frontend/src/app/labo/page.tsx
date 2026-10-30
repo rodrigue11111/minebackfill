@@ -6,8 +6,13 @@
 // (affaissement, température, w, Cw), ajustements de l'essai-erreur,
 // éprouvettes et essais UCS. Auto-sauvegarde : chaque saisie est persistée
 // immédiatement (localStorage). Les parties sont dans components/labo.
+//
+// Démonstration (/labo?demo=1, 2026-10-30) : des gâchées de simulation
+// (labo-demo.ts) gardées en mémoire ; rien n'est enregistré ni synchronisé.
 
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import Link from "next/link";
+import { laboDemo, MENTION_DEMO_LABO } from "@/lib/labo-demo";
 import { useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { nomLiant } from "@/lib/liants";
@@ -15,7 +20,7 @@ import { materiauxDepuisFormulation } from "@/lib/gachee-materiaux";
 import FiltreSession from "@/components/FiltreSession";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useHydrated } from "@/lib/use-hydrated";
-import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, messageSuppressionGachee, moulesPrevus, type Gachee } from "@/lib/gachee";
+import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, messageSuppressionGachee, moulesPrevus, resumeParametres, etatGachee, TON_ETAT_GACHEE, type Gachee } from "@/lib/gachee";
 import { snapshotProtocoles } from "@/lib/protocole";
 import { mouleDepuisContenant } from "@/lib/eprouvette";
 import { volumeHorsLabo } from "@/lib/contenant";
@@ -33,6 +38,8 @@ import { Pastille } from "@/components/ui/Pastille";
 import { Icone } from "@/components/ui/Icones";
 import Segmente from "@/components/ui/Segmente";
 import EditeurGachee from "@/components/labo/EditeurGachee";
+import ResumeCalcul from "@/components/labo/ResumeCalcul";
+import { lienDocument } from "@/lib/liens-commentaires";
 import { chargerEtatSync } from "@/lib/sync-etat";
 import { cleDoc } from "@/lib/sync-moteur";
 import Echeancier from "@/components/labo/Echeancier";
@@ -49,14 +56,27 @@ export default function LaboPage() {
 
 function LaboContenu() {
   const monte = useHydrated();
-  const { gachees, ajouterGachee, modifierGachee, supprimerGachee, savedResults,
+  const { gachees: gacheesMagasin, ajouterGachee: ajouterMagasin, modifierGachee: modifierMagasin, supprimerGachee: supprimerMagasin, savedResults,
     protocoles, ajouterProtocole, modifierProtocole, supprimerProtocole, reinitialiserProtocoles } = useStore();
-  const annotations = useStore((s) => s.annotations);
+  const annotationsMagasin = useStore((s) => s.annotations);
   const connecte = useStore((s) => s.session !== null);
+  const params = useSearchParams();
+  // Démonstration : les gâchées de simulation remplacent celles du magasin,
+  // et chaque modification reste en mémoire (rien n'est écrit).
+  const demo = params.get("demo") === "1";
+  const demoInitiale = useMemo(() => (demo ? laboDemo(new Date()) : null), [demo]);
+  const [demoGachees, setDemoGachees] = useState<Gachee[] | null>(null);
+  const gachees = demoInitiale ? (demoGachees ?? demoInitiale.gachees) : gacheesMagasin;
+  const majDemo = (f: (l: Gachee[]) => Gachee[]) => setDemoGachees((avant) => f(avant ?? demoInitiale?.gachees ?? []));
+  const ajouterGachee = (g: Gachee) => (demoInitiale ? majDemo((l) => [g, ...l]) : ajouterMagasin(g));
+  const modifierGachee = (id: string, patch: Partial<Gachee>) =>
+    (demoInitiale ? majDemo((l) => l.map((x) => (x.id === id ? { ...x, ...patch } : x))) : modifierMagasin(id, patch));
+  const supprimerGachee = (id: string) => (demoInitiale ? majDemo((l) => l.filter((x) => x.id !== id)) : supprimerMagasin(id));
+  const annotations = demo ? [] : annotationsMagasin;
   // Gâchée ouverte : choisie dans la page, sinon demandée par l'adresse
   // (?gachee=, lien direct du bandeau des commentaires). undefined : pas
   // encore de choix, l'adresse décide ; null : la liste.
-  const demande = useSearchParams().get("gachee");
+  const demande = params.get("gachee");
   const [selId, setSelId] = useState<string | null | undefined>(undefined);
   const actif = selId === undefined ? demande : selId;
   const viaLien = selId === undefined && demande !== null;
@@ -72,10 +92,12 @@ function LaboContenu() {
   // Filtre de session : la liste et les figures. L'échéancier, lui, montre
   // TOUTES les éprouvettes à écraser — on ne doit en manquer aucune.
   const sessions = useStore((s) => s.sessions);
-  const revues = useStore((s) => s.revues);
+  const revuesMagasin = useStore((s) => s.revues);
+  const revues = demo ? [] : revuesMagasin;
   const revueDe = new Map(revues.map((r) => [r.id, r]));
   const catalogueResidus = useStore((s) => s.catalogue_residus);
   const catalogueGranulats = useStore((s) => s.catalogue_granulats);
+  const catalogueLiants = useStore((s) => s.catalogue_liants);
   const [filtreSession, setFiltreSession] = useState<FiltreSessionValeur>("toutes");
   const gacheesSession = gachees.filter((g) =>
     correspond({ sessionId: g.sessionId, date: g.creeLe }, sessions, filtreSession));
@@ -84,7 +106,7 @@ function LaboContenu() {
   const maintenant = useAujourdhui();
 
   const nonLus = docsAvecNonLus(annotations);
-  const formulations = savedResults.filter((s) => (s.recipes?.length ?? 0) > 0);
+  const formulations = demoInitiale ? demoInitiale.formulations : savedResults.filter((s) => (s.recipes?.length ?? 0) > 0);
   const selection = gachees.find((g) => g.id === actif) ?? null;
 
   function creer() {
@@ -131,6 +153,7 @@ function LaboContenu() {
     const g = selection;
     return (
       <Page>
+        {demo && <BandeauDemo />}
         <EditeurGachee
           key={g.id}
           gachee={g}
@@ -139,6 +162,7 @@ function LaboContenu() {
           parametres={parametresEffectifs(g, formulations)}
           mouleFormulation={mouleDepuisContenant(formulations.find((f) => f.id === g.formulationId)?.general)}
           moulesPrevus={moulesPrevus(formulations.find((f) => f.id === g.formulationId))}
+          lienCalcul={g.formulationId && formulations.some((f) => f.id === g.formulationId) ? lienDocument("resultat", g.formulationId) : undefined}
           maintenant={maintenant}
           annotations={annotationsDe(annotations, "gachee", g.id)}
           connecte={connecte}
@@ -149,7 +173,7 @@ function LaboContenu() {
           onRetour={fermer}
           onSupprimer={() => {
             if (window.confirm(messageSuppressionGachee(g))) {
-              oublierCourbes(courbesAOublier(clesCourbes(g), gachees.filter((x) => x.id !== g.id)));
+              if (!demo) oublierCourbes(courbesAOublier(clesCourbes(g), gachees.filter((x) => x.id !== g.id)));
               supprimerGachee(g.id);
               fermer();
             }
@@ -171,13 +195,19 @@ function LaboContenu() {
       <EnTetePage
         titre="Laboratoire"
         sousTitre="Ce que vous avez réellement préparé : pesées, lots, mesures, éprouvettes et essais UCS. Une gâchée part d'une formulation sauvegardée dans Calculs."
-        actions={vue === "gachees" ? (
-          <button type="button" onClick={() => setNouvelle((v) => !v)} className="btn-primary" aria-expanded={nouvelle}>
-            <Icone nom="ajouter" taille={15} epaisseur={2.4} />
-            Nouvelle gâchée
-          </button>
-        ) : undefined}
+        actions={<>
+          {demo
+            ? <Link href="/labo" className="btn-discret">Quitter la démonstration</Link>
+            : <Link href="/labo?demo=1" className="btn-discret">Voir une démonstration</Link>}
+          {vue === "gachees" && (
+            <button type="button" onClick={() => setNouvelle((v) => !v)} className="btn-primary" aria-expanded={nouvelle}>
+              <Icone nom="ajouter" taille={15} epaisseur={2.4} />
+              Nouvelle gâchée
+            </button>
+          )}
+        </>}
       />
+      {demo && <BandeauDemo />}
 
       <div className="labo-barre-vue">
         <Segmente
@@ -231,11 +261,15 @@ function LaboContenu() {
                     {formChoisie.recipes.length > 1 && (
                       <Champ libelle="Recette">
                         <select className="field-input" value={recIndex} onChange={(e) => setRecIndex(Number(e.target.value))}>
-                          {formChoisie.recipes.map((_, i) => <option key={i} value={i}>Recette {i + 1}</option>)}
+                          {formChoisie.recipes.map((r, i) => {
+                            const repere = resumeParametres(parametresDepuisRecette(r));
+                            return <option key={i} value={i}>Recette {i + 1}{repere ? ` : ${repere}` : ""}</option>;
+                          })}
                         </select>
                       </Champ>
                     )}
                   </div>
+                  <ResumeCalcul calcul={formChoisie} recetteIndex={recIndex} catalogue={catalogueLiants} />
                   {volumeChantier !== null && (
                     <Bandeau ton="alerte" role="status">
                       Cette recette vise {volumeChantier.toLocaleString("fr-CA", { maximumFractionDigits: 3 })} m³ de remblai, un volume
@@ -287,7 +321,10 @@ function LaboContenu() {
                             {libelleRevue(revueDe.get(g.id)!, revEnLigne(g.id))}
                           </Pastille>
                         )}
-                        {g.statut === "terminee" ? <Pastille ton="succes">Terminée</Pastille> : <Pastille ton="neutre">Brouillon</Pastille>}
+                        {(() => {
+                          const e = etatGachee(g);
+                          return <Pastille ton={TON_ETAT_GACHEE[e.etat]} title={e.detail}>{e.libelle}</Pastille>;
+                        })()}
                         <span className="ui-ligne-chevron"><Icone nom="chevron" taille={14} epaisseur={2.2} /></span>
                       </span>
                     </button>
@@ -299,5 +336,14 @@ function LaboContenu() {
         </>
       )}
     </Page>
+  );
+}
+
+/** Bandeau de la démonstration : ce qui est réel, ce qui ne l'est pas, rien n'est enregistré. */
+function BandeauDemo() {
+  return (
+    <Bandeau ton="info" titre="Démonstration : gâchées de simulation." role="status">
+      {MENTION_DEMO_LABO}
+    </Bandeau>
   );
 }

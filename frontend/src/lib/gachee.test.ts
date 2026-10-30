@@ -46,14 +46,18 @@ describe("horsTolerance / nbHorsTolerance", () => {
 
 describe("genererCode", () => {
   it("incrémente NN parmi les gâchées du même jour", () => {
-    const d = new Date("2026-07-24T10:00:00Z");
+    const d = new Date(2026, 6, 24, 10, 0);
     expect(genererCode([], d)).toBe("G-20260724-01");
     const existantes = [gachee({ code: "G-20260724-01" }), gachee({ code: "G-20260724-02" })];
     expect(genererCode(existantes, d)).toBe("G-20260724-03");
   });
   it("repart à 01 un autre jour", () => {
     const existantes = [gachee({ code: "G-20260723-05" })];
-    expect(genererCode(existantes, new Date("2026-07-24T00:00:00Z"))).toBe("G-20260724-01");
+    expect(genererCode(existantes, new Date(2026, 6, 24, 0, 0))).toBe("G-20260724-01");
+  });
+  it("date locale : le 29 octobre à 23 h 05 donne le code du 29 (2026-10-30)", () => {
+    expect(genererCode([], new Date(2026, 9, 29, 23, 5))).toBe("G-20261029-01");
+    expect(genererCode([], new Date(2026, 9, 30, 0, 10))).toBe("G-20261030-01");
   });
 });
 

@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  MODES_CURE, TYPES_EAU, UNITES_DOSAGE_ADJUVANT, groupeSansVide, materiauxSansVide,
+  MODES_CURE, TYPES_EAU, UNITES_DOSAGE_ADJUVANT, groupeSansVide, materiauxSansVide, resumeParametres, etatGachee, TON_ETAT_GACHEE,
   type Ajustement, type CureGachee, type Gachee, type MateriauxGachee, type ParametresFormulation,
 } from "@/lib/gachee";
 import { completudeGachee, listeManquants } from "@/lib/completude";
@@ -37,7 +37,7 @@ import { dateLongue, nouvelId } from "./outils";
 import { fmt, nombreFr, TIRET } from "@/lib/format";
 import { libelleVersion } from "@/lib/conventions";
 import type { VueEditeur } from "@/lib/liens-commentaires";
-import { ecartPoints, effetEcartW0, texteVise, wPateMesuree } from "@/lib/mesures-pate";
+import { ecartPoints, effetEcartW0, etuveIncoherente, majEtuve, mesuresEtuve, texteVise, wPateMesuree } from "@/lib/mesures-pate";
 import type { GranulatItem, ResiduItem } from "@/lib/materials";
 
 type VueTelephone = VueEditeur;
@@ -133,9 +133,11 @@ const TYPES_AJOUT: { valeur: Ajustement["type"]; libelle: string }[] = [
   { valeur: "granulat", libelle: "Granulat" }, { valeur: "liant", libelle: "Liant" },
 ];
 
-export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null, parametres, mouleFormulation, moulesPrevus, vueInitiale, allerAuNonLu = false }: {
+export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null, parametres, mouleFormulation, moulesPrevus, vueInitiale, allerAuNonLu = false, lienCalcul }: {
   /** Moules par recette du calcul : rappel et avis à l'ajout d'éprouvettes. */
   moulesPrevus?: number;
+  /** Adresse du calcul d'origine (Mes calculs), s'il existe encore ici. */
+  lienCalcul?: string;
   gachee: Gachee;
   /** Onglet ouvert d'emblée sur téléphone (lien direct vers une note : vuePourNonLues). */
   vueInitiale?: VueTelephone;
@@ -198,6 +200,8 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
   const ecarteesCodes = (revue?.ecartees ?? []).map((id) => g.eprouvettes.find((e) => e.id === id)?.code).filter((c): c is string => !!c);
   const residuSnap = g.materiaux?.residu;
   const wPate = wPateMesuree(g);
+  // Cw de la pâte fixé par les masses de l'étuve (2026-10-30), s'il y en a.
+  const cwEtuve = mesuresEtuve(g.etuvePate).cw;
   const granulatSnap = g.materiaux?.granulat;
   const detailGranulat = [
     granulatSnap?.gs != null ? `Gs ${granulatSnap.gs.toLocaleString("fr-CA", { maximumFractionDigits: 3 })}` : null,
@@ -223,16 +227,25 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
         taille="moyen"
         titre={g.code}
         pastille={<>
-          {g.statut === "terminee" ? <Pastille ton="succes">Terminée</Pastille> : <Pastille ton="alerte">Brouillon</Pastille>}
+          <Pastille ton={TON_ETAT_GACHEE[etatGachee(g).etat]} title={etatGachee(g).detail}>{etatGachee(g).libelle}</Pastille>
           {revue && (
             <Pastille ton={revue.decision === "acceptee" ? "succes" : "danger"} title={revue.motif ?? undefined}>{libelleRevue(revue, revEnLigne)}</Pastille>
           )}
         </>}
-        sousTitre={[
-          g.formulationLabel, g.categorie, `recette ${(g.recetteIndex ?? 0) + 1}`,
-          coulee ? `coulée le ${dateLongue(coulee)}` : `créée le ${dateLongue(new Date(g.creeLe))}`,
-          g.solverVersion ? `formules ${libelleVersion(g.solverVersion)}` : null,
-        ].filter(Boolean).join(" · ")}
+        sousTitre={<>
+          {/* Le calcul d'origine s'ouvre à côté, et la recette porte ses
+              repères (2026-10-30) : au Labo, on ne se rappelle plus laquelle
+              est laquelle. */}
+          {lienCalcul
+            ? <a href={lienCalcul} target="_blank" rel="noopener" title="Ouvrir le calcul dans un nouvel onglet">{g.formulationLabel}</a>
+            : g.formulationLabel}
+          {[
+            g.categorie,
+            `recette ${(g.recetteIndex ?? 0) + 1}${resumeParametres(parametres) ? ` (${resumeParametres(parametres)})` : ""}`,
+            coulee ? `coulée le ${dateLongue(coulee)}` : `créée le ${dateLongue(new Date(g.creeLe))}`,
+            g.solverVersion ? `formules ${libelleVersion(g.solverVersion)}` : null,
+          ].filter(Boolean).map((x) => ` · ${x}`).join("")}
+        </>}
         actions={
           <>
             {g.eprouvettes.length > 0 ? (
@@ -375,9 +388,28 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
                 <LigneMesure libelle="Affaissement mesuré (mm)" detail="Cône d'Abrams, ASTM C143/C143M" id="affaissement" value={g.slumpMesureMm} onChange={(n) => onMaj({ slumpMesureMm: n })}
                   min={0} max={300} message="L'affaissement est compris entre 0 et 300 mm (hauteur du cône d'Abrams)." />
                 <LigneListe libelle="Température (°C)" htmlFor="temperature"><ChampNombre id="temperature" placeholder={TIRET} value={g.temperatureC} onChange={(n) => onMaj({ temperatureC: n })} /></LigneListe>
-                <LigneMesure libelle="Cw mesuré (%)" id="cw-mesure" value={g.cwMesurePct} onChange={(n) => onMaj({ cwMesurePct: n })}
-                  detail={["Pâte après malaxage.", texteVise(parametres?.cwPct, g.cwMesurePct)].filter(Boolean).join(" ")}
-                  min={0} minExclusif max={100} message="Cw est supérieur à 0 et au plus 100 %." />
+                {/* Teneur en eau de la pâte à l'étuve (ASTM D2216, 2026-10-30) :
+                    m_s se pèse après environ 24 h, d'où sa place dans la
+                    gâchée plutôt que dans Calculs. Les masses fixent Cw. */}
+                <LigneMesure libelle="Tare (g)" id="etuve-tare" value={g.etuvePate?.tareG} onChange={(n) => onMaj(majEtuve(g, { tareG: n }))}
+                  detail="Teneur en eau de la pâte à l'étuve, ASTM D2216."
+                  min={0} message="Une masse ne peut pas être négative." />
+                <LigneMesure libelle="Tare + pâte humide m_h (g)" id="etuve-mh" value={g.etuvePate?.mhG} onChange={(n) => onMaj(majEtuve(g, { mhG: n }))}
+                  min={0} message="Une masse ne peut pas être négative." />
+                <LigneMesure libelle="Tare + pâte sèche m_s (g)" id="etuve-ms" value={g.etuvePate?.msG} onChange={(n) => onMaj(majEtuve(g, { msG: n }))}
+                  detail={etuveIncoherente(g.etuvePate)
+                    ? <span className="ui-champ-erreur" role="alert">Valeurs incohérentes : on attend m_h &gt; m_s &gt; tare.</span>
+                    : "Après environ 24 h d'étuve."}
+                  min={0} message="Une masse ne peut pas être négative." />
+                {cwEtuve !== null ? (
+                  <LigneListe libelle="Cw mesuré (%)"
+                    detail={["Calculé à partir des masses : (m_s − tare) / (m_h − tare).", texteVise(parametres?.cwPct, cwEtuve)].filter(Boolean).join(" ")}
+                    valeur={nombreFr(cwEtuve, 2)} />
+                ) : (
+                  <LigneMesure libelle="Cw mesuré (%)" id="cw-mesure" value={g.cwMesurePct} onChange={(n) => onMaj({ cwMesurePct: n })}
+                    detail={["Pâte après malaxage, ou saisissez les masses de l'étuve ci-dessus.", texteVise(parametres?.cwPct, g.cwMesurePct)].filter(Boolean).join(" ")}
+                    min={0} minExclusif max={100} message="Cw est supérieur à 0 et au plus 100 %." />
+                )}
                 {/* w de la pâte : même mesure que Cw (F012, Cw = 1 / (1 + w)), donc
                     déduit, plus saisi ; une gâchée plus ancienne garde son w saisi. */}
                 <LigneListe libelle="w de la pâte (%)"

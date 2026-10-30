@@ -11,6 +11,7 @@ import CarteRevue, { type ActionsRevue } from "./CarteRevue";
 import { revueEnAvance, revuePerimee, type RevueClasse } from "@/lib/revues";
 import type { CourbeAffichee } from "@/lib/courbes";
 import type { Eprouvette } from "@/lib/eprouvette";
+import { etatGachee } from "@/lib/gachee";
 import ResultatLecture from "./ResultatLecture";
 import FilCommentaires from "./FilCommentaires";
 import { EnTetePage } from "@/components/ui/Page";
@@ -63,7 +64,12 @@ export default function VueDocument({ doc, etudiant, annotations, onAnnoter, ctx
         titre={titre}
         pastille={<>
           {conflit && <Pastille ton="ambre" title={`Copie de conflit du ${dateCourte(conflit.le)}`}>copie de conflit</Pastille>}
-          {gachee && <Pastille ton={gachee.statut === "terminee" ? "vert" : "gris"}>{gachee.statut === "terminee" ? "terminée" : "brouillon"}</Pastille>}
+          {gachee && (() => {
+            // Même état affiché que chez l'étudiant (etatGachee, 2026-10-30).
+            const e = etatGachee(gachee);
+            const ton = ({ brouillon: "gris", en_cure: "bleu", ecrasee: "ambre", terminee: "vert" } as const)[e.etat];
+            return <Pastille ton={ton} title={e.detail}>{e.libelle.toLowerCase()}</Pastille>;
+          })()}
         </>}
         sousTitre={<>
           {gachee && <>Créée le {dateCourte(gachee.creeLe)} · </>}

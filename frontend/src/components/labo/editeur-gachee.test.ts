@@ -43,7 +43,9 @@ describe("éditeur d'une gâchée", () => {
   it("en-tête, frise de cure et résistance mesurée", () => {
     const html = rendu();
     expect(html).toContain("G-20260929-01");
-    expect(html).toContain("Brouillon");
+    // Éprouvette en cure : plus « Brouillon » (2026-10-30), l'état suit les éprouvettes.
+    expect(html).toContain("En attente d&#x27;écrasement");
+    expect(html).not.toContain(">Brouillon<");
     expect(html).toContain("Marquer terminée");
     expect(html).toContain("Importer un fichier de presse");
     expect(html).toContain("Jour 8 sur 28 · prochain écrasement dans 20 jours");
@@ -231,7 +233,7 @@ describe("mesures du jour : valeur visée, écart, w de la pâte déduit de Cw (
     const html = avecMesures({ w0MesurePct: 28, cwMesurePct: 76.2 });
     expect(html).toContain("Résidu, mesure du jour. Visé : 31,6 % · écart −3,6 points. Plus sec que dans le calcul");
     expect(html).toContain("plus sèche (Cw plus élevé)");
-    expect(html).toContain("Pâte après malaxage. Visé : 75 % · écart +1,2 point.");
+    expect(html).toContain("Pâte après malaxage, ou saisissez les masses de l&#x27;étuve ci-dessus. Visé : 75 % · écart +1,2 point.");
   });
 
   it("w de la pâte n'est plus une saisie : déduit de Cw mesuré", () => {
@@ -339,7 +341,7 @@ describe("ajout d'éprouvettes : moules du calcul (2026-10-29)", () => {
     expect(carte(9)).toContain("9 moules prévus par le calcul, 3 déjà utilisés.");
     expect(carte(9)).not.toContain("Vérifiez leurs dimensions");
     const html = carte(3); // 3 éprouvettes + 1 réplicat demandé = 4 > 3
-    expect(html).toContain("Le calcul prévoyait 3 moules ; 4 éprouvettes sont demandées.");
+    expect(html).toContain("Le calcul prévoyait 3 moules. La gâchée a déjà 3 éprouvettes ; avec celle-ci, elle en aura 4.");
     expect(html).toMatch(/<button type="button" class="btn-primary">Ajouter les éprouvettes<\/button>/);
   });
 

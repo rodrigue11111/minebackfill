@@ -5,7 +5,7 @@
 // calculée et les éprouvettes/essais (phases suivantes). Types + helpers PURS.
 
 import type { Recipe } from "./types";
-import type { Eprouvette } from "./eprouvette";
+import { dateEcheance, type Eprouvette } from "./eprouvette";
 import type { ProtocoleFige } from "./protocole";
 
 export type StatutGachee = "brouillon" | "terminee";
@@ -15,6 +15,15 @@ export type StatutGachee = "brouillon" | "terminee";
  * des résultats UCS mesurés). Capturé à la création de la gâchée pour rester
  * stable même si la formulation source est modifiée ou supprimée.
  */
+/** Pesées de l'essai de teneur en eau de la pâte (g, tare incluse). */
+export interface EtuvePate {
+  tareG?: number;
+  /** Tare + pâte humide. */
+  mhG?: number;
+  /** Tare + pâte sèche, après étuvage. */
+  msG?: number;
+}
+
 export interface ParametresFormulation {
   cwPct?: number; // concentration solide Cw (solids_mass_pct)
   wcRatio?: number; // rapport eau/liant (wc_ratio)
@@ -143,6 +152,13 @@ export interface Gachee {
   temperatureC?: number;
   wMesurePct?: number;
   cwMesurePct?: number;
+  /**
+   * Teneur en eau de la pâte à l'étuve (ASTM D2216), masses en grammes, tare
+   * incluse (2026-10-30). Saisie avant dans Calculs (essai-erreur) ; m_s ne
+   * se mesure qu'après environ 24 h d'étuve, quand la gâchée existe déjà.
+   * Complètes et cohérentes, elles fixent cwMesurePct (majEtuve).
+   */
+  etuvePate?: EtuvePate;
 
   // Essai-erreur : ce qui a été ajouté après le premier malaxage.
   ajustements: Ajustement[];
@@ -256,7 +272,10 @@ export function nbHorsTolerance(g: Gachee): number {
  * jour (déduit des codes existants), pour rester lisible et unique localement.
  */
 export function genererCode(existantes: Gachee[], date: Date): string {
-  const jour = date.toISOString().slice(0, 10).replace(/-/g, "");
+  // Date LOCALE (2026-10-30) : en UTC, une gâchée créée le 29 octobre après
+  // 20 h, heure de l'Est, recevait le code du 30. Les codes déjà donnés ne
+  // changent pas : ils sont imprimés sur les étiquettes des éprouvettes.
+  const jour = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
   const prefixe = `G-${jour}-`;
   const max = existantes
     .filter((g) => g.code.startsWith(prefixe))
@@ -303,6 +322,31 @@ export function composantsDepuisRecette(r: Recipe, nomLiant: (i: number) => stri
   return out;
 }
 
+/**
+ * État AFFICHÉ d'une gâchée (2026-10-30, demande de l'utilisateur) : une
+ * gâchée dont les éprouvettes sont en cure n'est plus un « Brouillon »,
+ * l'opérateur y revient à 7, 28 ou 56 jours pour les écraser. Le statut
+ * enregistré ne change pas (brouillon ou terminée, posé par « Marquer
+ * terminée ») : seul le libellé se déduit des éprouvettes.
+ */
+export type EtatGachee = "brouillon" | "en_cure" | "ecrasee" | "terminee";
+
+/** Ton de la pastille de chaque état (kit du site). */
+export const TON_ETAT_GACHEE = { brouillon: "neutre", en_cure: "accent", ecrasee: "alerte", terminee: "succes" } as const;
+
+export function etatGachee(g: Pick<Gachee, "statut" | "eprouvettes">): { etat: EtatGachee; libelle: string; detail?: string } {
+  if (g.statut === "terminee") return { etat: "terminee", libelle: "Terminée" };
+  const eprouvettes = g.eprouvettes ?? [];
+  if (eprouvettes.length === 0) return { etat: "brouillon", libelle: "Brouillon" };
+  const enCure = eprouvettes.filter((e) => e.statut !== "ecrase");
+  if (enCure.length === 0) {
+    return { etat: "ecrasee", libelle: "Écrasements faits", detail: "Toutes les éprouvettes sont écrasées : marquez la gâchée terminée quand sa fiche est complète." };
+  }
+  const prochaine = new Date(Math.min(...enCure.map((e) => dateEcheance(e).getTime())));
+  const jour = prochaine.toLocaleDateString("fr-CA", { day: "numeric", month: "long" });
+  return { etat: "en_cure", libelle: "En attente d'écrasement", detail: `Prochain écrasement le ${jour} (${enCure.length} éprouvette${enCure.length > 1 ? "s" : ""} en cure).` };
+}
+
 /** Instantané des paramètres (Cw, E/L, Bw, w) d'une recette calculée. */
 export function parametresDepuisRecette(r: Recipe): ParametresFormulation {
   const val = (v: number | null | undefined): number | undefined =>
@@ -314,6 +358,23 @@ export function parametresDepuisRecette(r: Recipe): ParametresFormulation {
     wPct: val(r.w_mass_pct),
     amPct: val(r.aggregate_mass_pct),
   };
+}
+
+const nombreCourt = (v: number) => v.toLocaleString("fr-CA", { maximumFractionDigits: 2 });
+
+/**
+ * Repère court d'une recette, pour la reconnaître au Labo (2026-10-30) :
+ * « Cw 70 % · Bw 4,5 % · E/L 14,71 », avec « Am 30 % » en RPG. Les valeurs
+ * absentes sont omises ; rien d'affichable : chaîne vide.
+ */
+export function resumeParametres(p: ParametresFormulation | undefined): string {
+  if (!p) return "";
+  return [
+    p.cwPct !== undefined ? `Cw ${nombreCourt(p.cwPct)} %` : null,
+    p.bwPct !== undefined ? `Bw ${nombreCourt(p.bwPct)} %` : null,
+    p.wcRatio !== undefined ? `E/L ${nombreCourt(p.wcRatio)}` : null,
+    p.amPct ? `Am ${nombreCourt(p.amPct)} %` : null,
+  ].filter(Boolean).join(" · ");
 }
 
 /**
@@ -409,7 +470,14 @@ export function rappelMoules(prevus: number, utilises: number): string {
 }
 
 /** Avis (jamais un blocage) quand les éprouvettes demandées dépassent les moules prévus ; null sinon. */
-export function avisMoules(prevus: number, demandees: number): string | null {
-  if (demandees <= prevus) return null;
-  return `Le calcul prévoyait ${pluriel(prevus, "moule")} ; ${demandees} éprouvettes sont demandées. Vérifiez leurs dimensions et le volume de pâte disponible.`;
+export function avisMoules(prevus: number, existantes: number, ajout: number): string | null {
+  const total = existantes + ajout;
+  if (ajout <= 0 || total <= prevus) return null;
+  // Le total seul (« 12 éprouvettes sont demandées ») se lisait comme le
+  // nombre saisi dans le formulaire (2026-10-30) : on sépare ce qui existe
+  // de ce qui s'ajoute.
+  const verifiez = "Vérifiez leurs dimensions et le volume de pâte disponible.";
+  if (existantes === 0) return `Le calcul prévoyait ${pluriel(prevus, "moule")} ; vous ajoutez ${pluriel(ajout, "éprouvette")}. ${verifiez}`;
+  return `Le calcul prévoyait ${pluriel(prevus, "moule")}. La gâchée a déjà ${pluriel(existantes, "éprouvette")} ; `
+    + `avec ${ajout > 1 ? `ces ${ajout}` : "celle-ci"}, elle en aura ${total}. ${verifiez}`;
 }
