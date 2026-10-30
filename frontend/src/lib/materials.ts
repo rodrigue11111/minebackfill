@@ -129,3 +129,27 @@ export function nouveauRetardateur(id: string): RetardateurItem {
 
 /** Vrai si l'entrée est une référence officielle verrouillée. */
 export const estOfficiel = (m: { origine?: MaterialOrigine }): boolean => m.origine === "officiel";
+
+/** Champ d'un formulaire ← propriété du matériau qui le remplit. */
+const CHAMPS_REMPLIS: Record<MaterialKind, [champ: string, propriete: string][]> = {
+  residus: [["residue_sg", "gs"], ["residue_w_pct", "w0_pct"]],
+  granulats: [["aggregate_sg", "gs"], ["aggregate_fraction_pct", "fraction_defaut_pct"], ["aggregate_w_pct", "humidite_pct"]],
+  retardateurs: [["retarder_density", "densite_g_ml"], ["retarder_d0", "dosage_d0_ml_100kg"]],
+};
+
+/**
+ * « Personnalisé » choisi après un matériau de la bibliothèque (2026-10-30) :
+ * les champs qu'il avait remplis se vident, pour ne pas laisser croire que
+ * ses valeurs sont une saisie libre. Seuls les champs qui portent ENCORE sa
+ * valeur sont vidés : une valeur tapée depuis reste. `vide` est la valeur
+ * « non saisi » du formulaire (undefined, ou 0 dans la page Industrie).
+ */
+export function viderPreselection(kind: MaterialKind, ancien: MaterialItem, etat: object, vide: 0 | undefined = undefined): Record<string, 0 | undefined> {
+  const e = etat as Record<string, unknown>;
+  const m = ancien as unknown as Record<string, unknown>;
+  const patch: Record<string, 0 | undefined> = {};
+  for (const [champ, propriete] of CHAMPS_REMPLIS[kind]) {
+    if (champ in e && m[propriete] !== undefined && e[champ] === m[propriete]) patch[champ] = vide;
+  }
+  return patch;
+}

@@ -21,7 +21,7 @@ import { Page, EnTetePage } from "@/components/ui/Page";
 import { Carte } from "@/components/ui/Carte";
 import { Champ } from "@/components/ui/Champ";
 import ChampNombre from "@/components/ui/ChampNombre";
-import { Pastille } from "@/components/ui/Pastille";
+import EtiquetteOrigine from "@/components/EtiquetteOrigine";
 import Segmente from "@/components/ui/Segmente";
 
 /**
@@ -157,7 +157,7 @@ export default function ReglagesPage() {
         actions={
           <span className="regl-actions">
             <button type="button" className="btn-discret" onClick={restaurerLiantsOfficiels}>Restaurer valeurs officielles</button>
-            <button type="button" className="btn-secondary" onClick={ajouterLiant}>Ajouter un liant</button>
+            <button type="button" className="btn-secondary" onClick={() => ajouterLiant(vueAdmin)}>Ajouter un liant</button>
             {isProf && <button type="button" className="btn-primary" onClick={publierLiants}>Publier en ligne</button>}
           </span>
         }>
@@ -188,7 +188,7 @@ export default function ReglagesPage() {
                     onChange={(n) => { if (n !== undefined) modifierLiant(index, { gs: n }, vueAdmin); }} />
                 </Champ>
                 <div className="regl-ligne-fin">
-                  {estOfficiel(liant) && <Pastille ton="accent">officiel</Pastille>}
+                  <EtiquetteOrigine officiel={estOfficiel(liant)} />
                   {!verrou && (
                     <button type="button" className="btn-discret btn-danger"
                       onClick={() => supprimerLiant(index, vueAdmin)} disabled={catalogue_liants.length <= 1}>

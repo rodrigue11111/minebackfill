@@ -6,7 +6,7 @@ import ErrorBox from "@/components/ErrorBox";
 import ChampNombre from "@/components/ui/ChampNombre";
 import { KAPPA_AIDE } from "@/lib/contenant";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
-import type { ResiduItem } from "@/lib/materials";
+import { viderPreselection, type ResiduItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
@@ -84,7 +84,8 @@ export default function WbForm() {
           <div className="mix-pleine">
             <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
               onPick={(m) => { const r = m as ResiduItem; setWb({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
-              matches={(m) => { const r = m as ResiduItem; return r.gs === wb.residue_sg && r.w0_pct === wb.residue_w_pct; }} />
+              matches={(m) => { const r = m as ResiduItem; return r.gs === wb.residue_sg && r.w0_pct === wb.residue_w_pct; }}
+              onPersonnalise={(m) => setWb(viderPreselection("residus", m, wb))} />
           </div>
           <Field plage="gs" valeur={wb?.residue_sg} label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
             <ChampNombre placeholder="ex : 3.4" value={wb?.residue_sg} onChange={(n) => setWb({ residue_sg: n })} />

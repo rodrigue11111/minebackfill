@@ -5,7 +5,7 @@ import { empreinteAuDepart, useStore } from "@/lib/store";
 import ErrorBox from "@/components/ErrorBox";
 import ChampNombre from "@/components/ui/ChampNombre";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
-import type { RetardateurItem } from "@/lib/materials";
+import { viderPreselection, type RetardateurItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import { construireConstantesPayload } from "@/lib/rpc_payload";
 import { Field, CardSection, GrilleChamps, ChoixNombreRecettes, ChoixOptions, PiedFormulaire, PointRecette } from "@/components/mix/champs";
@@ -113,6 +113,7 @@ export default function RrcForm() {
               label="Retardateur (bibliothèque)"
               onPick={(m) => { const r = m as RetardateurItem; setRrc({ retarder_density: r.densite_g_ml, retarder_d0: r.dosage_d0_ml_100kg ?? rrc.retarder_d0 }); }}
               matches={(m) => (m as RetardateurItem).densite_g_ml === rrc.retarder_density}
+              onPersonnalise={(m) => setRrc(viderPreselection("retardateurs", m, rrc))}
             />
           </div>
           <Field plage="gsLiant" valeur={rrc.cement_sg} label="Densité relative du ciment Gs" hint="Pour le volume du coulis (ASTM C188)">

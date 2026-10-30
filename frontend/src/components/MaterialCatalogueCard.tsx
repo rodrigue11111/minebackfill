@@ -5,6 +5,7 @@ import { Carte } from "@/components/ui/Carte";
 import { Champ } from "@/components/ui/Champ";
 import ChampNombre from "@/components/ui/ChampNombre";
 import { Pastille } from "@/components/ui/Pastille";
+import EtiquetteOrigine from "@/components/EtiquetteOrigine";
 import { Icone } from "@/components/ui/Icones";
 import Menu from "@/components/ui/Menu";
 import { useStore } from "@/lib/store";
@@ -144,7 +145,7 @@ export default function MaterialCatalogueCard({ kind, title, sub, columns, carac
                 </Champ>
               ))}
               <div className="regl-ligne-fin">
-                {estOfficiel(item) && <Pastille ton="accent">officiel</Pastille>}
+                <EtiquetteOrigine officiel={estOfficiel(item)} />
                 {!verrou && (
                   <button type="button" className="btn-discret btn-danger" onClick={() => store.deleteMaterial(kind, index, adminMode)}>
                     Supprimer

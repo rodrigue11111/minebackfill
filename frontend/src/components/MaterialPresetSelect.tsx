@@ -18,13 +18,18 @@ const SLICE = {
  * encore à ce matériau ». S'il est fourni et faux, le sélecteur affiche
  * « — personnalisé — » : une sélection périmée (valeurs modifiées à la main,
  * ou faite depuis un autre formulaire) n'est pas présentée comme active.
+ *
+ * `onPersonnalise` (2026-10-30) : « Personnalisé » choisi alors qu'un
+ * matériau était affiché ; le formulaire vide les champs que ce matériau
+ * avait remplis (viderPreselection, materials.ts).
  */
-export default function MaterialPresetSelect({ kind, role, label, onPick, matches }: {
+export default function MaterialPresetSelect({ kind, role, label, onPick, matches, onPersonnalise }: {
   kind: MaterialKind;
   role: "residueId" | "aggregateId" | "retarderId";
   label?: string;
   onPick: (m: MaterialItem) => void;
   matches?: (m: MaterialItem) => boolean;
+  onPersonnalise?: (ancien: MaterialItem) => void;
 }) {
   const store = useStore();
   const items = store[SLICE[kind]] as MaterialItem[];
@@ -43,6 +48,7 @@ export default function MaterialPresetSelect({ kind, role, label, onPick, matche
           store.setSelectedMaterial(role, id || undefined);
           const m = items.find((x) => x.id === id);
           if (m) onPick(m);
+          else if (selectedId && selectedItem) onPersonnalise?.(selectedItem);
         }}
       >
         <option value="">Personnalisé</option>
