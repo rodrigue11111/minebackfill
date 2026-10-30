@@ -114,6 +114,14 @@ Décisions v2 (`supabase/schema.sql`), chacune pour une raison :
 - `on delete restrict` : supprimer un compte n'emporte pas son travail par
   accident.
 - `saved_results` repris une fois puis gelé en lecture seule.
+- Changement de compte dans un même navigateur (2026-10-30) : les saisies en
+  cours (page Informations, formulaires de Calculs) suivent aussi le compte
+  (`espace-compte.ts`). Avant, seuls les documents basculaient, et un
+  étudiant voyait le nom d'opérateur et les valeurs de l'autre compte. Elles
+  restent sur l'appareil, sans synchronisation : un brouillon n'est pas un
+  résultat. Les moules, les bibliothèques personnelles et les unités restent
+  communs à l'appareil, et la simple déconnexion ne change rien (choix de
+  l'utilisateur).
 
 ## Tableau de bord de l'enseignant (2026-10)
 Demande : donner à l'enseignant les outils du quotidien — ouvrir le travail

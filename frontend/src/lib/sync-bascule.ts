@@ -13,6 +13,8 @@
 // - le nouveau compte retrouve ce qui avait été mis de côté pour lui, sinon
 //   son travail redescend du serveur.
 // Jamais le travail d'un compte n'est envoyé sous un autre.
+// Les saisies en cours (page Informations, formulaires de Calculs) suivent
+// aussi le compte, sans passer par le serveur : espace-compte.ts.
 //
 // Les accès au stockage sont INJECTÉS : testable en node.
 

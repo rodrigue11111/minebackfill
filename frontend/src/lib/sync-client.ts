@@ -25,6 +25,8 @@ import {
   chargerEtatSync, ecrireMiseDeCote, lireMiseDeCote, reporterSuppressions, sauverEtatSync, supprimerMiseDeCote,
 } from "./sync-etat";
 import { basculerCompte } from "./sync-bascule";
+import { basculerEspace, type StockageEspace } from "./espace-compte";
+import { ecrireLocal } from "./persisted";
 import { creerDepotLocal } from "./sync-local";
 import { ecrivainCourbes, purgerMesCourbesIds, transportSupabase } from "./sync-supabase";
 import { cycleCourbes, oublierPurgees, planifierCourbes } from "./sync-courbes";
@@ -438,7 +440,8 @@ export function connecterSynchro(sb: SupabaseClient, uid: string, o: { prof?: bo
   // Un autre compte que celui du stockage local : on bascule (son travail
   // est mis de côté ou déjà en ligne, celui de ce compte revient). En cas
   // d'échec (stockage plein), rien n'a bougé et la liaison le signale.
-  if (chargerEtatSync().uid !== null && chargerEtatSync().uid !== uid) {
+  const ancienUid = chargerEtatSync().uid;
+  if (ancienUid !== null && ancienUid !== uid) {
     const r = basculerCompte({
       lireEtat: chargerEtatSync, ecrireEtat: sauverEtatSync,
       lireResultats: loadSavedFromStorage, ecrireResultats: persistSaved,
@@ -453,6 +456,10 @@ export function connecterSynchro(sb: SupabaseClient, uid: string, o: { prof?: bo
       s.loadGachees();
       s.loadAnnotations();
       s.loadRevues();
+      // Les saisies en cours (Informations, formulaires de Calculs) suivent
+      // aussi le compte (espace-compte.ts). Stockage refusé : elles restent
+      // affichées telles quelles, rien n'est perdu.
+      if (basculerEspace(stockageEspaceLocal, ancienUid, uid)) s.rechargerEspaceDeTravail();
     }
   }
   const etat = chargerEtatSync();
@@ -469,6 +476,13 @@ export function connecterSynchro(sb: SupabaseClient, uid: string, o: { prof?: bo
     demarrer(c);
   }
 }
+
+/** Stockage du navigateur pour espace-compte.ts. */
+const stockageEspaceLocal: StockageEspace = {
+  lire: (cle) => { try { return localStorage.getItem(cle); } catch { return null; } },
+  ecrire: ecrireLocal,
+  supprimer: (cle) => { try { localStorage.removeItem(cle); } catch { /* stockage bloqué : sans conséquence */ } },
+};
 
 /** Déconnexion : la synchronisation s'arrête ; les données locales restent. */
 export function deconnecterSynchro(): void {

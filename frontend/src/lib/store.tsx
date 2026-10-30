@@ -12,6 +12,7 @@ import { sessionActive, validerSessions, type Session } from "./sessions";
 import { migrerAnnotationV1, type Annotation } from "./annotations";
 import type { Revue } from "./revues";
 import { descriptorFor, type MethodResultKey, type MethodStateKey } from "./method-registry";
+import { BROUILLON_KEY, BROUILLON_VERSION, migrerBrouillon, patchDepuisBrouillon } from "./brouillon-calculs";
 import { EMPREINTE_CONVENTION_REVISEE, EMPREINTE_INCONNUE, empreinteEntrees } from "./resultat-perime";
 import type { MesureLabo } from "./mesures";
 import type { RegleLiant } from "./essai-liant";
@@ -734,6 +735,8 @@ interface AppState {
 
   /** Remet un formulaire de Calculs à ses valeurs par défaut (champs vides). */
   reinitialiserMethode: (cle: CleEtatMethode) => void;
+  /** Changement de compte (espace-compte.ts) : Informations et formulaires de Calculs relus du stockage. */
+  rechargerEspaceDeTravail: () => void;
   fillTestData: () => void;
 
   units: UnitPreferences;
@@ -866,6 +869,10 @@ const DEFAUTS_METHODE = {
   rpgCw: defautsRpgCw, rpgWb: defautsRpgWb, rpgEssai: defautsRpgEssai, rrc: defautsRrc,
 } as const;
 export type CleEtatMethode = keyof typeof DEFAUTS_METHODE;
+/** Résultats de calcul en mémoire, un par méthode. */
+const CLES_RESULTATS: readonly MethodResultKey[] = [
+  "cwResult", "wbResult", "slumpResult", "essaiResult", "rpgCwResult", "rpgWbResult", "rpgEssaiResult", "rrcResult",
+];
 const makeLiantId = () =>
   `liant_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -933,7 +940,7 @@ export const CATALOGUE_VERSION = 4; // v2 : champ `origine` ; v3 : noms normalis
  */
 export const FORMAT_PUBLIE_LIANTS = 3;
 const CONSTANTES_KEY = "minebackfill_constantes";
-const GENERAL_KEY = "minebackfill_general";
+export const GENERAL_KEY = "minebackfill_general";
 // Versions scindées (elles partageaient SETTINGS_VERSION) : les constantes
 // gagnent les drapeaux de convention (v2), general reste stable (v1). La
 // migration des constantes est implicite — loadConstantesFromStorage remplit
@@ -1494,6 +1501,29 @@ export const useStore = create<AppState>((set, get) => ({
   setRrcResult: (res: unknown, empreinte?: string) => set((state) => avecEmpreinte(state, "rrcResult", res, empreinte)),
 
   reinitialiserMethode: (cle) => set({ [cle]: DEFAUTS_METHODE[cle]() } as Partial<AppState>),
+
+  // Changement de compte (espace-compte.ts) : le stockage porte maintenant
+  // les saisies du nouveau compte. La page Informations et les formulaires de
+  // Calculs en sont relus ; sans brouillon, les formulaires repartent des
+  // défauts. Les résultats de calcul et le matériau choisi dans la
+  // bibliothèque s'effacent : ils venaient des saisies du compte précédent.
+  rechargerEspaceDeTravail: () =>
+    set(() => {
+      const defauts = {
+        category: "RPC" as Category,
+        method: "dosage_cw" as RpcMethod,
+        ...Object.fromEntries(Object.entries(DEFAUTS_METHODE).map(([k, f]) => [k, f()])),
+      };
+      const brut = loadVersioned<unknown>(BROUILLON_KEY, BROUILLON_VERSION, migrerBrouillon, null);
+      return {
+        general: loadGeneralFromStorage(),
+        ...defauts,
+        ...(brut ? patchDepuisBrouillon(defauts as never, brut) : {}),
+        ...Object.fromEntries(CLES_RESULTATS.map((k) => [k, null])),
+        empreintesCalcul: {},
+        selectedMaterials: {},
+      } as Partial<AppState>;
+    }),
 
   fillTestData: () =>
     set((state) => {
