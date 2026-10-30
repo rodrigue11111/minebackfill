@@ -290,6 +290,7 @@ optionnel+nullable pour les vieux localStorage).
 | `minebackfill_formules_publiees` | `{v,data}` | 1 | dernière publication valide reçue (`official_catalogs` id `formules`) ; remplacée seulement par une publication valide (`recevoirFormules`) : une panne garde la copie ; **hors sauvegarde** |
 | `minebackfill_sync` | `{v,data}` | 1 | état de la synchronisation v2 (`sync-etat.ts`) — **hors sauvegarde** |
 | `minebackfill_compte_<uid>` | `{v,data}` | 1 | travail d'un compte mis de côté au changement de compte (`sync-bascule.ts`) — **hors sauvegarde** |
+| `minebackfill_espace_<uid>` | `{v,data}` | 1 | saisies en cours d'un compte mises de côté au changement de compte (`espace-compte.ts`, 2026-10-30) : le texte brut de `minebackfill_general` et de `minebackfill_brouillon_calculs`, relu par leurs propres migrations au retour du compte ; consommée à ce retour ; illisible : gardée, et le compte part de formulaires vides ; **hors sauvegarde** |
 | `minebackfill_annotations` | `{v,data}` | 2 | fil de commentaires lu en ligne ; v1 → v2 : curseur remis à zéro (tout est relu), `auteur`/`creeLe`/`luLe` complétés en gardant ceux déjà présents (`migrerAnnotationV1`) — **hors sauvegarde** |
 | IndexedDB `minebackfill`, magasin `courbes` | colonnes `{v:1,t,f,d,s,e}` par clé de courbe (`cleCourbe` : `<idEprouvette>:<importeLe>`, ou l'id d'éprouvette pour une courbe d'origine inconnue) | 1 | courbes de presse hors des gâchées (`courbes.ts`) ; l'éprouvette garde `essai.courbeInfo` (avec `importeLe` depuis le 2026-10-18) ; orphelines balayées au démarrage (`balayerCourbesOrphelines`, prudent) |
 | `minebackfill_sync_courbes` | `{v,data}` | 2 | envoi des courbes en ligne (`sync-courbes.ts`) : `{ comptes: { [uid]: { envoyees, bloquees } } }`, par id de document ; v1 → v2 : compte repris, entrées abandonnées (`migrerEtatCourbes`) — **hors sauvegarde** |
@@ -305,7 +306,7 @@ Toute évolution de schéma : incrémenter la version de LA clé concernée
 **Une clé ajoutée doit AUSSI entrer dans `backup.ts`** — sauf les clés du lien
 en ligne, exclues exprès : `minebackfill_sync` (restaurée sur un autre
 appareil, elle ferait croire que des documents sont déjà en ligne),
-`minebackfill_compte_<uid>` (travail d'un autre compte) et
+`minebackfill_compte_<uid>` et `minebackfill_espace_<uid>` (travail et saisies d'un autre compte) et
 `minebackfill_annotations` (propriété du serveur, relue à la connexion). Les deux clés du labo
 y ont manqué du jour de leur création jusqu'au schéma 4 : les gâchées, les
 éprouvettes et les essais UCS n'étaient ni exportés ni importés, et rien ne le
