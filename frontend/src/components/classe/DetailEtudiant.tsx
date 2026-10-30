@@ -5,7 +5,8 @@
 //  - la fiche est rangée PAR CALCUL (lib/classe-detail.ts) : avec plusieurs
 //    recettes et gâchées, l'enseignant ne fait plus lui-même le lien entre une
 //    gâchée et son calcul ; chaque calcul est un bloc repliable, ouvert
-//    d'emblée s'il demande une action (gâchée « À revoir », réponse non lue) ;
+//    d'emblée s'il demande une action (gâchée « À examiner » ou « À
+//    réexaminer », réponse non lue) ;
 //  - on ne commente plus d'ici : sans la gâchée sous les yeux, une ancre
 //    « E01 » ou « Pesée : Liant » ne disait rien, ni la valeur pesée ni la
 //    mesure. Chaque document affiche ses commentaires (nombre, réponses non
@@ -21,7 +22,7 @@ import { regrouperParCalcul } from "@/lib/classe-detail";
 import { Carte } from "@/components/ui/Carte";
 import { Icone } from "@/components/ui/Icones";
 import { dateCourte, lienBouton, Pastille, td, th, tdNum, type RefDoc } from "./commun";
-import { aRevoir, LIBELLE_DECISION, type InfoRevue } from "@/lib/revues";
+import { aideEtatRevue, aRevoir, etatRevue, LIBELLE_DECISION, LIBELLE_ETAT_REVUE, type InfoRevue } from "@/lib/revues";
 import type { Gachee } from "@/lib/gachee";
 import type { SavedResult } from "@/lib/store";
 
@@ -40,19 +41,24 @@ export interface ContexteFil {
 export const reponsesNonLues = (liste: LigneAnnotation[]): string[] =>
   liste.filter((a) => estReponse(a) && !a.lu_le).map((a) => a.id);
 
-/** État de revue d'une gâchée dans la liste de l'enseignant (même règle que la tuile « À revoir »). */
+/**
+ * État de revue d'une gâchée dans la liste de l'enseignant (même règle que la
+ * tuile « Gâchées à examiner »). 2026-10-29 : « À examiner » (jamais décidée)
+ * et « À réexaminer » (modifiée depuis la décision), au lieu d'« À revoir »,
+ * avec une infobulle qui dit pourquoi.
+ */
 export function PastilleRevue({ gachee, info }: { gachee: EtudiantClasse["gachees"][number]; info: InfoRevue | undefined }) {
-  const aRevoirIci = aRevoir(gachee, info);
+  const etat = etatRevue(gachee, info);
+  const pastilleEtat = etat ? <> <Pastille ton={etat === "a_reexaminer" ? "ambre" : "bleu"} title={aideEtatRevue(etat, info)}>{LIBELLE_ETAT_REVUE[etat]}</Pastille></> : null;
   if (info) {
     return (
       <>
         {" "}<Pastille ton={info.decision === "acceptee" ? "vert" : "rouge"} title={info.motif ?? undefined}>Revue : {LIBELLE_DECISION[info.decision]}</Pastille>
-        {info.perimee && <> <Pastille ton="ambre" title="Modifiée par l'étudiant depuis votre décision">modifiée depuis</Pastille></>}
-        {aRevoirIci && <> <Pastille ton="bleu">À revoir</Pastille></>}
+        {pastilleEtat}
       </>
     );
   }
-  return aRevoirIci ? <> <Pastille ton="bleu">À revoir</Pastille></> : null;
+  return pastilleEtat;
 }
 
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
@@ -123,7 +129,7 @@ export default function DetailEtudiant({ etudiant, annotations, onOuvrir, onRapp
   const synthese = [
     pluriel(etudiant.resultats.length, "calcul"),
     pluriel(etudiant.gachees.length, "gâchée"),
-    revueDe && nbARevoir > 0 ? `${nbARevoir} à revoir` : null,
+    revueDe && nbARevoir > 0 ? `${nbARevoir} à examiner` : null,
     nbNonLues > 0 ? `${nbNonLues} réponse${nbNonLues > 1 ? "s" : ""} non lue${nbNonLues > 1 ? "s" : ""}` : null,
   ].filter(Boolean).join(" · ");
 
@@ -204,7 +210,7 @@ export default function DetailEtudiant({ etudiant, annotations, onOuvrir, onRapp
             titre={titreCalcul(b.resultat)}
             detail={<>
               {pluriel(b.gachees.length, "gâchée")}
-              {aRevoirBloc > 0 && <> <Pastille ton="bleu">{aRevoirBloc} à revoir</Pastille></>}
+              {aRevoirBloc > 0 && <> <Pastille ton="bleu">{aRevoirBloc} à examiner</Pastille></>}
             </>}
             aside={
               <span className="classe-bloc-actions">

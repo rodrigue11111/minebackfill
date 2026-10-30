@@ -485,8 +485,8 @@ function TableauClasse({ demo }: { demo: boolean }) {
                     { libelle: "À écraser aujourd'hui", valeur: resume.aEcraser, ton: resume.enRetard > 0 ? "danger" : "normal",
                       detail: resume.enRetard > 0 ? `dont ${resume.enRetard} en retard` : undefined },
                     { libelle: "Réponses non lues", valeur: resume.reponsesNonLues, ton: resume.reponsesNonLues > 0 ? "accent" : "normal" },
-                    ...(resume.aRevoir !== null ? [{ libelle: "Gâchées à revoir", valeur: resume.aRevoir, ton: resume.aRevoir > 0 ? "alerte" as const : "normal" as const,
-                      detail: "terminées, sans décision ou modifiées depuis" }] : []),
+                    ...(resume.aRevoir !== null ? [{ libelle: "Gâchées à examiner", valeur: resume.aRevoir, ton: resume.aRevoir > 0 ? "alerte" as const : "normal" as const,
+                      detail: "terminées sans décision, ou modifiées depuis votre décision" }] : []),
                   ]} />
                   <div className="classe-grille">
                     <CarteAlertes alertes={alertes} onOuvrir={ouvrirDoc} />

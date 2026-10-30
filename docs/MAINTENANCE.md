@@ -850,7 +850,8 @@ obligatoire) et peut écarter des éprouvettes. Le mot « valide » reste réser
   (`sync-client.ts`), vidée au changement de compte.
 - **Écrans** : `CarteRevue` (vue d'une gâchée, page Classe ; jamais un bouton
   dont le texte serait exactement « Retirer », voir `rendu.test.ts`),
-  pastilles dans `DetailEtudiant`, tuile « Gâchées à revoir » (`classe-resume.ts`),
+  pastilles « À examiner » / « À réexaminer » dans `DetailEtudiant` (`etatRevue`,
+  2026-10-29), tuile « Gâchées à examiner » (`classe-resume.ts`),
   pastille et bandeau dans le Labo de l'étudiant.
 - **Exports** : colonnes « Revue », « Motif de la revue », « Modifiée depuis
   la revue », « Écartée par l'enseignant » à la fin des CSV de classe ; dans

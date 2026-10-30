@@ -121,3 +121,16 @@ describe("revues : envoi d'une décision, lecture en retard", () => {
     expect(accepteeTelleQuelle(undefined)).toBe(false);
   });
 });
+
+describe("état de revue : « À examiner » et « À réexaminer » (2026-10-29)", () => {
+  const info = (perimee: boolean) => ({ decision: "acceptee" as const, motif: null, ecartees: [], maj: "2026-10-26T12:00:00Z", perimee, aRafraichir: false });
+  it("jamais décidée ou décision retirée : à examiner ; modifiée depuis : à réexaminer ; sinon rien", async () => {
+    const { etatRevue, aideEtatRevue } = await import("./revues");
+    expect(etatRevue({ statut: "terminee" }, undefined)).toBe("a_examiner");
+    expect(etatRevue({ statut: "terminee" }, info(true))).toBe("a_reexaminer");
+    expect(etatRevue({ statut: "terminee" }, info(false))).toBeNull();
+    expect(etatRevue({ statut: "brouillon" }, undefined)).toBeNull();
+    expect(etatRevue({ statut: "terminee", conflit: { le: "x" } } as never, undefined)).toBeNull();
+    expect(aideEtatRevue("a_reexaminer", info(true))).toBe("Modifiée par l'étudiant depuis votre décision du 26 octobre 2026.");
+  });
+});

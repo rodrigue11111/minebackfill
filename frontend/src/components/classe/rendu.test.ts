@@ -266,14 +266,18 @@ describe("revue de l'enseignant : rendu", () => {
     expect(html).not.toContain("Accepter la gâchée");
   });
 
-  it("détail de l'étudiant : « À revoir » ou décision par gâchée ; rien quand les revues sont indisponibles", () => {
+  it("détail de l'étudiant : « À examiner » ou décision par gâchée ; rien quand les revues sont indisponibles", () => {
     const base = { etudiant: e, annotations: [], onOuvrir: () => {} };
-    expect(rendu(createElement(DetailEtudiant, { ...base, revueDe: () => undefined }))).toContain("À revoir");
+    const jamais = rendu(createElement(DetailEtudiant, { ...base, revueDe: () => undefined }));
+    expect(jamais).toContain("À examiner");
+    expect(jamais).toContain("Terminée par l&#x27;étudiant, sans décision de votre part.");
+    expect(jamais).not.toContain("À revoir");
     const decide = rendu(createElement(DetailEtudiant, { ...base,
-      revueDe: () => ({ decision: "acceptee" as const, motif: null, ecartees: [], maj: "m", perimee: true, aRafraichir: false }) }));
+      revueDe: () => ({ decision: "acceptee" as const, motif: null, ecartees: [], maj: "2026-10-26T12:00:00Z", perimee: true, aRafraichir: false }) }));
     expect(decide).toContain("Revue : acceptée");
-    expect(decide).toContain("modifiée depuis");
-    expect(rendu(createElement(DetailEtudiant, base))).not.toContain("À revoir");
+    expect(decide).toContain("À réexaminer");
+    expect(decide).toContain("Modifiée par l&#x27;étudiant depuis votre décision du 26 octobre 2026.");
+    expect(rendu(createElement(DetailEtudiant, base))).not.toContain("À examiner");
   });
 });
 
