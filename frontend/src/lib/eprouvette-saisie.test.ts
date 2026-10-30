@@ -157,7 +157,11 @@ describe("moules prévus par le calcul (2026-10-29) : rappel et avis, jamais un 
     const { avisMoules, rappelMoules } = await import("./gachee");
     expect(rappelMoules(9, 6)).toBe("9 moules prévus par le calcul, 6 déjà utilisés.");
     expect(rappelMoules(1, 0)).toBe("1 moule prévu par le calcul, 0 déjà utilisé.");
-    expect(avisMoules(9, 9)).toBeNull();
-    expect(avisMoules(9, 12)).toBe("Le calcul prévoyait 9 moules ; 12 éprouvettes sont demandées. Vérifiez leurs dimensions et le volume de pâte disponible.");
+    expect(avisMoules(9, 6, 3)).toBeNull();
+    expect(avisMoules(9, 9, 0)).toBeNull();
+    // 2026-10-30 : le total seul se lisait comme le nombre saisi.
+    expect(avisMoules(9, 9, 3)).toBe("Le calcul prévoyait 9 moules. La gâchée a déjà 9 éprouvettes ; avec ces 3, elle en aura 12. Vérifiez leurs dimensions et le volume de pâte disponible.");
+    expect(avisMoules(9, 9, 1)).toBe("Le calcul prévoyait 9 moules. La gâchée a déjà 9 éprouvettes ; avec celle-ci, elle en aura 10. Vérifiez leurs dimensions et le volume de pâte disponible.");
+    expect(avisMoules(9, 0, 12)).toBe("Le calcul prévoyait 9 moules ; vous ajoutez 12 éprouvettes. Vérifiez leurs dimensions et le volume de pâte disponible.");
   });
 });

@@ -7,11 +7,13 @@
 import { useEffect, useRef } from "react";
 import { Icone } from "./Icones";
 
-export default function Feuille({ ouverte, onFermer, titre, children }: {
+export default function Feuille({ ouverte, onFermer, titre, children, large = false }: {
   ouverte: boolean;
   onFermer: () => void;
   titre: React.ReactNode;
   children: React.ReactNode;
+  /** Presque tout l'écran : une figure agrandie (Analyse, 2026-10-30). */
+  large?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -23,7 +25,7 @@ export default function Feuille({ ouverte, onFermer, titre, children }: {
   return (
     <dialog
       ref={ref}
-      className="ui-feuille"
+      className={large ? "ui-feuille ui-feuille-large" : "ui-feuille"}
       aria-label={typeof titre === "string" ? titre : undefined}
       onClose={onFermer}
       onClick={(e) => { if (e.target === e.currentTarget) onFermer(); }}

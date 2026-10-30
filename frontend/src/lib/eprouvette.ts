@@ -581,9 +581,55 @@ export function avisDateEssai(e: Eprouvette, maintenant: Date): string | null {
 }
 
 /** Confirmation avant de retirer une éprouvette. */
+const estMesuree = (e: Eprouvette) => contrainteKpa(e.essai) !== null || e.essai?.chargeKn !== undefined || !!e.essai?.courbeInfo;
+
 export function messageRetraitEprouvette(e: Eprouvette): string {
-  const mesuree = contrainteKpa(e.essai) !== null || e.essai?.chargeKn !== undefined || !!e.essai?.courbeInfo;
-  return mesuree ? `Retirer l'éprouvette ${e.code} ? Ses mesures seront perdues.` : `Retirer l'éprouvette ${e.code} ?`;
+  return estMesuree(e) ? `Retirer l'éprouvette ${e.code} ? Ses mesures seront perdues.` : `Retirer l'éprouvette ${e.code} ?`;
+}
+
+/**
+ * Confirmation du retrait de plusieurs éprouvettes à la fois (2026-10-30) :
+ * combien, et combien portent des mesures qui seront perdues.
+ */
+export function messageRetraitEprouvettes(liste: Eprouvette[]): string {
+  if (liste.length === 1) return messageRetraitEprouvette(liste[0]);
+  const mesurees = liste.filter(estMesuree).length;
+  const perte = mesurees === 0 ? ""
+    : mesurees === 1 ? " L'une d'elles a des mesures, qui seront perdues."
+      : ` ${mesurees} d'entre elles ont des mesures, qui seront perdues.`;
+  return `Retirer ces ${liste.length} éprouvettes ?${perte}`;
+}
+
+const memeCylindre = (a: MouleCylindre, b: MouleCylindre) =>
+  Math.abs(a.diametreMm - b.diametreMm) <= 0.05 && Math.abs(a.hauteurMm - b.hauteurMm) <= 0.05;
+
+/**
+ * Valeur du choix de moule qui décrit une éprouvette existante, pour la
+ * modifier (2026-10-30) : un moule proposé (index), celui du calcul
+ * (« calcul »), un moule enregistré (« perso:<id> »), « autre » (texte ou
+ * dimensions hors liste, gardées telles quelles) ou rien.
+ */
+export function choixMouleDe(
+  e: Pick<Eprouvette, "mouleDiametreMm" | "mouleHauteurMm" | "moule">,
+  mouleFormulation: MouleCylindre | undefined,
+  enregistres: { id: string; c: MouleCylindre }[],
+): string {
+  if (e.mouleDiametreMm && e.mouleHauteurMm) {
+    const c = { diametreMm: e.mouleDiametreMm, hauteurMm: e.mouleHauteurMm };
+    const i = MOULES_PROPOSES.findIndex((p) => memeCylindre(p, c));
+    if (i >= 0) return String(i);
+    if (mouleFormulation && memeCylindre(mouleFormulation, c)) return "calcul";
+    const perso = enregistres.find((x) => memeCylindre(x.c, c));
+    return perso ? `perso:${perso.id}` : "actuel";
+  }
+  return e.moule ? "autre" : "";
+}
+
+/** Champs de moule d'une éprouvette pour un cylindre choisi, ou un texte libre. */
+export function patchMoule(cylindre: MouleCylindre | undefined, texte?: string): Pick<Eprouvette, "mouleDiametreMm" | "mouleHauteurMm" | "moule"> {
+  return cylindre
+    ? { mouleDiametreMm: cylindre.diametreMm, mouleHauteurMm: cylindre.hauteurMm, moule: undefined }
+    : { mouleDiametreMm: undefined, mouleHauteurMm: undefined, moule: texte?.trim() || undefined };
 }
 
 export interface GroupeEprouvettes {

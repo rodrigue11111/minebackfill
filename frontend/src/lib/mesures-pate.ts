@@ -9,8 +9,9 @@
 // w de la pâte est déduit de Cw. Les gâchées plus anciennes gardent leur w
 // saisi, affiché quand Cw manque.
 
-import type { Gachee } from "./gachee";
+import type { EtuvePate, Gachee } from "./gachee";
 import { nombreFr } from "./format";
+import { calculeMesures } from "./mesures";
 
 const fini = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
@@ -27,6 +28,35 @@ export function wPateMesuree(g: Pick<Gachee, "cwMesurePct" | "wMesurePct">): { v
   const deduit = wDepuisCwPct(g.cwMesurePct);
   if (deduit !== undefined) return { valeur: deduit, source: "deduit" };
   return fini(g.wMesurePct) ? { valeur: g.wMesurePct, source: "saisi" } : undefined;
+}
+
+/**
+ * Teneur en eau de la pâte à l'étuve (2026-10-30) : w et Cw (%) des masses,
+ * mêmes formules que la feuille Intra 2017 (calculeMesures, mesures.ts) ;
+ * null tant qu'une masse manque ou si m_h > m_s > tare n'est pas vrai.
+ */
+export function mesuresEtuve(e: EtuvePate | undefined): { w: number | null; cw: number | null } {
+  return calculeMesures({ tare: e?.tareG, mh: e?.mhG, ms: e?.msG });
+}
+
+/** Les trois masses sont saisies mais incohérentes (on attend m_h > m_s > tare). */
+export function etuveIncoherente(e: EtuvePate | undefined): boolean {
+  return fini(e?.tareG) && fini(e?.mhG) && fini(e?.msG) && mesuresEtuve(e).cw === null;
+}
+
+/**
+ * Patch d'une gâchée quand une masse de l'étuve change. Masses complètes et
+ * cohérentes : Cw mesuré prend leur valeur. Si elles cessent de l'être, le Cw
+ * qu'elles avaient fixé s'efface (il ne décrirait plus rien) ; un Cw saisi
+ * directement, lui, reste.
+ */
+export function majEtuve(g: Pick<Gachee, "etuvePate" | "cwMesurePct">, patch: Partial<EtuvePate>): Pick<Gachee, "etuvePate" | "cwMesurePct"> {
+  const etuvePate = { ...g.etuvePate, ...patch };
+  const avant = mesuresEtuve(g.etuvePate).cw;
+  const apres = mesuresEtuve(etuvePate).cw;
+  if (apres !== null) return { etuvePate, cwMesurePct: apres };
+  if (avant !== null && g.cwMesurePct === avant) return { etuvePate, cwMesurePct: undefined };
+  return { etuvePate, cwMesurePct: g.cwMesurePct };
 }
 
 /** Écart mesuré − visé, en points de % ; undefined si l'un des deux manque. */

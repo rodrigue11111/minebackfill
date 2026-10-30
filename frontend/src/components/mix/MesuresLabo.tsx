@@ -19,6 +19,12 @@ import ChampNombre from "@/components/ui/ChampNombre";
  * comme sur la feuille. Les saisies vivent dans l'état de l'essai-erreur
  * (magasin) : elles survivent à la navigation, partent avec le résultat
  * sauvegardé et entrent dans les rapports PDF et Excel.
+ *
+ * 2026-10-30 (demande de l'utilisateur) : seul l'affaissement, mesuré juste
+ * après le malaxage, se saisit encore ici. La teneur en eau demande environ
+ * 24 h d'étuve : tare, m_h et m_s se saisissent dans la gâchée, au Labo
+ * (Gachee.etuvePate). Des masses saisies ici auparavant restent affichées
+ * en lecture et dans les rapports.
  */
 
 interface RecetteCalculee {
@@ -29,9 +35,6 @@ interface RecetteCalculee {
 /** Champs mesurés : une masse ou un affaissement négatifs sont refusés à la saisie. */
 const CHAMPS_MESURES: { cle: keyof MesureLabo; libelle: string; unite: string; refus: string }[] = [
   { cle: "slump", libelle: "Affaissement mesuré", unite: "mm", refus: "Un affaissement ne peut pas être négatif." },
-  { cle: "tare", libelle: "Tare", unite: "g", refus: "Une masse ne peut pas être négative." },
-  { cle: "mh", libelle: "Tare + pâte humide m_h", unite: "g", refus: "Une masse ne peut pas être négative." },
-  { cle: "ms", libelle: "Tare + pâte sèche m_s", unite: "g", refus: "Une masse ne peut pas être négative." },
 ];
 
 function Ecart({ mesure, calcule }: { mesure: number | null; calcule: number | null | undefined }) {
@@ -76,8 +79,8 @@ export default function MesuresLabo({
   return (
     <CardSection
       title="Paramètres mesurés au laboratoire"
-      subtitle={<>Après la gâchée : affaissement mesuré (ASTM C143/C143M) et teneur en eau massique (ASTM D2216 ; masses en grammes).
-        w mesuré = (m_h − m_s)/(m_s − tare) ; Cw mesuré = (m_s − tare)/(m_h − tare).</>}
+      subtitle={<>Juste après le malaxage : affaissement mesuré (ASTM C143/C143M). La teneur en eau de la pâte demande
+        environ 24 h d&apos;étuve (ASTM D2216) : saisissez tare, m_h et m_s dans la gâchée, au Labo.</>}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {Array.from({ length: numRecipes }).map((_, i) => {
@@ -113,6 +116,7 @@ export default function MesuresLabo({
                 </div>
               )}
               {(w !== null || cw !== null) && (
+                // Masses saisies ici avant le 2026-10-30 : gardées, en lecture.
                 <div style={{ marginTop: 10, fontSize: 13.5, color: "var(--texte)", display: "flex", gap: 24, flexWrap: "wrap" }}>
                   <span>
                     <strong>w mesuré : {fmt(w, 2)} %</strong>

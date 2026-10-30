@@ -11,13 +11,17 @@
 // liste est rangée par âge de cure, en groupes repliables ; ouvrir une ligne
 // garde la ligne cliquée à sa place à l'écran (le panneau refermé au-dessus
 // ne la fait plus remonter sous le curseur).
+//
+// 2026-10-30 : « Sélectionner » retire plusieurs éprouvettes d'un coup ; une
+// éprouvette ouverte se modifie (date de coulée, âge de cure, moule) au lieu
+// d'être retirée puis recréée.
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import {
   AGES_CURE_DEFAUT, MOULES_PROPOSES, contrainteKpa, dateCoulee, dateEcheance, ecrasementPrecoce, etiquettesHtml, genererCodeEprouvette,
   appliquerSaisieEssai, avisDateEssai, basculerEcrasement, grouperEprouvettes, groupesOuvertsParDefaut, messageRetraitEprouvette,
-  choixMouleParDefaut, libelleMoule, type Eprouvette, type EssaiUCS, type EtiquetteEprouvette, type MouleCylindre,
+  messageRetraitEprouvettes, choixMouleDe, patchMoule, choixMouleParDefaut, libelleMoule, type Eprouvette, type EssaiUCS, type EtiquetteEprouvette, type MouleCylindre,
 } from "@/lib/eprouvette";
 import { avisMoules, rappelMoules, type Gachee } from "@/lib/gachee";
 import type { Annotation } from "@/lib/annotations";
@@ -78,7 +82,29 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
       && !MOULES_PROPOSES.some((p) => memesDimensions(p, x.c!))
       && !(mouleFormulation && memesDimensions(mouleFormulation, x.c!)));
   const [ouverte, setOuverte] = useState<string | null>(null);
+  // Mode sélection (null : éteint) : ids des éprouvettes cochées.
+  const [selection, setSelection] = useState<Set<string> | null>(null);
   const uid = useStore((s) => s.session?.userId ?? null);
+  const enregistres = moulesEnregistres.map((x) => ({ id: x.m.id, c: x.c }));
+  // Cylindre d'une valeur du choix de moule (formulaire d'ajout, modification).
+  const cylindreDuChoix = (choix: string): MouleCylindre | undefined =>
+    choix === "calcul" ? mouleFormulation
+      : choix.startsWith("perso:") ? moulesEnregistres.find((x) => `perso:${x.m.id}` === choix)?.c
+        : choix !== "" && choix !== "autre" && choix !== "actuel" ? MOULES_PROPOSES[Number(choix)] : undefined;
+  const optionsMoule = (actuel?: string) => (
+    <>
+      <option value="">Non précisé</option>
+      {MOULES_PROPOSES.map((m, i) => <option key={m.libelle} value={String(i)}>{m.libelle}</option>)}
+      {mouleFormulation && choixMouleParDefaut(mouleFormulation) === "calcul" && (
+        <option value="calcul">{libelleMoule({ mouleDiametreMm: mouleFormulation.diametreMm, mouleHauteurMm: mouleFormulation.hauteurMm })} (calcul)</option>
+      )}
+      {moulesEnregistres.map(({ m, c }) => (
+        <option key={m.id} value={`perso:${m.id}`}>{m.nom} ({libelleMoule({ mouleDiametreMm: c.diametreMm, mouleHauteurMm: c.hauteurMm })})</option>
+      ))}
+      {actuel && <option value="actuel">{actuel} (actuel)</option>}
+      <option value="autre">Autre</option>
+    </>
+  );
 
   const eprouvettes = [...gachee.eprouvettes].sort(
     (a, b) => dateEcheance(a).getTime() - dateEcheance(b).getTime(),
@@ -88,7 +114,8 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
   const groupes = grouperEprouvettes(gachee.eprouvettes);
   const ouvertsDefaut = groupesOuvertsParDefaut(groupes, new Set(notes?.keys() ?? []));
   const [groupesChoisis, setGroupesChoisis] = useState<Record<string, boolean>>({});
-  const groupeOuvert = (cle: string) => groupesChoisis[cle] ?? ouvertsDefaut.has(cle);
+  // En mode sélection, tous les groupes sont ouverts : on coche ce qu'on voit.
+  const groupeOuvert = (cle: string) => selection !== null || (groupesChoisis[cle] ?? ouvertsDefaut.has(cle));
 
   // Ouvrir une ligne referme la précédente : si elle était au-dessus, tout ce
   // qui suit remontait de sa hauteur, sous le curseur. On note la position de
@@ -117,9 +144,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
     const nouvelles: Eprouvette[] = [];
     for (let i = 0; i < n; i++) {
       const code = genererCodeEprouvette(gachee.code, [...gachee.eprouvettes, ...nouvelles]);
-      const propose = mouleChoix === "calcul" ? mouleFormulation
-        : mouleChoix.startsWith("perso:") ? moulesEnregistres.find((x) => `perso:${x.m.id}` === mouleChoix)?.c
-          : mouleChoix !== "" && mouleChoix !== "autre" ? MOULES_PROPOSES[Number(mouleChoix)] : undefined;
+      const propose = cylindreDuChoix(mouleChoix);
       nouvelles.push({
         id: nouvelId(), code, couleLe: iso, ageJours: a, statut: "en_cure",
         ...(propose
@@ -172,6 +197,19 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
     onChange(gachee.eprouvettes.filter((x) => x.id !== id));
     if (e) oublierCourbes(courbesAOublier(clesCourbesEprouvette(e), useStore.getState().gachees.filter((x) => x.id !== gachee.id)));
   };
+  const basculerSelection = (id: string) => setSelection((s) => {
+    const n = new Set(s ?? []);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  });
+  const retirerSelection = () => {
+    const liste = gachee.eprouvettes.filter((e) => selection?.has(e.id));
+    if (liste.length === 0 || (typeof window !== "undefined" && !window.confirm(messageRetraitEprouvettes(liste)))) return;
+    onChange(gachee.eprouvettes.filter((e) => !selection?.has(e.id)));
+    const autres = useStore.getState().gachees.filter((x) => x.id !== gachee.id);
+    oublierCourbes(courbesAOublier(liste.flatMap(clesCourbesEprouvette), autres));
+    setSelection(null);
+  };
 
   // Diamètre du moule nominal, proposé comme diamètre de l'essai s'il manque
   // (F / A) : un écart avec la contrainte donnée par la presse devient visible.
@@ -209,7 +247,12 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
       titre="Éprouvettes"
       aside={gachee.eprouvettes.length > 0 ? `${gachee.eprouvettes.filter((e) => e.statut === "ecrase").length} écrasée(s) sur ${gachee.eprouvettes.length}` : undefined}
       actions={gachee.eprouvettes.length > 0
-        ? <button type="button" onClick={imprimer} className="btn-discret">Imprimer les étiquettes</button>
+        ? <>
+          {selection === null && (
+            <button type="button" onClick={() => { setOuverte(null); setSelection(new Set()); }} className="btn-discret">Sélectionner</button>
+          )}
+          <button type="button" onClick={imprimer} className="btn-discret">Imprimer les étiquettes</button>
+        </>
         : undefined}
     >
       {inviterAjout && gachee.eprouvettes.length === 0 && (
@@ -245,8 +288,23 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
         <p className="labo-vide">Aucune éprouvette. Choisissez un âge de cure et un nombre de réplicats, puis cliquez sur « Ajouter ».</p>
       ) : (
         <div className="labo-groupes">
+          {selection !== null && (
+            <div className="labo-selection" role="toolbar" aria-label="Éprouvettes sélectionnées">
+              <span>{selection.size} sélectionnée{selection.size > 1 ? "s" : ""} sur {gachee.eprouvettes.length}</span>
+              <button type="button" className="btn-discret"
+                onClick={() => setSelection(selection.size === gachee.eprouvettes.length ? new Set() : new Set(gachee.eprouvettes.map((e) => e.id)))}>
+                {selection.size === gachee.eprouvettes.length ? "Tout désélectionner" : "Tout sélectionner"}
+              </button>
+              <button type="button" className="btn-discret btn-danger" disabled={selection.size === 0} onClick={retirerSelection}>
+                Retirer la sélection
+              </button>
+              <button type="button" className="btn-discret" onClick={() => setSelection(null)}>Annuler</button>
+            </div>
+          )}
           {groupes.map((gr) => {
-            const ouvertG = groupeOuvert(gr.cle);
+            // Le groupe de l'éprouvette ouverte reste ouvert : une éprouvette
+            // dont on vient de changer l'âge y reste visible.
+            const ouvertG = groupeOuvert(gr.cle) || gr.eprouvettes.some((e) => e.id === ouverte);
             const idListe = `groupe-${gachee.id}-${gr.cle.replace(/\W/g, "-")}`;
             return (
               <section key={gr.cle} className="labo-groupe" aria-label={`Éprouvettes à ${gr.ageJours} j`}>
@@ -270,6 +328,10 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                       return (
                         <div key={e.id} className="labo-eprouvette">
                           <div className="labo-eprouvette-ligne">
+                            {selection !== null ? (
+                              <input type="checkbox" className="labo-case" checked={selection.has(e.id)}
+                                aria-label={`Sélectionner ${e.code}`} onChange={() => basculerSelection(e.id)} />
+                            ) : (
                             <button type="button" className={e.statut === "ecrase" ? "labo-rond labo-rond-plein" : "labo-rond"}
                               aria-pressed={e.statut === "ecrase"}
                               aria-label={e.statut === "ecrase" ? `${e.code} écrasée : remettre en cure` : `Marquer ${e.code} écrasée`}
@@ -277,8 +339,12 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                               onClick={(ev) => basculerStatut(e, ev.currentTarget.closest(".labo-eprouvette"))}>
                               {e.statut === "ecrase" && <Icone nom="coche" taille={12} epaisseur={3} />}
                             </button>
-                            <button type="button" className="labo-eprouvette-corps" aria-expanded={ouvert}
-                              onClick={(ev) => { garderEnPlace(ev.currentTarget.closest(".labo-eprouvette")); setOuverte(ouvert ? null : e.id); }}>
+                            )}
+                            <button type="button" className="labo-eprouvette-corps" aria-expanded={selection !== null ? undefined : ouvert}
+                              onClick={(ev) => {
+                                if (selection !== null) { basculerSelection(e.id); return; }
+                                garderEnPlace(ev.currentTarget.closest(".labo-eprouvette")); setOuverte(ouvert ? null : e.id);
+                              }}>
                               <span className="labo-eprouvette-textes">
                                 <span className="labo-eprouvette-code">{e.code}</span>
                                 <span className="labo-eprouvette-detail">
@@ -299,7 +365,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                           {notesE.length > 0 && (
                             <FilEtudiant kind="gachee" id={gachee.id} liste={notesE} connecte={connecte} ancre={e.code} />
                           )}
-                          {ouvert && (
+                          {ouvert && selection === null && (
                             <div className="labo-eprouvette-ouverte">
                               {ecrasementPrecoce(e) && (
                                 // Avis, jamais un blocage : la date d'essai peut être juste.
@@ -316,6 +382,8 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
                                 chargerCourbe={chargerCourbe(e)} chercherCourbeEnLigne={connecte && uid ? chercherEnLigne(e) : undefined}
                                 idImport={idImport}
                                 onVitessePourToutes={e.statut === "ecrase" && gachee.eprouvettes.filter((x) => x.statut === "ecrase").length > 1 ? vitessePourToutes : undefined} />
+                              <InfosEprouvette e={e} onMaj={(patch) => majEprouvette(e.id, patch)}
+                                choix={choixMouleDe(e, mouleFormulation, enregistres)} cylindreDuChoix={cylindreDuChoix} optionsMoule={optionsMoule} />
                               <div className="labo-actions">
                                 <button type="button" onClick={() => retirer(e.id)} className="btn-discret btn-danger">Retirer l&apos;éprouvette</button>
                               </div>
@@ -348,15 +416,7 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
             <Champ libelle="Moule (facultatif)"
               aide={mouleFormulation && mouleChoix === choixMouleParDefaut(mouleFormulation) ? "Repris des dimensions des moules du calcul (Informations)." : undefined}>
               <select className="field-input" value={mouleChoix} onChange={(e) => setMouleChoix(e.target.value)}>
-                <option value="">Non précisé</option>
-                {MOULES_PROPOSES.map((m, i) => <option key={m.libelle} value={String(i)}>{m.libelle}</option>)}
-                {mouleFormulation && choixMouleParDefaut(mouleFormulation) === "calcul" && (
-                  <option value="calcul">{libelleMoule({ mouleDiametreMm: mouleFormulation.diametreMm, mouleHauteurMm: mouleFormulation.hauteurMm })} (calcul)</option>
-                )}
-                {moulesEnregistres.map(({ m, c }) => (
-                  <option key={m.id} value={`perso:${m.id}`}>{m.nom} ({libelleMoule({ mouleDiametreMm: c.diametreMm, mouleHauteurMm: c.hauteurMm })})</option>
-                ))}
-                <option value="autre">Autre</option>
+                {optionsMoule()}
               </select>
             </Champ>
             {mouleChoix === "autre" && (
@@ -366,8 +426,8 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
           {moulesPrevus !== undefined && (
             <p className="labo-rappel-moules">{rappelMoules(moulesPrevus, gachee.eprouvettes.length)}</p>
           )}
-          {moulesPrevus !== undefined && avisMoules(moulesPrevus, gachee.eprouvettes.length + Math.max(0, Math.round(nb ?? 0))) && (
-            <Bandeau ton="alerte" role="status">{avisMoules(moulesPrevus, gachee.eprouvettes.length + Math.max(0, Math.round(nb ?? 0)))}</Bandeau>
+          {moulesPrevus !== undefined && avisMoules(moulesPrevus, gachee.eprouvettes.length, Math.max(0, Math.round(nb ?? 0))) && (
+            <Bandeau ton="alerte" role="status">{avisMoules(moulesPrevus, gachee.eprouvettes.length, Math.max(0, Math.round(nb ?? 0)))}</Bandeau>
           )}
           <div className="labo-ages">
             <span className="ui-champ-libelle">Âges usuels</span>
@@ -383,5 +443,62 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
         </div>
       </details>
     </Carte>
+  );
+}
+
+/**
+ * Informations d'une éprouvette, modifiables (2026-10-30) : date de coulée,
+ * âge de cure, moule. Avant, il fallait la retirer puis la recréer. Les
+ * changements s'appliquent par « Enregistrer » : appliqué à chaque frappe,
+ * l'âge ferait changer l'éprouvette de groupe pendant la saisie. Le code ne
+ * change pas (il est imprimé sur l'étiquette) ; l'essai déjà saisi reste.
+ */
+function InfosEprouvette({ e, onMaj, choix, cylindreDuChoix, optionsMoule }: {
+  e: Eprouvette;
+  onMaj: (patch: Partial<Eprouvette>) => void;
+  /** Choix de moule qui décrit l'éprouvette (choixMouleDe). */
+  choix: string;
+  cylindreDuChoix: (choix: string) => MouleCylindre | undefined;
+  optionsMoule: (actuel?: string) => React.ReactNode;
+}) {
+  const [couleLe, setCouleLe] = useState(() => isoVersDateInput(e.couleLe));
+  const [age, setAge] = useState<number | undefined>(e.ageJours);
+  const [refusAge, setRefusAge] = useState<string | null>(null);
+  const [choixMoule, setChoixMoule] = useState(choix);
+  const [texte, setTexte] = useState(e.moule ?? "");
+
+  const patch: Partial<Eprouvette> = {};
+  if (couleLe && couleLe !== isoVersDateInput(e.couleLe)) patch.couleLe = new Date(`${couleLe}T12:00:00`).toISOString();
+  if (age !== undefined && age >= 1 && Math.round(age) !== e.ageJours) patch.ageJours = Math.round(age);
+  if (choixMoule === "autre" ? texte.trim() !== (e.moule ?? "") || choix !== "autre" : choixMoule !== choix && choixMoule !== "actuel") {
+    Object.assign(patch, choixMoule === "autre" ? patchMoule(undefined, texte) : patchMoule(cylindreDuChoix(choixMoule)));
+  }
+  const modifiee = Object.keys(patch).length > 0;
+
+  return (
+    <details className="labo-infos-eprouvette">
+      <summary>Modifier les informations de l&apos;éprouvette</summary>
+      <div className="labo-grille-ajout">
+        <Champ libelle="Date de coulée">
+          <input type="date" className="field-input" value={couleLe} onChange={(ev) => setCouleLe(ev.target.value)} />
+        </Champ>
+        <Champ libelle="Âge de cure" unite="j" erreur={refusAge ?? undefined}>
+          <ChampNombre value={age} onChange={setAge} min={1} messageRefus="L'âge de cure est d'au moins 1 jour." onRefus={setRefusAge} />
+        </Champ>
+        <Champ libelle="Moule">
+          <select className="field-input" value={choixMoule} onChange={(ev) => setChoixMoule(ev.target.value)}>
+            {optionsMoule(choix === "actuel" ? libelleMoule(e) : undefined)}
+          </select>
+        </Champ>
+        {choixMoule === "autre" && (
+          <Champ libelle="Moule (précision)">
+            <input className="field-input" placeholder="ex. cylindre 38 × 76 mm" value={texte} onChange={(ev) => setTexte(ev.target.value)} />
+          </Champ>
+        )}
+      </div>
+      <div className="labo-actions">
+        <button type="button" className="btn-secondary" disabled={!modifiee} onClick={() => onMaj(patch)}>Enregistrer les modifications</button>
+      </div>
+    </details>
   );
 }

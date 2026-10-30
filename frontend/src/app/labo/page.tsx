@@ -15,7 +15,7 @@ import { materiauxDepuisFormulation } from "@/lib/gachee-materiaux";
 import FiltreSession from "@/components/FiltreSession";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useHydrated } from "@/lib/use-hydrated";
-import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, messageSuppressionGachee, moulesPrevus, type Gachee } from "@/lib/gachee";
+import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, messageSuppressionGachee, moulesPrevus, resumeParametres, etatGachee, TON_ETAT_GACHEE, type Gachee } from "@/lib/gachee";
 import { snapshotProtocoles } from "@/lib/protocole";
 import { mouleDepuisContenant } from "@/lib/eprouvette";
 import { volumeHorsLabo } from "@/lib/contenant";
@@ -33,6 +33,8 @@ import { Pastille } from "@/components/ui/Pastille";
 import { Icone } from "@/components/ui/Icones";
 import Segmente from "@/components/ui/Segmente";
 import EditeurGachee from "@/components/labo/EditeurGachee";
+import ResumeCalcul from "@/components/labo/ResumeCalcul";
+import { lienDocument } from "@/lib/liens-commentaires";
 import { chargerEtatSync } from "@/lib/sync-etat";
 import { cleDoc } from "@/lib/sync-moteur";
 import Echeancier from "@/components/labo/Echeancier";
@@ -76,6 +78,7 @@ function LaboContenu() {
   const revueDe = new Map(revues.map((r) => [r.id, r]));
   const catalogueResidus = useStore((s) => s.catalogue_residus);
   const catalogueGranulats = useStore((s) => s.catalogue_granulats);
+  const catalogueLiants = useStore((s) => s.catalogue_liants);
   const [filtreSession, setFiltreSession] = useState<FiltreSessionValeur>("toutes");
   const gacheesSession = gachees.filter((g) =>
     correspond({ sessionId: g.sessionId, date: g.creeLe }, sessions, filtreSession));
@@ -139,6 +142,7 @@ function LaboContenu() {
           parametres={parametresEffectifs(g, formulations)}
           mouleFormulation={mouleDepuisContenant(formulations.find((f) => f.id === g.formulationId)?.general)}
           moulesPrevus={moulesPrevus(formulations.find((f) => f.id === g.formulationId))}
+          lienCalcul={g.formulationId && formulations.some((f) => f.id === g.formulationId) ? lienDocument("resultat", g.formulationId) : undefined}
           maintenant={maintenant}
           annotations={annotationsDe(annotations, "gachee", g.id)}
           connecte={connecte}
@@ -231,11 +235,15 @@ function LaboContenu() {
                     {formChoisie.recipes.length > 1 && (
                       <Champ libelle="Recette">
                         <select className="field-input" value={recIndex} onChange={(e) => setRecIndex(Number(e.target.value))}>
-                          {formChoisie.recipes.map((_, i) => <option key={i} value={i}>Recette {i + 1}</option>)}
+                          {formChoisie.recipes.map((r, i) => {
+                            const repere = resumeParametres(parametresDepuisRecette(r));
+                            return <option key={i} value={i}>Recette {i + 1}{repere ? ` : ${repere}` : ""}</option>;
+                          })}
                         </select>
                       </Champ>
                     )}
                   </div>
+                  <ResumeCalcul calcul={formChoisie} recetteIndex={recIndex} catalogue={catalogueLiants} />
                   {volumeChantier !== null && (
                     <Bandeau ton="alerte" role="status">
                       Cette recette vise {volumeChantier.toLocaleString("fr-CA", { maximumFractionDigits: 3 })} m³ de remblai, un volume
@@ -287,7 +295,10 @@ function LaboContenu() {
                             {libelleRevue(revueDe.get(g.id)!, revEnLigne(g.id))}
                           </Pastille>
                         )}
-                        {g.statut === "terminee" ? <Pastille ton="succes">Terminée</Pastille> : <Pastille ton="neutre">Brouillon</Pastille>}
+                        {(() => {
+                          const e = etatGachee(g);
+                          return <Pastille ton={TON_ETAT_GACHEE[e.etat]} title={e.detail}>{e.libelle}</Pastille>;
+                        })()}
                         <span className="ui-ligne-chevron"><Icone nom="chevron" taille={14} epaisseur={2.2} /></span>
                       </span>
                     </button>

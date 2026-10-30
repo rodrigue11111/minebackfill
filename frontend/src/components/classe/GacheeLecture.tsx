@@ -165,6 +165,9 @@ export default function GacheeLecture({ gachee: g, formulations, maintenant, cat
           <Info label="Température (°C)" valeur={nombre(g.temperatureC, 1)} />
           <Info label="w de la pâte (%)" valeur={wPate ? `${nombre(wPate.valeur, 2)}${wPate.source === "deduit" ? " (déduit de Cw)" : ""}` : TIRET} />
           <Info label="Cw mesuré (%)" valeur={nombre(g.cwMesurePct, 2)} />
+          {g.etuvePate && (
+            <Info label="Étuve (g)" valeur={`tare ${nombre(g.etuvePate.tareG, 1)} · m_h ${nombre(g.etuvePate.mhG, 1)} · m_s ${nombre(g.etuvePate.msG, 1)}`} />
+          )}
           <Info label="Durée de malaxage (min)" valeur={nombre(g.malaxageDureeMin, 0)} />
           <Info label="Mode de cure" valeur={cure ? `${cure}${g.cure?.note ? ` (${g.cure.note})` : ""}` : (g.cure?.note || TIRET)} />
           <Info label="Température de cure (°C)" valeur={nombre(g.cure?.temperatureC, 1)} />
