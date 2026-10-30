@@ -18,6 +18,10 @@ import type { RegleLiant } from "./essai-liant";
 import { solverVersionActive, CONVENTION_PACKS, CONVENTION_GS_ESSAI, REGLE_LIANT_ESSAI, essaiConventionRevisee } from "./conventions";
 import { ANCIENS_NOMS_LIANTS_EXEMPLE, MOULE_EXEMPLE, NOMS_LIANTS_EXEMPLE } from "./exemple";
 import { moulesValides, type GeometrieMoule, type MouleEnregistre } from "./moules";
+import {
+  copierCouche, coucheVide, lirePublication, prochainIdAjoute, validerCouche,
+  type ContenuFiche, type CoucheFormules, type PublicationFormules,
+} from "./formules-enseignant";
 import type { CloudSession } from "./supabase";
 import {
   type MaterialOrigine, type MaterialKind, type MaterialItem,
@@ -468,6 +472,58 @@ export function persistMoules(items: MouleEnregistre[]): boolean {
   return persistVersioned(MOULES_KEY, MOULES_VERSION, items);
 }
 
+// ── Fiches de formules de l'enseignant (formules-enseignant.ts, 2026-10-29) ──
+// Deux clés DISTINCTES : les brouillons (un par enseignant propriétaire : uid,
+// ou « local » sans compte) et la dernière publication valide reçue (seule
+// source de l'étudiant). Un brouillon n'est jamais montré qu'à son
+// propriétaire ; changer de compte ne le touche pas.
+export const FORMULES_BROUILLONS_KEY = "minebackfill_formules_brouillons";
+export const FORMULES_PUBLIEES_KEY = "minebackfill_formules_publiees";
+const FORMULES_VERSION = 1;
+
+/** Brouillons lus et validés : une couche illisible est écartée (jamais affichée à moitié). */
+export function brouillonsValides(d: unknown): Record<string, CoucheFormules> {
+  if (!d || typeof d !== "object" || Array.isArray(d)) return {};
+  const out: Record<string, CoucheFormules> = {};
+  for (const [proprietaire, c] of Object.entries(d as Record<string, unknown>)) {
+    if (!proprietaire) continue;
+    out[proprietaire] = validerCouche(c).couche;
+  }
+  return out;
+}
+export function loadBrouillonsFormules(): Record<string, CoucheFormules> {
+  return loadVersioned<Record<string, CoucheFormules>>(FORMULES_BROUILLONS_KEY, FORMULES_VERSION, (d) => brouillonsValides(d), {});
+}
+export function persistBrouillonsFormules(b: Record<string, CoucheFormules>): boolean {
+  return persistVersioned(FORMULES_BROUILLONS_KEY, FORMULES_VERSION, b);
+}
+export function loadFormulesPubliees(): PublicationFormules | null {
+  // Copie locale de la dernière publication valide ; relue avec la même
+  // validation qu'à la réception (une copie abîmée vaut « rien »).
+  const brut = loadVersioned<unknown>(FORMULES_PUBLIEES_KEY, FORMULES_VERSION, (d) => d, null);
+  return brut === null ? null : lirePublication({ v: FORMULES_VERSION, data: brut });
+}
+function persistFormulesPubliees(p: PublicationFormules | null): boolean {
+  if (p === null) {
+    try { localStorage.removeItem(FORMULES_PUBLIEES_KEY); return true; } catch { return false; }
+  }
+  return persistVersioned(FORMULES_PUBLIEES_KEY, FORMULES_VERSION, p);
+}
+
+/**
+ * Modifie le brouillon d'un propriétaire, relu du stockage (un autre onglet a
+ * pu écrire). Premier brouillon : une COPIE de la publication, pour que
+ * modifier une fiche ne fasse pas perdre ce qui est déjà publié.
+ */
+function majBrouillon(proprietaire: string, changer: (c: CoucheFormules) => void): void {
+  const b = loadBrouillonsFormules();
+  const c = b[proprietaire] ? copierCouche(b[proprietaire]) : copierCouche(loadFormulesPubliees()?.couche ?? coucheVide());
+  changer(c);
+  b[proprietaire] = c;
+  persistBrouillonsFormules(b);
+  useStore.setState({ formulesBrouillons: b });
+}
+
 // ── Sessions de cours (publiées par l'enseignant ; sessions.ts) ──
 const SESSIONS_KEY = "minebackfill_sessions";
 const SESSIONS_VERSION = 1;
@@ -716,6 +772,24 @@ interface AppState {
   loadSessions: () => void;
   /** Remplace la liste (édition par l'enseignant, ou copie publiée reçue). */
   definirSessions: (items: Session[]) => void;
+
+  // Fiches de formules de l'enseignant (formules-enseignant.ts).
+  /** Brouillons par propriétaire (uid de l'enseignant, ou « local » sans compte). */
+  formulesBrouillons: Record<string, CoucheFormules>;
+  /** Dernière publication valide reçue (ou envoyée) ; null : le cours. */
+  formulesPubliees: PublicationFormules | null;
+  loadFormules: () => void;
+  /** Modifie une fiche du cours (id F###) ou une fiche ajoutée (id E###) dans le brouillon du propriétaire. */
+  modifierFiche: (proprietaire: string, id: string, fiche: ContenuFiche) => void;
+  /** Ajoute une fiche au brouillon ; rend son id (E###). */
+  ajouterFiche: (proprietaire: string, fiche: ContenuFiche) => string;
+  /** Rétablit la version du cours d'une fiche modifiée. */
+  retablirFiche: (proprietaire: string, id: string) => void;
+  supprimerFicheAjoutee: (proprietaire: string, id: string) => void;
+  /** Abandonne le brouillon : le propriétaire revoit la publication. */
+  abandonnerBrouillon: (proprietaire: string) => void;
+  /** Publication reçue (null : rien de publié) ou envoyée avec succès. Ne touche jamais aux brouillons. */
+  definirFormulesPubliees: (p: PublicationFormules | null) => void;
 
   // Moules enregistrés (personnels, sur cet appareil ; moules.ts).
   moules: MouleEnregistre[];
@@ -1562,6 +1636,38 @@ export const useStore = create<AppState>((set, get) => ({
       persistSessions(valides);
       return { sessions: valides };
     }),
+
+  formulesBrouillons: {},
+  formulesPubliees: null,
+  loadFormules: () => set({ formulesBrouillons: loadBrouillonsFormules(), formulesPubliees: loadFormulesPubliees() }),
+  modifierFiche: (proprietaire, id, fiche) => {
+    majBrouillon(proprietaire, (c) => {
+      const i = c.ajoutees.findIndex((a) => a.id === id);
+      if (i >= 0) c.ajoutees[i] = { id, ...fiche };
+      else c.modifiees[id] = fiche;
+    });
+  },
+  ajouterFiche: (proprietaire, fiche) => {
+    let id = "";
+    majBrouillon(proprietaire, (c) => {
+      id = prochainIdAjoute(c);
+      c.ajoutees.push({ id, ...fiche });
+    });
+    return id;
+  },
+  retablirFiche: (proprietaire, id) => majBrouillon(proprietaire, (c) => { delete c.modifiees[id]; }),
+  supprimerFicheAjoutee: (proprietaire, id) =>
+    majBrouillon(proprietaire, (c) => { c.ajoutees = c.ajoutees.filter((a) => a.id !== id); }),
+  abandonnerBrouillon: (proprietaire) => {
+    const b = loadBrouillonsFormules();
+    delete b[proprietaire];
+    persistBrouillonsFormules(b);
+    set({ formulesBrouillons: b });
+  },
+  definirFormulesPubliees: (p) => {
+    persistFormulesPubliees(p);
+    set({ formulesPubliees: p });
+  },
 
   moules: [],
   loadMoules: () => set({ moules: loadMoulesFromStorage() }),

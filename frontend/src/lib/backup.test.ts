@@ -69,11 +69,11 @@ async function exporte(m: MagasinCourbes | null = null): Promise<{ schema: numbe
   return JSON.parse(texteExporte);
 }
 
-describe("backup — export du laboratoire (schémas 4 à 7)", () => {
+describe("backup — export du laboratoire (schémas 4 à 8)", () => {
   it("le fichier porte les gâchées et les protocoles", async () => {
     localStorage.setItem("minebackfill_gachees", JSON.stringify({ v: 2, data: [gachee("g1")] }));
     const b = await exporte();
-    expect(b.schema).toBe(7);
+    expect(b.schema).toBe(8);
     expect(Array.isArray(b.data.gachees)).toBe(true);
     expect((b.data.gachees as { id: string }[])[0].id).toBe("g1");
     // Les protocoles sont semés par défaut quand la clé est absente.
@@ -300,5 +300,36 @@ describe("backup — moules enregistrés (schéma 7, 2026-10-26)", () => {
     const res = await importerDonnees(fichier({ application: "MineBackfill", schema: 6, exportedAt: "x", data: { gachees: [gachee("g9")] } }));
     expect(res.ok).toBe(true);
     expect(JSON.parse(localStorage.getItem("minebackfill_moules")!).data).toHaveLength(1);
+  });
+});
+
+describe("backup — brouillons des fiches de formules (schéma 8, 2026-10-29)", () => {
+  const couche = (titre: string) => ({ modifiees: {}, ajoutees: [{ id: "E001", title: titre, section: "S", equationLatex: "a=b", equationPlainText: "", variables: [], contextSnippet: "", keywords: [] }] });
+
+  it("les brouillons sont exportés ; la publication reçue ne l'est pas", async () => {
+    localStorage.setItem("minebackfill_formules_brouillons", JSON.stringify({ v: 1, data: { prof1: couche("Ma fiche") } }));
+    localStorage.setItem("minebackfill_formules_publiees", JSON.stringify({ v: 1, data: { couche: couche("Publiée"), publieeLe: "x", publieePar: null } }));
+    const b = await exporte();
+    expect((b.data.formules_brouillons as Record<string, { ajoutees: { title: string }[] }>).prof1.ajoutees[0].title).toBe("Ma fiche");
+    expect(JSON.stringify(b)).not.toContain("Publiée");
+  });
+
+  it("import : le brouillon local d'un propriétaire gagne, les autres s'ajoutent", async () => {
+    localStorage.setItem("minebackfill_formules_brouillons", JSON.stringify({ v: 1, data: { prof1: couche("Locale") } }));
+    const res = await importerDonnees(fichier({
+      application: "MineBackfill", schema: 8, exportedAt: "x",
+      data: { formules_brouillons: { prof1: couche("Ancienne"), prof2: couche("De prof2") } },
+    }));
+    expect(res.ok).toBe(true);
+    const d = JSON.parse(localStorage.getItem("minebackfill_formules_brouillons")!).data;
+    expect(d.prof1.ajoutees[0].title).toBe("Locale");
+    expect(d.prof2.ajoutees[0].title).toBe("De prof2");
+  });
+
+  it("une sauvegarde au schéma 7 reste importable et ne touche pas aux brouillons", async () => {
+    localStorage.setItem("minebackfill_formules_brouillons", JSON.stringify({ v: 1, data: { prof1: couche("Locale") } }));
+    const res = await importerDonnees(fichier({ application: "MineBackfill", schema: 7, exportedAt: "x", data: { gachees: [gachee("g7")] } }));
+    expect(res.ok).toBe(true);
+    expect(JSON.parse(localStorage.getItem("minebackfill_formules_brouillons")!).data.prof1.ajoutees[0].title).toBe("Locale");
   });
 });

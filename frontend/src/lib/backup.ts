@@ -9,6 +9,7 @@ import {
   loadGacheesFromStorage, persistGachees,
   loadProtocolesFromStorage, persistProtocoles,
   loadMoulesFromStorage, persistMoules,
+  loadBrouillonsFormules, persistBrouillonsFormules, brouillonsValides,
 } from "./store";
 import { fusionnerMoules } from "./moules";
 import type { Gachee } from "./gachee";
@@ -41,6 +42,7 @@ const CLES = {
   protocoles: "minebackfill_protocoles",
   sessions: "minebackfill_sessions",
   moules: "minebackfill_moules",
+  formules_brouillons: "minebackfill_formules_brouillons",
 } as const;
 
 // Clés du laboratoire : elles ne passent PAS par lire()/ecrireLocal().
@@ -49,7 +51,9 @@ const CLES = {
 // impossible. On passe par les accesseurs du store, qui rendent des données
 // DÉJÀ MIGRÉES, et le fichier porte alors des tableaux nus.
 // Les moules enregistrés (v7) sont dans le même cas.
-const CLES_LABO = ["gachees", "protocoles", "moules"] as const;
+// Les brouillons de fiches de formules (v8) aussi. La publication reçue
+// (minebackfill_formules_publiees) n'y entre PAS : elle se relit en ligne.
+const CLES_LABO = ["gachees", "protocoles", "moules", "formules_brouillons"] as const;
 type CleLabo = (typeof CLES_LABO)[number];
 function estCleLabo(nom: string): nom is CleLabo {
   return (CLES_LABO as readonly string[]).includes(nom);
@@ -80,9 +84,11 @@ function deballer(x: unknown): unknown[] | null {
 //      les porte dans `courbes` (par id d'éprouvette, en colonnes).
 // v7 : moules enregistrés (2026-10-26) ; à l'import, fusion par id, le local
 //      gagne (comme les gâchées), jamais un remplacement.
+// v8 : brouillons des fiches de formules de l'enseignant (2026-10-29), par
+//      propriétaire ; à l'import, le brouillon local d'un propriétaire gagne.
 // Une sauvegarde d'une version antérieure reste importable — les clés absentes
 // sont simplement ignorées (voir importerDonnees).
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 interface Backup {
   application: string;
@@ -125,7 +131,8 @@ export async function exporterDonnees(magasin: MagasinCourbes | null = magasinCo
       Object.entries(CLES).map(([nom, cle]) => [
         nom,
         estCleLabo(nom)
-          ? (nom === "gachees" ? loadGacheesFromStorage() : nom === "moules" ? loadMoulesFromStorage() : loadProtocolesFromStorage())
+          ? (nom === "gachees" ? loadGacheesFromStorage() : nom === "moules" ? loadMoulesFromStorage()
+            : nom === "formules_brouillons" ? loadBrouillonsFormules() : loadProtocolesFromStorage())
           : lire(cle),
       ]),
     ),
@@ -178,6 +185,20 @@ export async function importerDonnees(
     for (const [nom, cle] of Object.entries(CLES)) {
       const importe = backup.data?.[nom as keyof typeof CLES];
       if (importe === null || importe === undefined) continue;
+      if (nom === "formules_brouillons") {
+        // Objet { propriétaire: couche } (nu, ou enveloppe {v, data}) : le
+        // brouillon local d'un propriétaire gagne, les autres s'ajoutent.
+        const brut = importe && typeof importe === "object" && "data" in (importe as object) && "v" in (importe as object)
+          ? (importe as { data: unknown }).data : importe;
+        const importes = brouillonsValides(brut);
+        const locaux = loadBrouillonsFormules();
+        const nouveaux = Object.keys(importes).filter((k) => !(k in locaux));
+        if (nouveaux.length > 0) {
+          ecrireOuEchouer(persistBrouillonsFormules({ ...locaux, ...Object.fromEntries(nouveaux.map((k) => [k, importes[k]])) }));
+          fusionnes += nouveaux.length;
+        }
+        continue;
+      }
       if (estCleLabo(nom)) {
         const items = deballer(importe);
         if (!items) continue;

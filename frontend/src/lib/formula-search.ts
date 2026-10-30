@@ -1,5 +1,8 @@
 import { FORMULAS, type Formula, type FormulaVariable } from "./formulas-data";
 
+/** Ce que la recherche lit d'une fiche : tout sauf la page (une fiche de l'enseignant n'en a pas). */
+export type FormuleBase = Omit<Formula, "pageNumber">;
+
 // ============================================================
 // Normalisation — removes superficial differences so that
 // "rho_h", "ρh", "rhoh", "ρ_h" all match each other.
@@ -81,7 +84,7 @@ export function normalise(raw: string): string {
 }
 
 // Build a searchable token set from a formula
-function buildSearchText(f: Formula): string {
+function buildSearchText(f: FormuleBase): string {
   const parts = [
     f.id,
     f.title,
@@ -96,6 +99,15 @@ function buildSearchText(f: Formula): string {
   return normalise(parts.join(" "));
 }
 
+// Index de recherche par liste (le cours, ou le cours avec les fiches de
+// l'enseignant, 2026-10-29) : calculé une fois par liste.
+const INDEX_PAR_LISTE = new WeakMap<readonly FormuleBase[], Array<{ formula: FormuleBase; text: string }>>();
+function indexDe(liste: readonly FormuleBase[]): Array<{ formula: FormuleBase; text: string }> {
+  let ix = INDEX_PAR_LISTE.get(liste);
+  if (!ix) { ix = liste.map((f) => ({ formula: f, text: buildSearchText(f) })); INDEX_PAR_LISTE.set(liste, ix); }
+  return ix;
+}
+
 // Pre-compute search text for each formula
 const SEARCH_INDEX: Array<{ formula: Formula; text: string }> = FORMULAS.map(
   (f) => ({ formula: f, text: buildSearchText(f) })
@@ -105,26 +117,28 @@ const SEARCH_INDEX: Array<{ formula: Formula; text: string }> = FORMULAS.map(
 // Main search function
 // ============================================================
 
-export interface SearchResult {
-  formula: Formula;
+export interface SearchResult<F extends FormuleBase = Formula> {
+  formula: F;
   score: number;
   /** Short snippet of matched context (not highlighted — rendering handled by UI) */
   matchedIn: Array<"title" | "section" | "equation" | "keyword" | "variable" | "context">;
 }
 
-export function searchFormulas(query: string): SearchResult[] {
-  if (!query.trim()) return FORMULAS.map((f) => ({ formula: f, score: 0, matchedIn: [] }));
+export function searchFormulas<F extends FormuleBase = Formula>(query: string, liste?: readonly F[]): SearchResult<F>[] {
+  const source = (liste ?? FORMULAS) as readonly F[];
+  if (!query.trim()) return source.map((f) => ({ formula: f, score: 0, matchedIn: [] }));
 
   const normQuery = normalise(query);
   const tokens = normQuery.split(/\s+/).filter(Boolean);
 
-  const results: SearchResult[] = [];
+  const results: SearchResult<F>[] = [];
 
-  for (const { formula: f, text: fullText } of SEARCH_INDEX) {
+  for (const { formula: brute, text: fullText } of (liste ? indexDe(liste) : SEARCH_INDEX)) {
+    const f = brute as F;
     if (!tokens.length) continue;
 
     let score = 0;
-    const matchedIn = new Set<SearchResult["matchedIn"][number]>();
+    const matchedIn = new Set<SearchResult<F>["matchedIn"][number]>();
 
     for (const token of tokens) {
       if (!token) continue;
@@ -177,7 +191,7 @@ export interface Suggestion {
   formulaId?: string;
 }
 
-export function getSuggestions(query: string, limit = 8): Suggestion[] {
+export function getSuggestions(query: string, limit = 8, liste: readonly FormuleBase[] = FORMULAS): Suggestion[] {
   if (query.trim().length < 2) return [];
 
   const norm = normalise(query);
@@ -185,7 +199,7 @@ export function getSuggestions(query: string, limit = 8): Suggestion[] {
 
   const seen = new Set<string>();
 
-  for (const f of FORMULAS) {
+  for (const f of liste) {
     // Title match
     if (normalise(f.title).includes(norm) && !seen.has(f.title)) {
       suggestions.push({ type: "title", label: f.title, formulaId: f.id });
@@ -223,8 +237,8 @@ export function getSuggestions(query: string, limit = 8): Suggestion[] {
 // "Que puis-je calculer ?" — derivable formulas finder
 // ============================================================
 
-export interface DerivableResult {
-  formula: Formula;
+export interface DerivableResult<F extends FormuleBase = Formula> {
+  formula: F;
   knownVars: FormulaVariable[];   // variables the user already knows
   unknownVars: FormulaVariable[]; // variables still needed / derivable outputs
   coverage: number;               // 0–1: knownVars.length / variables.length
@@ -234,14 +248,14 @@ export interface DerivableResult {
  * Given a list of known variable symbols, returns formulas that share at least
  * one variable with that set, sorted by coverage (highest first).
  */
-export function findDerivableFormulas(knownSymbols: string[]): DerivableResult[] {
+export function findDerivableFormulas<F extends FormuleBase = Formula>(knownSymbols: string[], liste?: readonly F[]): DerivableResult<F>[] {
   if (knownSymbols.length === 0) return [];
 
   const normKnown = new Set(knownSymbols.map(normalise));
 
-  const results: DerivableResult[] = [];
+  const results: DerivableResult<F>[] = [];
 
-  for (const f of FORMULAS) {
+  for (const f of (liste ?? FORMULAS) as readonly F[]) {
     if (f.variables.length === 0) continue;
 
     const knownVars: FormulaVariable[] = [];

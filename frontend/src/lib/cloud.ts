@@ -9,7 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CatalogueCloudId =
-  | "liants" | "residus" | "granulats" | "retardateurs" | "constantes" | "sessions";
+  | "liants" | "residus" | "granulats" | "retardateurs" | "constantes" | "sessions" | "formules";
 
 /** Enveloppe versionnée, identique au format de persisted.ts. */
 export interface EnveloppeVersionnee<T = unknown> {
@@ -28,6 +28,27 @@ export async function fetchCatalogueOfficiel(
     .from("official_catalogs").select("data").eq("id", id).maybeSingle();
   if (error || !data) return null;
   return (data as { data: EnveloppeVersionnee }).data;
+}
+
+/**
+ * Lecture qui DISTINGUE les cas (fetchCatalogueOfficiel rend null pour tous) :
+ * « absent » (rien n'a jamais été publié), « erreur » (réseau, droits : on
+ * garde ce qu'on a) ou « ok ». Utilisée pour les fiches de formules, où une
+ * panne ne doit jamais effacer une publication valide déjà reçue.
+ */
+export async function lireCatalogueOfficiel(
+  sb: SupabaseClient,
+  id: CatalogueCloudId,
+): Promise<{ etat: "ok"; enveloppe: unknown } | { etat: "absent" } | { etat: "erreur" }> {
+  try {
+    const { data, error } = await sb
+      .from("official_catalogs").select("data").eq("id", id).maybeSingle();
+    if (error) return { etat: "erreur" };
+    if (!data) return { etat: "absent" };
+    return { etat: "ok", enveloppe: (data as { data: unknown }).data };
+  } catch {
+    return { etat: "erreur" };
+  }
 }
 
 /** Publie (upsert) un catalogue officiel. Réservé au prof (RLS). */

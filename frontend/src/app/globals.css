@@ -502,6 +502,8 @@ textarea.field-input { min-height: 88px; line-height: 1.5; resize: vertical; }
 .mix-formules { margin-top: 12px; }
 .mix-formules-liste { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .mix-formule { font: inherit; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--filet-fort); background: transparent; color: var(--accent); cursor: pointer; }
+.mix-fx-enseignant { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--alerte-pale); color: var(--alerte-texte); font-size: 12px; line-height: 1.45; }
+.mix-fx-enseignant summary { cursor: pointer; font-weight: 600; margin-top: 4px; }
 span.mix-formule { color: var(--texte-2); cursor: default; }
 .mix-formule:hover { background: var(--accent-pale); }
 
@@ -1337,6 +1339,27 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
   transition: width 0.2s ease;
 }
 .frm-rubrique { font-size: 13px; font-weight: 600; color: var(--texte-2); margin-bottom: 8px; }
+/* Fiches de l'enseignant (2026-10-29) : pastille, barre de publication, éditeur. */
+.frm-pastille-origine { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--alerte-pale); color: var(--alerte-texte); }
+.frm-volet-edition { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.frm-version-cours > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); }
+.frm-barre { display: flex; flex-direction: column; gap: 10px; padding: 14px 18px; border-radius: var(--rayon-bloc); background: var(--surface); box-shadow: var(--ombre-carte); }
+.frm-barre-etat { font-size: 14px; color: var(--texte-2); }
+.frm-barre-etat strong { color: var(--texte); }
+.frm-barre-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.frm-barre-note { font-size: 13px; color: var(--texte-2); }
+.frm-barre-rejets { margin: 4px 0 0; padding-left: 18px; }
+.frm-editeur { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.frm-editeur-titre { margin: 0; font-size: 20px; font-weight: 700; }
+.frm-editeur-avis { margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--alerte-pale); color: var(--alerte-texte); font-size: 13px; line-height: 1.45; }
+.frm-editeur-latex { font-family: ui-monospace, monospace; font-size: 13px; }
+.frm-editeur-apercu { min-height: 56px; padding: 12px; border-radius: var(--rayon-champ); background: var(--champ); overflow-x: auto; display: flex; align-items: center; justify-content: center; max-width: 100%; }
+.frm-editeur-variables { border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.frm-editeur-variable { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 0.8fr) auto; gap: 8px; align-items: center; }
+.frm-editeur-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+@media (max-width: 720px) {
+  .frm-editeur-variable { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
 .frm-bouton-icone {
   display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0;
   border: none; border-radius: 999px; background: var(--fond); color: var(--texte-2); cursor: pointer;

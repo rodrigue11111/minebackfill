@@ -174,6 +174,29 @@ matériau qu'un étudiant a saisi lui-même se reprend depuis la page Classe :
 ouvrir sa gâchée → « Ajouter au catalogue officiel », puis le compléter et
 le publier depuis Réglages.
 
+### Modifier ou ajouter des fiches de formules (page Formules)
+Connecté avec un compte enseignant, page **Formules** :
+- **Ajouter une formule** : titre, section (existante ou nouvelle), équation
+  en LaTeX avec aperçu, variables, explication, mots-clés.
+- **Modifier** une fiche du cours : ouvrir la fiche → « Modifier ».
+  « Rétablir la version du cours » annule la modification de cette fiche.
+- Vos changements restent un **brouillon** sur votre compte (« Modifications
+  non publiées ») jusqu'à **« Publier en ligne »** : les étudiants voient alors
+  la nouvelle version à leur prochaine connexion. La barre indique la date de
+  la dernière publication.
+- **Revenir aux formules du cours** : retire toutes les fiches modifiées et
+  ajoutées, pour vous et pour les étudiants.
+
+**Important : les calculs du site ne changent pas.** Ce sont des fiches de la
+bibliothèque. La fiche « fx » d'un résultat (page Calculs) montre toujours la
+formule utilisée par le calculateur, et signale qu'une version modifiée
+existe. Changer une formule de CALCUL demande une modification du calculateur
+(docs/MAINTENANCE.md, recette 6).
+
+Si la publication est refusée, la barre liste les fiches à corriger. Une
+panne de connexion chez un étudiant ne lui fait jamais perdre la dernière
+version publiée qu'il a reçue.
+
 ### Changer une variable d'environnement (URL Supabase, etc.)
 vercel.com → projet → Settings → Environment Variables → modifier → **puis
 Redeploy** (les variables sont figées au moment du build).

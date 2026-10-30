@@ -190,6 +190,14 @@ les vrais noms des essais normalisés. Décisions :
   résumé (drapeau `resume` dans `report-schema.ts`) et renvoie au rapport
   complet ; les exports Excel et PDF ignorent ce drapeau : leur contenu ne
   change pas, un fichier exporté reste complet.
+- **Fiches de formules de l'enseignant : une couche, pas une copie du
+  catalogue** (2026-10-29). Le catalogue du cours (`formulas-data.ts`) reste
+  la source et le seul objet des tests d'invariants ; l'enseignant écrit une
+  couche (`formules-enseignant.ts`) : fiches modifiées par id, fiches ajoutées
+  `E###`. Trois choses restent distinctes : le brouillon (par compte), la
+  publication reçue (dernière version valide, jamais effacée par une panne) et
+  l'équation du calculateur. La fiche fx d'un résultat montre donc TOUJOURS la
+  version du cours : une fiche modifiée contredirait les chiffres du calcul.
 - **Vocabulaire : une source, sourcée, gardée.** `lib/glossaire.ts` porte les
   libellés (`T`), le glossaire (chaque entrée cite le cours, un classeur ou le
   programme) et les normes. Corrections de fond : la méthode « Ajustement

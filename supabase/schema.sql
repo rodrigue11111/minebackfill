@@ -167,9 +167,12 @@ end $$;
 --  catalogues officiels : une ligne par catalogue, data = enveloppe {v,data}
 --  (IDENTIQUE au format persisted.ts côté frontend : réutilise ses migrations)
 --  'sessions' (v2) : la liste des sessions publiée par l'enseignant.
+--  'formules' (2026-10-29) : les fiches de formules de l'enseignant, une
+--  couche par-dessus le catalogue du cours (frontend/src/lib/formules-enseignant.ts).
+--  Des fiches pédagogiques : le calculateur ne les lit jamais.
 -- ======================================================================
 create table if not exists public.official_catalogs (
-  id         text primary key check (id in ('liants','residus','granulats','retardateurs','constantes','sessions')),
+  id         text primary key check (id in ('liants','residus','granulats','retardateurs','constantes','sessions','formules')),
   data       jsonb not null,
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users(id)
@@ -178,7 +181,7 @@ create table if not exists public.official_catalogs (
 -- un CHECK de colonne) ne connaît pas 'sessions'.
 alter table public.official_catalogs drop constraint if exists official_catalogs_id_check;
 alter table public.official_catalogs add constraint official_catalogs_id_check
-  check (id in ('liants','residus','granulats','retardateurs','constantes','sessions'));
+  check (id in ('liants','residus','granulats','retardateurs','constantes','sessions','formules'));
 
 -- ======================================================================
 --  résultats v1 : GELÉS (lecture seule). Repris dans user_docs plus bas.

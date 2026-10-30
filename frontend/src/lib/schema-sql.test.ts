@@ -414,6 +414,19 @@ describe("schema.sql — enseignant et annotations", () => {
     await expect(comme(A, q, [JSON.stringify({ v: 1, data: [] })])).rejects.toMatchObject({ code: "42501" });
     await comme(PROF, q, [JSON.stringify({ v: 1, data: [{ id: "A2026" }] })]);
   });
+
+  it("catalogue « formules » (2026-10-29) : publiable par le prof seulement ; un id inconnu reste refusé", async () => {
+    const env = JSON.stringify({ v: 1, data: { couche: { modifiees: {}, ajoutees: [] }, publieeLe: "2026-10-29T20:30:00Z", publieePar: "Prof" } });
+    const q = "insert into public.official_catalogs (id, data) values ('formules', $1::jsonb) on conflict (id) do update set data = excluded.data";
+    await expect(comme(A, q, [env])).rejects.toMatchObject({ code: "42501" });
+    await comme(PROF, q, [env]);
+    const lu = await comme<{ data: { v: number } }>(B, "select data from public.official_catalogs where id = 'formules'");
+    expect(lu.rows[0].data.v).toBe(1);
+    await expect(comme(PROF, "insert into public.official_catalogs (id, data) values ('inconnu', '{}'::jsonb)"))
+      .rejects.toMatchObject({ code: "23514" });
+    await db.exec(SCHEMA); // ré-exécutable : la publication reste
+    expect((await db.query("select 1 from public.official_catalogs where id = 'formules'")).rows).toHaveLength(1);
+  });
 });
 
 describe("schema.sql — reprise de saved_results (v1)", () => {

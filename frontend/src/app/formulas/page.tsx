@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { FORMULAS, FORMULA_MAP, SECTIONS, VARIABLES_ALL, type Formula } from "@/lib/formulas-data";
+import { useStore } from "@/lib/store";
+import { useFormules } from "@/lib/use-formules";
+import { MODE_TEST_SANS_COMPTE } from "@/lib/mode-test";
+import type { ContenuFiche, FormuleAffichee } from "@/lib/formules-enseignant";
+import EditeurFiche from "@/components/formulas/EditeurFiche";
+import BarreFormules from "@/components/formulas/BarreFormules";
 import { searchFormulas, getSuggestions, findDerivableFormulas, type SearchResult, type Suggestion, type DerivableResult } from "@/lib/formula-search";
 import { KaTeX } from "@/components/formulas/KaTeXRenderer";
 import { Page, EnTetePage } from "@/components/ui/Page";
@@ -24,12 +29,23 @@ const PALETTE = [
   { bg: "#fff7ed", color: "#c2410c", border: "#fed7aa" },
   { bg: "#f8fafc", color: "#475569", border: "#e2e8f0" },
 ];
-SECTIONS.forEach((s, i) => {
-  SECTION_COLORS[s] = PALETTE[i % PALETTE.length];
+// Couleur d'une section : selon sa place dans la liste affichée (les sections
+// ajoutées par l'enseignant prennent la suite de la palette).
+function getSectionColor(section: string, sections: string[]) {
+  const i = sections.indexOf(section);
+  return SECTION_COLORS[section] ?? PALETTE[(i >= 0 ? i : 7) % PALETTE.length];
+}
+
+/** Contenu éditable d'une fiche affichée (point de départ de l'éditeur). */
+const contenuDe = (f: FormuleAffichee): ContenuFiche => ({
+  title: f.title, section: f.section, equationLatex: f.equationLatex, equationPlainText: f.equationPlainText,
+  variables: f.variables.map((v) => ({ ...v })), contextSnippet: f.contextSnippet, keywords: [...f.keywords],
 });
 
-function getSectionColor(section: string) {
-  return SECTION_COLORS[section] ?? PALETTE[7];
+/** Pastille d'origine d'une fiche de l'enseignant. */
+function PastilleOrigine({ f }: { f: FormuleAffichee }) {
+  if (f.origine === "cours") return null;
+  return <span className="frm-pastille-origine">{f.origine === "modifiee" ? "modifiée par l'enseignant" : "ajoutée par l'enseignant"}</span>;
 }
 
 // ──────────────────────────────────────────────
@@ -107,18 +123,22 @@ function FormulaDetail({
   formula,
   onClose,
   onNavigate,
+  edition,
 }: {
-  formula: Formula;
+  formula: FormuleAffichee;
   onClose: () => void;
   onNavigate: (id: string) => void;
+  /** Vue enseignant : modifier, rétablir, supprimer. */
+  edition?: { onModifier: () => void; onRetablir: () => void; onSupprimer: () => void };
 }) {
   const [isMax, setIsMax] = useState(false);
+  const { carte } = useFormules();
   const parents = formula.derivationLinks.derivedFrom
-    .map((id) => FORMULA_MAP.get(id))
-    .filter(Boolean) as Formula[];
+    .map((id) => carte.get(id))
+    .filter(Boolean) as FormuleAffichee[];
   const children = formula.derivationLinks.derivesInto
-    .map((id) => FORMULA_MAP.get(id))
-    .filter(Boolean) as Formula[];
+    .map((id) => carte.get(id))
+    .filter(Boolean) as FormuleAffichee[];
 
   // Close on Escape key
   useEffect(() => {
@@ -148,7 +168,7 @@ function FormulaDetail({
     else if (!e.shiftKey && actif === dernier) { e.preventDefault(); premier.focus(); }
   };
 
-  const DerivLink = ({ f }: { f: Formula }) => (
+  const DerivLink = ({ f }: { f: FormuleAffichee }) => (
     <button type="button" className="frm-lien-derivation" onClick={() => onNavigate(f.id)}>
       <span style={{ fontSize: 10.5, color: "var(--primary)", fontWeight: 700, minWidth: 44, flexShrink: 0 }}>
         {f.id}
@@ -176,11 +196,12 @@ function FormulaDetail({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4, fontFamily: "monospace" }}>
-              {formula.id} &nbsp;·&nbsp; p.&thinsp;{formula.pageNumber}
+              {formula.id} &nbsp;·&nbsp; {formula.pageNumber === null ? "ajoutée par l'enseignant" : <>p.&thinsp;{formula.pageNumber}</>}
             </div>
             <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 8px", color: "var(--texte)", lineHeight: 1.2, letterSpacing: "-0.01em" }}>
               {formula.title}
             </h2>
+            <PastilleOrigine f={formula} />
           </div>
           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
             {/* Fullscreen toggle */}
@@ -229,6 +250,36 @@ function FormulaDetail({
           <CopyButton value={formula.equationLatex} label="Copier LaTeX" />
           <CopyButton value={formula.equationPlainText} label="Copier texte brut" />
         </div>
+
+        {/* Enseignant : modifier, rétablir, supprimer */}
+        {edition && (
+          <div className="frm-volet-edition">
+            <button type="button" className="btn-secondary" onClick={edition.onModifier}>Modifier</button>
+            {formula.origine === "modifiee" && (
+              <button type="button" className="btn-discret" onClick={edition.onRetablir}>Rétablir la version du cours</button>
+            )}
+            {formula.origine === "ajoutee" && (
+              <button type="button" className="btn-discret btn-danger" onClick={edition.onSupprimer}>Supprimer la formule</button>
+            )}
+          </div>
+        )}
+
+        {/* Fiche modifiée : la version du cours reste consultable */}
+        {formula.origine === "modifiee" && formula.cours && (
+          <details className="frm-version-cours">
+            <summary>Version du cours</summary>
+            <div style={{ background: "var(--champ)", borderRadius: "var(--rayon-champ)", padding: "14px 12px", overflowX: "auto", margin: "8px 0" }}>
+              <KaTeX tex={formula.cours.equationLatex} displayMode={true} />
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, margin: "0 0 4px" }}>{formula.cours.title}</div>
+            {formula.cours.variables.map((v, i) => (
+              <div key={i} style={{ fontSize: 12.5, display: "flex", gap: 8 }}>
+                <span style={{ color: "var(--primary)", fontWeight: 600, minWidth: 70 }}><KaTeX tex={v.symbol} /></span>
+                <span>{v.description}{v.unit ? ` [${v.unit}]` : ""}</span>
+              </div>
+            ))}
+          </details>
+        )}
 
         {/* Context snippet */}
         <div>
@@ -305,7 +356,7 @@ function FormulaDetail({
         {(parents.length > 0 || children.length > 0) && (
           <div>
             <div className="frm-rubrique" style={{ marginBottom: 12 }}>
-              Arbre de dérivation
+              {formula.origine === "modifiee" ? "Liens de la fiche du cours (version d'origine)" : "Arbre de dérivation"}
             </div>
 
             {/* Parent nodes */}
@@ -396,8 +447,8 @@ function FormulaDetail({
             alignItems: "center",
           }}
         >
-          <span>Source : S5, chap. 4 · GNM1002 · Prof. T. Belem</span>
-          <span style={{ fontWeight: 600 }}>p.&thinsp;{formula.pageNumber}</span>
+          <span>{formula.pageNumber === null ? "Fiche ajoutée par l'enseignant" : formula.origine === "modifiee" ? "Source : S5, chap. 4 · GNM1002 · Prof. T. Belem · modifiée par l'enseignant" : "Source : S5, chap. 4 · GNM1002 · Prof. T. Belem"}</span>
+          {formula.pageNumber !== null && <span style={{ fontWeight: 600 }}>p.&thinsp;{formula.pageNumber}</span>}
         </div>
       </div>
     </div>
@@ -412,12 +463,13 @@ function FormulaCard({
   active,
   onClick,
 }: {
-  result: SearchResult;
+  result: SearchResult<FormuleAffichee>;
   active: boolean;
   onClick: () => void;
 }) {
   const { formula, matchedIn } = result;
-  const col = getSectionColor(formula.section);
+  const { sections } = useFormules();
+  const col = getSectionColor(formula.section, sections);
 
   return (
     <div
@@ -443,9 +495,10 @@ function FormulaCard({
           >
             {formula.title}
           </div>
+          <PastilleOrigine f={formula} />
         </div>
         <span style={{ fontSize: 10.5, color: "var(--muted-foreground)", whiteSpace: "nowrap", flexShrink: 0, fontFamily: "monospace" }}>
-          {formula.id} · p.{formula.pageNumber}
+          {formula.id}{formula.pageNumber !== null ? ` · p.${formula.pageNumber}` : ""}
         </span>
       </div>
 
@@ -530,7 +583,8 @@ function SearchInput({
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const [open, setOpen] = useState(false);
-  const suggestions = useMemo(() => getSuggestions(value), [value]);
+  const { liste } = useFormules();
+  const suggestions = useMemo(() => getSuggestions(value, 8, liste), [value, liste]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const afficherApercuEquation = /[\\^_{}]/.test(value);
 
@@ -722,12 +776,11 @@ function SearchInput({
 // ──────────────────────────────────────────────
 const OPERATORS = ["+", "−", "×", "/", "(", ")", "=", "^", "·"];
 
-// Build a deduplicated map: symbol → first description found
-const VAR_DESCRIPTIONS: Map<string, string> = new Map();
-for (const f of FORMULAS) {
-  for (const v of f.variables) {
-    if (!VAR_DESCRIPTIONS.has(v.symbol)) VAR_DESCRIPTIONS.set(v.symbol, v.description);
-  }
+/** Symbole → première description trouvée, dans la liste affichée. */
+function descriptionsDe(liste: FormuleAffichee[]): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const f of liste) for (const v of f.variables) if (!m.has(v.symbol)) m.set(v.symbol, v.description);
+  return m;
 }
 
 function SymbolPalette({
@@ -740,6 +793,8 @@ function SymbolPalette({
   onAppend: (sym: string) => void;
 }) {
   const [filter, setFilter] = useState("");
+  const { liste, variables: VARIABLES_ALL } = useFormules();
+  const VAR_DESCRIPTIONS = useMemo(() => descriptionsDe(liste), [liste]);
 
   const filteredVars = useMemo(() => {
     if (!filter) return VARIABLES_ALL;
@@ -749,7 +804,7 @@ function SymbolPalette({
         sym.toLowerCase().includes(q) ||
         (VAR_DESCRIPTIONS.get(sym) ?? "").toLowerCase().includes(q)
     );
-  }, [filter]);
+  }, [filter, VARIABLES_ALL, VAR_DESCRIPTIONS]);
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -870,7 +925,7 @@ function DeriveResultCard({
   result,
   onOpen,
 }: {
-  result: DerivableResult;
+  result: DerivableResult<FormuleAffichee>;
   onOpen: (id: string) => void;
 }) {
   const { formula, knownVars, unknownVars, coverage } = result;
@@ -1019,17 +1074,10 @@ function DeriveResultCard({
 function DeriveMode({ onOpenFormula }: { onOpenFormula: (id: string) => void }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [varSearch, setVarSearch] = useState("");
+  const { liste } = useFormules();
 
-  // Unique symbol → description map (stable)
-  const allVarEntries = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const f of FORMULAS) {
-      for (const v of f.variables) {
-        if (!map.has(v.symbol)) map.set(v.symbol, v.description);
-      }
-    }
-    return Array.from(map.entries());
-  }, []);
+  // Unique symbol → description map (liste affichée, fiches de l'enseignant comprises)
+  const allVarEntries = useMemo(() => Array.from(descriptionsDe(liste).entries()), [liste]);
 
   const filteredEntries = useMemo(() => {
     if (!varSearch) return allVarEntries;
@@ -1040,8 +1088,8 @@ function DeriveMode({ onOpenFormula }: { onOpenFormula: (id: string) => void }) 
   }, [allVarEntries, varSearch]);
 
   const derivable = useMemo(
-    () => findDerivableFormulas(Array.from(selected)),
-    [selected]
+    () => findDerivableFormulas(Array.from(selected), liste),
+    [selected, liste]
   );
 
   const toggle = useCallback((sym: string) => {
@@ -1215,6 +1263,17 @@ export default function FormulaLibraryPage() {
   const [mode, setMode] = useState<"search" | "derive">("search");
   const [showPalette, setShowPalette] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  // Fiches de l'enseignant (2026-10-29) : liste affichée = cours + couche.
+  const { liste, carte, sections, proprietaire } = useFormules();
+  const session = useStore((s) => s.session);
+  // Même règle que les catalogues (Réglages) : enseignant connecté, ou mode sans compte.
+  const vueAdmin = proprietaire !== null && (MODE_TEST_SANS_COMPTE || session?.role === "prof");
+  const modifierFiche = useStore((s) => s.modifierFiche);
+  const ajouterFiche = useStore((s) => s.ajouterFiche);
+  const retablirFiche = useStore((s) => s.retablirFiche);
+  const supprimerFicheAjoutee = useStore((s) => s.supprimerFicheAjoutee);
+  // Éditeur ouvert : une fiche existante (id) ou une nouvelle.
+  const [edition, setEdition] = useState<{ id: string } | { nouvelle: true } | null>(null);
 
   const handleAppend = useCallback(
     (sym: string) => {
@@ -1260,29 +1319,31 @@ export default function FormulaLibraryPage() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const rawResults = useMemo(() => searchFormulas(query), [query]);
+  const rawResults = useMemo(() => searchFormulas(query, liste), [query, liste]);
 
-  const results = useMemo<SearchResult[]>(() => {
+  const results = useMemo<SearchResult<FormuleAffichee>[]>(() => {
     if (selectedSection === "all") return rawResults;
     return rawResults.filter((r) => r.formula.section === selectedSection);
   }, [rawResults, selectedSection]);
 
-  const selectedFormula = selectedId ? FORMULA_MAP.get(selectedId) ?? null : null;
+  const selectedFormula = selectedId ? carte.get(selectedId) ?? null : null;
 
   const handleNavigate = useCallback((id: string) => setSelectedId(id), []);
 
   // Counts per section (from ALL formulas, not filtered)
   const sectionCounts = useMemo(() => {
-    const map: Record<string, number> = { all: FORMULAS.length };
-    for (const f of FORMULAS) map[f.section] = (map[f.section] ?? 0) + 1;
+    const map: Record<string, number> = { all: liste.length };
+    for (const f of liste) map[f.section] = (map[f.section] ?? 0) + 1;
     return map;
-  }, []);
+  }, [liste]);
 
   // Number of formulas with derivation links
   const withLinks = useMemo(
-    () => FORMULAS.filter((f) => f.derivationLinks.derivedFrom.length > 0 || f.derivationLinks.derivesInto.length > 0).length,
-    []
+    () => liste.filter((f) => f.derivationLinks.derivedFrom.length > 0 || f.derivationLinks.derivesInto.length > 0).length,
+    [liste]
   );
+
+  const ficheEditee = edition && "id" in edition ? carte.get(edition.id) ?? null : null;
 
   return (
     <Page>
@@ -1294,11 +1355,16 @@ export default function FormulaLibraryPage() {
       <BandeChiffres
         ariaLabel="Contenu de la bibliothèque"
         chiffres={[
-          { libelle: "Formules", valeur: FORMULAS.length },
-          { libelle: "Sections", valeur: SECTIONS.length },
+          { libelle: "Formules", valeur: liste.length },
+          { libelle: "Sections", valeur: sections.length },
           { libelle: "Avec liens de dérivation", valeur: withLinks },
         ]}
       />
+
+      {vueAdmin && (
+        <BarreFormules onAjouter={() => { setSelectedId(null); setEdition({ nouvelle: true }); }}
+          onOuvrir={(id) => { setEdition(null); setSelectedId(id); }} />
+      )}
 
       <Carte>
         <Segmente
@@ -1323,7 +1389,7 @@ export default function FormulaLibraryPage() {
               <span>
                 {query
                   ? `${results.length} résultat${results.length !== 1 ? "s" : ""} · titre, variable, équation, mot-clé, contexte`
-                  : `${FORMULAS.length} formules · appuyez / pour chercher`}
+                  : `${liste.length} formules · appuyez / pour chercher`}
               </span>
               {query && (
                 <button type="button" className="btn-discret" onClick={() => setQuery("")}>
@@ -1342,7 +1408,7 @@ export default function FormulaLibraryPage() {
           {/* ── Filtre par section ── */}
           <nav className="frm-filtres" aria-label="Filtrer par section">
             <div className="frm-filtres-titre">Sections</div>
-            {["all", ...SECTIONS].map((sec) => {
+            {["all", ...sections].map((sec) => {
               const active = selectedSection === sec;
               const label = sec === "all" ? "Toutes les formules" : sec;
               const count = sectionCounts[sec] ?? 0;
@@ -1403,12 +1469,41 @@ export default function FormulaLibraryPage() {
       )}
 
       {/* Volet de détail */}
-      {selectedFormula && (
+      {selectedFormula && !edition && (
         <FormulaDetail
           formula={selectedFormula}
           onClose={() => setSelectedId(null)}
           onNavigate={handleNavigate}
+          edition={vueAdmin && proprietaire ? {
+            onModifier: () => setEdition({ id: selectedFormula.id }),
+            onRetablir: () => {
+              if (window.confirm(`Rétablir la version du cours de ${selectedFormula.id} ? Vos modifications de cette fiche seront retirées.`)) retablirFiche(proprietaire, selectedFormula.id);
+            },
+            onSupprimer: () => {
+              if (window.confirm(`Supprimer la formule ${selectedFormula.id} ?`)) { supprimerFicheAjoutee(proprietaire, selectedFormula.id); setSelectedId(null); }
+            },
+          } : undefined}
         />
+      )}
+
+      {/* Éditeur d'une fiche (enseignant), dans le même volet */}
+      {edition && vueAdmin && proprietaire && ("nouvelle" in edition || ficheEditee) && (
+        <div className="frm-voile" onClick={() => setEdition(null)}>
+          <div className="frm-volet" role="dialog" aria-modal="true" aria-label="Fiche de formule"
+            style={{ width: "min(640px, 100vw)" }} onClick={(e) => e.stopPropagation()}>
+            <EditeurFiche
+              titre={"nouvelle" in edition ? "Nouvelle formule" : `Modifier ${ficheEditee!.id}`}
+              initial={ficheEditee ? contenuDe(ficheEditee) : undefined}
+              sections={sections}
+              onAnnuler={() => setEdition(null)}
+              onEnregistrer={(c) => {
+                if ("nouvelle" in edition) { const id = ajouterFiche(proprietaire, c); setSelectedId(id); }
+                else modifierFiche(proprietaire, edition.id, c);
+                setEdition(null);
+              }}
+            />
+          </div>
+        </div>
       )}
     </Page>
   );
