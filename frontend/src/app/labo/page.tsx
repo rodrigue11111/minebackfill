@@ -15,7 +15,7 @@ import { materiauxDepuisFormulation } from "@/lib/gachee-materiaux";
 import FiltreSession from "@/components/FiltreSession";
 import { correspond, type FiltreSession as FiltreSessionValeur } from "@/lib/sessions";
 import { useHydrated } from "@/lib/use-hydrated";
-import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, messageSuppressionGachee, type Gachee } from "@/lib/gachee";
+import { genererCode, composantsDepuisRecette, parametresDepuisRecette, parametresEffectifs, nbHorsTolerance, messageSuppressionGachee, moulesPrevus, type Gachee } from "@/lib/gachee";
 import { snapshotProtocoles } from "@/lib/protocole";
 import { mouleDepuisContenant } from "@/lib/eprouvette";
 import { volumeHorsLabo } from "@/lib/contenant";
@@ -138,6 +138,7 @@ function LaboContenu() {
           allerAuNonLu={viaLien}
           parametres={parametresEffectifs(g, formulations)}
           mouleFormulation={mouleDepuisContenant(formulations.find((f) => f.id === g.formulationId)?.general)}
+          moulesPrevus={moulesPrevus(formulations.find((f) => f.id === g.formulationId))}
           maintenant={maintenant}
           annotations={annotationsDe(annotations, "gachee", g.id)}
           connecte={connecte}

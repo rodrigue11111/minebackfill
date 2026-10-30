@@ -133,7 +133,9 @@ const TYPES_AJOUT: { valeur: Ajustement["type"]; libelle: string }[] = [
   { valeur: "granulat", libelle: "Granulat" }, { valeur: "liant", libelle: "Liant" },
 ];
 
-export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null, parametres, mouleFormulation, vueInitiale, allerAuNonLu = false }: {
+export default function EditeurGachee({ gachee: g, maintenant, annotations, connecte, onMaj, onRetour, onSupprimer, bibliotheque, revue, revEnLigne = null, parametres, mouleFormulation, moulesPrevus, vueInitiale, allerAuNonLu = false }: {
+  /** Moules par recette du calcul : rappel et avis à l'ajout d'éprouvettes. */
+  moulesPrevus?: number;
   gachee: Gachee;
   /** Onglet ouvert d'emblée sur téléphone (lien direct vers une note : vuePourNonLues). */
   vueInitiale?: VueTelephone;
@@ -331,7 +333,7 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
           </Carte>
 
           <div data-section="eprouvettes">
-            <CarteEprouvettes key={g.id} gachee={g} maintenant={maintenant} mouleFormulation={mouleFormulation} onChange={(eprouvettes) => onMaj({ eprouvettes })}
+            <CarteEprouvettes key={g.id} gachee={g} maintenant={maintenant} mouleFormulation={mouleFormulation} moulesPrevus={moulesPrevus} onChange={(eprouvettes) => onMaj({ eprouvettes })}
               idImport={idImport} inviterAjout={inviterAjout} notes={parAncre} connecte={connecte} />
           </div>
 

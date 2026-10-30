@@ -329,3 +329,21 @@ describe("pesées en lecture seule (enseignant) : facultatives (2026-10-26)", ()
     expect(html).toContain("pas encore pesé");
   });
 });
+
+describe("ajout d'éprouvettes : moules du calcul (2026-10-29)", () => {
+  const carte = (moulesPrevus?: number) => renderToStaticMarkup(createElement(CarteEprouvettes, {
+    gachee, maintenant: new Date(2026, 9, 7, 9), onChange: () => {}, idImport: "import", moulesPrevus,
+  }));
+
+  it("rappel des moules prévus et utilisés ; avis au-delà, le bouton reste actif", () => {
+    expect(carte(9)).toContain("9 moules prévus par le calcul, 3 déjà utilisés.");
+    expect(carte(9)).not.toContain("Vérifiez leurs dimensions");
+    const html = carte(3); // 3 éprouvettes + 1 réplicat demandé = 4 > 3
+    expect(html).toContain("Le calcul prévoyait 3 moules ; 4 éprouvettes sont demandées.");
+    expect(html).toMatch(/<button type="button" class="btn-primary">Ajouter les éprouvettes<\/button>/);
+  });
+
+  it("ancien calcul sans nombre de moules : ni rappel ni avis", () => {
+    expect(carte()).not.toContain("prévus par le calcul");
+  });
+});

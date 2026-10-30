@@ -1081,6 +1081,7 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .labo-ajout > summary::before { content: "+ "; }
 .labo-ajout[open] > summary::before { content: "\2212  "; }
 .labo-ajout-corps { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.labo-rappel-moules { margin: 0; font-size: 13.5px; color: var(--texte-2); }
 .labo-grille-ajout { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .labo-ages { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .labo-import { margin-top: 4px; padding: 14px 16px; border-radius: var(--rayon-bloc); background: var(--accent-pale); display: flex; flex-direction: column; gap: 6px; }
