@@ -286,6 +286,8 @@ optionnel+nullable pour les vieux localStorage).
 | `minebackfill_protocoles` | `{v,data}` | 1 | identité + graine `protocolesDefaut()` |
 | `minebackfill_sessions` | `{v,data}` | 1 | `validerSessions` (sessions.ts) — publiées par l'enseignant |
 | `minebackfill_moules` | `{v,data}` | 1 | moules enregistrés (`moules.ts`, 2026-10-26) : personnels, sur cet appareil, jamais synchronisés ; validés à la lecture (`moulesValides`) ; dans la sauvegarde depuis le schéma 7, fusionnés par id à l'import (le local gagne) |
+| `minebackfill_formules_brouillons` | `{v,data}` | 1 | brouillons des fiches de formules de l'enseignant (`formules-enseignant.ts`, 2026-10-29), par propriétaire (uid, ou « local » sans compte) ; validés à la lecture (`brouillonsValides`) ; dans la sauvegarde depuis le schéma 8, le brouillon local d'un propriétaire gagne à l'import |
+| `minebackfill_formules_publiees` | `{v,data}` | 1 | dernière publication valide reçue (`official_catalogs` id `formules`) ; remplacée seulement par une publication valide (`recevoirFormules`) : une panne garde la copie ; **hors sauvegarde** |
 | `minebackfill_sync` | `{v,data}` | 1 | état de la synchronisation v2 (`sync-etat.ts`) — **hors sauvegarde** |
 | `minebackfill_compte_<uid>` | `{v,data}` | 1 | travail d'un compte mis de côté au changement de compte (`sync-bascule.ts`) — **hors sauvegarde** |
 | `minebackfill_annotations` | `{v,data}` | 2 | fil de commentaires lu en ligne ; v1 → v2 : curseur remis à zéro (tout est relu), `auteur`/`creeLe`/`luLe` complétés en gardant ceux déjà présents (`migrerAnnotationV1`) — **hors sauvegarde** |
@@ -294,7 +296,7 @@ optionnel+nullable pour les vieux localStorage).
 | `minebackfill_revues` | `{v,data}` | 1 | revues de l'enseignant sur mes gâchées, relues en entier (`revues.ts`) — **hors sauvegarde** |
 | `minebackfill_rattachement_reporte` | `{v,data}` | 1 | « Plus tard » sur le bandeau de rattachement : `{ uid, jusqua }`, 12 h, pour ce compte sur cet appareil (`rattachement-report.ts`) ; effacé au rattachement ; illisible : le bandeau revient ; **hors sauvegarde** |
 | `minebackfill_brouillon_calculs` | `{v,data}` | 2 | brouillon des formulaires de Calculs (catégorie, méthode, état de chaque formulaire), relu au démarrage et rangé à chaque modification (`brouillon-calculs.ts`, `StoreHydrator`) ; fusionné sur les défauts au chargement. Les résultats ne sont pas rangés ; **hors sauvegarde**. v1 → v2 (`migrerBrouillon`) : les 0 des champs saisis deviennent vides (en v1, 0 voulait dire « non saisi ») |
-| Sauvegarde (fichier) | `backup.ts` | schéma 7 | fusion par id, le local gagne (gâchées, moules) ; courbes dans `data.courbes` |
+| Sauvegarde (fichier) | `backup.ts` | schéma 8 | fusion par id, le local gagne (gâchées, moules, brouillons de formules par propriétaire) ; courbes dans `data.courbes` |
 
 Toute évolution de schéma : incrémenter la version de LA clé concernée
 (elles sont indépendantes depuis P4) + migration + test dans

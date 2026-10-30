@@ -4,7 +4,8 @@ import { useEffect } from "react";
 import { useStore, migrerCatalogueLiantsCloud, migrerMateriauxCloud } from "@/lib/store";
 import type { MaterialKind } from "@/lib/materials";
 import { getSupabase, type UserRole } from "@/lib/supabase";
-import { fetchCatalogueOfficiel, type CatalogueCloudId } from "@/lib/cloud";
+import { fetchCatalogueOfficiel, lireCatalogueOfficiel, type CatalogueCloudId } from "@/lib/cloud";
+import { recevoirFormules } from "@/lib/formules-publication";
 import { connecterSynchro, deconnecterSynchro } from "@/lib/sync-client";
 import { validerSessions } from "@/lib/sessions";
 
@@ -70,6 +71,18 @@ export default function CloudSync() {
           /* catalogue illisible : on continue — le travail reste synchronisé */
         }
       }
+      // Fiches de formules de l'enseignant (2026-10-29) : pour TOUS les
+      // comptes, enseignant compris, car la réception ne touche jamais aux
+      // brouillons. Une panne ou une publication illisible garde la dernière
+      // version valide (recevoirFormules) ; étape isolée, comme ci-dessus.
+      try {
+        const lecture = await lireCatalogueOfficiel(sb, "formules");
+        if (annule) return;
+        recevoirFormules(lecture, (p) => useStore.getState().definirFormulesPubliees(p));
+      } catch {
+        /* rien : la copie locale reste */
+      }
+
       // Constantes : PAS d'écrasement automatique (éditables) — un bandeau
       // « Appliquer » dans Réglages est prévu (v1.1) ; ici on ne touche à rien.
 

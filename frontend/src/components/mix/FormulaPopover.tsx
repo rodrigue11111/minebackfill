@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { FORMULA_MAP, type Formula } from "@/lib/formulas-data";
+import { OPTIONS_KATEX_SURES } from "@/components/formulas/KaTeXRenderer";
+import { useFormules } from "@/lib/use-formules";
 import type { Recipe } from "@/lib/types";
 import { TIRET, fmt, fmtGroupe } from "@/lib/format";
 import { placerPopover, type RectAncre, type Vue } from "@/lib/placer-popover";
@@ -150,7 +152,7 @@ function KaTeXBlock({ latex }: { latex: string }) {
     import("katex").then((katex) => {
       if (!cancelled && ref.current) {
         katex.default.render(latex, ref.current, {
-          throwOnError: false,
+          ...OPTIONS_KATEX_SURES,
           displayMode: true,
         });
       }
@@ -158,6 +160,29 @@ function KaTeXBlock({ latex }: { latex: string }) {
     return () => { cancelled = true; };
   }, [latex]);
   return <div ref={ref} style={{ margin: "8px 0", overflowX: "auto" }} />;
+}
+
+/** Fiche modifiée par l'enseignant : signalée, et montrée SANS valeurs (elle ne décrit pas le calcul). */
+function VersionEnseignant({ fiche }: { fiche: { equationLatex: string; variables: { symbol: string; description: string; unit: string | null }[] } }) {
+  return (
+    <div className="mix-fx-enseignant" role="note">
+      <p style={{ margin: 0 }}>
+        Cette fiche a été modifiée par l&apos;enseignant dans la bibliothèque Formules. Le calcul utilise la version ci-dessus.
+      </p>
+      <details>
+        <summary>Voir la version de l&apos;enseignant</summary>
+        <div style={{ background: "var(--champ)", borderRadius: 8, padding: "6px 12px", margin: "6px 0" }}>
+          <KaTeXBlock latex={fiche.equationLatex} />
+        </div>
+        {fiche.variables.map((v, i) => (
+          <div key={i} style={{ fontSize: 12, display: "flex", gap: 6 }}>
+            <span style={{ fontFamily: "monospace", fontWeight: 600, minWidth: 60 }}>{v.symbol}</span>
+            <span style={{ color: "var(--texte-2)" }}>{v.description}{v.unit ? ` (${v.unit})` : ""}</span>
+          </div>
+        ))}
+      </details>
+    </div>
+  );
 }
 
 /* ── Main component ── */
@@ -226,6 +251,11 @@ export default function FormulaPopover({ formulaIds, recipe, ancre, onClose }: F
     };
   }, [onClose]);
 
+  // TOUJOURS la fiche du COURS : c'est elle qui décrit le calcul. Une fiche
+  // modifiée par l'enseignant (formules-enseignant.ts) n'est jamais présentée
+  // comme la formule du résultat ; elle est signalée et montrée à part, sans
+  // valeurs substituées (2026-10-29).
+  const { carte } = useFormules();
   const formulas = formulaIds.map((id) => FORMULA_MAP.get(id)).filter(Boolean) as Formula[];
   if (formulas.length === 0) return null;
 
@@ -293,7 +323,7 @@ export default function FormulaPopover({ formulaIds, recipe, ancre, onClose }: F
             {/* Variables with values */}
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--texte-2)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-                Variables
+                {recipe ? "Variables et valeurs de ce résultat (calculateur)" : "Variables"}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 {values.map((v, vi) => (
@@ -340,6 +370,10 @@ export default function FormulaPopover({ formulaIds, recipe, ancre, onClose }: F
                 </span>
               )}
             </div>
+
+            {carte.get(formula.id)?.origine === "modifiee" && (
+              <VersionEnseignant fiche={carte.get(formula.id)!} />
+            )}
           </div>
         );
       })}
