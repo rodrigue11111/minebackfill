@@ -4,7 +4,7 @@ import type { GeneralInfo, LiantCatalogueItem, SavedResult } from "./store";
 import type { GranulatItem, ResiduItem } from "./materials";
 
 const CATALOGUE: LiantCatalogueItem[] = [
-  { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.1543 },
+  { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anciennement type 10)", gs: 3.1543 },
   { id: "liant_slag", code: "SLAG", nom: "Laitier de haut fourneau (GGBFS)", gs: 2.8426 },
 ];
 const RESIDUS: ResiduItem[] = [
@@ -27,7 +27,7 @@ describe("materiauxDepuisFormulation", () => {
   it("liants : nom du catalogue figé, Gs et fraction de chaque composant", () => {
     const m = materiauxDepuisFormulation(form({}), BIB);
     expect(m.liants).toEqual([
-      { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.1543, fractionPct: 80 },
+      { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anciennement type 10)", gs: 3.1543, fractionPct: 80 },
       { id: "liant_slag", code: "SLAG", nom: "Laitier de haut fourneau (GGBFS)", gs: 2.8426, fractionPct: 20 },
     ]);
   });
@@ -35,7 +35,7 @@ describe("materiauxDepuisFormulation", () => {
   it("liants : lit aussi l'ancien schéma binder1/2/3", () => {
     const general = { binder_count: 1, binder1_id: null, binder1_type: "CP10", binder1_fraction_pct: 100 } as unknown as GeneralInfo;
     const m = materiauxDepuisFormulation(form({ general }), BIB);
-    expect(m.liants).toEqual([{ id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.1543, fractionPct: 100 }]);
+    expect(m.liants).toEqual([{ id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anciennement type 10)", gs: 3.1543, fractionPct: 100 }]);
   });
 
   it("résidu de la bibliothèque quand la formulation le référence", () => {

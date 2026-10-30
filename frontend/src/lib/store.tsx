@@ -798,8 +798,8 @@ const makeLiantId = () =>
 // Noms selon CSA A3001 (types GU, HS) et les feuilles de calcul du professeur
 // (« (T10) GU », « (T50) HS », « Slag (GGBFS) ») ; ids, codes et Gs inchangés.
 const catalogueLiantsDefaut: LiantCatalogueItem[] = [
-  { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.1543, origine: "officiel" },
-  { id: "liant_cp50", code: "CP50", nom: "Ciment Portland HS (anc. type 50)", gs: 3.1887, origine: "officiel" },
+  { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anciennement type 10)", gs: 3.1543, origine: "officiel" },
+  { id: "liant_cp50", code: "CP50", nom: "Ciment Portland HS (anciennement type 50)", gs: 3.1887, origine: "officiel" },
   { id: "liant_slag", code: "SLAG", nom: "Laitier de haut fourneau (GGBFS)", gs: 2.8426, origine: "officiel" },
   { id: "liant_fly_ash", code: "FLY_ASH", nom: "Cendres volantes (FA)", gs: 2.6114, origine: "officiel" },
   { id: "liant_chaux", code: "CHAUX", nom: "Chaux", gs: 2.6, origine: "officiel" },
@@ -811,6 +811,12 @@ const NOMS_LIANTS_V2: Record<string, string> = {
   liant_cp50: "Ciment CP50",
   liant_slag: "Laitier",
   liant_fly_ash: "Fly Ash",
+};
+// Noms par défaut de la v3 : « anc. » se lisait mal (2026-10-29). Seul un
+// liant qui porte ENCORE ce nom est renommé en v4.
+const NOMS_LIANTS_V3: Record<string, string> = {
+  liant_cp10: "Ciment Portland GU (anc. type 10)",
+  liant_cp50: "Ciment Portland HS (anc. type 50)",
 };
 const CODES_LIANTS_OFFICIELS = new Set(catalogueLiantsDefaut.map((l) => l.code));
 
@@ -843,7 +849,15 @@ const constantesDefaut: ConstantesCalcul = {
    ces réglages sont enveloppés dès l'origine par persisted.ts : ils pourront
    être migrés proprement quand leur schéma évoluera (P2 : bibliothèques). */
 const CATALOGUE_KEY = "minebackfill_catalogue_liants";
-export const CATALOGUE_VERSION = 3; // v2 : champ `origine` ; v3 : noms normalisés des liants
+export const CATALOGUE_VERSION = 4; // v2 : champ `origine` ; v3 : noms normalisés des liants ; v4 : « anciennement type 10 »
+/**
+ * Version du FORMAT PUBLIÉ du catalogue des liants (official_catalogs) :
+ * distincte de la version de stockage local. Un site resté ouvert chez un
+ * étudiant refuse toute publication de version supérieure à la sienne
+ * (migrerCatalogueLiantsCloud) ; le passage local v3 → v4 ne change que des
+ * noms, les données gardent le format v3. On publie donc toujours en v3.
+ */
+export const FORMAT_PUBLIE_LIANTS = 3;
 const CONSTANTES_KEY = "minebackfill_constantes";
 const GENERAL_KEY = "minebackfill_general";
 // Versions scindées (elles partageaient SETTINGS_VERSION) : les constantes
@@ -871,6 +885,9 @@ export const migrationCatalogueLiants = (d: unknown, fromVersion = 0): unknown =
       it = { ...it, origine: CODES_LIANTS_OFFICIELS.has(it.code) ? "officiel" : "perso" };
     }
     if (fromVersion < 3 && it && typeof it.id === "string" && NOMS_LIANTS_V2[it.id] === it.nom) {
+      it = { ...it, nom: nomsV3.get(it.id) ?? it.nom };
+    }
+    if (fromVersion < 4 && it && typeof it.id === "string" && NOMS_LIANTS_V3[it.id] === it.nom) {
       it = { ...it, nom: nomsV3.get(it.id) ?? it.nom };
     }
     return it;

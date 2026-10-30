@@ -10,7 +10,7 @@ class MemStorage {
   get length() { return this.m.size; }
 }
 
-import { useStore, migrerCatalogueLiantsCloud, CATALOGUE_VERSION } from "./store";
+import { useStore, migrerCatalogueLiantsCloud, CATALOGUE_VERSION, FORMAT_PUBLIE_LIANTS } from "./store";
 import { CARACTERISATION_RESIDU, completudeCaracterisation, type ResiduItem } from "./materials";
 
 const s = () => useStore.getState();
@@ -131,7 +131,7 @@ describe("store — migration du catalogue de liants v2 -> v3 (noms normalisés)
     ] }));
     s().loadCatalogue();
     const nom = (id: string) => s().catalogue_liants.find((l) => l.id === id)?.nom;
-    expect(nom("liant_cp10")).toBe("Ciment Portland GU (anc. type 10)");
+    expect(nom("liant_cp10")).toBe("Ciment Portland GU (anciennement type 10)");
     expect(nom("liant_cp50")).toBe("CP50 du labo"); // modifié à la main : conservé
     expect(nom("liant_slag")).toBe("Laitier de haut fourneau (GGBFS)");
     expect(nom("liant_fly_ash")).toBe("Cendres volantes (FA)");
@@ -150,9 +150,41 @@ describe("store — migration du catalogue de liants v2 -> v3 (noms normalisés)
 
   it("le catalogue publié en ligne en v2 est migré à la lecture", () => {
     const cat = migrerCatalogueLiantsCloud({ v: 2, data: [{ id: "liant_cp50", code: "CP50", nom: "Ciment CP50", gs: 3.1887, origine: "officiel" }] });
-    expect(cat?.[0].nom).toBe("Ciment Portland HS (anc. type 50)");
+    expect(cat?.[0].nom).toBe("Ciment Portland HS (anciennement type 50)");
     // Une version future (publieur plus récent) est refusée, comme avant.
     expect(migrerCatalogueLiantsCloud({ v: CATALOGUE_VERSION + 1, data: [{ id: "a" }] })).toBeNull();
+  });
+});
+
+describe("liants v3 → v4 : « anciennement type 10 » (2026-10-29)", () => {
+  it("stockage local v3 : nom d'origine renommé, nom modifié gardé", () => {
+    localStorage.setItem("minebackfill_catalogue_liants", JSON.stringify({ v: 3, data: [
+      { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.1543, origine: "officiel" },
+      { id: "liant_cp50", code: "CP50", nom: "HS de notre fournisseur", gs: 3.1887, origine: "officiel" },
+    ] }));
+    s().loadCatalogue();
+    const nom = (id: string) => s().catalogue_liants.find((l) => l.id === id)?.nom;
+    expect(nom("liant_cp10")).toBe("Ciment Portland GU (anciennement type 10)");
+    expect(nom("liant_cp50")).toBe("HS de notre fournisseur");
+  });
+
+  it("catalogue publié en v3 : même renommage à la lecture", () => {
+    const cat = migrerCatalogueLiantsCloud({ v: 3, data: [
+      { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.1543, origine: "officiel" },
+      { id: "liant_cp50", code: "CP50", nom: "HS de notre fournisseur", gs: 3.1887, origine: "officiel" },
+    ] });
+    expect(cat?.map((l) => l.nom)).toEqual(["Ciment Portland GU (anciennement type 10)", "HS de notre fournisseur"]);
+  });
+
+  it("un ancien lecteur v3 accepte la publication du nouveau site", () => {
+    // Règle du lecteur v3 encore ouvert chez un étudiant (store.tsx avant le
+    // 2026-10-29) : refus si la version publiée dépasse 3.
+    const lecteurV3 = (env: { v: number; data: unknown }) =>
+      env.v > 3 || !Array.isArray(env.data) || env.data.length === 0 ? null : env.data as { nom: string }[];
+    const publie = { v: FORMAT_PUBLIE_LIANTS, data: s().catalogue_liants.filter((l) => l.origine === "officiel") };
+    const recu = lecteurV3(publie);
+    expect(recu).not.toBeNull();
+    expect(recu!.map((l) => l.nom)).toContain("Ciment Portland GU (anciennement type 10)");
   });
 });
 

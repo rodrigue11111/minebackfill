@@ -55,7 +55,7 @@ const MOULE = MOULES_PROPOSES[1]; // cylindre 76,2 x 152,4 mm
 const SECTION_M2 = Math.PI * (MOULE.diametreMm / 1000) ** 2 / 4;
 
 const LIANTS_CATALOGUE: LiantCatalogueItem[] = [
-  { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.1543, origine: "officiel" },
+  { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anciennement type 10)", gs: 3.1543, origine: "officiel" },
   { id: "liant_slag", code: "SLAG", nom: "Laitier de haut fourneau (GGBFS)", gs: 2.8426, origine: "officiel" },
 ];
 
