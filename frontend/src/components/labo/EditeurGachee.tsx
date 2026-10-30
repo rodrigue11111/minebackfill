@@ -227,9 +227,6 @@ export default function EditeurGachee({ gachee: g, maintenant, annotations, conn
           {revue && (
             <Pastille ton={revue.decision === "acceptee" ? "succes" : "danger"} title={revue.motif ?? undefined}>{libelleRevue(revue, revEnLigne)}</Pastille>
           )}
-          <Pastille ton="neutre" title="Champs descriptifs renseignés. Rien n'est obligatoire : la fiche sert à la réutilisation des essais.">
-            Fiche : {fiche.renseignes}/{fiche.total}
-          </Pastille>
         </>}
         sousTitre={[
           g.formulationLabel, g.categorie, `recette ${(g.recetteIndex ?? 0) + 1}`,

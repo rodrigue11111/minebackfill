@@ -644,7 +644,8 @@ interface AppState {
 
   catalogue_liants: LiantCatalogueItem[];
   loadCatalogue: () => void;
-  ajouterLiant: () => void;
+  /** `admin` (vue enseignant) : le liant ajouté est officiel, donc publié avec le catalogue. */
+  ajouterLiant: (admin?: boolean) => void;
   modifierLiant: (index: number, patch: Partial<LiantCatalogueItem>, admin?: boolean) => void;
   supprimerLiant: (index: number, admin?: boolean) => void;
   restaurerLiantsOfficiels: () => void;
@@ -1163,14 +1164,18 @@ export const useStore = create<AppState>((set, get) => ({
 
   catalogue_liants: catalogueLiantsDefaut,
   loadCatalogue: () => set({ catalogue_liants: loadCatalogueFromStorage() }),
-  ajouterLiant: () =>
+  ajouterLiant: (admin) =>
     set((state) => {
       const index = state.catalogue_liants.length + 1;
+      // Comme addMaterial : en vue enseignant, le liant ajouté est officiel.
+      // Sans origine, il restait personnel et « Publier en ligne » ne
+      // l'envoyait jamais aux étudiants (2026-10-30).
       const nouveau: LiantCatalogueItem = {
         id: makeLiantId(),
         code: `LIANT_${index}`,
         nom: `Liant ${index}`,
         gs: 3.0,
+        ...(admin ? { origine: "officiel" as MaterialOrigine } : {}),
       };
       const catalogue = [...state.catalogue_liants, nouveau];
       persistCatalogue(catalogue);

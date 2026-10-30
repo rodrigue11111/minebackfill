@@ -5,7 +5,7 @@ import { useStore, prixPourLiant, lireBinders, patchBinders, MAX_BINDERS } from 
 import ErrorBox from "@/components/ErrorBox";
 import ChampNombre from "@/components/ui/ChampNombre";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
-import type { ResiduItem, GranulatItem } from "@/lib/materials";
+import { viderPreselection, type ResiduItem, type GranulatItem } from "@/lib/materials";
 import { messageErreurApi } from "@/lib/api-error";
 import type { IndustrieCostResult, BinderRef, LiantCatalogueItem } from "@/lib/store";
 import {
@@ -172,7 +172,8 @@ export default function ProductionForm() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
           <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
             onPick={(m) => { const r = m as ResiduItem; setIndustrie({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
-            matches={(m) => { const r = m as ResiduItem; return r.gs === industrie.residue_sg && r.w0_pct === industrie.residue_w_pct; }} />
+            matches={(m) => { const r = m as ResiduItem; return r.gs === industrie.residue_sg && r.w0_pct === industrie.residue_w_pct; }}
+            onPersonnalise={(m) => setIndustrie(viderPreselection("residus", m, industrie, 0))} />
           <div />
           <Field label="Gs résidu">
             <input type="number" step="any" style={inputStyle} placeholder="ex : 3.4"
@@ -195,7 +196,8 @@ export default function ProductionForm() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px 14px", marginTop: 10 }}>
             <MaterialPresetSelect kind="granulats" role="aggregateId" label="Granulat (bibliothèque)"
               onPick={(m) => { const g = m as GranulatItem; setIndustrie({ aggregate_sg: g.gs, aggregate_w_pct: g.humidite_pct, aggregate_fraction_pct: g.fraction_defaut_pct ?? industrie.aggregate_fraction_pct }); }}
-              matches={(m) => (m as GranulatItem).gs === industrie.aggregate_sg} />
+              matches={(m) => (m as GranulatItem).gs === industrie.aggregate_sg}
+              onPersonnalise={(m) => setIndustrie(viderPreselection("granulats", m, industrie, 0))} />
             <div />
             <div />
             <Field label="Gs agrégat">

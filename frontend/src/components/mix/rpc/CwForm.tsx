@@ -6,7 +6,7 @@ import ErrorBox from "@/components/ErrorBox";
 import ChampNombre from "@/components/ui/ChampNombre";
 import { KAPPA_AIDE } from "@/lib/contenant";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
-import type { ResiduItem } from "@/lib/materials";
+import { viderPreselection, type ResiduItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
@@ -88,6 +88,7 @@ export default function CwForm() {
               label="Résidu (bibliothèque)"
               onPick={(m) => { const r = m as ResiduItem; setCw({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
               matches={(m) => { const r = m as ResiduItem; return r.gs === cw.residue_sg && r.w0_pct === cw.residue_w_pct; }}
+              onPersonnalise={(m) => setCw(viderPreselection("residus", m, cw))}
             />
           </div>
           <Field plage="gs" valeur={cw.residue_sg} label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">

@@ -6,7 +6,7 @@ import ErrorBox from "@/components/ErrorBox";
 import ChampNombre from "@/components/ui/ChampNombre";
 import { KAPPA_AIDE } from "@/lib/contenant";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
-import type { ResiduItem, GranulatItem } from "@/lib/materials";
+import { viderPreselection, type ResiduItem, type GranulatItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
@@ -92,7 +92,8 @@ export default function RpgWbForm() {
           <div className="mix-pleine">
             <MaterialPresetSelect kind="granulats" role="aggregateId" label="Granulat (bibliothèque)"
               onPick={(m) => { const g = m as GranulatItem; setRpgWb({ aggregate_sg: g.gs, aggregate_fraction_pct: g.fraction_defaut_pct ?? rpgWb.aggregate_fraction_pct }); }}
-              matches={(m) => (m as GranulatItem).gs === rpgWb.aggregate_sg} />
+              matches={(m) => (m as GranulatItem).gs === rpgWb.aggregate_sg}
+              onPersonnalise={(m) => setRpgWb(viderPreselection("granulats", m, rpgWb))} />
           </div>
           <Field plage="gsGranulat" valeur={rpgWb.aggregate_sg} label="Densité relative du granulat Gs" hint="Sans unité : Gs = ρs/ρw">
             <ChampNombre placeholder="ex : 2.65" value={rpgWb.aggregate_sg} onChange={(n) => setRpgWb({ aggregate_sg: n })} />
@@ -111,7 +112,8 @@ export default function RpgWbForm() {
           <div className="mix-pleine">
             <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
               onPick={(m) => { const r = m as ResiduItem; setRpgWb({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
-              matches={(m) => { const r = m as ResiduItem; return r.gs === rpgWb.residue_sg && r.w0_pct === rpgWb.residue_w_pct; }} />
+              matches={(m) => { const r = m as ResiduItem; return r.gs === rpgWb.residue_sg && r.w0_pct === rpgWb.residue_w_pct; }}
+              onPersonnalise={(m) => setRpgWb(viderPreselection("residus", m, rpgWb))} />
           </div>
           <Field plage="gs" valeur={rpgWb.residue_sg} label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
             <ChampNombre placeholder="ex : 3.4" value={rpgWb.residue_sg} onChange={(n) => setRpgWb({ residue_sg: n })} />

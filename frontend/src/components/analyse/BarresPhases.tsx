@@ -24,12 +24,19 @@ export default function BarresPhases({
   base,
   compact = false,
   titres,
+  numeros,
 }: {
   recipes: Recipe[];
   base: BasePhases;
   compact?: boolean;
   /** Libellés de recettes (défaut « Recette N »). */
   titres?: string[];
+  /**
+   * Rang de chaque barre dans le calcul (0 pour la recette 1). Les Résultats
+   * n'en montrent qu'une, la recette choisie : sans ce rang, elle s'appelait
+   * toujours « Recette 1 », en bleu (2026-10-30).
+   */
+  numeros?: number[];
 }) {
   if (recipes.length === 0) return null;
 
@@ -60,10 +67,11 @@ export default function BarresPhases({
       {/* Une barre par recette */}
       {recipes.map((r, i) => {
         const fr = fractions(phases(r, base));
+        const rang = numeros?.[i] ?? i;
         return (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ width: compact ? 52 : 74, flexShrink: 0, fontSize: 11.5, fontWeight: 600, color: RECIPE_COLORS[i] ?? "#374151" }}>
-              {titres?.[i] ?? `Recette ${i + 1}`}
+            <span style={{ width: compact ? 52 : 74, flexShrink: 0, fontSize: 11.5, fontWeight: 600, color: RECIPE_COLORS[rang] ?? "#374151" }}>
+              {titres?.[i] ?? `Recette ${rang + 1}`}
             </span>
             <div style={{ flex: 1, display: "flex", height: hauteur, borderRadius: 5, overflow: "hidden", border: "1px solid #e2e8f0", background: "#f8fafc" }}>
               {fr.map((p) => (

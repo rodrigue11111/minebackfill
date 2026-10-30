@@ -172,7 +172,7 @@ export default function CarteResultats({ sousTitre, actions, donnees, pleinEcran
           <ChoixRecette n={n} choisie={choisie} onChoisir={setChoix} />
           <p className="mix-groupe-titre">{titreMasses(donnees.ctx)}</p>
           <TuilesChiffres ariaLabel={`${titreMasses(donnees.ctx)}, recette ${choisie + 1}`} chiffres={chiffresRecette(donnees.recipes[choisie], donnees.ctx)} />
-          <BarresPhases recipes={[donnees.recipes[choisie]]} base="masse" compact />
+          <BarresPhases recipes={[donnees.recipes[choisie]]} numeros={[choisie]} base="masse" compact />
           <p className="mix-groupe-titre">Caractéristiques</p>
           <TuilesChiffres ariaLabel={`Caractéristiques, recette ${choisie + 1}`} chiffres={chiffresCaracteristiques(donnees.recipes[choisie], donnees.ctx)} />
           {!rapport && (

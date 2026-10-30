@@ -51,11 +51,11 @@ describe("éditeur d'une gâchée", () => {
     expect(html).toContain("405 kPa"); // moyenne à 7 j de 412 et 398
   });
 
-  it("fiche d'essai : complétude dans l'en-tête, cure et rappels non bloquants", () => {
+  it("fiche d'essai : plus de compteur dans l'en-tête (2026-10-30), cure et rappels non bloquants", () => {
     const html = rendu();
-    // Gâchée du test : seules les pesées sont complètes ; les deux éprouvettes
-    // écrasées rendent le point « essais documentés » applicable (12 points).
-    expect(html).toContain("Fiche : 1/12");
+    // Le compteur « Fiche : x/y » ne se lisait pas ; les éléments à compléter
+    // restent rappelés au pied du groupe de cure.
+    expect(html).not.toContain("Fiche :");
     expect(html).toContain("Cure des éprouvettes");
     expect(html).toContain("À compléter si vous les connaissez : ");
     expect(html).toContain("Rien n&#x27;est obligatoire.");

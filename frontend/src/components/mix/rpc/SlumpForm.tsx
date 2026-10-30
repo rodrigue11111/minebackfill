@@ -6,7 +6,7 @@ import ErrorBox from "@/components/ErrorBox";
 import ChampNombre from "@/components/ui/ChampNombre";
 import { KAPPA_AIDE } from "@/lib/contenant";
 import MaterialPresetSelect from "@/components/MaterialPresetSelect";
-import type { ResiduItem } from "@/lib/materials";
+import { viderPreselection, type ResiduItem } from "@/lib/materials";
 import { messageErreurApi, messageErreurReseau } from "@/lib/api-error";
 import {
   construireConstantesPayload,
@@ -118,7 +118,8 @@ export default function SlumpForm() {
           <div className="mix-pleine">
             <MaterialPresetSelect kind="residus" role="residueId" label="Résidu (bibliothèque)"
               onPick={(m) => { const r = m as ResiduItem; setSlump({ residue_sg: r.gs, residue_w_pct: r.w0_pct }); }}
-              matches={(m) => { const r = m as ResiduItem; return r.gs === slump.residue_sg && r.w0_pct === slump.residue_w_pct; }} />
+              matches={(m) => { const r = m as ResiduItem; return r.gs === slump.residue_sg && r.w0_pct === slump.residue_w_pct; }}
+              onPersonnalise={(m) => setSlump(viderPreselection("residus", m, slump))} />
           </div>
           <Field plage="gs" valeur={slump.residue_sg} label="Densité relative des grains du résidu Gs" hint="Sans unité : Gs = ρs/ρw (ASTM D854)">
             <ChampNombre placeholder="ex : 3.4" value={slump.residue_sg} onChange={(n) => setSlump({ residue_sg: n })} />

@@ -225,7 +225,7 @@ export default function GuidePage() {
             l&apos;âge</strong>. Aucune valeur n&apos;est prédite : seules vos mesures sont tracées. Les
             protocoles sont éditables et chaque gâchée en fige un instantané, de sorte qu&apos;une
             mesure reste interprétable même si la procédure change ensuite. La <strong>fiche
-            d&apos;essai</strong> (indicateur « Fiche : x/y ») décrit la gâchée : résidu choisi dans la
+            d&apos;essai</strong> décrit la gâchée : résidu choisi dans la
             bibliothèque ou saisi librement, eau, adjuvant, cure, moules et conditions d&apos;essai.
             Rien n&apos;y est obligatoire ; plus elle est complète, plus vos mesures sont exploitables.
           </Step>
