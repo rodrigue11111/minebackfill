@@ -198,6 +198,17 @@ les vrais noms des essais normalisés. Décisions :
   publication reçue (dernière version valide, jamais effacée par une panne) et
   l'équation du calculateur. La fiche fx d'un résultat montre donc TOUJOURS la
   version du cours : une fiche modifiée contredirait les chiffres du calcul.
+- **Fiches « calculateur », hors cours** (2026-10-30, demande de
+  l'utilisateur : chaque valeur des Résultats doit montrer sa formule). Le
+  cours ne décrit pas tout ce que le calculateur affiche (volume de chaque
+  phase, masse de chaque liant, eau du résidu, volume d'air…). Plutôt
+  qu'inventer des pages du cours, ces fiches vivent à part
+  (`formules-calculateur.ts`), disent « hors cours » et citent le code ; elles
+  ne passent pas par la couche de l'enseignant. En les ajoutant, deux
+  attachements faux ont été corrigés : les fiches de Gs du remblai et de Gs
+  du liant étaient inversées (F026 est la masse volumique des grains du
+  LIANT), et F022 (B_v = V_b / V_t) ne vaut pas en RPG, où B_v se rapporte au
+  résidu ET au granulat (F085).
 - **Vocabulaire : une source, sourcée, gardée.** `lib/glossaire.ts` porte les
   libellés (`T`), le glossaire (chaque entrée cite le cours, un classeur ou le
   programme) et les normes. Corrections de fond : la méthode « Ajustement

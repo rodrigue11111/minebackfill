@@ -89,9 +89,9 @@ describe("formules des masses : par catégorie, aucune en essai-erreur", () => {
     }
   });
 
-  it("toute formule attachée a sa forme évaluée dans ce test", () => {
-    const ids = new Set(REPORT_ROWS.filter((r) => typeof r.formulaIds === "function")
-      .flatMap((r) => [...formulesDeLigne(r, ctx(false)), ...formulesDeLigne(r, ctx(true))]));
+  it("toute formule attachée aux lignes Mr, Mb et Mw a sa forme évaluée dans ce test", () => {
+    // Les autres lignes (2026-10-30) : formules-lignes.test.ts.
+    const ids = new Set(LIGNES.flatMap((l) => [...formulesDeLigne(ligne(l, ctx(false)), ctx(false)), ...formulesDeLigne(ligne(l, ctx(true)), ctx(true))]));
     for (const id of ids) expect(FORMES[id], id).toBeDefined();
   });
 });

@@ -71,6 +71,22 @@ describe("fiche fx des Calculs : toujours la formule du cours", () => {
   });
 });
 
+describe("fiche fx : fiche du calculateur, dite hors cours (2026-10-30)", () => {
+  it("titre, mention « hors cours », valeurs du résultat et source dans le code", () => {
+    const html = rendu(createElement(FormulaPopover, {
+      formulaIds: ["C12"],
+      recipe: { components: { water_total_mass_kg: 4.6 }, water_volume_m3: 0.0046, dry_density_kg_m3: 1300, void_ratio: 1.3, gs_backfill: 2.99 } as never,
+      ancre: { getBoundingClientRect: () => ({ top: 0, left: 10, bottom: 20 }), isConnected: true } as unknown as HTMLElement,
+      onClose: () => {},
+    }));
+    expect(html).toContain("Volume d&#x27;eau");
+    expect(html).toContain(">hors cours<");
+    expect(html).toContain("Formule du calculateur MineBackfill (hors cours) : backend/app/core/mix_pipeline.py");
+    expect(html).toContain("= 4,6");
+    expect(html).not.toContain("p. ");
+  });
+});
+
 describe("page Formules", () => {
   it("étudiant : fiches publiées avec leur pastille, aucun bouton d'édition", () => {
     poser({ publication: publication(), proprietaire: null });
