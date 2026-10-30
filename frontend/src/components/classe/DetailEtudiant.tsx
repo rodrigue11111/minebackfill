@@ -5,11 +5,13 @@
 //  - la fiche est rangée PAR CALCUL (lib/classe-detail.ts) : avec plusieurs
 //    recettes et gâchées, l'enseignant ne fait plus lui-même le lien entre une
 //    gâchée et son calcul ; chaque calcul est un bloc repliable, ouvert
-//    d'emblée s'il demande une action (gâchée « À revoir », réponse non lue) ;
+//    d'emblée s'il demande une action (gâchée « À examiner » ou « À
+//    réexaminer », réponse non lue) ;
 //  - on ne commente plus d'ici : sans la gâchée sous les yeux, une ancre
 //    « E01 » ou « Pesée : Liant » ne disait rien, ni la valeur pesée ni la
 //    mesure. Chaque document affiche ses commentaires (nombre, réponses non
-//    lues) ; « Ouvrir » mène au document entier, où le fil complet, avec ses
+//    lues) ; le code de la gâchée ou le titre du calcul mène au document
+//    entier (2026-10-29 : plus de bouton « Ouvrir » en bout de ligne), où le fil complet, avec ses
 //    ancres, se lit et se nourrit (VueDocument).
 
 import { useState } from "react";
@@ -21,7 +23,7 @@ import { regrouperParCalcul } from "@/lib/classe-detail";
 import { Carte } from "@/components/ui/Carte";
 import { Icone } from "@/components/ui/Icones";
 import { dateCourte, lienBouton, Pastille, td, th, tdNum, type RefDoc } from "./commun";
-import { aRevoir, LIBELLE_DECISION, type InfoRevue } from "@/lib/revues";
+import { aideEtatRevue, aRevoir, etatRevue, LIBELLE_DECISION, LIBELLE_ETAT_REVUE, type InfoRevue } from "@/lib/revues";
 import type { Gachee } from "@/lib/gachee";
 import type { SavedResult } from "@/lib/store";
 
@@ -40,19 +42,24 @@ export interface ContexteFil {
 export const reponsesNonLues = (liste: LigneAnnotation[]): string[] =>
   liste.filter((a) => estReponse(a) && !a.lu_le).map((a) => a.id);
 
-/** État de revue d'une gâchée dans la liste de l'enseignant (même règle que la tuile « À revoir »). */
+/**
+ * État de revue d'une gâchée dans la liste de l'enseignant (même règle que la
+ * tuile « Gâchées à examiner »). 2026-10-29 : « À examiner » (jamais décidée)
+ * et « À réexaminer » (modifiée depuis la décision), au lieu d'« À revoir »,
+ * avec une infobulle qui dit pourquoi.
+ */
 export function PastilleRevue({ gachee, info }: { gachee: EtudiantClasse["gachees"][number]; info: InfoRevue | undefined }) {
-  const aRevoirIci = aRevoir(gachee, info);
+  const etat = etatRevue(gachee, info);
+  const pastilleEtat = etat ? <> <Pastille ton={etat === "a_reexaminer" ? "ambre" : "bleu"} title={aideEtatRevue(etat, info)}>{LIBELLE_ETAT_REVUE[etat]}</Pastille></> : null;
   if (info) {
     return (
       <>
         {" "}<Pastille ton={info.decision === "acceptee" ? "vert" : "rouge"} title={info.motif ?? undefined}>Revue : {LIBELLE_DECISION[info.decision]}</Pastille>
-        {info.perimee && <> <Pastille ton="ambre" title="Modifiée par l'étudiant depuis votre décision">modifiée depuis</Pastille></>}
-        {aRevoirIci && <> <Pastille ton="bleu">À revoir</Pastille></>}
+        {pastilleEtat}
       </>
     );
   }
-  return aRevoirIci ? <> <Pastille ton="bleu">À revoir</Pastille></> : null;
+  return pastilleEtat;
 }
 
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
@@ -70,24 +77,33 @@ function Commentaires({ liste, onOuvrir }: { liste: LigneAnnotation[]; onOuvrir:
   );
 }
 
-/** Bloc repliable de la fiche (un calcul, ou un groupe à part). */
-function Bloc({ ouvert, onBasculer, titre, detail, aside, children }: {
+/**
+ * Bloc repliable de la fiche (un calcul, ou un groupe à part). Le titre d'un
+ * calcul est le LIEN qui l'ouvre (2026-10-29) ; le chevron et le détail
+ * replient le bloc.
+ */
+function Bloc({ ouvert, onBasculer, titre, onOuvrirTitre, detail, aside, children }: {
   ouvert: boolean;
   onBasculer: () => void;
   titre: React.ReactNode;
+  /** Le titre ouvre ce document (un calcul) ; sinon, il replie le bloc. */
+  onOuvrirTitre?: () => void;
   detail?: React.ReactNode;
-  /** À droite de l'en-tête (« Ouvrir le calcul ») : hors du bouton qui replie. */
+  /** À droite de l'en-tête (commentaires) : hors des boutons qui replient. */
   aside?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="classe-bloc">
       <div className="classe-bloc-tete">
-        <button type="button" className="classe-bloc-bascule" aria-expanded={ouvert} onClick={onBasculer}>
+        <button type="button" className="classe-bloc-bascule" aria-expanded={ouvert} onClick={onBasculer}
+          aria-label={ouvert ? "Replier" : "Déplier"}>
           <span className="ui-ligne-chevron" style={{ transform: ouvert ? "rotate(90deg)" : undefined }}><Icone nom="chevron" taille={14} epaisseur={2.2} /></span>
-          <span className="classe-bloc-titre">{titre}</span>
-          {detail && <span className="classe-bloc-detail">{detail}</span>}
         </button>
+        {onOuvrirTitre
+          ? <button type="button" className="classe-lien-doc classe-bloc-titre" onClick={onOuvrirTitre} title="Ouvrir le calcul">{titre}</button>
+          : <button type="button" className="classe-bloc-texte classe-bloc-titre" onClick={onBasculer} aria-expanded={ouvert}>{titre}</button>}
+        {detail && <button type="button" className="classe-bloc-texte classe-bloc-detail" onClick={onBasculer} aria-expanded={ouvert}>{detail}</button>}
         {aside}
       </div>
       {ouvert && <div className="classe-bloc-corps">{children}</div>}
@@ -123,7 +139,7 @@ export default function DetailEtudiant({ etudiant, annotations, onOuvrir, onRapp
   const synthese = [
     pluriel(etudiant.resultats.length, "calcul"),
     pluriel(etudiant.gachees.length, "gâchée"),
-    revueDe && nbARevoir > 0 ? `${nbARevoir} à revoir` : null,
+    revueDe && nbARevoir > 0 ? `${nbARevoir} à examiner` : null,
     nbNonLues > 0 ? `${nbNonLues} réponse${nbNonLues > 1 ? "s" : ""} non lue${nbNonLues > 1 ? "s" : ""}` : null,
   ].filter(Boolean).join(" · ");
 
@@ -139,7 +155,6 @@ export default function DetailEtudiant({ etudiant, annotations, onOuvrir, onRapp
             <th style={{ ...th, textAlign: "right" }}>Essais valides</th>
             <th style={th}>UCS moyenne par âge</th>
             <th style={th}>Commentaires</th>
-            <th style={th}><span className="sr-only">Ouvrir</span></th>
           </tr>
         </thead>
         <tbody>
@@ -149,7 +164,9 @@ export default function DetailEtudiant({ etudiant, annotations, onOuvrir, onRapp
             return (
               <tr key={g.id}>
                 <td style={td}>
-                  <strong>{g.code}</strong>
+                  {/* Le code ouvre la gâchée : plus besoin de défiler jusqu'à la dernière colonne (2026-10-29). */}
+                  <button type="button" className="classe-lien-doc classe-code-gachee" onClick={ouvrir("gachee", g.id)}
+                    aria-label={`Ouvrir la gâchée ${g.code}`}>{g.code}</button>
                   <div style={{ fontSize: 12.5, color: "var(--texte-2)" }}>{dateCourte(g.creeLe)} · {g.categorie}</div>
                   {g.conflit && <Pastille ton="ambre">copie de conflit</Pastille>}
                 </td>
@@ -170,9 +187,6 @@ export default function DetailEtudiant({ etudiant, annotations, onOuvrir, onRapp
                   )}
                 </td>
                 <td style={td}><Commentaires liste={fil("gachee", g.id)} onOuvrir={ouvrir("gachee", g.id)} /></td>
-                <td style={{ ...td, textAlign: "right" }}>
-                  <button type="button" style={lienBouton} onClick={ouvrir("gachee", g.id)} aria-label={`Ouvrir la gâchée ${g.code}`}>Ouvrir</button>
-                </td>
               </tr>
             );
           })}
@@ -202,14 +216,14 @@ export default function DetailEtudiant({ etudiant, annotations, onOuvrir, onRapp
         return (
           <Bloc key={cle} ouvert={o} onBasculer={basculer(cle, o)}
             titre={titreCalcul(b.resultat)}
+            onOuvrirTitre={ouvrir("resultat", b.resultat.id)}
             detail={<>
               {pluriel(b.gachees.length, "gâchée")}
-              {aRevoirBloc > 0 && <> <Pastille ton="bleu">{aRevoirBloc} à revoir</Pastille></>}
+              {aRevoirBloc > 0 && <> <Pastille ton="bleu">{aRevoirBloc} à examiner</Pastille></>}
             </>}
             aside={
               <span className="classe-bloc-actions">
                 <Commentaires liste={fil("resultat", b.resultat.id)} onOuvrir={ouvrir("resultat", b.resultat.id)} />
-                <button type="button" style={lienBouton} onClick={ouvrir("resultat", b.resultat.id)}>Ouvrir le calcul</button>
               </span>
             }>
             {tableGachees(b.gachees, false)}
@@ -225,10 +239,9 @@ export default function DetailEtudiant({ etudiant, annotations, onOuvrir, onRapp
             <div className="classe-documents">
               {fiche.calculsSansGachee.map((r) => (
                 <div key={r.id} className="classe-document classe-document-ligne">
-                  <span>{titreCalcul(r)}</span>
+                  <button type="button" className="classe-lien-doc" onClick={ouvrir("resultat", r.id)} title="Ouvrir le calcul">{titreCalcul(r)}</button>
                   <span className="classe-bloc-actions">
                     <Commentaires liste={fil("resultat", r.id)} onOuvrir={ouvrir("resultat", r.id)} />
-                    <button type="button" style={lienBouton} onClick={ouvrir("resultat", r.id)}>Ouvrir</button>
                   </span>
                 </div>
               ))}

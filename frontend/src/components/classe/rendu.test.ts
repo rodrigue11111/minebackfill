@@ -178,7 +178,11 @@ describe("vues de l'enseignant — rendu", () => {
     expect(tableau).toMatch(/<td[^>]*>1<\/td>/); // un seul essai valide (E02 est exclue)
     expect(tableau).toContain("1 réponse non lue");
     const detail = rendu(createElement(DetailEtudiant, { etudiant: etudiants[0], annotations, onOuvrir: () => {} }));
-    expect(detail).toContain("Ouvrir");
+    // 2026-10-29 : le code de la gâchée est le lien qui l'ouvre ; plus de bouton « Ouvrir » en bout de ligne.
+    expect(detail).toMatch(/<button type="button" class="classe-lien-doc classe-code-gachee"[^>]*aria-label="Ouvrir la gâchée [^"]+">/);
+    expect(detail).not.toMatch(/>Ouvrir<\/button>/);
+    expect(detail).not.toContain("Ouvrir le calcul</button>");
+    expect(detail).toMatch(/<button type="button" class="classe-lien-doc classe-bloc-titre" title="Ouvrir le calcul">/);
     // 2026-10-26 : plus de fil ni de « + Commenter » ici ; le nombre de
     // commentaires et de réponses non lues, un clic ouvre le document.
     expect(detail).toContain("3 commentaires · 1 nouvelle réponse");
@@ -266,14 +270,18 @@ describe("revue de l'enseignant : rendu", () => {
     expect(html).not.toContain("Accepter la gâchée");
   });
 
-  it("détail de l'étudiant : « À revoir » ou décision par gâchée ; rien quand les revues sont indisponibles", () => {
+  it("détail de l'étudiant : « À examiner » ou décision par gâchée ; rien quand les revues sont indisponibles", () => {
     const base = { etudiant: e, annotations: [], onOuvrir: () => {} };
-    expect(rendu(createElement(DetailEtudiant, { ...base, revueDe: () => undefined }))).toContain("À revoir");
+    const jamais = rendu(createElement(DetailEtudiant, { ...base, revueDe: () => undefined }));
+    expect(jamais).toContain("À examiner");
+    expect(jamais).toContain("Terminée par l&#x27;étudiant, sans décision de votre part.");
+    expect(jamais).not.toContain("À revoir");
     const decide = rendu(createElement(DetailEtudiant, { ...base,
-      revueDe: () => ({ decision: "acceptee" as const, motif: null, ecartees: [], maj: "m", perimee: true, aRafraichir: false }) }));
+      revueDe: () => ({ decision: "acceptee" as const, motif: null, ecartees: [], maj: "2026-10-26T12:00:00Z", perimee: true, aRafraichir: false }) }));
     expect(decide).toContain("Revue : acceptée");
-    expect(decide).toContain("modifiée depuis");
-    expect(rendu(createElement(DetailEtudiant, base))).not.toContain("À revoir");
+    expect(decide).toContain("À réexaminer");
+    expect(decide).toContain("Modifiée par l&#x27;étudiant depuis votre décision du 26 octobre 2026.");
+    expect(rendu(createElement(DetailEtudiant, base))).not.toContain("À examiner");
   });
 });
 

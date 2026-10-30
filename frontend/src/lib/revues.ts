@@ -85,6 +85,25 @@ export function aRevoir(g: Pick<Gachee, "statut" | "conflit">, info: InfoRevue |
   return !g.conflit && g.statut === "terminee" && (!info || info.perimee);
 }
 
+/** « À examiner » : jamais décidée (ou décision retirée) ; « À réexaminer » : modifiée depuis la décision (2026-10-29). */
+export type EtatRevue = "a_examiner" | "a_reexaminer";
+
+export const LIBELLE_ETAT_REVUE: Record<EtatRevue, string> = { a_examiner: "À examiner", a_reexaminer: "À réexaminer" };
+
+/** Ce qui attend l'enseignant sur une gâchée ; null : rien. Même règle de comptage qu'aRevoir. */
+export function etatRevue(g: Pick<Gachee, "statut" | "conflit">, info: InfoRevue | undefined): EtatRevue | null {
+  if (!aRevoir(g, info)) return null;
+  return info?.perimee ? "a_reexaminer" : "a_examiner";
+}
+
+/** Infobulle de l'état : pourquoi la gâchée attend une décision. */
+export function aideEtatRevue(etat: EtatRevue, info: InfoRevue | undefined): string {
+  if (etat === "a_examiner") return "Terminée par l'étudiant, sans décision de votre part.";
+  const d = info ? new Date(info.maj) : null;
+  const date = d && !Number.isNaN(d.getTime()) ? ` du ${d.toLocaleDateString("fr-CA", { day: "numeric", month: "long", year: "numeric" })}` : "";
+  return `Modifiée par l'étudiant depuis votre décision${date}.`;
+}
+
 /**
  * Motif à envoyer avec une décision. Accepter une gâchée refusée ne renvoie
  * pas le motif du refus (il resterait affiché à l'étudiant comme motif de

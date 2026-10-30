@@ -137,8 +137,9 @@ enseignant avant l'ouverture des comptes.
 
 ### Revoir les gâchées terminées (accepter, refuser)
 Quand un étudiant marque une gâchée « terminée », elle compte dans la tuile
-**« Gâchées à revoir »** de la page Classe et porte la pastille « À revoir »
-dans son détail. Ouvrir la gâchée → carte **« Revue de l'enseignant »** :
+**« Gâchées à examiner »** de la page Classe et porte la pastille « À
+examiner » dans son détail. Si l'étudiant la modifie après votre décision,
+elle porte « À réexaminer ». L'infobulle de la pastille dit pourquoi. Ouvrir la gâchée → carte **« Revue de l'enseignant »** :
 - **Accepter la gâchée**, ou **Refuser la gâchée** (le motif est alors
   obligatoire ; il est montré à l'étudiant) ;
 - au besoin, cocher **« Écarter »** sur une éprouvette douteuse : elle est

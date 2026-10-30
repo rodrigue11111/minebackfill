@@ -278,7 +278,7 @@ optionnel+nullable pour les vieux localStorage).
 |---|---|---|---|
 | `minebackfill_saved_results` | brut (tableau) | — | additif seulement |
 | `minebackfill_unit_prefs`, `_binder_prices`, `_production_log` | brut | — | additif (préférences d'unités relues sur `DEFAULT_UNITS` : `masseLabo`, unité de saisie des pesées, ajoutée en 2026-10 avec « g » par défaut) |
-| `minebackfill_catalogue_liants` | `{v,data}` | 3 | `migrationCatalogueLiants(d, versionLue)` : v1 → v2 champ `origine` ; v2 → v3 noms normalisés des liants par défaut (« Ciment Portland GU (anc. type 10) »…), **seulement si le nom est encore celui d'origine** (`NOMS_LIANTS_V2`) : un nom modifié par l'enseignant reste. Le catalogue publié en ligne passe par la même migration à la lecture (`migrerCatalogueLiantsCloud`). |
+| `minebackfill_catalogue_liants` | `{v,data}` | 4 | `migrationCatalogueLiants(d, versionLue)` : v1 → v2 champ `origine` ; v2 → v3 noms normalisés des liants par défaut (« Ciment Portland GU (anc. type 10) »…), **seulement si le nom est encore celui d'origine** (`NOMS_LIANTS_V2`) : un nom modifié par l'enseignant reste. Le catalogue publié en ligne passe par la même migration à la lecture (`migrerCatalogueLiantsCloud`). ; v3 → v4 (2026-10-29) : « anc. type 10/50 » devient « anciennement type 10/50 », même règle (`NOMS_LIANTS_V3`). **Le catalogue PUBLIÉ reste au format v3** (`FORMAT_PUBLIE_LIANTS`) : un site déjà ouvert chez un étudiant refuse une version supérieure à la sienne. |
 | `minebackfill_constantes` | `{v,data}` | 2 | `completerConstantes` (drapeaux + détection de pack) |
 | `minebackfill_general` | `{v,data}` | 1 | identité |
 | `minebackfill_catalogue_residus/granulats/retardateurs` | `{v,data}` | 1 | identité |
@@ -852,7 +852,8 @@ obligatoire) et peut écarter des éprouvettes. Le mot « valide » reste réser
   (`sync-client.ts`), vidée au changement de compte.
 - **Écrans** : `CarteRevue` (vue d'une gâchée, page Classe ; jamais un bouton
   dont le texte serait exactement « Retirer », voir `rendu.test.ts`),
-  pastilles dans `DetailEtudiant`, tuile « Gâchées à revoir » (`classe-resume.ts`),
+  pastilles « À examiner » / « À réexaminer » dans `DetailEtudiant` (`etatRevue`,
+  2026-10-29), tuile « Gâchées à examiner » (`classe-resume.ts`),
   pastille et bandeau dans le Labo de l'étudiant.
 - **Exports** : colonnes « Revue », « Motif de la revue », « Modifiée depuis
   la revue », « Écartée par l'enseignant » à la fin des CSV de classe ; dans

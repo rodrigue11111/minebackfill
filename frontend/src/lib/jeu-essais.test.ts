@@ -24,7 +24,7 @@ const catalogues = {
   residus: [{ id: "res_laronde", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, provenance: "LaRonde", origine: "officiel", d50_um: 18.5, p20_pct: 52.3, soufre_pct: 12.1, mineralogie: "Pyrite" }] as ResiduItem[],
   granulats: [] as GranulatItem[],
   liants: [
-    { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anc. type 10)", gs: 3.15 },
+    { id: "liant_cp10", code: "CP10", nom: "Ciment Portland GU (anciennement type 10)", gs: 3.15 },
     { id: "liant_slag", code: "SLAG", nom: "Laitier de haut fourneau (GGBFS)", gs: 2.84 },
   ] as LiantCatalogueItem[],
 };
@@ -133,7 +133,7 @@ describe("jeu d'essais pseudonymisé", () => {
     // Table materiaux : un résidu (catalogue, deux gâchées), deux liants joints par leur code.
     expect(j.materiaux).toEqual([
       expect.objectContaining({ type: "residu", ref: "res_laronde", source: "catalogue", nom: "Résidus LaRonde", gs: 3.1, w0_pct: 25, nb_gachees: 2 }),
-      expect.objectContaining({ type: "liant", ref: "CP10", source: "catalogue", nom: "Ciment Portland GU (anc. type 10)", nb_gachees: 1 }),
+      expect.objectContaining({ type: "liant", ref: "CP10", source: "catalogue", nom: "Ciment Portland GU (anciennement type 10)", nb_gachees: 1 }),
       expect.objectContaining({ type: "liant", ref: "SLAG", source: "catalogue", nb_gachees: 2 }),
     ]);
   });

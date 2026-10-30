@@ -1083,6 +1083,7 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 .labo-ajout > summary::before { content: "+ "; }
 .labo-ajout[open] > summary::before { content: "\2212  "; }
 .labo-ajout-corps { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.labo-rappel-moules { margin: 0; font-size: 13.5px; color: var(--texte-2); }
 .labo-grille-ajout { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .labo-ages { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .labo-import { margin-top: 4px; padding: 14px 16px; border-radius: var(--rayon-bloc); background: var(--accent-pale); display: flex; flex-direction: column; gap: 6px; }
@@ -1188,8 +1189,15 @@ span.mix-formule { color: var(--texte-2); cursor: default; }
 /* Fiche de l'étudiant rangée par calcul (DetailEtudiant, 2026-10-26). */
 .classe-synthese { margin: 0 0 6px; font-size: 14px; color: var(--texte-2); }
 .classe-bloc { border-top: 1px solid var(--filet); }
-.classe-bloc-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding: 10px 0; }
-.classe-bloc-bascule { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; border: none; background: none; padding: 0; font-family: inherit; font-size: 15px; text-align: left; cursor: pointer; color: var(--texte); }
+.classe-bloc-tete { display: flex; align-items: baseline; gap: 6px 10px; flex-wrap: wrap; padding: 10px 0; }
+.classe-bloc-tete > .classe-bloc-actions { margin-left: auto; }
+.classe-bloc-bascule { flex-shrink: 0; display: inline-flex; align-items: center; border: none; background: none; padding: 2px; cursor: pointer; color: var(--texte); }
+.classe-bloc-texte { border: none; background: none; padding: 0; font-family: inherit; font-size: 15px; text-align: left; cursor: pointer; color: var(--texte); }
+/* Code de gâchée et titre de calcul : le lien qui ouvre le document (2026-10-29). */
+.classe-lien-doc { border: none; background: none; padding: 0; font-family: inherit; font-size: 15px; text-align: left; cursor: pointer; color: var(--accent); }
+.classe-lien-doc:hover strong, .classe-lien-doc.classe-code-gachee:hover { text-decoration: underline; }
+.classe-lien-doc strong { color: var(--accent); }
+.classe-code-gachee { font-weight: 600; white-space: nowrap; font-size: 14px; }
 .classe-bloc-bascule .ui-ligne-chevron { align-self: center; }
 .classe-bloc-detail { font-size: 13px; color: var(--texte-2); }
 .classe-bloc-actions { display: inline-flex; align-items: baseline; gap: 14px; flex-wrap: wrap; font-size: 13.5px; }

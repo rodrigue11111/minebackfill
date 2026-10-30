@@ -141,3 +141,23 @@ describe("confirmations", () => {
       .toBe("Supprimer la gâchée G-01 ? Ses 2 éprouvettes et leurs mesures seront supprimées, aussi en ligne si votre compte est relié. Action définitive.");
   });
 });
+
+describe("moules prévus par le calcul (2026-10-29) : rappel et avis, jamais un blocage", () => {
+  it("lus dans le calcul : Cw, E/L, essai-erreur (méthode de base), ancien calcul", async () => {
+    const { moulesPrevus } = await import("./gachee");
+    expect(moulesPrevus({ method: "dosage_cw", inputs: { desired_qty: 9 } })).toBe(9);
+    expect(moulesPrevus({ method: "wb", inputs: { desired_qty: 6 } })).toBe(6);
+    expect(moulesPrevus({ method: "essai", inputs: { base_method: "wb", base_wb: { desired_qty: 4 } } })).toBe(4);
+    expect(moulesPrevus({ method: "dosage_cw", inputs: {} })).toBeUndefined();
+    expect(moulesPrevus({ method: "dosage_cw", inputs: { desired_qty: 0 } })).toBeUndefined();
+    expect(moulesPrevus(undefined)).toBeUndefined();
+  });
+
+  it("rappel et avis : le constat, sans conclure à un manque de pâte", async () => {
+    const { avisMoules, rappelMoules } = await import("./gachee");
+    expect(rappelMoules(9, 6)).toBe("9 moules prévus par le calcul, 6 déjà utilisés.");
+    expect(rappelMoules(1, 0)).toBe("1 moule prévu par le calcul, 0 déjà utilisé.");
+    expect(avisMoules(9, 9)).toBeNull();
+    expect(avisMoules(9, 12)).toBe("Le calcul prévoyait 9 moules ; 12 éprouvettes sont demandées. Vérifiez leurs dimensions et le volume de pâte disponible.");
+  });
+});

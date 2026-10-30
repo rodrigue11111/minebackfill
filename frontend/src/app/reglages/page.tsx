@@ -3,7 +3,7 @@
 import { decimaleFr } from "@/lib/format";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useStore, CATALOGUE_VERSION, CONSTANTES_VERSION, MATERIALS_VERSION } from "@/lib/store";
+import { useStore, FORMAT_PUBLIE_LIANTS, CONSTANTES_VERSION, MATERIALS_VERSION } from "@/lib/store";
 import { DEFAULT_UNITS, UNIT_CATEGORIES, unitsForLength, type LengthUnit } from "@/lib/units";
 import type { LiantCatalogueItem } from "@/lib/store";
 import type { MaterialKind } from "@/lib/materials";
@@ -98,7 +98,8 @@ export default function ReglagesPage() {
     const sb = getSupabase();
     if (!sb || !session) return;
     const items = catalogue_liants.filter((l) => l.origine === "officiel");
-    const { error } = await publierCatalogue(sb, "liants", { v: CATALOGUE_VERSION, data: items }, session.userId);
+    // Format publié v3 : les sites déjà ouverts chez les étudiants l'acceptent (voir FORMAT_PUBLIE_LIANTS).
+    const { error } = await publierCatalogue(sb, "liants", { v: FORMAT_PUBLIE_LIANTS, data: items }, session.userId);
     window.alert(error ? `Publication impossible : ${error}` : "Catalogue de liants publié en ligne.");
   };
   const publierSessions = async (sessions: Session[]) => {

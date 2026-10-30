@@ -385,3 +385,31 @@ export function messageSuppressionGachee(g: Pick<Gachee, "code" | "eprouvettes">
   const ce = n === 0 ? "" : ` Ses ${n} éprouvette${n > 1 ? "s" : ""} et leurs mesures seront supprimées, aussi en ligne si votre compte est relié.`;
   return `Supprimer la gâchée ${g.code} ?${ce} Action définitive.`;
 }
+
+/* ── Moules prévus par le calcul (2026-10-29) ─────────────────────────────
+   Une éprouvette = un moule rempli. Le calcul sauvegardé dit combien de
+   moules la pâte préparée devait remplir (« Nombre de moules par recette ») ;
+   le Labo le rappelle et prévient au-delà, sans jamais bloquer : les
+   dimensions des moules réels peuvent différer, le nombre seul ne prouve pas
+   un manque de pâte. */
+
+/** Moules par recette du calcul sauvegardé ; en essai-erreur, ceux de la méthode de base. undefined : inconnu (ancien calcul). */
+export function moulesPrevus(sr: { method?: string; inputs?: unknown } | undefined): number | undefined {
+  const i = sr?.inputs as { desired_qty?: unknown; base_cw?: { desired_qty?: unknown }; base_wb?: { desired_qty?: unknown } } | undefined;
+  if (!i) return undefined;
+  const brut = sr?.method === "essai" ? (i.base_cw?.desired_qty ?? i.base_wb?.desired_qty) : i.desired_qty;
+  return typeof brut === "number" && Number.isFinite(brut) && brut >= 1 ? Math.round(brut) : undefined;
+}
+
+const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
+
+/** Rappel sous « Ajouter des éprouvettes » : « 9 moules prévus par le calcul, 6 déjà utilisés. » */
+export function rappelMoules(prevus: number, utilises: number): string {
+  return `${pluriel(prevus, "moule")} prévu${prevus > 1 ? "s" : ""} par le calcul, ${utilises} déjà utilisé${utilises > 1 ? "s" : ""}.`;
+}
+
+/** Avis (jamais un blocage) quand les éprouvettes demandées dépassent les moules prévus ; null sinon. */
+export function avisMoules(prevus: number, demandees: number): string | null {
+  if (demandees <= prevus) return null;
+  return `Le calcul prévoyait ${pluriel(prevus, "moule")} ; ${demandees} éprouvettes sont demandées. Vérifiez leurs dimensions et le volume de pâte disponible.`;
+}

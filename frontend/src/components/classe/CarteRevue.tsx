@@ -81,7 +81,7 @@ export default function CarteRevue({ gachee: g, revue, actions }: {
               <Pastille ton={revue.decision === "acceptee" ? "vert" : "rouge"}>Revue : {LIBELLE_DECISION[revue.decision]}</Pastille>
               <span style={{ color: "var(--texte-2)" }}>le {dateCourte(revue.maj)}</span>
               {revue.perimee && (
-                <Pastille ton="ambre" title="L'étudiant a modifié la gâchée depuis votre décision : à revoir.">Modifiée depuis la revue</Pastille>
+                <Pastille ton="ambre" title="L'étudiant a modifié la gâchée depuis votre décision : à réexaminer.">Modifiée depuis la revue</Pastille>
               )}
             </>
           ) : g.statut === "terminee" ? (

@@ -19,7 +19,7 @@ import {
   appliquerSaisieEssai, avisDateEssai, basculerEcrasement, grouperEprouvettes, groupesOuvertsParDefaut, messageRetraitEprouvette,
   choixMouleParDefaut, libelleMoule, type Eprouvette, type EssaiUCS, type EtiquetteEprouvette, type MouleCylindre,
 } from "@/lib/eprouvette";
-import type { Gachee } from "@/lib/gachee";
+import { avisMoules, rappelMoules, type Gachee } from "@/lib/gachee";
 import type { Annotation } from "@/lib/annotations";
 import { badgeEcheance, fmtDate } from "@/lib/echeance-affichage";
 import {
@@ -40,8 +40,10 @@ import { cylindreDe } from "@/lib/moules";
 import { getSupabase } from "@/lib/supabase";
 import { dateCourteFr, imprimerHtml, isoVersDateInput, nouvelId } from "./outils";
 
-export default function CarteEprouvettes({ gachee, maintenant, onChange, idImport, inviterAjout = false, notes, connecte = false, mouleFormulation }: {
+export default function CarteEprouvettes({ gachee, maintenant, onChange, idImport, inviterAjout = false, notes, connecte = false, mouleFormulation, moulesPrevus }: {
   gachee: Gachee;
+  /** Moules par recette du calcul (moulesPrevus, lib/gachee.ts) : rappel et avis, jamais un blocage. */
+  moulesPrevus?: number;
   /** Moule tiré du contenant de la formulation (mouleDepuisContenant) : proposé par défaut. */
   mouleFormulation?: MouleCylindre;
   maintenant: Date;
@@ -361,6 +363,12 @@ export default function CarteEprouvettes({ gachee, maintenant, onChange, idImpor
               <Champ libelle="Moule (précision)"><input className="field-input" placeholder="ex. cylindre 38 × 76 mm" value={moule} onChange={(e) => setMoule(e.target.value)} /></Champ>
             )}
           </div>
+          {moulesPrevus !== undefined && (
+            <p className="labo-rappel-moules">{rappelMoules(moulesPrevus, gachee.eprouvettes.length)}</p>
+          )}
+          {moulesPrevus !== undefined && avisMoules(moulesPrevus, gachee.eprouvettes.length + Math.max(0, Math.round(nb ?? 0))) && (
+            <Bandeau ton="alerte" role="status">{avisMoules(moulesPrevus, gachee.eprouvettes.length + Math.max(0, Math.round(nb ?? 0)))}</Bandeau>
+          )}
           <div className="labo-ages">
             <span className="ui-champ-libelle">Âges usuels</span>
             <Segmente
