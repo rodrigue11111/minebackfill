@@ -135,6 +135,18 @@ les revues et commentaires faits pendant la démonstration disparaissent au
 rechargement. Utile pour présenter la page au professeur ou à un nouvel
 enseignant avant l'ouverture des comptes.
 
+### Montrer le Labo et ses résultats UCS sans faire de gâchée
+Adresse : `/labo?demo=1` (par exemple
+`https://minebackfill.progicielbelem.com/labo?demo=1`), ou le lien « Voir une
+démonstration » en haut de la page Labo. Elle affiche une quinzaine de gâchées
+de SIMULATION, celles de la démonstration Classe réunies comme le travail d'un
+seul opérateur : recettes calculées par le calculateur, mesures UCS inventées,
+sans valeur expérimentale. L'onglet « Résultats UCS » y montre les courbes en
+fonction de l'âge de cure et du dosage. Tout se manipule (ouvrir, saisir,
+écraser, retirer), mais rien n'est enregistré : les gâchées réelles ne sont ni
+lues ni modifiées, et tout disparaît au rechargement. « Quitter la
+démonstration » revient au Labo réel.
+
 ### Revoir les gâchées terminées (accepter, refuser)
 Quand un étudiant marque une gâchée « terminée », elle compte dans la tuile
 **« Gâchées à examiner »** de la page Classe et porte la pastille « À

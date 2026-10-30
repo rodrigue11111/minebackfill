@@ -541,6 +541,15 @@ connexion enseignant). Le pourquoi : `docs/HISTORIQUE_EXTENSIBILITE.md`,
   ordre ; un nouveau bloc crée SES comptes et ne change jamais le rôle de
   `PROF`.
 
+**Démonstration du Labo** (`/labo?demo=1`, 2026-10-30). `lib/labo-demo.ts`,
+`laboDemo(maintenant)` : les gâchées de `classeDemo` deviennent celles d'un
+seul opérateur (une formulation par libellé, codes refaits dans l'ordre des
+dates). `app/labo/page.tsx` les garde en mémoire (`demoGachees`) : ajouter,
+modifier et retirer passent par cet état, jamais par le magasin ; ni
+commentaires ni revues. Une évolution de `classe-demo.ts` change donc aussi
+cette démonstration : `labo-demo.test.ts` vérifie les codes uniques, les
+formulations et la présence d'essais et d'éprouvettes en cure.
+
 **Démonstration** (`/classe?demo=1`, 2026-10-26). La même page sur une classe
 FICTIVE de 7 étudiants, sans compte, pour montrer le tableau de bord au
 professeur sans créer de faux comptes dans la base réelle.
