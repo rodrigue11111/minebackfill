@@ -5,6 +5,16 @@ import { Carte } from "@/components/ui/Carte";
 import { ListeGroupee, LigneListe } from "@/components/ui/Liste";
 import { useStore } from "@/lib/store";
 import { erreursSession, sessionActive, type Session } from "@/lib/sessions";
+import { Bandeau } from "@/components/ui/Bandeau";
+
+/** « 1er septembre 2026 » : date d'une session, lisible (2026-10-29). */
+export function dateSession(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const mois = d.toLocaleDateString("fr-CA", { month: "long" });
+  return `${d.getDate() === 1 ? "1er" : d.getDate()} ${mois} ${d.getFullYear()}`;
+}
 
 /**
  * Carte « Sessions de cours » des Réglages. L'enseignant définit les sessions
@@ -24,7 +34,11 @@ export default function SessionsCard({ vueAdmin, peutPublier, onPublier }: {
   const definirSessions = useStore((s) => s.definirSessions);
   const [brouillon, setBrouillon] = useState<Session[] | null>(null);
   const liste = brouillon ?? sessions;
-  const active = sessionActive(sessions, new Date());
+  // 2026-10-29 : la session active suit la liste AFFICHÉE ; pendant l'édition,
+  // c'est celle qui le sera après l'enregistrement (la carte montrait la
+  // session enregistrée à côté d'une liste vidée, sans le dire).
+  const enEdition = brouillon !== null;
+  const active = sessionActive(liste.filter((x) => erreursSession(x).length === 0), new Date());
 
   if (!vueAdmin && sessions.length === 0) return null;
 
@@ -51,15 +65,23 @@ export default function SessionsCard({ vueAdmin, peutPublier, onPublier }: {
         le Labo et le tableau de bord de la classe se filtrent par session, d&apos;une année à
         l&apos;autre. Le travail antérieur est rangé d&apos;après sa date ; hors de toute session, il
         apparaît « Sans session ».
-        {active ? <> Session active aujourd&apos;hui : <strong>{active.nom}</strong>.</> : " Aucune session active aujourd'hui."}
+        {active
+          ? <> Session active aujourd&apos;hui{enEdition ? " après l'enregistrement" : ""} : <strong>{active.nom}</strong>.</>
+          : enEdition ? " Aucune session active aujourd'hui après l'enregistrement." : " Aucune session active aujourd'hui."}
+        {vueAdmin && " « Publier en ligne » envoie la liste aux étudiants : leurs nouveaux calculs et gâchées portent alors la session active."}
       </p>
+      {enEdition && (
+        <Bandeau ton="alerte" role="status" titre="Modifications non enregistrées.">
+          Cliquez sur « Enregistrer » pour les garder, ou sur « Annuler » pour revenir à la liste enregistrée.
+        </Bandeau>
+      )}
 
       {liste.length === 0 ? (
         <p className="classe-rien">Aucune session définie.</p>
       ) : !vueAdmin ? (
         <ListeGroupee encadree>
           {liste.map((s, i) => (
-            <LigneListe key={i} libelle={s.nom} valeur={`du ${s.debut} au ${s.fin}`} />
+            <LigneListe key={i} libelle={s.nom} valeur={`du ${dateSession(s.debut)} au ${dateSession(s.fin)}`} />
           ))}
         </ListeGroupee>
       ) : (
