@@ -190,6 +190,17 @@ les vrais noms des essais normalisés. Décisions :
   résumé (drapeau `resume` dans `report-schema.ts`) et renvoie au rapport
   complet ; les exports Excel et PDF ignorent ce drapeau : leur contenu ne
   change pas, un fichier exporté reste complet.
+- **Fiches « calculateur », hors cours** (2026-10-30, demande de
+  l'utilisateur : chaque valeur des Résultats doit montrer sa formule). Le
+  cours ne décrit pas tout ce que le calculateur affiche (volume de chaque
+  phase, masse de chaque liant, eau du résidu, volume d'air…). Plutôt
+  qu'inventer des pages du cours, ces fiches vivent à part
+  (`formules-calculateur.ts`), disent « hors cours » et citent le code ; elles
+  ne passent pas par la couche de l'enseignant. En les ajoutant, deux
+  attachements faux ont été corrigés : les fiches de Gs du remblai et de Gs
+  du liant étaient inversées (F026 est la masse volumique des grains du
+  LIANT), et F022 (B_v = V_b / V_t) ne vaut pas en RPG, où B_v se rapporte au
+  résidu ET au granulat (F085).
 - **Fiches de formules de l'enseignant : une couche, pas une copie du
   catalogue** (2026-10-29). Le catalogue du cours (`formulas-data.ts`) reste
   la source et le seul objet des tests d'invariants ; l'enseignant écrit une

@@ -15,6 +15,7 @@ import { formulesDuRapport, formulesDuRapportRrc, lignesResume, nbLignesRapport,
 import { fromStoreDensity, fromStoreMass } from "@/lib/units";
 import { masseRemblaiTotaleKg } from "@/lib/derived";
 import { FORMULA_MAP } from "@/lib/formulas-data";
+import { FICHE_CALCULATEUR_MAP, MENTION_HORS_COURS } from "@/lib/formules-calculateur";
 import { fmt, fmtGroupe, TIRET } from "@/lib/format";
 import { RECIPE_COLORS } from "@/lib/recipe-theme";
 import type { Recipe, RrcRecipe } from "@/lib/types";
@@ -95,12 +96,17 @@ function FormulesUtilisees({ ids, recipe, onFormulaClick }: {
     <section className="mix-formules" aria-label="Formules utilisées pour ce résultat">
       <span className="mix-groupe-titre">Formules utilisées pour ce résultat</span>
       <span className="mix-formules-liste">
-        {ids.map((id) => (onFormulaClick ? (
-          <button key={id} type="button" className="mix-formule" title={FORMULA_MAP.get(id)?.title ?? id}
-            onClick={(e) => onFormulaClick([id], recipe, e.currentTarget)}>{id}</button>
-        ) : (
-          <span key={id} className="mix-formule" title={FORMULA_MAP.get(id)?.title ?? id}>{id}</span>
-        )))}
+        {ids.map((id) => {
+          // Fiche du cours, sinon fiche du calculateur, dite hors cours (2026-10-30).
+          const titre = FORMULA_MAP.get(id)?.title
+            ?? (FICHE_CALCULATEUR_MAP.has(id) ? `${FICHE_CALCULATEUR_MAP.get(id)!.title} (${MENTION_HORS_COURS.toLowerCase()})` : id);
+          return onFormulaClick ? (
+            <button key={id} type="button" className="mix-formule" title={titre}
+              onClick={(e) => onFormulaClick([id], recipe, e.currentTarget)}>{id}</button>
+          ) : (
+            <span key={id} className="mix-formule" title={titre}>{id}</span>
+          );
+        })}
       </span>
     </section>
   );

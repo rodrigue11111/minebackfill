@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { FORMULA_MAP, type Formula } from "@/lib/formulas-data";
+import { FICHE_CALCULATEUR_MAP, MENTION_HORS_COURS, type FicheCalculateur } from "@/lib/formules-calculateur";
+import { gammaSolideKNM3, masseRejetSecTotaleKg, rhoSolideKgM3, volumeAirM3 } from "@/lib/derived";
 import { OPTIONS_KATEX_SURES } from "@/components/formulas/KaTeXRenderer";
 import { useFormules } from "@/lib/use-formules";
 import type { Recipe } from "@/lib/types";
@@ -11,6 +13,26 @@ import { placerPopover, type RectAncre, type Vue } from "@/lib/placer-popover";
 /* ── Value substitution: map formula variable symbols to recipe fields ──
    Exporté pour un test d'invariant : chaque clé doit correspondre au `symbol`
    d'au moins une formule (sinon la substitution est morte, cf. bug \rho_w). */
+
+// Grandeurs dérivées des lignes complétées le 2026-10-30 (fiches du cours et
+// fiches du calculateur, formules-calculateur.ts), toutes lues dans le résultat.
+const rhoW = (r: Recipe): number => {
+  const rd = r.dry_density_kg_m3, e = r.void_ratio, gs = r.gs_backfill;
+  return rd != null && e != null && gs ? (rd * (1 + e)) / gs : 1000;
+};
+const quotient = (a: number | null | undefined, b: number | null | undefined): number | null =>
+  a != null && b ? a / b : null;
+const residuHumide = (r: Recipe) => r.components?.residue_wet_mass_kg ?? null;
+const residuSec = (r: Recipe) => r.components?.residue_dry_mass_kg ?? null;
+const eauDuResidu = (r: Recipe): number | null => {
+  const h = residuHumide(r), s = residuSec(r);
+  return h != null && s != null ? h - s : null;
+};
+const w0Residu = (r: Recipe): number | null => {
+  const q = quotient(residuHumide(r), residuSec(r));
+  return q !== null ? q - 1 : null;
+};
+
 export const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
   // Binder dosage
   "B_w": (r) => r.bw_mass_pct != null ? r.bw_mass_pct / 100 : null,
@@ -111,6 +133,45 @@ export const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
   // Bv
   "B_v": (r) => r.bv_vol_pct != null ? r.bv_vol_pct / 100 : null,
 
+  // Résidu humide, eau à ajouter et eau du résidu (F042, F043, F049, F052, C14)
+  "M_{t\\text{-hum}}": residuHumide,
+  "M_{t\\text{-wet}}": residuHumide,
+  "w_{\\text{rés}}": w0Residu,
+  "w_0": w0Residu,
+  "C_{w\\text{-rés}}": (r) => quotient(residuSec(r), residuHumide(r)),
+  "C_{w\\text{-tail}}": (r) => quotient(residuSec(r), residuHumide(r)),
+  "M_{w\\text{-aj}}": (r) => r.components?.water_to_add_mass_kg ?? null,
+  "M_{w\\text{-add}}": (r) => r.components?.water_to_add_mass_kg ?? null,
+  "M_{w\\text{-rés}}": eauDuResidu,
+  "M_{w\\text{-tail}}": eauDuResidu,
+  "M_{t+ag}": (r) => masseRejetSecTotaleKg(r),
+  "M_{b\\text{-ad}}": (r) => r.components?.binder_to_add_mass_kg ?? null,
+
+  // Volumes de chaque phase (C05, C08, C10 à C13, C15, F083)
+  "V_{moule}": (r) => r.container_volume_m3 ?? null,
+  "V_{ag}": (r) => r.aggregate_volume_m3 ?? null,
+  "V_{aggregates}": (r) => r.aggregate_volume_m3 ?? null,
+  "V_a": (r) => volumeAirM3(r),
+  "A_v": (r) => (r.aggregate_vol_pct_of_residue != null ? r.aggregate_vol_pct_of_residue / 100 : null),
+  "A_{v,T}": (r) => (r.aggregate_vol_pct_of_backfill != null ? r.aggregate_vol_pct_of_backfill / 100 : null),
+
+  // Grains : masses volumiques et densités relatives par phase (F008, F026,
+  // F083, F085, C06, C07, C10, C11, C13). Celles du résidu et du granulat se
+  // lisent dans le résultat : masse / volume de la phase.
+  "\\rho_s": (r) => rhoSolideKgM3(r),
+  "\\gamma_s": (r) => gammaSolideKNM3(r),
+  "\\rho_{s\\text{-t}}": (r) => quotient(residuSec(r), r.residue_volume_m3),
+  "\\rho_{s\\text{-ag}}": (r) => quotient(r.components?.aggregate_dry_mass_kg, r.aggregate_volume_m3),
+  "\\rho_{s\\text{-binder}}": (r) => quotient(r.components?.binder_total_mass_kg, r.binder_volume_m3),
+  "\\rho_{s\\text{-liant}}": (r) => (r.gs_binder != null ? r.gs_binder * rhoW(r) : null),
+  "\\rho_{s\\text{-tails+aggr}}": (r) => quotient(
+    (residuSec(r) ?? 0) + (r.components?.aggregate_dry_mass_kg ?? 0),
+    (r.residue_volume_m3 ?? 0) + (r.aggregate_volume_m3 ?? 0),
+  ),
+  "G_{s,t}": (r) => { const q = quotient(residuSec(r), r.residue_volume_m3); return q !== null ? q / rhoW(r) : null; },
+  "G_{s,ag}": (r) => { const q = quotient(r.components?.aggregate_dry_mass_kg, r.aggregate_volume_m3); return q !== null ? q / rhoW(r) : null; },
+  "G_{s,b}": (r) => r.gs_binder ?? null,
+
   // Gs
   "B_{ws}": (r) => {
     const mb = r.components?.binder_total_mass_kg ?? 0;
@@ -129,7 +190,7 @@ export const SYMBOL_TO_RECIPE: Record<string, (r: Recipe) => number | null> = {
 };
 
 /** Valeurs des variables d'une formule pour une recette (exportée pour le test des masses). */
-export function getFormulaValues(formula: Formula, recipe: Recipe | undefined): { symbol: string; description: string; unit: string | null; value: number | null }[] {
+export function getFormulaValues(formula: Pick<Formula, "variables">, recipe: Recipe | undefined): { symbol: string; description: string; unit: string | null; value: number | null }[] {
   return formula.variables.map((v) => {
     // Sans recette RPC/RPG (RRC), pas de valeur : des getters « ?? 0 » afficheraient des zéros.
     const value = recipe ? (SYMBOL_TO_RECIPE[v.symbol]?.(recipe) ?? null) : null;
@@ -256,7 +317,9 @@ export default function FormulaPopover({ formulaIds, recipe, ancre, onClose }: F
   // comme la formule du résultat ; elle est signalée et montrée à part, sans
   // valeurs substituées (2026-10-29).
   const { carte } = useFormules();
-  const formulas = formulaIds.map((id) => FORMULA_MAP.get(id)).filter(Boolean) as Formula[];
+  // Fiche du cours, sinon fiche du calculateur (hors cours, 2026-10-30).
+  const formulas = formulaIds.map((id) => FORMULA_MAP.get(id) ?? FICHE_CALCULATEUR_MAP.get(id))
+    .filter(Boolean) as (Formula | FicheCalculateur)[];
   if (formulas.length === 0) return null;
 
   // Sous la valeur s'il y a la place, sinon au-dessus ; toujours entière à
@@ -292,10 +355,11 @@ export default function FormulaPopover({ formulaIds, recipe, ancre, onClose }: F
       </div>
       {formulas.map((formula, fi) => {
         const values = getFormulaValues(formula, recipe);
-        const related = [
-          ...formula.derivationLinks.derivedFrom,
-          ...formula.derivationLinks.derivesInto,
-        ].filter((id) => !formulaIds.includes(id)).slice(0, 4);
+        const cours = "derivationLinks" in formula ? formula : null;
+        const related = cours ? [
+          ...cours.derivationLinks.derivedFrom,
+          ...cours.derivationLinks.derivesInto,
+        ].filter((id) => !formulaIds.includes(id)).slice(0, 4) : [];
 
         return (
           <div key={formula.id} style={{ padding: "14px 16px", borderTop: fi > 0 ? "1px solid var(--filet)" : "none" }}>
@@ -310,6 +374,11 @@ export default function FormulaPopover({ formulaIds, recipe, ancre, onClose }: F
               <span style={{ fontSize: 13, fontWeight: 700, color: "var(--texte)" }}>
                 {formula.title}
               </span>
+              {!cours && (
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: "var(--violet-texte)", background: "var(--violet-pale)", padding: "2px 7px", borderRadius: 4 }}>
+                  hors cours
+                </span>
+              )}
             </div>
 
             {/* Equation */}
@@ -353,15 +422,17 @@ export default function FormulaPopover({ formulaIds, recipe, ancre, onClose }: F
             )}
 
             {/* Derivation note */}
-            {formula.derivationLinks.derivationNote && (
+            {cours?.derivationLinks.derivationNote && (
               <div style={{ fontSize: 11, color: "var(--violet-texte)", background: "var(--violet-pale)", borderRadius: 6, padding: "5px 10px", marginBottom: 8 }}>
-                {formula.derivationLinks.derivationNote}
+                {cours.derivationLinks.derivationNote}
               </div>
             )}
 
             {/* Reference */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "var(--texte-3)" }}>
-              <span>Source : {formula.chapter}, p. {formula.pageNumber}</span>
+              {cours
+                ? <span>Source : {cours.chapter}, p. {cours.pageNumber}</span>
+                : <span>{MENTION_HORS_COURS} : {(formula as FicheCalculateur).source}</span>}
               {related.length > 0 && (
                 <span>
                   Voir aussi : {related.map((id) => (

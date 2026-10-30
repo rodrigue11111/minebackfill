@@ -100,6 +100,12 @@ const cst = (s: string) => () => s;
  */
 const formulesMasse = (rpc: string, rpg: string) => (c: ReportCtx): string[] =>
   c.isEssai ? [] : [c.isRpg ? rpg : rpc];
+/**
+ * Fiches selon la catégorie (2026-10-30 : toute ligne des Résultats montre sa
+ * formule). Une fiche « Cxx » est une fiche du calculateur, hors cours
+ * (formules-calculateur.ts). Vérifié par formules-lignes.test.ts.
+ */
+const selon = (rpc: string[], rpg: string[]) => (c: ReportCtx): string[] => (c.isRpg ? rpg : rpc);
 const sansUnite = () => "";
 const masse = (c: ReportCtx) => c.massLabel;
 const volume = (c: ReportCtx) => c.volLabel;
@@ -110,13 +116,13 @@ export const REPORT_ROWS: ReportRow[] = [
   // En essai, bw_mass_pct est le Bw ATTEINT (D89) : égal à la cible sous
   // Intra 2017, dilué par un ajout de granulat sous la règle « gramme ».
   { section: 1, label: (c) => (c.isEssai ? `${libelle("bw")} atteint` : libelle("bw")), unit: cst("%"), getter: (r) => r.bw_mass_pct, digits: 2, bold: true, formulaIds: ["F016"], resume: 1 },
-  { section: 1, label: cst(libelle("bv")), unit: cst("%"), getter: (r) => r.bv_vol_pct, digits: 2, formulaIds: ["F022"] },
+  { section: 1, label: cst(libelle("bv")), unit: cst("%"), getter: (r) => r.bv_vol_pct, digits: 2, formulaIds: selon(["F022"], ["F085"]) },
   { section: 1, label: (c) => (c.isEssai ? "Résidu sec total Mr" : "Résidu sec Mr"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_dry_mass_kg, c.units.mass), digits: 3, bold: true, formulaIds: formulesMasse("F070", "F048"), resume: 9 },
-  { section: 1, label: cst("Granulat sec Ma"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.aggregate_dry_mass_kg, c.units.mass), digits: 3, bold: true, when: (c) => c.isRpg, resume: 10 },
+  { section: 1, label: cst("Granulat sec Ma"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.aggregate_dry_mass_kg, c.units.mass), digits: 3, bold: true, when: (c) => c.isRpg, formulaIds: formulesMasse("F050", "F050"), resume: 10 },
   { section: 1, label: (c) => (c.isEssai ? "Liant total Mb" : "Liant Mb"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_total_mass_kg, c.units.mass), digits: 3, bold: true, formulaIds: formulesMasse("F040", "F051"), resume: 7 },
-  { section: 1, label: cst("Résidu humide Mr-hum"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_wet_mass_kg, c.units.mass), digits: 3 },
+  { section: 1, label: cst("Résidu humide Mr-hum"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.residue_wet_mass_kg, c.units.mass), digits: 3, formulaIds: selon(["F042"], ["F049"]) },
   { section: 1, label: cst("Eau totale Mw"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_total_mass_kg, c.units.mass), digits: 3, formulaIds: formulesMasse("F014", "F014"), resume: 8 },
-  { section: 1, label: cst("Eau à ajouter/retirer Mw-aj"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_to_add_mass_kg, c.units.mass), digits: 3 },
+  { section: 1, label: cst("Eau à ajouter/retirer Mw-aj"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_to_add_mass_kg, c.units.mass), digits: 3, formulaIds: selon(["F043"], ["F052"]) },
   // Masses par composant de liant (N composants) — générées par index.
   ...Array.from({ length: MAX_BINDER_ROWS }, (_, i): ReportRow => ({
     section: 1,
@@ -125,8 +131,9 @@ export const REPORT_ROWS: ReportRow[] = [
     getter: (r, c) => fromStoreMass(masseComposant(r.components, i), c.units.mass),
     digits: 3,
     when: (c) => c.bcount >= i + 1,
+    formulaIds: ["C01"],
   })),
-  { section: 1, label: cst("Liant à ajouter/retirer Mb-ad"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_to_add_mass_kg, c.units.mass), digits: 3, when: (c) => c.isEssai, resume: 11 },
+  { section: 1, label: cst("Liant à ajouter/retirer Mb-ad"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.binder_to_add_mass_kg, c.units.mass), digits: 3, when: (c) => c.isEssai, formulaIds: ["C02"], resume: 11 },
   // Masses « à ajouter » par composant (essai) — générées par index.
   ...Array.from({ length: MAX_BINDER_ROWS }, (_, i): ReportRow => ({
     section: 1,
@@ -135,6 +142,7 @@ export const REPORT_ROWS: ReportRow[] = [
     getter: (r, c) => fromStoreMass(masseAjoutComposant(r.components, i), c.units.mass),
     digits: 3,
     when: (c) => c.isEssai && c.bcount >= i + 1,
+    formulaIds: ["C03"],
   })),
 
   /* ── 2. Paramètres géotechniques ── */
@@ -144,43 +152,43 @@ export const REPORT_ROWS: ReportRow[] = [
   { section: 2, label: cst(libelle("w")), unit: cst("%"), getter: (r) => r.w_mass_pct, digits: 2, formulaIds: ["F001"], resume: 5 },
   { section: 2, label: cst(libelle("el")), unit: sansUnite, getter: (r) => r.wc_ratio, digits: 3, formulaIds: ["F028"], resume: 3 },
   { section: 2, label: cst(libelle("sr")), unit: cst("%"), getter: (r) => r.saturation_pct, digits: 1, formulaIds: ["F003"], resume: 6 },
-  { section: 2, label: cst(libelle("am")), unit: cst("%"), getter: (r) => r.aggregate_mass_pct, digits: 2, when: (c) => c.isRpg },
-  { section: 2, label: cst("Fraction volumique de granulat / résidu"), unit: cst("%"), getter: (r) => r.aggregate_vol_pct_of_residue, digits: 2, when: (c) => c.isRpg },
-  { section: 2, label: cst("Fraction volumique de granulat / remblai"), unit: cst("%"), getter: (r) => r.aggregate_vol_pct_of_backfill, digits: 2, when: (c) => c.isRpg },
+  { section: 2, label: cst(libelle("am")), unit: cst("%"), getter: (r) => r.aggregate_mass_pct, digits: 2, when: (c) => c.isRpg, formulaIds: ["C04"] },
+  { section: 2, label: cst("Fraction volumique de granulat / résidu"), unit: cst("%"), getter: (r) => r.aggregate_vol_pct_of_residue, digits: 2, when: (c) => c.isRpg, formulaIds: ["F083"] },
+  { section: 2, label: cst("Fraction volumique de granulat / remblai"), unit: cst("%"), getter: (r) => r.aggregate_vol_pct_of_backfill, digits: 2, when: (c) => c.isRpg, formulaIds: ["C05"] },
 
   /* ── 3. Masses et poids volumiques ── */
   { section: 3, label: cst("Masse volumique humide ρh"), unit: densite, getter: (r, c) => fromStoreDensity(r.bulk_density_kg_m3, c.units.density), digits: 4, bold: true, formulaIds: ["F023", "F024"] },
   { section: 3, label: cst("Masse volumique sèche ρd"), unit: densite, getter: (r, c) => fromStoreDensity(r.dry_density_kg_m3, c.units.density), digits: 4, bold: true, formulaIds: ["F007"] },
   { section: 3, label: cst("Poids volumique humide γh"), unit: cst("kN/m3"), getter: (r) => r.bulk_unit_weight_kN_m3, digits: 2, formulaIds: ["F027"] },
-  { section: 3, label: cst("Poids volumique sec γd"), unit: cst("kN/m3"), getter: (r) => r.dry_unit_weight_kN_m3, digits: 2 },
-  { section: 3, label: cst("Masse volumique des grains ρs"), unit: densite, getter: (r, c) => fromStoreDensity(rhoSolideKgM3(r), c.units.density), digits: 4 },
-  { section: 3, label: cst("Poids volumique des grains γs"), unit: cst("kN/m3"), getter: (r) => gammaSolideKNM3(r), digits: 2 },
+  { section: 3, label: cst("Poids volumique sec γd"), unit: cst("kN/m3"), getter: (r) => r.dry_unit_weight_kN_m3, digits: 2, formulaIds: ["F094"] },
+  { section: 3, label: cst("Masse volumique des grains ρs"), unit: densite, getter: (r, c) => fromStoreDensity(rhoSolideKgM3(r), c.units.density), digits: 4, formulaIds: ["C06"] },
+  { section: 3, label: cst("Poids volumique des grains γs"), unit: cst("kN/m3"), getter: (r) => gammaSolideKNM3(r), digits: 2, formulaIds: ["C07"] },
 
   /* ── 4. Indice des vides et structure ── */
   { section: 4, label: cst(libelle("e")), unit: sansUnite, getter: (r) => r.void_ratio, digits: 5, bold: true, formulaIds: ["F004"], resume: 4 },
   { section: 4, label: cst(libelle("n")), unit: sansUnite, getter: (r) => r.porosity, digits: 5, formulaIds: ["F005"] },
   { section: 4, label: cst(libelle("theta")), unit: cst("%"), getter: (r) => r.theta_pct, digits: 2, formulaIds: ["F002"] },
-  { section: 4, label: cst("Densité relative Gs du remblai"), unit: sansUnite, getter: (r) => r.gs_backfill, digits: 5, formulaIds: ["F026"] },
-  { section: 4, label: cst("Densité relative Gs du liant"), unit: sansUnite, getter: (r) => r.gs_binder, digits: 4, formulaIds: ["F008"] },
+  { section: 4, label: cst("Densité relative Gs du remblai"), unit: sansUnite, getter: (r) => r.gs_backfill, digits: 5, formulaIds: ["F008"] },
+  { section: 4, label: cst("Densité relative Gs du liant"), unit: sansUnite, getter: (r) => r.gs_binder, digits: 4, formulaIds: ["F026"] },
 
   /* ── 5. Volumes ── */
-  { section: 5, label: cst("Volume du moule"), unit: volume, getter: (r, c) => fromStoreVolume(r.container_volume_m3, c.units.volume), digits: 4 },
-  { section: 5, label: cst("Volume total VT"), unit: volume, getter: (r, c) => fromStoreVolume(r.total_backfill_volume_m3, c.units.volume), digits: 4, bold: true },
-  { section: 5, label: cst("Volume des solides Vs"), unit: volume, getter: (r, c) => fromStoreVolume(r.solid_volume_m3, c.units.volume), digits: 4 },
-  { section: 5, label: cst("Volume des vides Vv"), unit: volume, getter: (r, c) => fromStoreVolume(r.void_volume_m3, c.units.volume), digits: 4 },
-  { section: 5, label: cst("Volume du résidu Vr"), unit: volume, getter: (r, c) => fromStoreVolume(r.residue_volume_m3, c.units.volume), digits: 4 },
-  { section: 5, label: cst("Volume du liant Vb"), unit: volume, getter: (r, c) => fromStoreVolume(r.binder_volume_m3, c.units.volume), digits: 4 },
-  { section: 5, label: cst("Volume d'eau Vw"), unit: volume, getter: (r, c) => fromStoreVolume(r.water_volume_m3, c.units.volume), digits: 4 },
-  { section: 5, label: cst("Volume du granulat Vg"), unit: volume, getter: (r, c) => fromStoreVolume(r.aggregate_volume_m3, c.units.volume), digits: 4, when: (c) => c.isRpg },
+  { section: 5, label: cst("Volume du moule"), unit: volume, getter: (r, c) => fromStoreVolume(r.container_volume_m3, c.units.volume), digits: 4, formulaIds: ["C08"] },
+  { section: 5, label: cst("Volume total VT"), unit: volume, getter: (r, c) => fromStoreVolume(r.total_backfill_volume_m3, c.units.volume), digits: 4, bold: true, formulaIds: ["C09"] },
+  { section: 5, label: cst("Volume des solides Vs"), unit: volume, getter: (r, c) => fromStoreVolume(r.solid_volume_m3, c.units.volume), digits: 4, formulaIds: ["F101"] },
+  { section: 5, label: cst("Volume des vides Vv"), unit: volume, getter: (r, c) => fromStoreVolume(r.void_volume_m3, c.units.volume), digits: 4, formulaIds: ["F102"] },
+  { section: 5, label: cst("Volume du résidu Vr"), unit: volume, getter: (r, c) => fromStoreVolume(r.residue_volume_m3, c.units.volume), digits: 4, formulaIds: ["C10"] },
+  { section: 5, label: cst("Volume du liant Vb"), unit: volume, getter: (r, c) => fromStoreVolume(r.binder_volume_m3, c.units.volume), digits: 4, formulaIds: ["C11"] },
+  { section: 5, label: cst("Volume d'eau Vw"), unit: volume, getter: (r, c) => fromStoreVolume(r.water_volume_m3, c.units.volume), digits: 4, formulaIds: ["C12"] },
+  { section: 5, label: cst("Volume du granulat Vg"), unit: volume, getter: (r, c) => fromStoreVolume(r.aggregate_volume_m3, c.units.volume), digits: 4, when: (c) => c.isRpg, formulaIds: ["C13"] },
 
   /* ── 6. Résultats complets ── */
-  { section: 6, label: (c) => (c.isRpg ? "Masse sèche de résidu et de granulat" : "Masse sèche totale de résidu"), unit: masse, getter: (r, c) => fromStoreMass(masseRejetSecTotaleKg(r), c.units.mass), digits: 4, bold: true },
-  { section: 6, label: cst("Masse totale des solides Ms"), unit: masse, getter: (r, c) => fromStoreMass(masseSolidesTotaleKg(r), c.units.mass), digits: 4, bold: true },
-  { section: 6, label: cst("Masse totale d'eau Mw"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_total_mass_kg, c.units.mass), digits: 4 },
-  { section: 6, label: cst("Masse totale du remblai"), unit: masse, getter: (r, c) => fromStoreMass(masseRemblaiTotaleKg(r), c.units.mass), digits: 4 },
-  { section: 6, label: cst("Eau contenue dans le résidu"), unit: masse, getter: (r, c) => fromStoreMass(masseEauDansResidusKg(r), c.units.mass), digits: 4 },
-  { section: 6, label: cst("Eau à ajouter/retirer Mw-aj"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_to_add_mass_kg, c.units.mass), digits: 4 },
-  { section: 6, label: cst("Volume d'air Va"), unit: volume, getter: (r, c) => fromStoreVolume(volumeAirM3(r), c.units.volume), digits: 4 },
+  { section: 6, label: (c) => (c.isRpg ? "Masse sèche de résidu et de granulat" : "Masse sèche totale de résidu"), unit: masse, getter: (r, c) => fromStoreMass(masseRejetSecTotaleKg(r), c.units.mass), digits: 4, bold: true, formulaIds: ["C16"] },
+  { section: 6, label: cst("Masse totale des solides Ms"), unit: masse, getter: (r, c) => fromStoreMass(masseSolidesTotaleKg(r), c.units.mass), digits: 4, bold: true, formulaIds: ["F013"] },
+  { section: 6, label: cst("Masse totale d'eau Mw"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_total_mass_kg, c.units.mass), digits: 4, formulaIds: formulesMasse("F014", "F014") },
+  { section: 6, label: cst("Masse totale du remblai"), unit: masse, getter: (r, c) => fromStoreMass(masseRemblaiTotaleKg(r), c.units.mass), digits: 4, formulaIds: ["F015"] },
+  { section: 6, label: cst("Eau contenue dans le résidu"), unit: masse, getter: (r, c) => fromStoreMass(masseEauDansResidusKg(r), c.units.mass), digits: 4, formulaIds: ["C14"] },
+  { section: 6, label: cst("Eau à ajouter/retirer Mw-aj"), unit: masse, getter: (r, c) => fromStoreMass(r.components?.water_to_add_mass_kg, c.units.mass), digits: 4, formulaIds: selon(["F043"], ["F052"]) },
+  { section: 6, label: cst("Volume d'air Va"), unit: volume, getter: (r, c) => fromStoreVolume(volumeAirM3(r), c.units.volume), digits: 4, formulaIds: ["C15"] },
   { section: 6, label: cst("Cw calculé à partir des masses"), unit: cst("%"), getter: (r) => cwCalculePct(r), digits: 4, formulaIds: ["F009"] },
   { section: 6, label: cst("Cv calculé à partir des volumes"), unit: cst("%"), getter: (r) => cvCalculePct(r), digits: 4, formulaIds: ["F010"] },
 ];

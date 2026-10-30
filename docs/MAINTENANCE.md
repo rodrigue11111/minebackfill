@@ -193,7 +193,15 @@ labo ; un champ de saisie affiche sa valeur avec `decimaleFr` et accepte la
 virgule comme le point (`lireNombre`). Les CSV, JSON et Excel reçoivent les
 nombres bruts : ne jamais y passer `fmt`. Les lignes RRC portent toutes leurs
 formules (`RrcReportRow.formulaIds`, la masse de coulis renvoie à F056 et
-F057) ; la fiche s'ouvre alors sans valeurs. Sauvegarder sous un nom déjà
+F057) ; la fiche s'ouvre alors sans valeurs. **Toute ligne RPC et RPG a aussi
+sa fiche** (2026-10-30) : une fiche du cours quand elle décrit le calcul,
+sinon une fiche du calculateur (`lib/formules-calculateur.ts`, ids `C01` à
+`C16`), marquée « hors cours » dans la fiche fx avec l'endroit du code qui
+fait le calcul. Une nouvelle ligne des Résultats doit recevoir sa fiche :
+`formules-lignes.test.ts` échoue sinon, et y évalue chaque forme avec les
+valeurs du résultat (recettes du calculateur, RPC et RPG). Exceptions
+voulues : en essai-erreur, les totaux « base plus ajouts » (Mr, Mb, Mw) n'ont
+pas de fiche de dosage. Sauvegarder sous un nom déjà
 pris demande « Remplacer l'ancien » (même id, `saveCurrentResult(nom, true)`)
 ou « Garder les deux ».
 
